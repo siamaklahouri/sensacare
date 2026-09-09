@@ -557,6 +557,12 @@ async function buildMenu(env) {
 /* index.html را می‌گیرد و تگ‌های عنوان/توضیح/اشتراک‌گذاری را با
    اطلاعات همان محصول یا مقاله عوض می‌کند. محتوای صفحه دست نمی‌خورد —
    مرورگر کاربر خودش بقیه را می‌سازد. */
+/* خط‌های بیگانه‌ای که نباید در جواب فارسی دستیار بیایند */
+const FOREIGN_SRC = '[\\u0400-\\u052F\\u0530-\\u05FF\\u0900-\\u097F\\u0E00-\\u0E7F'
+  + '\\u10A0-\\u10FF\\u1100-\\u11FF\\u2E80-\\u9FFF\\uA960-\\uA97F\\uAC00-\\uD7FF\\uF900-\\uFAFF]';
+const FOREIGN = new RegExp(FOREIGN_SRC);
+const FOREIGN_G = new RegExp(FOREIGN_SRC + '+', 'g');
+
 const esc = t => String(t == null ? '' : t)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
@@ -1021,6 +1027,7 @@ export default {
 - عدد و قیمتی که در فهرست نیست از خودت نساز.
 - محتوای صریح جنسی ننویس. لحن باید مثل داروخانه باشد، نه غیر آن.
 - اگر پرسش ربطی به فروشگاه و سلامت جنسی ندارد، مؤدبانه برگردان به موضوع.
+- فقط فارسی بنویس. حتی یک کلمه یا یک حرف چینی، ژاپنی، روسی یا خط بیگانه هم ننویس.
 
 اطلاعات ارسال:
 - پست پیشتاز ${fa(post)} تومان، همهٔ ایران، ۲ تا ۳ روز کاری.
@@ -1033,13 +1040,26 @@ ${freeOver > 0 ? `- خرید بالای ${fa(freeOver)} تومان ارسال ر
 ${catalog || '(فعلاً محصولی ثبت نشده)'}`;
 
         const messages = [{ role: 'system', content: system }, ...history, { role: 'user', content: q }];
-        const MODELS = ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fast'];
-        for (const model of MODELS) {
+        /* گاهی مدل وسط جملهٔ فارسی یک واژهٔ چینی یا روسی می‌اندازد.
+           اگر پیش آمد دوباره می‌پرسیم؛ اگر باز هم بود، همان چند حرف را برمی‌داریم. */
+        const attempts = [
+          { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.4 },
+          { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.15 },
+          { model: '@cf/meta/llama-3.1-8b-instruct-fast', temperature: 0.3 }
+        ];
+        let dirty = null, dirtyModel = '';
+        for (const a of attempts) {
           try {
-            const r = await env.AI.run(model, { messages, max_tokens: 420, temperature: 0.4 });
+            const r = await env.AI.run(a.model, { messages, max_tokens: 420, temperature: a.temperature });
             const text = String(r?.response || '').trim();
-            if (text) return json({ ok: true, answer: text, model });
-          } catch (e) { console.log('ai', model, e.message); }
+            if (!text) continue;
+            if (!FOREIGN.test(text)) return json({ ok: true, answer: text, model: a.model });
+            if (!dirty) { dirty = text; dirtyModel = a.model; }
+          } catch (e) { console.log('ai', a.model, e.message); }
+        }
+        if (dirty) {
+          const cleaned = dirty.replace(FOREIGN_G, '').replace(/[ \t]{2,}/g, ' ').trim();
+          if (cleaned) return json({ ok: true, answer: cleaned, model: dirtyModel, cleaned: true });
         }
         return bad('دستیار الان جواب نمی‌دهد. کمی بعد دوباره بپرس.', 503);
       }
