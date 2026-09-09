@@ -736,11 +736,19 @@ body.admin-mode{background:var(--ink)}
   </div>
 
   <div id="authStep1">
+    <div id="botLoginBox" style="display:none">
+      <button class="btn-main" id="tgLogin" style="width:100%;padding:13px;display:none">ورود با تلگرام</button>
+      <button class="btn-main" id="baleLogin" style="width:100%;padding:13px;margin-top:9px;display:none">ورود با بله</button>
+      <p class="hint" id="botLoginHint">ربات باز می‌شود، یک دکمه می‌زنی، و برمی‌گردی. شماره‌ات خودکار تأیید می‌شود.</p>
+      <div id="smsOr" style="display:none;text-align:center;margin:14px 0;opacity:.6;font-size:13px">یا</div>
+    </div>
+    <div id="smsBox">
     <label for="aPhone">شمارهٔ موبایلت</label>
     <input id="aPhone" inputmode="numeric" placeholder="۰۹۱۲۳۴۵۶۷۸۹" autocomplete="tel">
     <p class="err" id="aPhoneErr">یه شمارهٔ ۱۱ رقمی که با ۰۹ شروع بشه.</p>
     <button class="btn-main" id="aSend" style="width:100%;margin-top:18px;padding:13px">کد رو بفرست</button>
     <p class="hint">با ورود، <a href="#" data-page="terms" style="color:var(--red)">قوانین</a> رو قبول می‌کنی. شماره‌ت فقط برای پیگیری سفارشه، جای دیگه‌ای نمی‌ره.</p>
+    </div>
   </div>
 
   <div id="authStep2" style="display:none">
@@ -1698,13 +1706,66 @@ const AM=$('authModal');
 let otpCode='', otpPhone='', otpAt=0, otpTimer=null, afterAuth=null, sentBySMS=false;
 
 function openAuth(cb, prefill){
+  stopBotPoll();
   afterAuth=cb||null;
   const u=authUser();
   if(u && (!prefill || u.phone===prefill)){ if(afterAuth){const f=afterAuth;afterAuth=null;f(u)} return }
-  authStep(1); AM.classList.add('open');
+  authStep(1); paintLoginOptions(); AM.classList.add('open');
   if(prefill){ $('aPhone').value=faN(prefill); setTimeout(()=>$('aSend').click(),120); return }
   setTimeout(()=>{try{$('aPhone').focus()}catch(_){}} ,150);
 }
+/* ---- ورود با ربات تلگرام / بله ---- */
+let botPoll=null;
+function stopBotPoll(){ if(botPoll){clearInterval(botPoll);botPoll=null} }
+
+function paintLoginOptions(){
+  const bots=(settings.botLogin)||{}, sms=settings.loginSms!==false;
+  const any=!!(bots.telegram||bots.bale);
+  $('botLoginBox').style.display = any?'':'none';
+  $('tgLogin').style.display   = bots.telegram?'':'none';
+  $('baleLogin').style.display = bots.bale?'':'none';
+  $('smsBox').style.display    = sms?'':'none';
+  $('smsOr').style.display     = (any&&sms)?'':'none';
+  $('authSub').textContent = any&&!sms ? 'با تلگرام یا بله وارد شو' : 'شمارهٔ موبایلت رو بزن';
+}
+
+async function startBotLogin(pf){
+  const btn=$(pf==='telegram'?'tgLogin':'baleLogin'), old=btn.textContent;
+  btn.disabled=true; btn.textContent='یک لحظه…';
+  try{
+    const r=await req('/api/auth/bot/start',{method:'POST',body:{}});
+    const link=r.links&&r.links[pf];
+    if(!link) throw new Error('این راه ورود فعال نیست');
+    window.open(link,'_blank','noopener');
+    $('botLoginHint').textContent='ربات را باز کن و دکمهٔ «ارسال شمارهٔ من» را بزن. همین‌جا منتظرت هستم…';
+    stopBotPoll();
+    const until=Date.now()+10*60000;
+    botPoll=setInterval(async()=>{
+      if(Date.now()>until){ stopBotPoll(); btn.disabled=false; btn.textContent=old;
+        $('botLoginHint').textContent='وقتش گذشت. دوباره بزن.'; return }
+      try{
+        const c=await req('/api/auth/bot/check?nonce='+encodeURIComponent(r.nonce));
+        if(c.status!=='ready') return;
+        stopBotPoll();
+        store.set('sensa_utok',c.token); store.set('sensa_user',c.user.phone);
+        if(!users.find(u=>u.phone===c.user.phone)){
+          users.push({phone:c.user.phone,name:c.user.name||'',city:'',address:'',postal:''});
+          saveUsers();
+        }
+        AM.classList.remove('open'); btn.disabled=false; btn.textContent=old;
+        paintAcctBtn(); toast('خوش آمدی!');
+        if(afterAuth){ const f=afterAuth; afterAuth=null; f(c.user) }
+      }catch(e){ stopBotPoll(); btn.disabled=false; btn.textContent=old;
+        $('botLoginHint').textContent=e.message }
+    },2000);
+  }catch(e){
+    btn.disabled=false; btn.textContent=old;
+    $('botLoginHint').textContent=e.message;
+  }
+}
+$('tgLogin').onclick=()=>startBotLogin('telegram');
+$('baleLogin').onclick=()=>startBotLogin('bale');
+
 function authStep(n){
   $('authStep1').style.display=n===1?'':'none';
   $('authStep2').style.display=n===2?'':'none';

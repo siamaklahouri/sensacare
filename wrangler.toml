@@ -13,6 +13,11 @@ database_id = "355c3dc4-a312-4eab-ab0a-14cff6f669f6"
 
 [vars]
 ADMIN_USER = "admin"
+# آی‌دی ربات‌ها (راز نیستند) — برای ساختن لینک «ورود با تلگرام»
+TELEGRAM_BOT_USER = "sensacare_bot"
+BALE_BOT_USER = ""
+# دامنه‌ای که وب‌هوک ربات روی آن ثبت می‌شود
+PUBLIC_HOST = "sensacare.ir"
 # رمز و کلیدها را با دستور secret بگذارید، نه اینجا:
 #   npx wrangler secret put ADMIN_PASS
 #   npx wrangler secret put JWT_SECRET

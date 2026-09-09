@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS pages;
 DROP TABLE IF EXISTS settings;
 DROP TABLE IF EXISTS counters;
 DROP TABLE IF EXISTS bot_chats;
+DROP TABLE IF EXISTS bot_logins;
 
 CREATE TABLE categories(
   id TEXT PRIMARY KEY, name TEXT, sub TEXT, acc TEXT, tint TEXT, pos INTEGER DEFAULT 0);
@@ -61,6 +62,10 @@ CREATE TABLE counters(k TEXT PRIMARY KEY, n INTEGER DEFAULT 0);
 CREATE TABLE bot_chats(
   platform TEXT, chat_id TEXT, role TEXT, phone TEXT, created INTEGER,
   PRIMARY KEY(platform, chat_id));
+
+CREATE TABLE bot_logins(
+  nonce TEXT PRIMARY KEY, created INTEGER, platform TEXT, chat_id TEXT,
+  phone TEXT, name TEXT, status TEXT DEFAULT 'pending');
 
 CREATE INDEX idx_orders_phone ON orders(phone);
 CREATE INDEX idx_orders_created ON orders(created);

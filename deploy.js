@@ -181,6 +181,15 @@ ${B}╭────────────────────────�
     ok('جدول‌ها ساخته شدند');
   }
 
+  /* ---------- مهاجرت‌ها ---------- */
+  /* migrations.sql فقط CREATE ... IF NOT EXISTS دارد، پس اجرای دوباره‌اش
+     بی‌خطر است و به داده‌های موجود دست نمی‌زند. */
+  if (fs.existsSync('migrations.sql')) {
+    const mout = shq(`${WR} d1 execute sensa-db --remote --json --file=./migrations.sql -y`);
+    if (parseJSON(mout, '[')) ok('مهاجرت‌ها اعمال شد');
+    else { err('اجرای مهاجرت‌ها انجام نشد:'); say(mout.slice(-700)); process.exit(1); }
+  }
+
   /* ---------- ۵ استقرار ---------- */
   step(4, 'بالا آوردن سایت');
   let deployOut = '';
@@ -222,8 +231,33 @@ ${B}╭────────────────────────�
     if (process.env[k]) putSecret(k, process.env[k]) ? ok(k) : err(k + ' ذخیره نشد');
   }
 
+  /* ---------- ربات‌ها: راز وب‌هوک و ثبت خودکار ---------- */
+  const botTokens = { telegram: process.env.TELEGRAM_BOT_TOKEN, bale: process.env.BALE_BOT_TOKEN };
+  if (botTokens.telegram || botTokens.bale) {
+    step(6, 'ربات تلگرام و بله');
+    const host = (process.env.PUBLIC_HOST || 'sensacare.ir').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const secret = process.env.BOT_SECRET || crypto.randomBytes(12).toString('hex');
+    putSecret('BOT_SECRET', secret) ? ok('راز وب‌هوک ذخیره شد') : err('راز وب‌هوک ذخیره نشد');
+
+    const bases = { telegram: 'https://api.telegram.org', bale: 'https://tapi.bale.ai' };
+    for (const [pf, token] of Object.entries(botTokens)) {
+      if (!token) continue;
+      const hook = `https://${host}/api/bot/${pf}?s=${secret}`;
+      try {
+        const r = await fetch(`${bases[pf]}/bot${token}/setWebhook`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: hook })
+        });
+        const d = await r.json().catch(() => ({}));
+        d.ok ? ok(`وب‌هوک ${pf} ثبت شد`)
+             : warn(`وب‌هوک ${pf} ثبت نشد: ${d.description || r.status}`);
+      } catch (e) { warn(`وب‌هوک ${pf}: ${e.message}`); }
+    }
+  }
+
   /* ---------- ۷ دادهٔ اولیه ---------- */
-  step(6, 'محصولات و مقالات اولیه');
+  step(7, 'محصولات و مقالات اولیه');
   try {
     const r = await fetch(url + '/api/bootstrap');
     const d = await r.json();

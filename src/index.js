@@ -71,6 +71,35 @@ const asUser = async (env, req) => {
    سفارش‌هایش را ببیند. */
 const smsReady = env => !!(env.SMS_PROVIDER && env.SMS_API_KEY);
 
+/* ورود با ربات: اگر توکن ربات و آی‌دی‌اش را داشته باشیم، مشتری می‌تواند
+   به جای پیامک با تلگرام یا بله وارد شود. شماره‌ای که تلگرام می‌دهد
+   خودش تأییدشده است، پس امنیتش از کد پیامکی کمتر نیست. */
+async function botUser(env, pf) {
+  const v = pf === 'telegram'
+    ? (env.TELEGRAM_BOT_USER || await getSetting(env, 'tgUser', ''))
+    : (env.BALE_BOT_USER || await getSetting(env, 'baleUser', ''));
+  return String(v || '').replace(/^@/, '').trim();
+}
+async function botLoginOptions(env) {
+  const out = {};
+  for (const pf of ['telegram', 'bale']) {
+    const [tok, user] = [await botToken(env, pf), await botUser(env, pf)];
+    if (tok && user) out[pf] = user;
+  }
+  return out;
+}
+
+/* تلگرام شماره را به شکل 989121234567 می‌دهد؛ ما 09121234567 می‌خواهیم */
+function normPhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('0098')) d = d.slice(4);
+  else if (d.startsWith('98')) d = d.slice(2);
+  if (d.startsWith('9') && d.length === 10) d = '0' + d;
+  return /^09\d{9}$/.test(d) ? d : null;
+}
+const rndNonce = () =>
+  [...crypto.getRandomValues(new Uint8Array(12))].map(b => b.toString(36)).join('').slice(0, 16);
+
 async function sendSMS(env, phone, code) {
   const prov = env.SMS_PROVIDER, key = env.SMS_API_KEY, tpl = env.SMS_TEMPLATE;
   if (!prov || !key) return false;
@@ -245,11 +274,64 @@ async function handleUpdate(env, pf, u) {
   const chat = String(msg.chat?.id || '');
   const text = (msg.text || '').trim();
 
+  /* کاربر شماره‌اش را با دکمهٔ «ارسال شماره» فرستاد => ورود به سایت */
+  if (msg.contact) {
+    /* فقط شمارهٔ خودِ کاربر قبول است. اگر مخاطبِ کس دیگری را بفرستد،
+       contact.user_id با فرستنده یکی نیست و باید رد شود. */
+    if (String(msg.contact.user_id || '') !== String(msg.from?.id || '')) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'فقط شمارهٔ خودت را می‌شود فرستاد. دکمهٔ «ارسال شمارهٔ من» را بزن.' });
+      return;
+    }
+    const phone = normPhone(msg.contact.phone_number);
+    if (!phone) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'شمارهٔ تو ایرانی نیست و فعلاً پشتیبانی نمی‌شود.' });
+      return;
+    }
+    const name = [msg.contact.first_name, msg.contact.last_name].filter(Boolean).join(' ');
+    const pend = await one(env,
+      `SELECT * FROM bot_logins WHERE platform=? AND chat_id=? AND status='pending'
+       ORDER BY created DESC LIMIT 1`, pf, chat);
+    if (!pend || Date.now() - pend.created > 10 * 60000) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat, reply_markup: { remove_keyboard: true },
+        text: 'درخواست ورودی پیدا نکردم یا وقتش گذشته. دوباره از سایت روی «ورود با تلگرام» بزن.' });
+      return;
+    }
+    await run(env, "UPDATE bot_logins SET phone=?, name=?, status='ready' WHERE nonce=?",
+      phone, name, pend.nonce);
+    await run(env, `INSERT INTO bot_chats(platform,chat_id,role,phone,created) VALUES(?,?,?,?,?)
+      ON CONFLICT(platform,chat_id) DO UPDATE SET phone=excluded.phone`,
+      pf, chat, 'customer', phone, Date.now());
+    await botCall(env, pf, 'sendMessage', { chat_id: chat, reply_markup: { remove_keyboard: true },
+      text: '✅ وارد شدی. برگرد به صفحهٔ سایت.' });
+    return;
+  }
+
   /* عکس فیش پرداخت */
   if (msg.photo || msg.document) {
     await notifyAdmins(env, `📎 فیش پرداخت از <code>${chat}</code> رسید. برای دیدنش به ربات سر بزنید.`);
     await botCall(env, pf, 'sendMessage', { chat_id: chat,
       text: 'فیش رسید. بعد از بررسی، تأیید سفارشت را می‌فرستیم.' });
+    return;
+  }
+
+  /* «/start کد» — از روی لینک ورودِ سایت آمده */
+  if (text.startsWith('/start ')) {
+    const nonce = text.slice(7).trim();
+    const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', nonce);
+    if (!row || Date.now() - row.created > 10 * 60000) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'این لینک ورود منقضی شده. دوباره از سایت امتحان کن.' });
+      return;
+    }
+    await run(env, 'UPDATE bot_logins SET platform=?, chat_id=? WHERE nonce=?', pf, chat, nonce);
+    await botCall(env, pf, 'sendMessage', { chat_id: chat,
+      text: 'برای ورود به سایت، دکمهٔ پایین را بزن تا شماره‌ات تأیید شود.',
+      reply_markup: {
+        keyboard: [[{ text: '📱 ارسال شمارهٔ من', request_contact: true }]],
+        resize_keyboard: true, one_time_keyboard: true
+      } });
     return;
   }
 
@@ -371,7 +453,9 @@ export default {
             shipExpress: await getSetting(env, 'shipExpress', 400000),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
             trust: await getSetting(env, 'trust', {}),
-            loginEnabled: smsReady(env)
+            loginEnabled: smsReady(env) || Object.keys(await botLoginOptions(env)).length > 0,
+            loginSms: smsReady(env),
+            botLogin: await botLoginOptions(env)
           }
         });
       }
@@ -414,6 +498,44 @@ export default {
         }
         const known = !!(await one(env, 'SELECT 1 AS x FROM users WHERE phone=?', phone));
         return json({ ok: true, sent: true, known });
+      }
+
+      /* --- ورود با ربات: مرحلهٔ ۱، ساختن یک کد یک‌بارمصرف --- */
+      if (p === '/api/auth/bot/start' && m === 'POST') {
+        const opts = await botLoginOptions(env);
+        if (!Object.keys(opts).length) return bad('ورود با ربات فعال نیست', 503);
+        const nonce = rndNonce();
+        await run(env, 'INSERT INTO bot_logins(nonce,created,status) VALUES(?,?,?)',
+          nonce, Date.now(), 'pending');
+        ctx.waitUntil(run(env, 'DELETE FROM bot_logins WHERE created < ?', Date.now() - 30 * 60000));
+        const links = {};
+        if (opts.telegram) links.telegram = `https://t.me/${opts.telegram}?start=${nonce}`;
+        if (opts.bale) links.bale = `https://ble.ir/${opts.bale}?start=${nonce}`;
+        return json({ ok: true, nonce, links });
+      }
+
+      /* --- ورود با ربات: مرحلهٔ ۲، سایت می‌پرسد تمام شد یا نه --- */
+      if (p === '/api/auth/bot/check' && m === 'GET') {
+        const nonce = url.searchParams.get('nonce') || '';
+        const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', nonce);
+        if (!row) return bad('این درخواست منقضی شده است', 410);
+        if (Date.now() - row.created > 10 * 60000) {
+          await run(env, 'DELETE FROM bot_logins WHERE nonce=?', nonce);
+          return bad('این درخواست منقضی شده است', 410);
+        }
+        if (row.status !== 'ready' || !row.phone) return json({ ok: true, status: 'pending' });
+
+        await run(env, 'DELETE FROM bot_logins WHERE nonce=?', nonce);
+        let u = await one(env, 'SELECT * FROM users WHERE phone=?', row.phone);
+        if (!u) {
+          await run(env, 'INSERT INTO users(phone,name,created,last_login) VALUES(?,?,?,?)',
+            row.phone, row.name || '', Date.now(), Date.now());
+          u = await one(env, 'SELECT * FROM users WHERE phone=?', row.phone);
+        } else {
+          await run(env, 'UPDATE users SET last_login=? WHERE phone=?', Date.now(), row.phone);
+        }
+        return json({ ok: true, status: 'ready', user: u,
+          token: await sign(env, { phone: row.phone }, 24 * 30) });
       }
 
       if (p === '/api/auth/verify' && m === 'POST') {
