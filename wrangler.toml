@@ -9,7 +9,7 @@ assets = { directory = "./public", binding = "ASSETS" }
 [[d1_databases]]
 binding = "DB"
 database_name = "sensa-db"
-database_id = "اینجا-شناسه-دیتابیس-را-بگذارید"
+database_id = "355c3dc4-a312-4eab-ab0a-14cff6f669f6"
 
 [vars]
 ADMIN_USER = "admin"
