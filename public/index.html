@@ -1724,7 +1724,7 @@ $('aSend').onclick=async ()=>{
   if(ONLINE){
     try{
       const r=await req('/api/auth/request',{method:'POST',body:{phone:otpPhone}});
-      sentBySMS=!!r.sent; otpCode=r.devCode||'';
+      sentBySMS=!!r.sent; otpCode='';   /* کد فقط روی سرور می‌ماند */
     }catch(e){ $('aPhoneErr').textContent=e.message; $('aPhoneErr').classList.add('show'); return }
   } else {
     otpCode=String(Math.floor(100000+Math.random()*900000));
@@ -1732,7 +1732,8 @@ $('aSend').onclick=async ()=>{
   }
   $('demoBox').innerHTML = sentBySMS
     ? 'کد رو برات پیامک کردیم.'
-    : 'حالت آزمایشی — پیامک هنوز وصل نشده، کدت اینه:<b>'+faN(otpCode)+'</b>';
+    : (ONLINE ? 'ارسال پیامک ممکن نشد. کمی بعد دوباره تلاش کن.'
+              : 'حالت آفلاین — کدت اینه:<b>'+faN(otpCode)+'</b>');
   $('demoBox').style.display='';
   [...$('otpBox').children].forEach(i=>i.value='');
   authStep(2); startTimer();
@@ -1821,7 +1822,13 @@ function paintAcctBtn(){
 /* ---- پنل حساب کاربری ---- */
 $('acctBtn').onclick=()=>{
   const u=authUser();
-  if(!u){ openAuth(); return }
+  if(!u){
+    if(ONLINE && settings.loginEnabled===false){
+      toast('ورود با شماره فعلاً در دسترس نیست. برای سفارش نیازی به ورود نیست.');
+      return;
+    }
+    openAuth(); return;
+  }
   $('acctAv').textContent=u.name.trim()[0]||'؟';
   $('acctName').textContent=u.name;
   $('acctPhone').textContent=faN(u.phone);

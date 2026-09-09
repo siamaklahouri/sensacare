@@ -65,6 +65,12 @@ const asUser = async (env, req) => {
 };
 
 /* ---------- پیامک ---------- */
+/* تا وقتی سرویس پیامک وصل نشده، ورود کاربر باید بسته بماند.
+   قبلاً کد تأیید در پاسخ برگردانده می‌شد و روی صفحه نشان داده می‌شد،
+   یعنی هر کسی می‌توانست با شمارهٔ هر کس دیگری وارد شود و آدرس و
+   سفارش‌هایش را ببیند. */
+const smsReady = env => !!(env.SMS_PROVIDER && env.SMS_API_KEY);
+
 async function sendSMS(env, phone, code) {
   const prov = env.SMS_PROVIDER, key = env.SMS_API_KEY, tpl = env.SMS_TEMPLATE;
   if (!prov || !key) return false;
@@ -364,7 +370,8 @@ export default {
             telegram: await getSetting(env, 'telegram', 'siamak_la'),
             shipExpress: await getSetting(env, 'shipExpress', 400000),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
-            trust: await getSetting(env, 'trust', {})
+            trust: await getSetting(env, 'trust', {}),
+            loginEnabled: smsReady(env)
           }
         });
       }
@@ -387,6 +394,8 @@ export default {
 
       /* ---------------- احراز هویت ---------------- */
       if (p === '/api/auth/request' && m === 'POST') {
+        if (!smsReady(env))
+          return bad('ورود با شمارهٔ موبایل فعلاً در دسترس نیست. برای ثبت سفارش نیازی به ورود نیست.', 503);
         const phone = String(body.phone || '').trim();
         if (!/^09\d{9}$/.test(phone)) return bad('شمارهٔ موبایل معتبر نیست');
         const prev = await one(env, 'SELECT sent FROM otps WHERE phone=?', phone);
@@ -399,8 +408,12 @@ export default {
           phone, code, Date.now() + 5 * 60000, Date.now());
 
         const sent = await sendSMS(env, phone, code);
+        if (!sent) {
+          await run(env, 'DELETE FROM otps WHERE phone=?', phone);
+          return bad('پیامک ارسال نشد. کمی بعد دوباره تلاش کنید.', 502);
+        }
         const known = !!(await one(env, 'SELECT 1 AS x FROM users WHERE phone=?', phone));
-        return json({ ok: true, sent, known, devCode: sent ? undefined : code });
+        return json({ ok: true, sent: true, known });
       }
 
       if (p === '/api/auth/verify' && m === 'POST') {
