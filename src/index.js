@@ -763,6 +763,28 @@ const esc = t => String(t == null ? '' : t)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 
+/* توضیح کوتاه محصول برای گوگل کافی نبود — بیشترشان یک جملهٔ ده‌کلمه‌ای
+   بودند و گوگل توضیح‌های خیلی کوتاه را نادیده می‌گیرد و خودش چیزی
+   می‌سازد. این تابع از همان اطلاعاتی که در دیتابیس هست جمله می‌سازد:
+   جنس، تعداد، ضخامت، سایز، برند و قول همیشگی بسته‌بندی بی‌نشان. */
+function productDesc(row) {
+  const bits = [];
+  if (row.d) bits.push(String(row.d).trim().replace(/\s+/g, ' '));
+  const spec = [
+    row.count && `${row.count}`,
+    row.material && `جنس ${row.material}`,
+    row.thickness && `ضخامت ${row.thickness}`,
+    row.size && `سایز ${row.size}`
+  ].filter(Boolean).join('، ');
+  if (spec) bits.push(spec + '.');
+  /* نام کالا هم می‌آید — هم کلیدواژهٔ اصلی همان صفحه است، هم اگر دو کالا
+     مشخصات یکسان داشته باشند توضیحشان مثل هم نمی‌شود. */
+  bits.push(`${row.n}${row.b ? ` از ${row.b}` : ''}، با ارسال به سراسر ایران در بسته‌بندی بی‌نشان.`);
+  let out = bits.join(' ');
+  if (out.length > 300) out = out.slice(0, 297).replace(/\s\S*$/, '') + '…';
+  return out;
+}
+
 async function injectMeta(env, req, meta) {
   const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
   let html = await res.text();
@@ -832,7 +854,7 @@ export default {
               : base + '/og.png';
             meta = {
               title: `${row.n} | سِنسا`,
-              desc: (row.d || `خرید ${row.n} با بسته‌بندی بی‌نشان و ارسال محرمانه.`).slice(0, 300),
+              desc: productDesc(row),
               url: `${base}/p/${encodeURIComponent(row.id)}`,
               image: img,
               ld: {
