@@ -186,6 +186,74 @@ async function photoToAdmins(env, bytes, caption, keyboard) {
   return out;
 }
 
+/* فایل (مثل پشتیبان) را برای مدیرها می‌فرستد */
+async function fileToAdmins(env, bytes, filename, caption) {
+  const out = [];
+  for (const pf of ['telegram', 'bale']) {
+    const token = await botToken(env, pf);
+    if (!token) continue;
+    for (const chat of await adminChats(env, pf)) {
+      const fd = new FormData();
+      fd.append('chat_id', String(chat));
+      fd.append('caption', caption);
+      fd.append('parse_mode', 'HTML');
+      fd.append('document', new Blob([bytes], { type: 'application/json' }), filename);
+      try {
+        const r = await fetch(`${PLATFORMS[pf].api(token)}/sendDocument`, { method: 'POST', body: fd });
+        const d = await r.json().catch(() => ({}));
+        out.push({ pf, chat, ok: !!d.ok, error: d.description });
+      } catch (e) { out.push({ pf, chat, ok: false, error: e.message }); }
+    }
+  }
+  return out;
+}
+
+/* پشتیبان کامل: هم به شکلی که پنل مدیریت می‌فهمد، هم دامپ خام همهٔ
+   جدول‌ها تا هیچ چیزی جا نماند. */
+async function buildBackup(env) {
+  const T = {};
+  for (const t of ['products', 'categories', 'menu', 'users', 'orders', 'order_items',
+                   'feedback', 'articles', 'pages', 'settings', 'counters', 'bot_chats'])
+    T[t] = await all(env, `SELECT * FROM ${t}`);
+
+  const settings = {};
+  for (const r of T.settings) { try { settings[r.k] = JSON.parse(r.v); } catch { settings[r.k] = r.v; } }
+
+  const byOrder = {};
+  for (const it of T.order_items) (byOrder[it.order_id] ||= []).push(it);
+
+  return {
+    _meta: { at: new Date().toISOString(), version: 1, shop: settings.shopName || 'سِنسا' },
+    /* این کلیدها را پنل مدیریت مستقیم می‌خواند */
+    products: T.products,
+    cats: T.categories,
+    menu: await buildMenu(env),
+    orders: T.orders.map(o => ({ ...o, items: byOrder[o.id] || [] })),
+    users: T.users,
+    feedback: T.feedback,
+    settings,
+    /* دامپ خام، برای بازگردانی کامل */
+    _tables: T
+  };
+}
+
+async function runBackup(env) {
+  const data = await buildBackup(env);
+  const bytes = new TextEncoder().encode(JSON.stringify(data, null, 1));
+  const d = new Date();
+  const stamp = d.toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const caption =
+    `🗄 <b>پشتیبان روزانه</b>\n` +
+    `${fa(data.orders.length)} سفارش · ${fa(data.users.length)} مشتری · ${fa(data.products.length)} محصول\n` +
+    `حجم: ${fa(Math.round(bytes.length / 1024))} کیلوبایت\n\n` +
+    `این فایل کل فروشگاه است. جای امنی نگهش دار.`;
+  const sent = await fileToAdmins(env, bytes, `sensa-backup-${stamp}.json`, caption);
+  const okCount = sent.filter(x => x.ok).length;
+  if (!okCount && sent.length)
+    await notifyAdmins(env, '⚠️ پشتیبان روزانه ساخته شد ولی فرستاده نشد.');
+  return { size: bytes.length, sent };
+}
+
 async function notifyAdmins(env, text, keyboard) {
   const out = [];
   for (const pf of ['telegram', 'bale']) {
@@ -453,6 +521,11 @@ const rnd6 = () => String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0
    مسیرها
    ========================================================== */
 export default {
+  /* هر شب یک بار: پشتیبان کامل را در تلگرام و بله می‌فرستد */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runBackup(env).catch(e => console.log('backup', e.message)));
+  },
+
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const p = url.pathname;
@@ -461,6 +534,27 @@ export default {
     if (m === 'OPTIONS') return json({});
     if (env.TG_BASE) globalThis.__TGBASE = env.TG_BASE;
     if (env.BALE_BASE) globalThis.__BALEBASE = env.BALE_BASE;
+    if (p === '/sitemap.xml') {
+      const base = `${url.protocol}//${url.host}`;
+      const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
+      const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
+      try {
+        for (const a of await all(env, 'SELECT slug,created FROM articles WHERE published=1'))
+          urls.push(`<url><loc>${base}/#/article/${esc(a.slug)}</loc><lastmod>${day(a.created)}</lastmod>` +
+                    `<changefreq>monthly</changefreq><priority>0.7</priority></url>`);
+        for (const g of await all(env, 'SELECT slug,updated FROM pages'))
+          urls.push(`<url><loc>${base}/#/page/${esc(g.slug)}</loc><lastmod>${day(g.updated)}</lastmod>` +
+                    `<changefreq>yearly</changefreq><priority>0.3</priority></url>`);
+        for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
+          urls.push(`<url><loc>${base}/#/product/${esc(pr.id)}</loc><changefreq>weekly</changefreq>` +
+                    `<priority>0.8</priority></url>`);
+      } catch (e) { /* دیتابیس نبود؟ دست‌کم صفحهٔ اصلی را بده */ }
+      return new Response(
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`,
+        { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
+    }
+
     if (!p.startsWith('/api/')) return env.ASSETS.fetch(req);
     if (!env.DB) return bad('دیتابیس D1 وصل نشده است. wrangler.toml را بررسی کنید.', 500);
 
@@ -865,6 +959,13 @@ export default {
         if (p.startsWith('/api/admin/users/') && m === 'DELETE') {
           await run(env, 'DELETE FROM users WHERE phone=?', decodeURIComponent(p.split('/')[4]));
           return json({ ok: true });
+        }
+
+        if (p === '/api/admin/backup' && m === 'POST') {
+          const r = await runBackup(env);
+          const okCount = r.sent.filter(x => x.ok).length;
+          if (!okCount) return bad('پشتیبان ساخته شد ولی فرستاده نشد. اول /admin را در ربات بفرستید.', 502);
+          return json({ ok: true, size: r.size, sent: okCount });
         }
 
         if (p === '/api/admin/report') {

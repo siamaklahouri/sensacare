@@ -26,3 +26,8 @@ PUBLIC_HOST = "sensacare.ir"
 #   npx wrangler secret put SMS_TEMPLATE
 
 # ربات‌ها با دستور  npm run bots  تنظیم می‌شوند
+
+# پشتیبان خودکار — هر شب ساعت ۲۲:۰۰ به وقت گرینویچ
+# یعنی ۱:۳۰ بامداد به وقت تهران
+[triggers]
+crons = ["0 22 * * *"]

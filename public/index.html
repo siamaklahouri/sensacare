@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>سِنسا | ارسال محرمانه</title>
 <meta name="description" content="خرید کاندوم، ژل و محصولات بهداشت جنسی با ارسال محرمانه و پرداخت امن.">
+<link rel="canonical" href="https://sensacare.ir/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="سِنسا">
+<meta property="og:locale" content="fa_IR">
+<meta property="og:title" content="سِنسا | ارسال محرمانه">
+<meta property="og:description" content="کاندوم، ژل و محصولات بهداشت جنسی — بسته‌بندی بی‌نشان، ارسال محرمانه، پرداخت امن.">
+<meta property="og:url" content="https://sensacare.ir/">
+<meta property="og:image" content="https://sensacare.ir/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="سِنسا | ارسال محرمانه">
+<meta name="twitter:description" content="کاندوم، ژل و محصولات بهداشت جنسی — بسته‌بندی بی‌نشان، ارسال محرمانه، پرداخت امن.">
+<meta name="twitter:image" content="https://sensacare.ir/og.png">
+<meta name="theme-color" content="#1A0713">
 <meta name="theme-color" content="#1A0713">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%231A0713'/%3E%3Cpath d='M35 17c0-5-7-7-12-5-7 2-7 8 1 10 9 3 10 8 6 11-4 4-13 3-17-1' fill='none' stroke='%23E0164B' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
@@ -808,7 +823,7 @@ body.admin-mode{background:var(--ink)}
     <h3>پنل مدیریت سِنسا <span style="font-size:11.5px;color:var(--body);font-weight:600">v8</span>
       <span class="mode" id="modeTag">…</span></h3>
     <button id="xlsxBtn" class="primary" style="background:#166534;border-color:#166534">خروجی اکسل</button>
-    <button id="exportBtn">پشتیبان JSON</button><button id="importBtn">بازیابی JSON</button>
+    <button id="exportBtn">پشتیبان JSON</button><button id="importBtn">بازیابی JSON</button><button id="tgBackupBtn">پشتیبان در تلگرام</button>
     <button id="passBtn">تغییر رمز</button><button id="backShop">بازگشت به فروشگاه</button><button id="logout" class="primary">خروج</button>
   </div>
   <div class="tabs2" id="ptabs">
@@ -2692,6 +2707,15 @@ $('exportBtn').onclick=()=>{
   const data={products,cats,menu,orders,users,feedback,settings};
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   a.download='sensa-backup.json';a.click()};
+$('tgBackupBtn').onclick=async()=>{
+  const b=$('tgBackupBtn'), old=b.textContent;
+  b.disabled=true; b.textContent='در حال فرستادن…';
+  try{
+    const r=await req('/api/admin/backup',{method:'POST',asAdmin:true,body:{}});
+    toast(`پشتیبان فرستاده شد (${fa(Math.round(r.size/1024))} کیلوبایت).`);
+  }catch(e){ toast(e.message) }
+  b.disabled=false; b.textContent=old;
+};
 $('importBtn').onclick=()=>$('jsonFile').click();
 $('jsonFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
