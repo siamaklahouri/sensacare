@@ -2,13 +2,15 @@ name = "sensa"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
+# فایل‌های سایت (index.html)
+# هشدار: این خط باید بالاتر از هر [بخش] بماند. در TOML هر کلیدی که
+# بعد از یک [بخش] بیاید داخل همان بخش حساب می‌شود، نه در سطح اصلی.
+assets = { directory = "./public", binding = "ASSETS" }
+
 # هوش مصنوعی کلادفلر — برای دستیار فروشگاه.
 # کلیدی لازم ندارد؛ درخواست از خودِ ورکر می‌رود، نه از مرورگر مشتری.
 [ai]
 binding = "AI"
-
-# فایل‌های سایت (index.html)
-assets = { directory = "./public", binding = "ASSETS" }
 
 # دیتابیس — database_id را از خروجی دستور ساخت D1 اینجا بگذارید
 [[d1_databases]]
