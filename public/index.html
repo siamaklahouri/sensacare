@@ -844,7 +844,10 @@ let cats = store.get('sensa_cats', null) || [
   {id:'thin', name:'نازک و حساس',sub:'انگار هیچی نپوشیدی',acc:'#DB2777',tint:'#FCE7F3'},
   {id:'gel',  name:'ژل و روان‌کننده',sub:'مکمل خوب هر خرید',acc:'#7C3AED',tint:'#F1E9FE'}
 ];
-const saveCats=()=>store.set('sensa_cats',cats);
+const saveCats=()=>{store.set('sensa_cats',cats);
+  if(ONLINE&&tokenOf('sensa_atok'))
+    req('/api/admin/categories',{method:'POST',asAdmin:true,body:{categories:cats}})
+      .catch(()=>toast('دسته‌ها روی سرور ذخیره نشد.'))};
 const catOf=id=>cats.find(c=>c.id===id)||{name:'—',acc:'#E0164B',tint:'#FFE6EC'};
 
 /* ============ menu ============ */
@@ -858,7 +861,10 @@ let menu = store.get('sensa_menu', null) || [
   {id:uid(),label:'ژل و روان‌کننده',href:'#c-gel',kids:[]},
   {id:uid(),label:'راهنما',href:'#faq',kids:[]}
 ];
-const saveMenu=()=>store.set('sensa_menu',menu);
+const saveMenu=()=>{store.set('sensa_menu',menu);
+  if(ONLINE&&tokenOf('sensa_atok'))
+    req('/api/admin/menu',{method:'POST',asAdmin:true,body:{menu}})
+      .catch(()=>toast('منو روی سرور ذخیره نشد.'))};
 
 function renderMenu(){
   document.getElementById('nav').innerHTML=menu.map(m=>`
@@ -2216,9 +2222,18 @@ function repUsers(){
     navigator.clipboard?.writeText(t).then(()=>toast('شماره‌ها کپی شد.'),()=>toast('کپی نشد.'))};
   if($('uClear'))$('uClear').onclick=()=>{
     if(confirm('همهٔ کاربران پاک شوند؟ سفارش‌ها دست‌نخورده می‌مانند.')){
-      users=[];saveUsers();store.del('sensa_user');paintAcctBtn();repUsers();toast('پاک شد.')}};
+      const gone=users.map(u=>u.phone);
+      users=[];saveUsers();store.del('sensa_user');paintAcctBtn();repUsers();
+      if(ONLINE) Promise.all(gone.map(ph=>
+        req('/api/admin/users/'+encodeURIComponent(ph),{method:'DELETE',asAdmin:true}).catch(()=>null)))
+        .then(()=>toast('پاک شد.'));
+      else toast('پاک شد.')}};
   C.querySelectorAll('[data-urm]').forEach(b=>b.onclick=()=>{
-    if(confirm('این کاربر حذف شود؟')){users=users.filter(u=>u.phone!==b.dataset.urm);saveUsers();repUsers()}});
+    if(confirm('این کاربر حذف شود؟')){
+      const ph=b.dataset.urm;
+      users=users.filter(u=>u.phone!==ph);saveUsers();repUsers();
+      if(ONLINE) req('/api/admin/users/'+encodeURIComponent(ph),{method:'DELETE',asAdmin:true})
+        .catch(()=>toast('روی سرور حذف نشد.'))}});
 }
 
 
@@ -2539,10 +2554,20 @@ $('jsonFile').onchange=e=>{
     save();saveCats();saveMenu();saveOrders();saveUsers();saveFb();saveSet();render();updateCart();paintAcctBtn();drawPanel();toast('بازیابی انجام شد.')}
     catch(err){toast('فایل معتبر نیست.')}};
   r.readAsText(f);e.target.value=''};
-$('passBtn').onclick=()=>{
+$('passBtn').onclick=async()=>{
   const u=prompt('نام کاربری جدید:',AUTH().u);if(u===null)return;
-  const p=prompt('رمز عبور جدید:');if(!p)return;
-  store.set('sensa_auth',{u:u.trim()||'admin',p});toast('نام کاربری و رمز تغییر کرد.')};
+  const p=prompt('رمز عبور جدید (حداقل ۶ کاراکتر):');if(!p)return;
+  if(p.length<6){toast('رمز باید حداقل ۶ کاراکتر باشد.');return}
+  const user=u.trim()||'admin';
+  if(ONLINE){
+    try{
+      await req('/api/admin/password',{method:'POST',asAdmin:true,body:{user,pass:p}});
+      store.set('sensa_auth',{u:user,p});
+      toast('روی سرور ذخیره شد. از این به بعد با رمز جدید وارد شوید.');
+    }catch(e){ toast('ذخیره نشد: '+e.message) }
+    return;
+  }
+  store.set('sensa_auth',{u:user,p});toast('نام کاربری و رمز تغییر کرد.')};
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeD();loginModal.classList.remove('open');
   AM.classList.remove('open');$('acctModal').classList.remove('open');chat.classList.remove('open')}});
