@@ -1290,29 +1290,23 @@ const CITY_NAME=Object.fromEntries(PROVINCES.map(p=>[p[0],p[1]]));
 const ZONE=Object.fromEntries(PROVINCES.map(p=>[p[0],p[2]]));
 const EXPRESS_CITIES=PROVINCES.filter(p=>p[2]==='ex').map(p=>p[0]);
 
-/* نرخ‌ها — از پنل مدیریت هم قابل تغییرند */
-const SHIP_EXPRESS=400000;                       /* تهران و کرج، هر سه پیک */
-const SHIP_ZONE={z1:250000, z2:320000, z3:400000};
+/* نرخ‌ها — از پنل مدیریت قابل تغییرند */
+const SHIP_EXPRESS=400000;   /* ارسال سریع — فقط تهران و کرج */
+const SHIP_POST=250000;      /* پست پیشتاز — همهٔ ایران */
 
 const METHODS=[
-  {id:'peyk',    name:'پیک موتوری سِنسا', eta:'همین امروز می‌رسه', icon:'🛵', ex:true},
-  {id:'alopeyk', name:'الوپیک',          eta:'۹۰ تا ۱۵۰ دقیقه',  icon:'⚡', ex:true},
-  {id:'snapp',   name:'اسنپ‌موتور',       eta:'۶۰ تا ۱۲۰ دقیقه',  icon:'🏍️', ex:true},
-  {id:'post',    name:'پست پیشتاز',      eta:'۲ تا ۳ روز کاری',  icon:'📮', ex:false}
+  {id:'express', name:'ارسال سریع',  eta:'همین امروز می‌رسه', icon:'🛵', ex:true},
+  {id:'post',    name:'پست پیشتاز',  eta:'۲ تا ۳ روز کاری',  icon:'📮', ex:false}
 ];
 let pin=null, distanceKm=6;
-function shipCost(city){
-  const z=ZONE[city];
-  if(!z) return null;
-  return z==='ex' ? (settings.shipExpress||SHIP_EXPRESS)
-                  : ((settings.shipZones||SHIP_ZONE)[z] || SHIP_ZONE[z]);
-}
+function postCost(){ return settings.shipPost || (settings.shipZones||{}).z1 || SHIP_POST }
+function expressCost(){ return settings.shipExpress || SHIP_EXPRESS }
+function shipCost(city){ return ZONE[city] ? postCost() : null }
 function quote(m,city,goods){
   const z=ZONE[city]; if(!z) return null;
-  if(z==='ex' && !m.ex) return null;      /* در تهران و کرج فقط پیک */
-  if(z!=='ex' && m.ex)  return null;      /* در شهرستان فقط پست */
-  const cost=shipCost(city);
-  const free=settings.freeOver||0;
+  if(m.ex && z!=='ex') return null;       /* ارسال سریع فقط تهران و کرج */
+  const cost = m.ex ? expressCost() : postCost();
+  const free = settings.freeOver||0;
   return (free>0 && goods>=free) ? 0 : cost;
 }
 function availableMethods(city){return METHODS.map(m=>({m,cost:quote(m,city,subtotal())})).filter(x=>x.cost!==null)}
@@ -2274,6 +2268,78 @@ function paintCatList(){
 }
 
 /* --- سفارش‌ها --- */
+/* برچسب ارسال — چیزی که پیک یا پست لازم دارد، روی یک کاغذ.
+   با iframe چاپ می‌شود تا مسدودکنندهٔ پنجره‌ها جلویش را نگیرد. */
+function printLabel(o){
+  const items=(o.items||[]).map(i=>`<tr><td>${esc(i.n)}</td><td style="text-align:center">${fa(i.q)}</td></tr>`).join('');
+  const due = o.paid ? 0 : o.total;
+  const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<title>برچسب ${esc(o.invoice||o.id)}</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;padding:14mm;color:#111;font-size:13pt;line-height:1.9}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:2px solid #111;padding-bottom:9px;margin-bottom:14px}
+.shop{font-size:20pt;font-weight:800}.sub{font-size:10pt;color:#555}
+.inv{text-align:left;font-size:10pt}.inv b{font-size:16pt;display:block;direction:ltr}
+.to{border:2px solid #111;border-radius:6px;padding:12px 14px;margin-bottom:12px}
+.to .lbl{font-size:9.5pt;color:#555;margin-bottom:2px}
+.nm{font-size:17pt;font-weight:800}
+.ph{font-size:17pt;font-weight:800;direction:ltr;letter-spacing:1px}
+.ad{font-size:14pt;margin-top:6px}
+.pc{font-size:13pt;margin-top:4px;direction:ltr}
+.grid{display:flex;gap:10px;margin-bottom:12px}
+.cell{flex:1;border:1px solid #999;border-radius:6px;padding:8px 10px;font-size:11pt}
+.cell b{display:block;font-size:13pt}
+.due{border:3px solid #111;border-radius:6px;padding:10px 14px;text-align:center;margin-bottom:12px}
+.due .n{font-size:20pt;font-weight:800}
+.paid{border-style:dashed}
+table{width:100%;border-collapse:collapse;font-size:11.5pt}
+th,td{border:1px solid #999;padding:5px 8px}th{background:#eee}
+.note{border:1px dashed #666;border-radius:6px;padding:8px 12px;margin-top:10px;font-size:11.5pt}
+.ft{margin-top:14px;font-size:9.5pt;color:#555;text-align:center;border-top:1px solid #ccc;padding-top:8px}
+@page{size:A5;margin:0}
+@media print{body{padding:10mm}}
+</style></head><body>
+<div class="hd">
+  <div><div class="shop">${esc(settings.shopName||'سِنسا')}</div><div class="sub">ارسال محرمانه</div></div>
+  <div class="inv">شمارهٔ فاکتور<b>${esc(o.invoice||o.id)}</b>
+    <span>${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</span></div>
+</div>
+
+<div class="to">
+  <div class="lbl">گیرنده</div>
+  <div class="nm">${esc(o.name||'—')}</div>
+  <div class="ph">${faN(o.phone||'')}</div>
+  <div class="ad">${esc(CITY_NAME[o.city]||o.city||'')} — ${esc(o.address||'')}</div>
+  ${o.postal?`<div class="pc">کد پستی: ${faN(o.postal)}</div>`:''}
+</div>
+
+<div class="grid">
+  <div class="cell">روش ارسال<b>${esc(o.method_name||o.methodName||'—')}</b></div>
+  <div class="cell">تعداد اقلام<b>${fa((o.items||[]).reduce((n,i)=>n+ (+i.q||0),0))}</b></div>
+  ${o.tracking?`<div class="cell">کد رهگیری<b style="direction:ltr">${esc(o.tracking)}</b></div>`:''}
+</div>
+
+<div class="due ${due?'':'paid'}">
+  ${due
+    ? `<div>مبلغ قابل دریافت از مشتری</div><div class="n">${money(due)}</div>`
+    : `<div class="n">پرداخت شده — وجهی دریافت نشود</div>`}
+</div>
+
+${items?`<table><thead><tr><th>کالا</th><th style="width:70px">تعداد</th></tr></thead><tbody>${items}</tbody></table>`:''}
+${o.note?`<div class="note"><b>یادداشت مشتری:</b> ${esc(o.note)}</div>`:''}
+
+<div class="ft">بسته‌بندی بی‌نشان · تماس فروشگاه از طریق سایت ${esc(location.host)}</div>
+</body></html>`;
+
+  const fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;right:-10000px;top:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  fr.onload=()=>{ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ toast('چاپ ممکن نشد.') }
+    setTimeout(()=>fr.remove(), 60000); };
+  fr.srcdoc=html;
+}
+
 function repOrders(){
   const list=[...orders].sort((a,b)=>(b.created||b.at)-(a.created||a.at));
   const counts={};
@@ -2286,7 +2352,7 @@ function repOrders(){
       <button class="mini" id="csv">خروجی CSV</button>
       <button class="mini del" id="clearO">پاک کردن همهٔ سفارش‌ها</button></div>
     ${list.length?`<table><thead><tr><th>شمارهٔ فاکتور</th><th>تاریخ</th><th>مشتری</th><th>شهر</th>
-      <th>ارسال</th><th>مبلغ</th><th>پرداخت</th><th>وضعیت</th><th>کد رهگیری پستی</th></tr></thead>
+      <th>ارسال</th><th>مبلغ</th><th>پرداخت</th><th>وضعیت</th><th>کد رهگیری پستی</th><th>چاپ</th></tr></thead>
     <tbody>${list.map(o=>`<tr>
       <td><b>${esc(o.invoice||o.id)}</b><br><small style="color:var(--body)">${o.id}</small></td>
       <td>${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</td>
@@ -2300,7 +2366,8 @@ function repOrders(){
         ${STATUS.map(st=>`<option ${((o.status||'ثبت شده')===st)?'selected':''}>${st}</option>`).join('')}
       </select></td>
       <td><input data-otr="${o.id}" value="${esc(o.tracking||'')}" placeholder="اختیاری"
-        style="padding:6px 9px;font-size:12.5px;width:130px;direction:ltr"></td></tr>`).join('')}
+        style="padding:6px 9px;font-size:12.5px;width:130px;direction:ltr"></td>
+      <td><button class="mini" data-print="${o.id}">🖨 برچسب</button></td></tr>`).join('')}
     </tbody></table>`:'<p class="empty">هنوز سفارشی ثبت نشده است.</p>'}`;
   $('xl2').onclick=exportXLSX;
   $('csv').onclick=()=>{
@@ -2317,6 +2384,8 @@ function repOrders(){
     if(ONLINE){ try{ await req('/api/admin/orders/'+o.id,{method:'PATCH',asAdmin:true,body:{status:o.status}}) }catch(e){} }
     toast('وضعیت به «'+o.status+'» تغییر کرد.');
   });
+  C.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>{
+    const o=orders.find(x=>x.id===b.dataset.print); if(o) printLabel(o) });
   C.querySelectorAll('[data-mark]').forEach(b=>b.onclick=async()=>{
     const o=orders.find(x=>x.id===b.dataset.mark); if(!o)return;
     if(!confirm(`پرداخت سفارش ${o.id} به مبلغ ${money(o.total)} دریافت شد؟`))return;
@@ -2506,19 +2575,15 @@ function repFb(){
 function repSet(){
   C.innerHTML=`<div class="box"><h3>تنظیمات فروشگاه</h3>
     <div class="f2">
-      <div><label>ارسال تهران و کرج — پیک (تومان)</label>
-        <input id="s_ex" type="number" value="${settings.shipExpress||400000}"></div>
+      <div><label>پست پیشتاز — همهٔ ایران (تومان)</label>
+        <input id="s_post" type="number" value="${postCost()}">
+        <p class="hint">این نرخ برای همهٔ استان‌ها یکی است، تهران و کرج هم شامل می‌شود.</p></div>
+      <div><label>ارسال سریع — فقط تهران و کرج (تومان)</label>
+        <input id="s_ex" type="number" value="${expressCost()}">
+        <p class="hint">در بقیهٔ استان‌ها این گزینه اصلاً به مشتری نشان داده نمی‌شود.</p></div>
       <div><label>سقف ارسال رایگان (۰ = غیرفعال)</label>
-        <input id="s_free" type="number" value="${settings.freeOver||0}"></div>
-      <div><label>پست — استان‌های نزدیک</label>
-        <input id="s_z1" type="number" value="${(settings.shipZones||{}).z1||250000}">
-        <p class="hint">قم، قزوین، سمنان، مرکزی، زنجان، اصفهان، همدان، گیلان، مازندران</p></div>
-      <div><label>پست — استان‌های متوسط</label>
-        <input id="s_z2" type="number" value="${(settings.shipZones||{}).z2||320000}">
-        <p class="hint">آذربایجان‌ها، خراسان رضوی، فارس، خوزستان، کرمان، یزد، گلستان و…</p></div>
-      <div><label>پست — استان‌های دور</label>
-        <input id="s_z3" type="number" value="${(settings.shipZones||{}).z3||400000}">
-        <p class="hint">سیستان، هرمزگان، بوشهر، ایلام، کهگیلویه، خراسان جنوبی و شمالی</p></div>
+        <input id="s_free" type="number" value="${settings.freeOver||0}">
+        <p class="hint">اگر مبلغ خرید از این عدد بیشتر شود، هزینهٔ ارسال صفر می‌شود.</p></div>
       <div><label>نام فروشگاه</label><input id="s_name" value="${esc(settings.shopName)}"></div>
       <div><label>شمارهٔ کارت برای کارت‌به‌کارت</label>
         <input id="s_card" value="${esc((settings.card||{}).number||'')}" dir="ltr" inputmode="numeric"
@@ -2592,8 +2657,8 @@ function repSet(){
   };
   $('s_save').onclick=()=>{
     settings.freeOver=+$('s_free').value||0;
-    settings.shipExpress=+$('s_ex').value||400000;
-    settings.shipZones={z1:+$('s_z1').value||250000, z2:+$('s_z2').value||320000, z3:+$('s_z3').value||400000};
+    settings.shipExpress=+$('s_ex').value||SHIP_EXPRESS;
+    settings.shipPost=+$('s_post').value||SHIP_POST;
     settings.shopName=$('s_name').value.trim()||'سِنسا';
     settings.aiKey=$('s_key').value.trim();
     settings.telegram=$('s_tg').value.trim().replace('@','')||'siamak_la';
@@ -2603,7 +2668,7 @@ function repSet(){
     saveSet(); paintBadges();
     if(ONLINE) req('/api/admin/settings',{method:'POST',asAdmin:true,
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
-            shipExpress:settings.shipExpress,shipZones:settings.shipZones,trust:settings.trust,
+            shipExpress:settings.shipExpress,shipPost:settings.shipPost,trust:settings.trust,
             card:settings.card}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){

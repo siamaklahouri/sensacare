@@ -138,9 +138,28 @@ async function botToken(env, pf) {
     : (env.BALE_BOT_TOKEN || await getSetting(env, 'baleToken', ''));
 }
 
+/* بله تگ‌های HTML تلگرام را نمی‌فهمد و خودِ <b> و <code> را نشان می‌دهد.
+   پس برای بله متن را ساده می‌کنیم. */
+function stripHtml(t) {
+  return String(t || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+}
+function plainFor(pf, payload) {
+  if (pf !== 'bale') return payload;
+  const out = { ...payload };
+  if (out.text) out.text = stripHtml(out.text);
+  if (out.caption) out.caption = stripHtml(out.caption);
+  delete out.parse_mode;
+  return out;
+}
+
 async function botCall(env, pf, method, payload) {
   const token = await botToken(env, pf);
   if (!token) return { ok: false, skipped: true };
+  payload = plainFor(pf, payload);
   try {
     const r = await fetch(`${PLATFORMS[pf].api(token)}/${method}`, {
       method: 'POST',
@@ -172,8 +191,8 @@ async function photoToAdmins(env, bytes, caption, keyboard) {
     for (const chat of await adminChats(env, pf)) {
       const fd = new FormData();
       fd.append('chat_id', String(chat));
-      fd.append('caption', caption);
-      fd.append('parse_mode', 'HTML');
+      fd.append('caption', pf === 'bale' ? stripHtml(caption) : caption);
+      if (pf !== 'bale') fd.append('parse_mode', 'HTML');
       if (keyboard) fd.append('reply_markup', JSON.stringify({ inline_keyboard: keyboard }));
       fd.append('photo', new Blob([bytes], { type: 'image/jpeg' }), 'receipt.jpg');
       try {
@@ -195,8 +214,8 @@ async function fileToAdmins(env, bytes, filename, caption) {
     for (const chat of await adminChats(env, pf)) {
       const fd = new FormData();
       fd.append('chat_id', String(chat));
-      fd.append('caption', caption);
-      fd.append('parse_mode', 'HTML');
+      fd.append('caption', pf === 'bale' ? stripHtml(caption) : caption);
+      if (pf !== 'bale') fd.append('parse_mode', 'HTML');
       fd.append('document', new Blob([bytes], { type: 'application/json' }), filename);
       try {
         const r = await fetch(`${PLATFORMS[pf].api(token)}/sendDocument`, { method: 'POST', body: fd });
@@ -577,6 +596,7 @@ export default {
             shopName: await getSetting(env, 'shopName', 'سِنسا'),
             telegram: await getSetting(env, 'telegram', 'siamak_la'),
             shipExpress: await getSetting(env, 'shipExpress', 400000),
+            shipPost: await getSetting(env, 'shipPost', 250000),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
             trust: await getSetting(env, 'trust', {}),
             card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
@@ -869,7 +889,8 @@ export default {
               shopName: await getSetting(env, 'shopName', 'سِنسا'),
               telegram: await getSetting(env, 'telegram', 'siamak_la'),
               shipExpress: await getSetting(env, 'shipExpress', 400000),
-              shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
+              shipPost: await getSetting(env, 'shipPost', 250000),
+            shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {})
             }
           });
