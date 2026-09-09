@@ -554,6 +554,41 @@ async function buildMenu(env) {
   }));
 }
 
+/* index.html را می‌گیرد و تگ‌های عنوان/توضیح/اشتراک‌گذاری را با
+   اطلاعات همان محصول یا مقاله عوض می‌کند. محتوای صفحه دست نمی‌خورد —
+   مرورگر کاربر خودش بقیه را می‌سازد. */
+const esc = t => String(t == null ? '' : t)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+
+async function injectMeta(env, req, meta) {
+  const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+  let html = await res.text();
+
+  const swap = (re, val) => { html = html.replace(re, val); };
+  swap(/<title>[\s\S]*?<\/title>/, `<title>${esc(meta.title)}</title>`);
+  swap(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(meta.desc)}">`);
+  swap(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${esc(meta.url)}">`);
+  swap(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(meta.title)}">`);
+  swap(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(meta.desc)}">`);
+  swap(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${esc(meta.url)}">`);
+  swap(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${esc(meta.image)}">`);
+  swap(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${esc(meta.title)}">`);
+  swap(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${esc(meta.desc)}">`);
+  swap(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${esc(meta.image)}">`);
+  swap(/<meta property="og:type" content="[^"]*">/,
+       `<meta property="og:type" content="${meta.ld && meta.ld['@type'] === 'Product' ? 'product' : 'article'}">`);
+
+  if (meta.ld)
+    html = html.replace('</head>',
+      `<script type="application/ld+json">${JSON.stringify(meta.ld)}</script>\n</head>`);
+
+  return new Response(html, { headers: {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'public, max-age=300'
+  } });
+}
+
 const rnd6 = () => String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
 
 /* ==========================================================
@@ -573,21 +608,91 @@ export default {
     if (m === 'OPTIONS') return json({});
     if (env.TG_BASE) globalThis.__TGBASE = env.TG_BASE;
     if (env.BALE_BASE) globalThis.__BALEBASE = env.BALE_BASE;
+    /* ---------- صفحه‌های واقعی برای گوگل ----------
+       سایت تک‌صفحه‌ای است، پس بدون این، گوگل فقط یک صفحه می‌بیند و
+       محصولات و مقالات جای مستقلی در نتایج ندارند. اینجا همان index.html
+       را می‌گیریم و عنوان، توضیحات و دادهٔ ساختاریافتهٔ همان مورد را
+       داخلش می‌گذاریم. مرورگر کاربر بعداً خودش صفحه را کامل می‌کند. */
+    const seoRoute = /^\/(p|a|s)\/([^/]+)\/?$/.exec(p);
+    if (seoRoute && m === 'GET' && env.DB) {
+      const [, kind, rawKey] = seoRoute;
+      const key = decodeURIComponent(rawKey);
+      const base = `${url.protocol}//${url.host}`;
+      let meta = null;
+
+      try {
+        if (kind === 'p') {
+          const row = await one(env, 'SELECT * FROM products WHERE id=? AND active=1', key);
+          if (row) {
+            const [withImg] = await withImages(env, [row]);
+            const img = withImg.img
+              ? (/^https?:/.test(withImg.img) ? withImg.img : base + withImg.img)
+              : base + '/og.png';
+            meta = {
+              title: `${row.n} | سِنسا`,
+              desc: (row.d || `خرید ${row.n} با بسته‌بندی بی‌نشان و ارسال محرمانه.`).slice(0, 300),
+              url: `${base}/p/${encodeURIComponent(row.id)}`,
+              image: img,
+              ld: {
+                '@context': 'https://schema.org', '@type': 'Product',
+                name: row.n, description: row.d || undefined, sku: row.id,
+                image: img, brand: { '@type': 'Brand', name: row.b || 'سِنسا' },
+                offers: {
+                  '@type': 'Offer', price: String(row.pr), priceCurrency: 'IRR',
+                  availability: row.stock > 0
+                    ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                  url: `${base}/p/${encodeURIComponent(row.id)}`,
+                  seller: { '@type': 'Organization', name: 'سِنسا' }
+                }
+              }
+            };
+          }
+        } else if (kind === 'a') {
+          const row = await one(env, 'SELECT * FROM articles WHERE slug=? AND published=1', key);
+          if (row) meta = {
+            title: `${row.title} | مجلهٔ سِنسا`,
+            desc: (row.excerpt || row.title).slice(0, 300),
+            url: `${base}/a/${encodeURIComponent(row.slug)}`,
+            image: row.cover || base + '/og.png',
+            ld: {
+              '@context': 'https://schema.org', '@type': 'Article',
+              headline: row.title, description: row.excerpt || undefined,
+              datePublished: row.created ? new Date(row.created).toISOString() : undefined,
+              mainEntityOfPage: `${base}/a/${encodeURIComponent(row.slug)}`,
+              publisher: { '@type': 'Organization', name: 'سِنسا' }
+            }
+          };
+        } else {
+          const row = await one(env, 'SELECT * FROM pages WHERE slug=?', key);
+          if (row) meta = {
+            title: `${row.title} | سِنسا`,
+            desc: String(row.body || row.title).replace(/[#*>\n]/g, ' ').trim().slice(0, 200),
+            url: `${base}/s/${encodeURIComponent(row.slug)}`,
+            image: base + '/og.png'
+          };
+        }
+      } catch (e) { /* اگر دیتابیس جواب نداد، صفحهٔ عادی را بده */ }
+
+      if (!meta) return Response.redirect(base + '/', 302);
+      return injectMeta(env, req, meta);
+    }
+
     if (p === '/sitemap.xml') {
       const base = `${url.protocol}//${url.host}`;
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
       const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
       try {
+        const enc = t => encodeURIComponent(String(t));
+        for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
+          urls.push(`<url><loc>${base}/p/${enc(pr.id)}</loc><changefreq>weekly</changefreq>` +
+                    `<priority>0.8</priority></url>`);
         for (const a of await all(env, 'SELECT slug,created FROM articles WHERE published=1'))
-          urls.push(`<url><loc>${base}/#/article/${esc(a.slug)}</loc><lastmod>${day(a.created)}</lastmod>` +
+          urls.push(`<url><loc>${base}/a/${enc(a.slug)}</loc><lastmod>${day(a.created)}</lastmod>` +
                     `<changefreq>monthly</changefreq><priority>0.7</priority></url>`);
         for (const g of await all(env, 'SELECT slug,updated FROM pages'))
-          urls.push(`<url><loc>${base}/#/page/${esc(g.slug)}</loc><lastmod>${day(g.updated)}</lastmod>` +
+          urls.push(`<url><loc>${base}/s/${enc(g.slug)}</loc><lastmod>${day(g.updated)}</lastmod>` +
                     `<changefreq>yearly</changefreq><priority>0.3</priority></url>`);
-        for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
-          urls.push(`<url><loc>${base}/#/product/${esc(pr.id)}</loc><changefreq>weekly</changefreq>` +
-                    `<priority>0.8</priority></url>`);
       } catch (e) { /* دیتابیس نبود؟ دست‌کم صفحهٔ اصلی را بده */ }
       return new Response(
         `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`,

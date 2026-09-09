@@ -1234,6 +1234,7 @@ async function boot() {
     ONLINE = true;
     setTimeout(()=>{try{paintContact()}catch(_){}} ,0);
     setTimeout(()=>{try{seoData()}catch(_){}} ,0);
+    setTimeout(()=>{try{routeFromPath(false)}catch(_){}} ,0);
     if (d.categories?.length) cats = d.categories;
     if (d.products?.length) products = d.products;
     if (d.menu?.length) menu = d.menu;
@@ -1775,11 +1776,12 @@ document.addEventListener('click',e=>{ if(!e.target.closest('.search')) sres.cla
 
 /* ============ صفحهٔ محصول ============ */
 const pdSheet=$('pdSheet');
-$('pdClose').onclick=()=>pdSheet.classList.remove('open');
-pdSheet.onclick=e=>{if(e.target===pdSheet)pdSheet.classList.remove('open')};
+$('pdClose').onclick=()=>{pdSheet.classList.remove('open');backHome()};
+pdSheet.onclick=e=>{if(e.target===pdSheet){pdSheet.classList.remove('open');backHome()}};
 
-function openProduct(id){
+function openProduct(id,push=true){
   const p=products.find(x=>x.id===id); if(!p) return;
+  if(push) setPath('/p/'+encodeURIComponent(id), p.n+' | سِنسا');
   const c=catOf(p.c);
   const stock=p.stock===undefined?40:p.stock;
   const stockTxt = stock<=0 ? ['ناموجود','#B91C1C']
@@ -1835,7 +1837,8 @@ function md(t){
     return '<p>'+esc(block).replace(/\n/g,'<br>')+'</p>';
   }).join('');
 }
-async function openDoc(kind,slug){
+async function openDoc(kind,slug,push=true){
+  if(push) setPath((kind==='article'?'/a/':'/s/')+encodeURIComponent(slug));
   let item = kind==='article' ? articles.find(a=>a.slug===slug) : pages.find(p=>p.slug===slug);
   if(item && !item.body && ONLINE){
     try{ item = await req(`/api/${kind==='article'?'articles':'pages'}/${slug}`) }catch(e){}
@@ -1847,8 +1850,8 @@ async function openDoc(kind,slug){
   $('docBody').innerHTML=md(item.body);
   $('docSheet').classList.add('open');
 }
-$('docClose').onclick=()=>$('docSheet').classList.remove('open');
-$('docSheet').onclick=e=>{if(e.target===$('docSheet'))$('docSheet').classList.remove('open')};
+$('docClose').onclick=()=>{$('docSheet').classList.remove('open');backHome()};
+$('docSheet').onclick=e=>{if(e.target===$('docSheet')){$('docSheet').classList.remove('open');backHome()}};
 
 /* ============ پیگیری سفارش ============ */
 const STATUS=['در انتظار پرداخت','ثبت شده','در حال آماده‌سازی','ارسال شده','تحویل شده','لغو شده'];
@@ -3078,6 +3081,35 @@ let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(render,260)
 /* بخش «سؤالی داری؟» در پاورقی — ربات‌ها اول، بعد راه‌های دیگر اگر پر شده باشند */
 const TG_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.8 19c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.9 9-8.1c.4-.3-.1-.5-.6-.2L6.7 13.1 1.9 11.6c-1-.3-1-1 .2-1.5l18.5-7.1c.9-.3 1.6.2 1.3 1.3z"/></svg>';
 const BALE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 7.2-1.5 7.1c-.1.5-.4.6-.8.4l-2.3-1.7-1.1 1.1c-.1.1-.3.2-.5.2l.2-2.4 4.3-3.9c.2-.2 0-.3-.3-.1l-5.3 3.3-2.3-.7c-.5-.2-.5-.5.1-.7l8.9-3.4c.4-.2.8.1.6.8z"/></svg>';
+/* ---- مسیریابی با آدرس واقعی ----
+   هر محصول و مقاله آدرس خودش را دارد (/p/... و /a/...) تا گوگل
+   صفحهٔ مستقل ببیند. سرور همان صفحه را با عنوان و توضیحات همان مورد
+   می‌فرستد؛ اینجا فقط پنجرهٔ درست را باز می‌کنیم. */
+const HOME_TITLE=document.title;
+function setPath(path,title){
+  try{
+    if(location.pathname!==path) history.pushState({p:path},'',path);
+    if(title) document.title=title;
+  }catch(e){}
+}
+function backHome(){
+  if(/^\/(p|a|s)\//.test(location.pathname)){
+    try{ history.pushState({},'','/'); document.title=HOME_TITLE }catch(e){}
+  }
+}
+function closeAllSheets(){
+  ['pdSheet','docSheet'].forEach(id=>{const e=$(id); if(e) e.classList.remove('open')});
+}
+function routeFromPath(push=false){
+  const m=/^\/(p|a|s)\/([^/]+)\/?$/.exec(location.pathname);
+  if(!m){ closeAllSheets(); return false }
+  const key=decodeURIComponent(m[2]);
+  if(m[1]==='p') openProduct(key,push);
+  else openDoc(m[1]==='a'?'article':'page',key,push);
+  return true;
+}
+addEventListener('popstate',()=>{ closeAllSheets(); routeFromPath(false) });
+
 /* دادهٔ ساختاریافته برای گوگل — محصولات و مقالات واقعی، نه فهرست ثابت.
    بعد از رسیدن اطلاعات از سرور ساخته می‌شود. */
 function seoData(){
