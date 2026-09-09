@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>سِنسا | ارسال محرمانه</title>
 <meta name="description" content="خرید کاندوم، ژل و محصولات بهداشت جنسی با ارسال محرمانه و پرداخت امن.">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">
 <link rel="canonical" href="https://sensacare.ir/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"OnlineStore","@id":"https://sensacare.ir/#store","name":"سِنسا",
+  "alternateName":"Sensa","url":"https://sensacare.ir/","logo":"https://sensacare.ir/logo-mark.svg",
+  "image":"https://sensacare.ir/og.png",
+  "description":"خرید کاندوم، ژل و محصولات بهداشت جنسی با بسته‌بندی بی‌نشان و ارسال محرمانه به سراسر ایران.",
+  "areaServed":{"@type":"Country","name":"ایران"},
+  "currenciesAccepted":"IRT","paymentAccepted":"کارت به کارت",
+  "inLanguage":"fa-IR"},
+ {"@type":"WebSite","@id":"https://sensacare.ir/#site","url":"https://sensacare.ir/",
+  "name":"سِنسا","inLanguage":"fa-IR","publisher":{"@id":"https://sensacare.ir/#store"}}
+]}
+</script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="سِنسا">
 <meta property="og:locale" content="fa_IR">
@@ -36,8 +50,8 @@
 <style>
 /* رنگ‌ها از خودِ لوگو گرفته شده‌اند: قرمز تا سرخابی، بدون نارنجی. */
 :root{
-  --bg:#FFFFFF; --card:#FFFFFF; --soft:#FFF6F8; --ink:#1A0713; --ink-2:#2C0F20;
-  --dark:#1A0713;   /* زمینهٔ بخش‌هایی که در هر دو تم تیره‌اند */
+  --bg:#FFFDFD; --card:#FFFFFF; --soft:#FFF5F8; --ink:#1A0713; --ink-2:#2C0F20;
+  --dark:#170610;   /* زمینهٔ بخش‌هایی که در هر دو تم تیره‌اند */
   --body:#6E5560; --line:#F3E2E8;
   --red:#D40E38;   --red-2:#FFE5EB;
   --orange:#B01259;--orange-2:#FCE4EF;
@@ -52,19 +66,29 @@
 
 /* ---- تم شب ---- */
 :root[data-theme="dark"]{
-  --bg:#140309; --card:#200A12; --soft:#1A060D; --ink:#FDF1F4; --ink-2:#F2D8E0;
-  --dark:#100208;
-  --body:#B79AA5; --line:#35141F;
-  --red:#FF476B;   --red-2:#400F22;
-  --orange:#E4479B;--orange-2:#3A0F26;
-  --pink:#F0509A;  --pink-2:#3B0E24;
-  --violet:#C4568F;--violet-2:#33101F;
-  --gold:#E8B95C;
-  --shadow:0 2px 4px rgba(0,0,0,.4), 0 14px 32px rgba(0,0,0,.5);
-  --glow:0 10px 30px rgba(255,71,107,.28);
-  --hd:rgba(12,2,7,.94);
+  /* زمینه کمی بنفش‌تر و خنثی‌تر تا قرمزها روی آن تمیز بنشینند،
+     نه اینکه همه‌چیز در یک قهوه‌ایِ گِل‌آلود گم شود. */
+  --bg:#120610; --card:#1D0C18; --soft:#180913; --ink:#FFF3F6; --ink-2:#F6DEE6;
+  --dark:#0C0309;
+  --body:#C4A8B4; --line:#33192A;
+  --red:#FF5C7E;   --red-2:#3D1020;
+  --orange:#F0589F;--orange-2:#3A1128;
+  --pink:#FF6BA6;  --pink-2:#3A1026;
+  --violet:#D273A6;--violet-2:#301024;
+  --gold:#F0C46A;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 16px 38px rgba(0,0,0,.62);
+  --glow:0 10px 32px rgba(255,92,126,.26);
+  --hd:rgba(10,3,9,.95);
   color-scheme:dark;
 }
+/* در تم شب کارت‌ها با یک خط نازک از زمینه جدا می‌شوند، وگرنه محو می‌شوند */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .art,
+:root[data-theme="dark"] .box,
+:root[data-theme="dark"] .trust>div,
+:root[data-theme="dark"] .stat,
+:root[data-theme="dark"] table{border:1px solid var(--line)}
+:root[data-theme="dark"] img{filter:brightness(.94)}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -430,6 +454,14 @@ body.admin-mode{background:var(--dark)}
 .toast{position:fixed;bottom:22px;inset-inline-end:22px;background:var(--dark);color:#fff;padding:13px 21px;border-radius:13px;font-size:14px;z-index:200;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none}
 .toast.show{opacity:1;transform:none}
 
+.ask-btn{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:11px 14px;margin-bottom:9px;
+  color:#F0DDE4;font-size:14px;font-weight:600;transition:.16s;text-decoration:none}
+.ask-btn:hover{background:rgba(255,255,255,.16);transform:translateX(-3px)}
+.ask-btn svg{width:19px;height:19px;flex:none}
+.ask-btn small{display:block;font-weight:400;font-size:11.5px;opacity:.65;margin-top:1px}
+footer #fContact ul{margin-top:4px}
+
 /* ===== responsive ===== */
 @media(max-width:1120px){ .card{flex:0 0 calc((100% - 3*16px)/4)}
   nav{gap:0;margin-inline-start:20px} .nav-item>a{padding:9px 11px;font-size:14px} }
@@ -678,7 +710,7 @@ body.admin-mode{background:var(--dark)}
         <li><a href="#" data-page="privacy">حریم خصوصی</a></li>
         <li><a href="#" data-page="contact">تماس با ما</a></li>
         <li><a href="#" id="trackLink">سفارشم کجاست؟</a></li></ul></div>
-      <div><h5>تماس</h5><ul><li>۰۲۱–۹۱۰۰۰۰۰۰</li><li>hi@sensa.example</li><li>هر روز ۹ تا ۲۱ هستیم</li></ul></div>
+      <div><h5>سؤالی داری؟</h5><div id="fContact"></div></div>
     </div>
     <div class="badges" id="badges">
       <div class="badge2"><span style="font-size:19px">🔒</span><span><b>نماد اعتماد</b>در حال دریافت</span></div>
@@ -1200,6 +1232,8 @@ async function boot() {
   try {
     const d = await req('/api/bootstrap');
     ONLINE = true;
+    setTimeout(()=>{try{paintContact()}catch(_){}} ,0);
+    setTimeout(()=>{try{seoData()}catch(_){}} ,0);
     if (d.categories?.length) cats = d.categories;
     if (d.products?.length) products = d.products;
     if (d.menu?.length) menu = d.menu;
@@ -2409,33 +2443,33 @@ function printInvoice(o){
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:15mm 14mm;
-     font-size:11pt;line-height:1.85;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:9mm 8mm;
+     font-size:8.4pt;line-height:1.6;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 .hd{display:flex;justify-content:space-between;align-items:flex-start;
-    border-bottom:2pt solid #0B0B0C;padding-bottom:12px;margin-bottom:18px}
-.shop{font-size:22pt;font-weight:800;letter-spacing:-.6px}
-.sub{font-size:10pt;color:#6B6B73;margin-top:2px}
+    border-bottom:1.5pt solid #0B0B0C;padding-bottom:7px;margin-bottom:11px}
+.shop{font-size:16pt;font-weight:800;letter-spacing:-.5px}
+.sub{font-size:7.6pt;color:#6B6B73;margin-top:1px}
 .ttl{text-align:left}
-.ttl b{font-size:13pt;display:block}
-.ttl .no{font-size:17pt;font-weight:800;direction:ltr;letter-spacing:1px}
-.ttl .dt{font-size:10pt;color:#6B6B73}
-.who{border:1pt solid #C9C9D0;border-radius:10px;padding:12px 16px;margin-bottom:16px}
-.cap{font-size:9pt;font-weight:800;color:#8A8A92;letter-spacing:1.4px;margin-bottom:5px}
-.who .nm{font-size:13.5pt;font-weight:700}
-.who .ln{font-size:11pt;margin-top:3px}
+.ttl b{font-size:9pt;display:block}
+.ttl .no{font-size:12.5pt;font-weight:800;direction:ltr;letter-spacing:.8px}
+.ttl .dt{font-size:7.6pt;color:#6B6B73}
+.who{border:1pt solid #C9C9D0;border-radius:8px;padding:8px 11px;margin-bottom:10px}
+.cap{font-size:7pt;font-weight:800;color:#8A8A92;letter-spacing:1.2px;margin-bottom:3px}
+.who .nm{font-size:10.5pt;font-weight:700}
+.who .ln{font-size:8.4pt;margin-top:2px}
 table{width:100%;border-collapse:collapse}
-th,td{border:1pt solid #C9C9D0;padding:8px 10px}
-th{background:#F3F3F6;font-size:10pt;font-weight:800;color:#3A3A42}
-td.c{text-align:center;width:44px}td.l{text-align:left;white-space:nowrap}
-tfoot td{border:none;padding:6px 10px}
+th,td{border:.8pt solid #C9C9D0;padding:5px 7px}
+th{background:#F3F3F6;font-size:7.6pt;font-weight:800;color:#3A3A42}
+td.c{text-align:center;width:32px}td.l{text-align:left;white-space:nowrap}
+tfoot td{border:none;padding:4px 7px}
 tfoot .k{text-align:left;color:#55555E}
-tfoot .v{text-align:left;font-weight:700;white-space:nowrap;width:150px}
-tfoot .tot .k,tfoot .tot .v{font-size:14pt;font-weight:800;border-top:2pt solid #0B0B0C;padding-top:10px}
-.pay{margin-top:16px;border:1.5pt solid #0B0B0C;border-radius:10px;padding:10px 16px;
-     display:flex;justify-content:space-between;font-size:11.5pt;font-weight:700}
-.ft{margin-top:22px;padding-top:10px;border-top:1pt solid #E6E6EB;
-    font-size:9.5pt;color:#8A8A92;text-align:center;line-height:1.9}
-@page{size:A4;margin:0}
+tfoot .v{text-align:left;font-weight:700;white-space:nowrap;width:112px}
+tfoot .tot .k,tfoot .tot .v{font-size:10.5pt;font-weight:800;border-top:1.5pt solid #0B0B0C;padding-top:7px}
+.pay{margin-top:10px;border:1.2pt solid #0B0B0C;border-radius:8px;padding:7px 11px;
+     display:flex;justify-content:space-between;font-size:9pt;font-weight:700}
+.ft{margin-top:13px;padding-top:7px;border-top:.8pt solid #E6E6EB;
+    font-size:7.4pt;color:#8A8A92;text-align:center;line-height:1.7}
+@page{size:A5;margin:0}
 @media print{th{background:#F3F3F6 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style></head><body>
 
@@ -2816,6 +2850,13 @@ function repSet(){
         <input id="s_cardholder" value="${esc((settings.card||{}).holder||'')}" placeholder="نام و نام خانوادگی"></div>
       <div><label>نام بانک (اختیاری)</label>
         <input id="s_cardbank" value="${esc((settings.card||{}).bank||'')}" placeholder="مثلاً ملت"></div>
+      <div><label>شمارهٔ تماس (اختیاری)</label>
+        <input id="s_phone" value="${esc((settings.contact||{}).phone||'')}" dir="ltr" placeholder="۰۲۱۱۲۳۴۵۶۷۸">
+        <p class="hint">اگر خالی بگذارید، در پاورقی فقط ربات‌ها نشان داده می‌شوند.</p></div>
+      <div><label>ایمیل (اختیاری)</label>
+        <input id="s_email" value="${esc((settings.contact||{}).email||'')}" dir="ltr" placeholder="info@sensacare.ir"></div>
+      <div><label>ساعت پاسخ‌گویی (اختیاری)</label>
+        <input id="s_hours" value="${esc((settings.contact||{}).hours||'')}" placeholder="هر روز ۹ تا ۲۱"></div>
       <div><label>آی‌دی تلگرام برای کارت به کارت</label>
         <input id="s_tg" value="${esc(settings.telegram||'siamak_la')}" dir="ltr" placeholder="siamak_la">
         <p class="hint">بدون @ بنویسید. مشتری بعد از ثبت سفارش به این آی‌دی هدایت می‌شود.</p></div>
@@ -2888,11 +2929,13 @@ function repSet(){
     settings.trust={enamad:$('s_enamad').value.trim(),samandehi:$('s_saman').value.trim()};
     settings.card={number:enN($('s_card').value).replace(/[\s-]/g,''),
                    holder:$('s_cardholder').value.trim(), bank:$('s_cardbank').value.trim()};
-    saveSet(); paintBadges();
+    settings.contact={phone:$('s_phone').value.trim(), email:$('s_email').value.trim(),
+                      hours:$('s_hours').value.trim()};
+    saveSet(); paintBadges(); paintContact();
     if(ONLINE) req('/api/admin/settings',{method:'POST',asAdmin:true,
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
             shipExpress:settings.shipExpress,shipPost:settings.shipPost,trust:settings.trust,
-            card:settings.card}}).catch(()=>{});
+            card:settings.card, contact:settings.contact}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){
     products=JSON.parse(JSON.stringify(DEFAULTS));save();render();updateCart();toast('بازگردانی شد.')}};
@@ -3032,6 +3075,58 @@ $('passBtn').onclick=async()=>{
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeD();loginModal.classList.remove('open');
   AM.classList.remove('open');$('acctModal').classList.remove('open');chat.classList.remove('open')}});
 let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(render,260)});
+/* بخش «سؤالی داری؟» در پاورقی — ربات‌ها اول، بعد راه‌های دیگر اگر پر شده باشند */
+const TG_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.8 19c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.9 9-8.1c.4-.3-.1-.5-.6-.2L6.7 13.1 1.9 11.6c-1-.3-1-1 .2-1.5l18.5-7.1c.9-.3 1.6.2 1.3 1.3z"/></svg>';
+const BALE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 7.2-1.5 7.1c-.1.5-.4.6-.8.4l-2.3-1.7-1.1 1.1c-.1.1-.3.2-.5.2l.2-2.4 4.3-3.9c.2-.2 0-.3-.3-.1l-5.3 3.3-2.3-.7c-.5-.2-.5-.5.1-.7l8.9-3.4c.4-.2.8.1.6.8z"/></svg>';
+/* دادهٔ ساختاریافته برای گوگل — محصولات و مقالات واقعی، نه فهرست ثابت.
+   بعد از رسیدن اطلاعات از سرور ساخته می‌شود. */
+function seoData(){
+  try{
+    const base=location.origin;
+    const prods=(products||[]).filter(p=>p.active!==0).slice(0,60).map((p,i)=>({
+      "@type":"ListItem","position":i+1,
+      "item":{"@type":"Product","name":p.n,
+        "description":(p.d||'').slice(0,300)||undefined,
+        "sku":p.id,"brand":{"@type":"Brand","name":p.b||"سِنسا"},
+        "image":p.img?(/^https?:/.test(p.img)?p.img:base+p.img):undefined,
+        "offers":{"@type":"Offer","price":String(p.pr),"priceCurrency":"IRR",
+          "availability":(p.stock>0)?"https://schema.org/InStock":"https://schema.org/OutOfStock",
+          "url":base+"/#/product/"+encodeURIComponent(p.id)}}
+    }));
+    const arts=(articles||[]).slice(0,20).map(a=>({
+      "@type":"Article","headline":a.title,"description":a.excerpt||undefined,
+      "datePublished":a.created?new Date(a.created).toISOString():undefined,
+      "url":base+"/#/article/"+encodeURIComponent(a.slug),
+      "publisher":{"@id":base+"/#store"}}));
+    const graph=[];
+    if(prods.length) graph.push({"@type":"ItemList","name":"محصولات سِنسا",
+      "numberOfItems":prods.length,"itemListElement":prods});
+    graph.push(...arts);
+    if(!graph.length) return;
+    let el=document.getElementById('seoLd');
+    if(!el){ el=document.createElement('script'); el.type='application/ld+json';
+             el.id='seoLd'; document.head.appendChild(el) }
+    el.textContent=JSON.stringify({"@context":"https://schema.org","@graph":graph});
+  }catch(e){}
+}
+
+function paintContact(){
+  const el=$('fContact'); if(!el) return;
+  const bots=settings.botLogin||{}, c=settings.contact||{};
+  let h='';
+  if(bots.telegram) h+=`<a class="ask-btn" href="https://t.me/${esc(bots.telegram)}" target="_blank" rel="noopener">
+      ${TG_ICON}<span>پرسش در تلگرام<small>جواب سریع، بدون تماس تلفنی</small></span></a>`;
+  if(bots.bale) h+=`<a class="ask-btn" href="https://ble.ir/${esc(bots.bale)}" target="_blank" rel="noopener">
+      ${BALE_ICON}<span>پرسش در بله<small>همان ربات، داخل ایران</small></span></a>`;
+  const rows=[];
+  if(c.phone) rows.push(`<li><a href="tel:${esc(enN(c.phone))}" dir="ltr" style="display:inline-block">${faN(c.phone)}</a></li>`);
+  if(c.email) rows.push(`<li><a href="mailto:${esc(c.email)}" dir="ltr" style="display:inline-block">${esc(c.email)}</a></li>`);
+  if(c.hours) rows.push(`<li>${esc(c.hours)}</li>`);
+  if(rows.length) h+='<ul>'+rows.join('')+'</ul>';
+  if(!h) h='<ul><li>به‌زودی راه‌های تماس اینجا می‌آید.</li></ul>';
+  el.innerHTML=h;
+}
+
 function paintBadges(){
   const t=settings.trust||{};
   if(t.enamad||t.samandehi){
@@ -3043,7 +3138,7 @@ function paintBadges(){
 }
 $('cCity').innerHTML='<option value="">انتخاب کنید…</option>'+
   PROVINCES.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('');
-restoreCart(); boot(); paintBadges();
+restoreCart(); boot(); paintBadges(); paintContact();
 
 /* ============ صفحهٔ مدیریت ============ */
 function enterAdmin(){

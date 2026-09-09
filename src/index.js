@@ -620,6 +620,7 @@ export default {
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
             trust: await getSetting(env, 'trust', {}),
             card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
+            contact: await getSetting(env, 'contact', { phone: '', email: '', hours: '' }),
             loginEnabled: smsReady(env) || Object.keys(await botLoginOptions(env)).length > 0,
             loginSms: smsReady(env),
             botLogin: await botLoginOptions(env)
@@ -936,6 +937,9 @@ export default {
               telegram: await getSetting(env, 'telegram', 'siamak_la'),
               shipExpress: await getSetting(env, 'shipExpress', 400000),
               shipPost: await getSetting(env, 'shipPost', 250000),
+              card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
+              contact: await getSetting(env, 'contact', { phone: '', email: '', hours: '' }),
+              botLogin: await botLoginOptions(env),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {})
             }
