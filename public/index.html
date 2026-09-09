@@ -3270,9 +3270,9 @@ function paintContact(){
   const bots=settings.botLogin||{}, c=settings.contact||{};
   let h='';
   if(bots.telegram) h+=`<a class="ask-btn" href="https://t.me/${esc(bots.telegram)}" target="_blank" rel="noopener">
-      ${TG_ICON}<span>پرسش در تلگرام<small>جواب سریع، بدون تماس تلفنی</small></span></a>`;
+      ${TG_ICON}<span>گفتگو در تلگرام<small>سؤالت را بنویس، همان‌جا جواب می‌گیری</small></span></a>`;
   if(bots.bale) h+=`<a class="ask-btn" href="https://ble.ir/${esc(bots.bale)}" target="_blank" rel="noopener">
-      ${BALE_ICON}<span>پرسش در بله<small>همان ربات، داخل ایران</small></span></a>`;
+      ${BALE_ICON}<span>گفتگو در بله<small>همان گفتگو، بدون فیلترشکن</small></span></a>`;
   const rows=[];
   if(c.phone) rows.push(`<li><a href="tel:${esc(enN(c.phone))}" dir="ltr" style="display:inline-block">${faN(c.phone)}</a></li>`);
   if(c.email) rows.push(`<li><a href="mailto:${esc(c.email)}" dir="ltr" style="display:inline-block">${esc(c.email)}</a></li>`);

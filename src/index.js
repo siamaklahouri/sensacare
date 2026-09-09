@@ -289,6 +289,144 @@ async function runBackup(env) {
   return { size: bytes.length, sent };
 }
 
+/* دستیار فروشگاه. هم صفحهٔ سایت از آن استفاده می‌کند، هم ربات تلگرام
+   و بله — تا جواب‌ها یکی باشد و در یک جا نگهداری شود.
+   اگر جوابی درنیامد null می‌دهد. */
+async function askAI(env, q, history = []) {
+  if (!env.AI) return null;
+
+  /* تاریخچهٔ کوتاه، تا گفتگو رشتهٔ حرف را گم نکند */
+  const past = (Array.isArray(history) ? history : [])
+    .slice(-6)
+    .filter(x => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string')
+    .map(x => ({ role: x.role, content: String(x.content).slice(0, 700) }));
+
+  /* محصولات واقعی فروشگاه را به دستیار می‌دهیم تا از روی همین‌ها
+     پیشنهاد بدهد، نه از حافظهٔ خودش. */
+  const rows = await all(env,
+    `SELECT p.n, p.b, p.pr, p.d, p.size, p.thickness, p.material, p.lube, p.count,
+            p.stock, c.name AS cat
+       FROM products p LEFT JOIN categories c ON c.id = p.c
+      WHERE p.active = 1 ORDER BY p.pos LIMIT 60`);
+  const catalog = rows.map(r =>
+    `- ${r.n}${r.b ? ` (${r.b})` : ''} | دستهٔ ${r.cat || '—'} | ${fa(r.pr)} تومان` +
+    `${r.count ? ` | ${r.count}` : ''}${r.material ? ` | جنس ${r.material}` : ''}` +
+    `${r.thickness ? ` | ضخامت ${r.thickness}` : ''}${r.stock > 0 ? '' : ' | ناموجود'}` +
+    `${r.d ? `\n   ${String(r.d).slice(0, 110)}` : ''}`).join('\n');
+
+  const post = await getSetting(env, 'shipPost', 250000);
+  const express = await getSetting(env, 'shipExpress', 400000);
+  const freeOver = await getSetting(env, 'freeOver', 0);
+
+  const system =
+`تو دستیار فروشگاه اینترنتی «سِنسا» هستی؛ فروشگاه کاندوم، ژل و محصولات بهداشت جنسی در ایران.
+
+چطور حرف بزن:
+- فارسی، کوتاه و روان. حداکثر ۴ جمله، مگر اینکه سؤال واقعاً توضیح بیشتری بخواهد.
+- محترمانه و بدون قضاوت. مشتری ممکن است خجالت بکشد؛ کاری کن راحت باشد.
+- ساده حرف بزن، نه کتابی. از اصطلاح پزشکی فقط وقتی لازم است استفاده کن.
+
+چه کار بکن:
+- در انتخاب محصول کمک کن و فقط از فهرست زیر پیشنهاد بده. اسم دقیق کالا را بنویس.
+- اگر چیزی در فهرست نیست، صادقانه بگو موجود نیست.
+- نکات ایمنی و استفادهٔ درست را بگو (مثل اینکه ژل پایه‌روغنی به کاندوم لاتکس آسیب می‌زند).
+- دربارهٔ ارسال و پرداخت جواب بده.
+
+چه کار نکن:
+- تشخیص پزشکی نده و دارو تجویز نکن. اگر نشانهٔ بیماری، درد، زخم یا عفونت مطرح شد،
+  کوتاه بگو باید پزشک ببیند.
+- عدد و قیمتی که در فهرست نیست از خودت نساز.
+- محتوای صریح جنسی ننویس. لحن باید مثل داروخانه باشد، نه غیر آن.
+- اگر پرسش ربطی به فروشگاه و سلامت جنسی ندارد، مؤدبانه برگردان به موضوع.
+- فقط فارسی بنویس. حتی یک کلمه یا یک حرف چینی، ژاپنی، روسی یا خط بیگانه هم ننویس.
+
+اطلاعات ارسال:
+- پست پیشتاز ${fa(post)} تومان، همهٔ ایران، ۲ تا ۳ روز کاری.
+- ارسال سریع ${fa(express)} تومان، فقط تهران و کرج، همان روز.
+${freeOver > 0 ? `- خرید بالای ${fa(freeOver)} تومان ارسال رایگان دارد.` : ''}
+- بسته‌بندی بی‌نشان است؛ روی جعبه هیچ اسمی از محتوا نوشته نمی‌شود.
+- پرداخت کارت‌به‌کارت است و مشتری عکس فیش را در همان صفحهٔ سفارش می‌فرستد.
+
+فهرست محصولات موجود:
+${catalog || '(فعلاً محصولی ثبت نشده)'}`;
+
+  const messages = [{ role: 'system', content: system }, ...past, { role: 'user', content: q }];
+  /* گاهی مدل وسط جملهٔ فارسی یک واژهٔ چینی یا روسی می‌اندازد.
+     اگر پیش آمد دوباره می‌پرسیم؛ اگر باز هم بود، همان چند حرف را برمی‌داریم. */
+  const attempts = [
+    { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.4 },
+    { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.15 },
+    { model: '@cf/meta/llama-3.1-8b-instruct-fast', temperature: 0.3 }
+  ];
+  let dirty = null, dirtyModel = '';
+  for (const a of attempts) {
+    try {
+      const r = await env.AI.run(a.model, { messages, max_tokens: 420, temperature: a.temperature });
+      const text = String(r?.response || '').trim();
+      if (!text) continue;
+      if (!FOREIGN.test(text)) return { answer: text, model: a.model };
+      if (!dirty) { dirty = text; dirtyModel = a.model; }
+    } catch (e) { console.log('ai', a.model, e.message); }
+  }
+  if (dirty) {
+    const cleaned = dirty.replace(FOREIGN_G, '').replace(/[ \t]{2,}/g, ' ').trim();
+    if (cleaned) return { answer: cleaned, model: dirtyModel, cleaned: true };
+  }
+  return null;
+}
+
+/* ---------- پشتیبانی: پل بین مشتری و مدیر ----------
+   تا حالا ربات فقط وضعیت سفارش را می‌گفت و هر پیام دیگری را دور می‌ریخت،
+   یعنی دکمهٔ «سؤالت را در تلگرام بپرس» عملاً به جایی وصل نبود.
+   حالا پیام مشتری به گفتگوی مدیر می‌رود و جواب مدیر به همان مشتری برمی‌گردد. */
+
+async function isAdminChat(env, pf, chat) {
+  const r = await one(env,
+    "SELECT 1 AS a FROM bot_chats WHERE platform=? AND chat_id=? AND role='admin'", pf, String(chat));
+  if (r) return true;
+  return (await adminChats(env, pf)).includes(String(chat));
+}
+
+/* پیام مشتری را برای همهٔ مدیرها می‌فرستد و شمارهٔ پیام‌ها را نگه می‌دارد،
+   تا «ریپلای» مدیر بداند جواب برای کدام مشتری است. */
+async function toSupport(env, pf, chat, who, text) {
+  await run(env,
+    'INSERT INTO support_msgs(created,platform,chat_id,name,phone,dir,text) VALUES(?,?,?,?,?,?,?)',
+    Date.now(), pf, String(chat), who.name || '', who.phone || '', 'in', text);
+
+  const head = `💬 <b>پیام پشتیبانی</b>\n` +
+    `از: ${esc(who.name || 'ناشناس')}` +
+    `${who.phone ? ` — <code>${esc(who.phone)}</code>` : ''} (${PLATFORMS[pf].name})\n` +
+    `گفتگو: <code>${esc(String(chat))}</code>\n\n`;
+  const foot = `\n\n↩️ روی همین پیام ریپلای کن تا جوابت برایش برود.\n` +
+    `یا بنویس: <code>/reply ${esc(String(chat))} متن جواب</code>`;
+
+  let sent = 0;
+  for (const apf of ['telegram', 'bale']) {
+    for (const achat of await adminChats(env, apf)) {
+      const r = await botCall(env, apf, 'sendMessage',
+        { chat_id: achat, parse_mode: 'HTML', text: head + esc(text) + foot });
+      const mid = r?.result?.message_id;
+      if (r?.ok) sent++;
+      if (mid) await run(env,
+        `INSERT INTO support_relay(platform,admin_chat,message_id,cust_platform,cust_chat,created)
+         VALUES(?,?,?,?,?,?) ON CONFLICT(platform,admin_chat,message_id) DO NOTHING`,
+        apf, String(achat), String(mid), pf, String(chat), Date.now());
+    }
+  }
+  return sent;
+}
+
+/* جواب مدیر را به مشتری می‌رساند */
+async function fromSupport(env, custPf, custChat, text) {
+  await run(env,
+    'INSERT INTO support_msgs(created,platform,chat_id,dir,text) VALUES(?,?,?,?,?)',
+    Date.now(), custPf, String(custChat), 'out', text);
+  const r = await botCall(env, custPf, 'sendMessage', { chat_id: custChat, parse_mode: 'HTML',
+    text: `💬 <b>پشتیبانی سِنسا:</b>\n\n${esc(text)}` });
+  return !!r?.ok;
+}
+
 async function notifyAdmins(env, text, keyboard) {
   const out = [];
   for (const pf of ['telegram', 'bale']) {
@@ -402,6 +540,36 @@ async function handleUpdate(env, pf, u) {
   const chat = String(msg.chat?.id || '');
   const text = (msg.text || '').trim();
 
+  /* جواب مدیر به مشتری — با ریپلای روی پیام پشتیبانی، یا با /reply */
+  const amAdmin = await isAdminChat(env, pf, chat);
+
+  if (amAdmin && msg.reply_to_message && text) {
+    const link = await one(env,
+      'SELECT * FROM support_relay WHERE platform=? AND admin_chat=? AND message_id=?',
+      pf, chat, String(msg.reply_to_message.message_id));
+    if (link) {
+      const ok = await fromSupport(env, link.cust_platform, link.cust_chat, text);
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: ok ? '✅ جوابت برای مشتری رفت.' : '✗ نتوانستم بفرستم؛ شاید مشتری ربات را بسته باشد.' });
+      return;
+    }
+  }
+
+  if (amAdmin && text.startsWith('/reply')) {
+    const mm = text.match(/^\/reply\s+(\S+)\s+([\s\S]+)$/);
+    if (!mm) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'این‌طور بنویس:  /reply شمارهٔ‌گفتگو متن جواب' });
+      return;
+    }
+    const target = await one(env,
+      'SELECT * FROM support_relay WHERE cust_chat=? ORDER BY created DESC LIMIT 1', mm[1]);
+    const ok = await fromSupport(env, target?.cust_platform || pf, mm[1], mm[2]);
+    await botCall(env, pf, 'sendMessage', { chat_id: chat,
+      text: ok ? '✅ جوابت برای مشتری رفت.' : '✗ نتوانستم بفرستم.' });
+    return;
+  }
+
   /* کاربر شماره‌اش را با دکمهٔ «ارسال شماره» فرستاد => ورود به سایت */
   if (msg.contact) {
     /* فقط شمارهٔ خودِ کاربر قبول است. اگر مخاطبِ کس دیگری را بفرستد،
@@ -473,6 +641,7 @@ async function handleUpdate(env, pf, u) {
   if (text === '/start') {
     await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
       text: `سلام 👋 من ربات <b>سِنسا</b> هستم.\n\n` +
+            `• هر سؤالی داری همین‌جا بنویس — جوابت را می‌دهم و اگر لازم باشد پشتیبان هم جواب می‌دهد\n` +
             `• شمارهٔ فاکتورت را بفرست تا وضعیت سفارش را بگویم\n` +
             `• فیش پرداخت را همین‌جا بفرست\n\n` +
             `شناسهٔ این گفتگو: <code>${chat}</code>` });
@@ -516,8 +685,35 @@ async function handleUpdate(env, pf, u) {
     return;
   }
 
-  await botCall(env, pf, 'sendMessage', { chat_id: chat,
-    text: 'شمارهٔ فاکتورت را بفرست تا وضعیت سفارش را بگویم، یا فیش پرداخت را ارسال کن.' });
+  /* هر پیام دیگری سؤال پشتیبانی است. قبلاً همین‌جا دور ریخته می‌شد. */
+  if (!text) {
+    await botCall(env, pf, 'sendMessage', { chat_id: chat,
+      text: 'سؤالت را بنویس تا جواب بدهم.' });
+    return;
+  }
+  if (amAdmin) {
+    await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
+      text: 'این گفتگو مدیر است. پیام مشتری‌ها اینجا می‌آید؛ روی هرکدام ' +
+            'ریپلای کنی، جوابت برای همان مشتری می‌رود.' });
+    return;
+  }
+
+  const me = await one(env, 'SELECT phone FROM bot_chats WHERE platform=? AND chat_id=?', pf, chat);
+  const who = { phone: me?.phone || '', name: [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') };
+  const seen = await toSupport(env, pf, chat, who, text);
+
+  /* دستیار همان لحظه جواب می‌دهد تا مشتری منتظر نماند؛ پشتیبان هم پیام را
+     دارد و اگر لازم بود خودش جواب می‌دهد. */
+  const ai = await askAI(env, text).catch(() => null);
+  if (ai) {
+    await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
+      text: `${esc(ai.answer)}\n\n<i>${seen ? 'این جواب خودکار بود. پیامت برای پشتیبان هم رفت؛ اگر لازم باشد خودشان جواب می‌دهند.'
+                                              : 'این جواب خودکار بود.'}</i>` });
+  } else {
+    await botCall(env, pf, 'sendMessage', { chat_id: chat,
+      text: seen ? 'پیامت رسید ✅ پشتیبان همین‌جا جوابت را می‌دهد.'
+                 : 'پیامت ثبت شد. به‌زودی جوابت را می‌دهیم.' });
+  }
 }
 
 /* ---------- هزینهٔ ارسال (سمت سرور، غیرقابل دستکاری) ---------- */
@@ -993,85 +1189,10 @@ export default {
         if (!env.AI) return bad('دستیار فعلاً در دسترس نیست', 503);
         const q = String(body.q || '').trim().slice(0, 500);
         if (!q) return bad('سؤالت را بنویس');
-
-        /* تاریخچهٔ کوتاه، تا گفتگو رشته را گم نکند */
-        const history = (Array.isArray(body.history) ? body.history : [])
-          .slice(-6)
-          .filter(x => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string')
-          .map(x => ({ role: x.role, content: String(x.content).slice(0, 700) }));
-
-        /* محصولات واقعی فروشگاه را به دستیار می‌دهیم تا از روی همین‌ها
-           پیشنهاد بدهد، نه از حافظهٔ خودش. */
-        const rows = await all(env,
-          `SELECT p.n, p.b, p.pr, p.d, p.size, p.thickness, p.material, p.lube, p.count,
-                  p.stock, c.name AS cat
-             FROM products p LEFT JOIN categories c ON c.id = p.c
-            WHERE p.active = 1 ORDER BY p.pos LIMIT 60`);
-        const catalog = rows.map(r =>
-          `- ${r.n}${r.b ? ` (${r.b})` : ''} | دستهٔ ${r.cat || '—'} | ${fa(r.pr)} تومان` +
-          `${r.count ? ` | ${r.count}` : ''}${r.material ? ` | جنس ${r.material}` : ''}` +
-          `${r.thickness ? ` | ضخامت ${r.thickness}` : ''}${r.stock > 0 ? '' : ' | ناموجود'}` +
-          `${r.d ? `\n   ${String(r.d).slice(0, 110)}` : ''}`).join('\n');
-
-        const post = await getSetting(env, 'shipPost', 250000);
-        const express = await getSetting(env, 'shipExpress', 400000);
-        const freeOver = await getSetting(env, 'freeOver', 0);
-
-        const system =
-`تو دستیار فروشگاه اینترنتی «سِنسا» هستی؛ فروشگاه کاندوم، ژل و محصولات بهداشت جنسی در ایران.
-
-چطور حرف بزن:
-- فارسی، کوتاه و روان. حداکثر ۴ جمله، مگر اینکه سؤال واقعاً توضیح بیشتری بخواهد.
-- محترمانه و بدون قضاوت. مشتری ممکن است خجالت بکشد؛ کاری کن راحت باشد.
-- ساده حرف بزن، نه کتابی. از اصطلاح پزشکی فقط وقتی لازم است استفاده کن.
-
-چه کار بکن:
-- در انتخاب محصول کمک کن و فقط از فهرست زیر پیشنهاد بده. اسم دقیق کالا را بنویس.
-- اگر چیزی در فهرست نیست، صادقانه بگو موجود نیست.
-- نکات ایمنی و استفادهٔ درست را بگو (مثل اینکه ژل پایه‌روغنی به کاندوم لاتکس آسیب می‌زند).
-- دربارهٔ ارسال و پرداخت جواب بده.
-
-چه کار نکن:
-- تشخیص پزشکی نده و دارو تجویز نکن. اگر نشانهٔ بیماری، درد، زخم یا عفونت مطرح شد،
-  کوتاه بگو باید پزشک ببیند.
-- عدد و قیمتی که در فهرست نیست از خودت نساز.
-- محتوای صریح جنسی ننویس. لحن باید مثل داروخانه باشد، نه غیر آن.
-- اگر پرسش ربطی به فروشگاه و سلامت جنسی ندارد، مؤدبانه برگردان به موضوع.
-- فقط فارسی بنویس. حتی یک کلمه یا یک حرف چینی، ژاپنی، روسی یا خط بیگانه هم ننویس.
-
-اطلاعات ارسال:
-- پست پیشتاز ${fa(post)} تومان، همهٔ ایران، ۲ تا ۳ روز کاری.
-- ارسال سریع ${fa(express)} تومان، فقط تهران و کرج، همان روز.
-${freeOver > 0 ? `- خرید بالای ${fa(freeOver)} تومان ارسال رایگان دارد.` : ''}
-- بسته‌بندی بی‌نشان است؛ روی جعبه هیچ اسمی از محتوا نوشته نمی‌شود.
-- پرداخت کارت‌به‌کارت است و مشتری عکس فیش را در همان صفحهٔ سفارش می‌فرستد.
-
-فهرست محصولات موجود:
-${catalog || '(فعلاً محصولی ثبت نشده)'}`;
-
-        const messages = [{ role: 'system', content: system }, ...history, { role: 'user', content: q }];
-        /* گاهی مدل وسط جملهٔ فارسی یک واژهٔ چینی یا روسی می‌اندازد.
-           اگر پیش آمد دوباره می‌پرسیم؛ اگر باز هم بود، همان چند حرف را برمی‌داریم. */
-        const attempts = [
-          { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.4 },
-          { model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', temperature: 0.15 },
-          { model: '@cf/meta/llama-3.1-8b-instruct-fast', temperature: 0.3 }
-        ];
-        let dirty = null, dirtyModel = '';
-        for (const a of attempts) {
-          try {
-            const r = await env.AI.run(a.model, { messages, max_tokens: 420, temperature: a.temperature });
-            const text = String(r?.response || '').trim();
-            if (!text) continue;
-            if (!FOREIGN.test(text)) return json({ ok: true, answer: text, model: a.model });
-            if (!dirty) { dirty = text; dirtyModel = a.model; }
-          } catch (e) { console.log('ai', a.model, e.message); }
-        }
-        if (dirty) {
-          const cleaned = dirty.replace(FOREIGN_G, '').replace(/[ \t]{2,}/g, ' ').trim();
-          if (cleaned) return json({ ok: true, answer: cleaned, model: dirtyModel, cleaned: true });
-        }
-        return bad('دستیار الان جواب نمی‌دهد. کمی بعد دوباره بپرس.', 503);
+        const history = (Array.isArray(body.history) ? body.history : []).slice(-6);
+        const r = await askAI(env, q, history);
+        if (!r) return bad('دستیار الان جواب نمی‌دهد. کمی بعد دوباره بپرس.', 503);
+        return json({ ok: true, ...r });
       }
 
       if (p === '/api/feedback' && m === 'POST') {

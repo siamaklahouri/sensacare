@@ -26,3 +26,28 @@ CREATE TABLE IF NOT EXISTS product_images(
   product_id TEXT PRIMARY KEY,
   data TEXT,
   updated INTEGER);
+
+-- گفتگوی پشتیبانی: پیام مشتری در ربات به مدیر می‌رسد و جواب مدیر
+-- به همان مشتری برمی‌گردد.
+CREATE TABLE IF NOT EXISTS support_msgs(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created INTEGER,
+  platform TEXT,
+  chat_id TEXT,
+  name TEXT,
+  phone TEXT,
+  dir TEXT,                       -- in: از مشتری، out: جواب پشتیبان
+  text TEXT);
+
+CREATE INDEX IF NOT EXISTS idx_support_created ON support_msgs(created);
+
+-- وقتی پیام مشتری برای مدیر فرستاده می‌شود، شمارهٔ همان پیام اینجا
+-- می‌ماند تا اگر مدیر رویش «ریپلای» کرد، بدانیم جواب برای کیست.
+CREATE TABLE IF NOT EXISTS support_relay(
+  platform TEXT,
+  admin_chat TEXT,
+  message_id TEXT,
+  cust_platform TEXT,
+  cust_chat TEXT,
+  created INTEGER,
+  PRIMARY KEY(platform, admin_chat, message_id));
