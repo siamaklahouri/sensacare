@@ -879,6 +879,16 @@ export default {
       return injectMeta(env, req, meta);
     }
 
+    /* تا حالا سایت robots.txt خودش را نداشت و آنچه سرو می‌شد نسخهٔ آمادهٔ
+       کلادفلر بود. آن نسخه نقشهٔ سایت را به گوگل معرفی نمی‌کند، یعنی
+       گوگل باید همهٔ صفحه‌ها را خودش پیدا می‌کرد. */
+    if (p === '/robots.txt') {
+      const base = `${url.protocol}//${url.host}`;
+      return new Response(
+        `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${base}/sitemap.xml\n`,
+        { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
+    }
+
     if (p === '/sitemap.xml') {
       const base = `${url.protocol}//${url.host}`;
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -908,7 +918,18 @@ export default {
         'فایل‌های سایت به ورکر وصل نشده‌اند (ASSETS). خط assets در wrangler.toml ' +
         'باید بالاتر از همهٔ [بخش]ها باشد، وگرنه داخل بخش قبلی حساب می‌شود.',
         { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-      try { return await env.ASSETS.fetch(req); }
+      try {
+        const res = await env.ASSETS.fetch(req);
+        /* آدرس اشتباه یا لینک خراب، صفحهٔ سفید کلادفلر را نشان می‌داد.
+           به‌جایش خودِ فروشگاه باز می‌شود تا بازدیدکننده گم نشود — ولی
+           با کد ۴۰۴، تا گوگل آن را صفحهٔ واقعی حساب نکند. */
+        if (res.status === 404 && req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(p)) {
+          const home = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+          if (home.ok) return new Response(await home.text(), { status: 404,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+        }
+        return res;
+      }
       catch (e) { return new Response('خطا در خواندن فایل‌های سایت: ' + e.message,
         { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }); }
     }
@@ -1084,12 +1105,20 @@ export default {
       if (p === '/api/orders' && m === 'POST') {
         if (!Array.isArray(body.items) || !body.items.length) return bad('سبد خالی است');
         if (!/^09\d{9}$/.test(String(body.phone || ''))) return bad('شمارهٔ موبایل معتبر نیست');
+        /* نام و آدرس را مرورگر بررسی می‌کرد ولی سرور نه. یعنی سفارشی بدون
+           گیرنده یا بدون آدرس هم ثبت می‌شد و کسی نمی‌توانست تحویلش بدهد. */
+        if (String(body.name || '').trim().length < 3) return bad('نام گیرنده را بنویس');
+        if (String(body.address || '').trim().length < 10) return bad('آدرس را کامل‌تر بنویس');
 
         let goods = 0; const items = [];
         for (const it of body.items) {
           const pr = await one(env, 'SELECT * FROM products WHERE id=? AND active=1', it.id);
           if (!pr) continue;
-          const q = Math.max(1, Math.min(20, Number(it.q) || 1));
+          /* اگر بیشتر از حد خواسته شد، بی‌صدا کمش نمی‌کنیم — وگرنه مشتری
+             فکر می‌کند ۳۰ تا خریده و ۲۰ تا می‌گیرد. */
+          const q = Math.floor(Number(it.q) || 1);
+          if (!(q >= 1)) return bad('تعداد کالا درست نیست');
+          if (q > 20) return bad(`از هر کالا حداکثر ۲۰ عدد در یک سفارش. برای «${pr.n}» بیشتر خواسته شده.`, 409);
           /* موجودی اینجا هم بررسی می‌شود، نه فقط در مرورگر — وگرنه
              می‌شد بیشتر از موجودی سفارش داد. */
           const have = Number(pr.stock ?? 0);

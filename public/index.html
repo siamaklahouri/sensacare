@@ -46,7 +46,6 @@
     document.documentElement.setAttribute('data-theme','dark');
 }catch(e){}})();
 </script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 /* رنگ‌ها از خودِ لوگو گرفته شده‌اند: قرمز تا سرخابی، بدون نارنجی. */
 :root{
@@ -110,10 +109,11 @@ img{display:block;max-width:100%}
 .topline{height:4px;background:linear-gradient(90deg,var(--red) 0 40%,var(--orange) 40% 72%,var(--gold) 72% 100%)}
 header{position:sticky;top:0;z-index:60;background:var(--hd);backdrop-filter:blur(16px);color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
 /* لوگو راست، منو بلافاصله کنارش، دکمه‌ها چپ — نه منوی شناور در وسط */
-.bar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:0;height:84px}
+.bar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:0;height:84px}
 .bar .logo{color:#fff}
 .bar .right{display:flex;justify-content:flex-start}
-nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-inline-start:34px}
+nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-inline-start:34px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
 .nav-item{position:relative}
 .nav-item>a{display:flex;align-items:center;gap:6px;padding:10px 15px;border-radius:11px;font-size:14.5px;font-weight:600;color:#E8D2DB;white-space:nowrap;transition:.15s}
 .nav-item>a:hover,.nav-item.on>a{background:rgba(255,255,255,.1);color:#fff}
@@ -578,7 +578,7 @@ footer #fContact ul{margin-top:4px}
 /* ===== responsive ===== */
 @media(max-width:1120px){ .card{flex:0 0 calc((100% - 3*16px)/4)}
   nav{gap:0;margin-inline-start:20px} .nav-item>a{padding:9px 11px;font-size:14px} }
-@media(max-width:900px){
+@media(max-width:1040px){
   .bar{grid-template-columns:auto 1fr;height:74px}
   nav{position:fixed;top:78px;right:14px;left:14px;background:var(--card);border-radius:20px;flex-direction:column;align-items:stretch;padding:10px;box-shadow:var(--shadow);display:none;max-height:74vh;overflow-y:auto;z-index:70}
   nav.open{display:flex}
@@ -975,6 +975,10 @@ footer #fContact ul{margin-top:4px}
       <p class="hint" id="botLoginHint">ربات باز می‌شود، یک دکمه می‌زنی، و برمی‌گردی. شماره‌ات خودکار تأیید می‌شود.</p>
       <div id="smsOr" style="display:none;text-align:center;margin:14px 0;opacity:.6;font-size:13px">یا</div>
     </div>
+    <div id="guestBox" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <button class="btn-ghost" id="guestGo" style="width:100%;padding:13px;color:var(--ink);background:var(--card);border:1px solid var(--line)">بدون ورود ادامه بده</button>
+      <p class="hint">سفارشت با همین شماره ثبت می‌شود. ورود فقط برای این است که بعداً سفارش‌هایت را ببینی.</p>
+    </div>
     <div id="smsBox">
     <label for="aPhone">شمارهٔ موبایلت</label>
     <input id="aPhone" inputmode="numeric" placeholder="۰۹۱۲۳۴۵۶۷۸۹" autocomplete="tel">
@@ -1070,9 +1074,25 @@ footer #fContact ul{margin-top:4px}
 <input type="file" id="jsonFile" accept="application/json" hidden>
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+/* نقشه و کتابخانهٔ اکسل فقط وقتی لازم می‌شوند بارگذاری می‌شوند، نه سرِ
+   هر بازدید. با هم حدود یک مگابایت بودند و مشتری‌ای که فقط دارد نگاه
+   می‌کند هیچ‌کدام را لازم ندارد. */
+const _loaded={};
+function loadOnce(kind,url){
+  if(_loaded[url]) return _loaded[url];
+  return _loaded[url]=new Promise((res,rej)=>{
+    const el=kind==='css'?document.createElement('link'):document.createElement('script');
+    if(kind==='css'){el.rel='stylesheet';el.href=url} else el.src=url;
+    el.onload=()=>res(true); el.onerror=()=>rej(new Error('load failed: '+url));
+    document.head.appendChild(el);
+  });
+}
+const loadLeaflet=()=>Promise.all([
+  loadOnce('css','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'),
+  loadOnce('js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js')]);
+const loadXLSX=()=>loadOnce('js','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+
 /* ============ storage ============ */
 const mem={};
 const store={
@@ -1590,7 +1610,10 @@ function goStep(n){
   $('coTitle').textContent=['','کجا برات بفرستیم؟','چطور برسه دستت؟','ثبت شد!'][n];
   sheet.scrollTop=0;
 }
-function initMap(){
+async function initMap(){
+  if(map)return;
+  try{ await loadLeaflet() }
+  catch(e){ $('map').innerHTML='<p class="empty">نقشه در دسترس نیست.</p>'; return }
   if(map||!window.L)return;
   try{
     map=L.map('map',{scrollWheelZoom:false}).setView([35.7,51.38],12);
@@ -1676,7 +1699,7 @@ $('placeOrder').onclick=()=>{
   const u=authUser(), ph=enN($('cPhone').value).replace(/[\s-]/g,'');
   /* اگر با همین شماره وارد شده، مستقیم ثبت کن. وگرنه شماره را با کد تأیید کن. */
   if(u && u.phone===ph) return submitOrder();
-  openAuth(()=>submitOrder(), ph);
+  openAuth(()=>submitOrder(), ph, true);
 };
 
 /* عکس گوشی چند مگابایت است و آپلودش روی اینترنت موبایل طول می‌کشد.
@@ -2037,15 +2060,32 @@ async function sendOTP(phone, code){
 }
 
 const AM=$('authModal');
+$('guestGo').onclick=()=>{
+  const f=guestFallback; guestFallback=null; afterAuth=null;
+  AM.classList.remove('open');
+  if(f) f(null);
+};
 let otpCode='', otpPhone='', otpAt=0, otpTimer=null, afterAuth=null, sentBySMS=false;
 
-function openAuth(cb, prefill){
+/* اگر پنجرهٔ ورود سرِ راهِ ثبت سفارش باز شده باشد، باید راه «بدون ورود»
+   هم باشد. وگرنه هرکس تلگرام یا بله ندارد، همان‌جا گیر می‌کند و سفارشش
+   ثبت نمی‌شود. */
+let guestFallback=null;
+function openAuth(cb, prefill, allowGuest){
   stopBotPoll();
   afterAuth=cb||null;
+  guestFallback = allowGuest ? (cb||null) : null;
+  $('guestBox').style.display = allowGuest ? '' : 'none';
   const u=authUser();
   if(u && (!prefill || u.phone===prefill)){ if(afterAuth){const f=afterAuth;afterAuth=null;f(u)} return }
   authStep(1); paintLoginOptions(); AM.classList.add('open');
-  if(prefill){ $('aPhone').value=faN(prefill); setTimeout(()=>$('aSend').click(),120); return }
+  /* وقتی ورود با پیامک در دسترس نیست، خودکار «کد رو بفرست» را نزن —
+     دکمه‌ای که پنهان است و کاری هم نمی‌تواند بکند. */
+  if(prefill){
+    $('aPhone').value=faN(prefill);
+    if(settings.loginSms!==false) setTimeout(()=>$('aSend').click(),120);
+    return;
+  }
   setTimeout(()=>{try{$('aPhone').focus()}catch(_){}} ,150);
 }
 /* ---- ورود با ربات تلگرام / بله ---- */
@@ -3093,8 +3133,13 @@ function repSet(){
 }
 
 /* --- خروجی اکسل --- */
-function exportXLSX(){
-  if(!window.XLSX){toast('کتابخانهٔ اکسل بارگذاری نشد. اینترنت را بررسی کنید.');return}
+async function exportXLSX(){
+  if(!window.XLSX){
+    toast('در حال آماده کردن فایل…');
+    try{ await loadXLSX() }
+    catch(e){ toast('کتابخانهٔ اکسل بارگذاری نشد. اینترنت را بررسی کنید.'); return }
+  }
+  if(!window.XLSX){toast('کتابخانهٔ اکسل بارگذاری نشد.');return}
   const wb=XLSX.utils.book_new();
   wb.Workbook={Views:[{RTL:true}]};
   const add=(name,rows,widths)=>{
