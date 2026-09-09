@@ -268,9 +268,17 @@ nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-in
 .badge{display:inline-block;font-size:12px;font-weight:700;padding:5px 13px;border-radius:9px;margin-bottom:8px}
 .cat-head h2{font-size:26px;font-weight:800;letter-spacing:-.6px}
 .cat-head p{font-size:13.5px;color:var(--body)}
-.ctrls{display:flex;gap:8px;margin-inline-start:auto}
-.ctrls button{width:40px;height:40px;border-radius:13px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:17px;transition:.15s}
-.ctrls button:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+.cat-head .timer{margin-inline-start:auto}
+/* دکمه‌های جابه‌جایی، دو طرف خودِ ردیف — نه گوشهٔ بالای صفحه. */
+.rail-wrap{position:relative}
+.rail-nav{position:absolute;top:calc(50% - 7px);transform:translateY(-50%);z-index:5;
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);
+  display:grid;place-items:center;font-size:19px;line-height:1;color:var(--ink);
+  box-shadow:0 4px 16px rgba(26,7,19,.16);transition:background .15s,color .15s,border-color .15s,opacity .2s}
+.rail-nav:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+.rail-nav.prev{inset-inline-start:0}
+.rail-nav.next{inset-inline-end:0}
+.rail-nav[hidden]{display:none}
 .rail{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 14px;scrollbar-width:none}
 .rail::-webkit-scrollbar{display:none}
 .card{flex:0 0 calc((100% - 4*16px)/5);scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
@@ -285,13 +293,14 @@ nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-in
 .brand{font-size:11.5px;font-weight:600;color:var(--acc)}
 .card h3{font-size:14.5px;font-weight:700;line-height:1.6;margin-top:2px}
 .desc{font-size:12px;color:var(--body);line-height:1.7;margin:7px 0 12px;flex:1}
-.price{font-weight:800;font-size:16.5px}
-.old{font-size:11.5px;color:var(--body);text-decoration:line-through;font-weight:400;margin-inline-start:6px}
+.price{font-weight:800;font-size:16.5px;white-space:nowrap}
+.old{font-size:11.5px;color:var(--body);text-decoration:line-through;font-weight:400;margin-inline-start:6px;white-space:nowrap}
 .save{font-size:11.5px;font-weight:700;color:var(--red);margin-top:3px}
 .add{margin-top:11px;width:100%;background:var(--tint);color:var(--acc);padding:10px;border-radius:12px;font-size:13.5px;font-weight:700;transition:.15s}
 .add:hover,.add.on{background:var(--acc);color:#fff}
 /* کالای تمام‌شده: هم روی عکس معلوم باشد، هم دکمه‌اش خاموش. */
 .card.out .thumb{filter:grayscale(1);opacity:.55}
+.card.out .off{display:none}          /* تخفیفِ چیزی که نمی‌شود خرید، تبلیغ نشود */
 .card.out h3,.card.out .price{opacity:.75}
 .soldout{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);z-index:3;
   background:rgba(26,7,19,.82);color:#fff;font-size:12.5px;font-weight:800;
@@ -601,7 +610,7 @@ footer #fContact ul{margin-top:4px}
   .trust{grid-template-columns:1fr;gap:9px}
   .trust>div{padding:14px 15px;border-radius:15px;align-items:center}
   .trust .ic{width:38px;height:38px}
-  .cat-head{gap:10px} .ctrls{display:none}
+  .cat-head{gap:10px} .rail-nav{display:none}
   .arts{grid-template-columns:1fr;gap:12px}
   .art{padding:16px;border-radius:16px}
   .band{padding:20px 15px 14px;border-radius:22px}
@@ -1402,10 +1411,12 @@ function section(id,acc,tint,badge,title,sub,items,extra){
   return `<section class="cat" id="${id}" style="--acc:${acc};--tint:${tint}">
     <div class="cat-head"><div>
       <span class="badge" style="background:${tint};color:${acc}">${badge}</span>
-      <h2>${title}</h2><p>${sub}</p></div>${extra||''}
-      <div class="ctrls"><button data-nav="prev" data-c="${id}" aria-label="قبلی">›</button>
-      <button data-nav="next" data-c="${id}" aria-label="بعدی">‹</button></div></div>
-    <div class="rail" data-rail="${id}">${items}</div>
+      <h2>${title}</h2><p>${sub}</p></div>${extra||''}</div>
+    <div class="rail-wrap">
+      <button class="rail-nav prev" data-nav="prev" data-c="${id}" aria-label="قبلی">›</button>
+      <div class="rail" data-rail="${id}">${items}</div>
+      <button class="rail-nav next" data-nav="next" data-c="${id}" aria-label="بعدی">‹</button>
+    </div>
     <div class="dots" data-dots="${id}"></div></section>`;
 }
 function initRail(id){
@@ -1423,7 +1434,12 @@ function initRail(id){
     if(next>end-4)next=dir>0?0:end; if(next<0)next=end;
     rail.scrollTo({left:-next,behavior:'smooth'})};
   rail.addEventListener('scroll',()=>{clearTimeout(rail._t);rail._t=setTimeout(paint,90)},{passive:true});
-  document.querySelectorAll(`[data-nav][data-c="${id}"]`).forEach(b=>b.onclick=()=>{move(b.dataset.nav==='next'?1:-1);restart()});
+  const navs=[...document.querySelectorAll(`[data-nav][data-c="${id}"]`)];
+  navs.forEach(b=>b.onclick=()=>{move(b.dataset.nav==='next'?1:-1);restart()});
+  /* اگر همهٔ کارت‌ها جا شده‌اند، جایی برای رفتن نیست */
+  const showNav=()=>{const need=rail.scrollWidth>rail.clientWidth+4;
+    navs.forEach(b=>b.hidden=!need); dots.hidden=!need};
+  showNav(); addEventListener('resize',showNav);
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let t=null;
   const start=()=>{if(reduce||rail.children.length<3)return;t=setInterval(()=>move(1),3800);timers.push(t)};
