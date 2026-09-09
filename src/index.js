@@ -705,7 +705,17 @@ export default {
         { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
-    if (!p.startsWith('/api/')) return env.ASSETS.fetch(req);
+    if (!p.startsWith('/api/')) {
+      /* اگر تنظیم فایل‌های سایت به ورکر نرسیده باشد، به‌جای خطای گنگ ۱۱۰۱
+         یک پیام روشن بده تا معلوم شود ایراد از کجاست. */
+      if (!env.ASSETS) return new Response(
+        'فایل‌های سایت به ورکر وصل نشده‌اند (ASSETS). خط assets در wrangler.toml ' +
+        'باید بالاتر از همهٔ [بخش]ها باشد، وگرنه داخل بخش قبلی حساب می‌شود.',
+        { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      try { return await env.ASSETS.fetch(req); }
+      catch (e) { return new Response('خطا در خواندن فایل‌های سایت: ' + e.message,
+        { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }); }
+    }
     if (!env.DB) return bad('دیتابیس D1 وصل نشده است. wrangler.toml را بررسی کنید.', 500);
 
     const body = ['POST', 'PATCH', 'PUT'].includes(m)

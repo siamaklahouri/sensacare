@@ -264,6 +264,36 @@ ${B}╭────────────────────────�
     ok(`${d.products.length} محصول، ${d.articles.length} مقاله، ${d.categories.length} دسته`);
   } catch { warn('با اولین بازدید ساخته می‌شود.'); }
 
+  /* ---------- ۸ آزمایش نهایی ----------
+     تا حالا فقط api آزمایش می‌شد. یک‌بار پیش آمد که تنظیم فایل‌های سایت
+     از پیکربندی افتاد: api سالم ماند ولی هیچ صفحه‌ای باز نمی‌شد و استقرار
+     با موفقیت تمام شد. حالا خودِ صفحه هم باز می‌شود؛ اگر باز نشد، استقرار
+     شکست‌خورده حساب می‌شود. */
+  step(8, 'آزمایش باز شدن سایت');
+  const host = (fs.readFileSync('wrangler.toml', 'utf8')
+    .match(/^\s*PUBLIC_HOST\s*=\s*"([^"]+)"/m) || [])[1];
+  const targets = [[url, 'آدرس ورکر']];
+  if (host) targets.push(['https://' + host, 'دامنهٔ ' + host]);
+
+  let broken = 0;
+  for (const [base, label] of targets) {
+    let res;
+    try { res = await fetch(base + '/', { redirect: 'follow' }); }
+    catch (e) { err(`${label}: باز نشد — ${e.message}`); broken++; continue; }
+    const html = await res.text().catch(() => '');
+    if (res.status !== 200) {
+      err(`${label}: کد ${res.status}` + (/error code: 1101/.test(html)
+        ? ' — ورکر خطا داد (۱۱۰۱). معمولاً یعنی تنظیم فایل‌های سایت به ورکر نرسیده.' : ''));
+      broken++;
+    } else if (!/<title|<html/i.test(html)) {
+      err(`${label}: جواب داد ولی صفحهٔ html نبود`); broken++;
+    } else ok(`${label}: باز شد`);
+  }
+  if (broken) {
+    err('سایت بالا نیامد. استقرار ناتمام است.');
+    process.exit(1);
+  }
+
   /* ---------- پایان ---------- */
   say(`
 ${G}${B}╭──────────────────────────────────────────╮
