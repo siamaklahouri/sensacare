@@ -2280,47 +2280,75 @@ function paintCatList(){
 function printLabel(o){
   const due = o.paid ? 0 : o.total;
   const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
-<title>${esc(o.invoice||o.id)}</title><style>
+<title>${esc(o.invoice||o.id)}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+<style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;padding:12mm;color:#000;line-height:1.85}
-.code{font-size:10pt;color:#666;direction:ltr;text-align:left;margin-bottom:10px}
-.to{border:3px solid #000;border-radius:8px;padding:16px 18px}
-.lbl{font-size:10pt;color:#555;margin-bottom:3px}
-.nm{font-size:22pt;font-weight:800;line-height:1.3}
-.ph{font-size:22pt;font-weight:800;direction:ltr;letter-spacing:1px;margin-top:2px}
-.ad{font-size:16pt;margin-top:10px;line-height:1.8}
-.pc{font-size:14pt;margin-top:6px;direction:ltr}
-.due{border:3px solid #000;border-radius:8px;padding:12px 16px;text-align:center;margin-top:12px}
-.due .t{font-size:11pt;color:#444}
-.due .n{font-size:24pt;font-weight:800;margin-top:2px}
-.note{border:2px dashed #666;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:13pt}
+body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:11mm 10mm;
+     -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+
+.card{border:1.5pt solid #0B0B0C;border-radius:14px;overflow:hidden}
+.sec{padding:15px 20px}
+.sec + .sec{border-top:1pt solid #C9C9D0}
+
+.hd{display:flex;justify-content:space-between;align-items:baseline;padding:11px 20px 10px}
+.code{font-size:11.5pt;font-weight:800;color:#0B0B0C;direction:ltr;letter-spacing:1.2px}
+.date{font-size:10pt;color:#8A8A92}
+
+.cap{font-size:9pt;font-weight:800;color:#8A8A92;letter-spacing:1.6px;margin-bottom:8px}
+.nm{font-size:27pt;font-weight:800;letter-spacing:-.7px;line-height:1.2}
+.ph{font-size:22pt;font-weight:700;direction:ltr;letter-spacing:3px;margin-top:7px}
+.rule{height:1pt;background:#E6E6EB;margin:14px 0 13px}
+.ad{font-size:15pt;line-height:1.85;font-weight:500}
+.pc{font-size:12.5pt;color:#55555E;margin-top:10px;direction:ltr;letter-spacing:1.4px}
+
+.due{text-align:center;padding:16px 20px}
+.due .t{font-size:10pt;font-weight:800;color:#8A8A92;letter-spacing:1.4px}
+.due .n{font-size:29pt;font-weight:800;letter-spacing:-.8px;margin-top:5px;line-height:1.1}
+.due.ok .n{font-size:15pt;font-weight:700;color:#3A3A42;letter-spacing:0}
+
+.note{font-size:13pt;line-height:1.8}
+
 @page{size:A5;margin:0}
-@media print{body{padding:10mm}}
 </style></head><body>
-<div class="code">${esc(o.invoice||o.id)}</div>
+<div class="card">
 
-<div class="to">
-  <div class="lbl">گیرنده</div>
-  <div class="nm">${esc(o.name||'—')}</div>
-  <div class="ph">${faN(o.phone||'')}</div>
-  <div class="ad">${esc(CITY_NAME[o.city]||o.city||'')} — ${esc(o.address||'')}</div>
-  ${o.postal?`<div class="pc">کد پستی: ${faN(o.postal)}</div>`:''}
+  <div class="hd">
+    <div class="code">${esc(o.invoice||o.id)}</div>
+    <div class="date">${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</div>
+  </div>
+
+  <div class="sec" style="border-top:1pt solid #C9C9D0">
+    <div class="cap">گیرنده</div>
+    <div class="nm">${esc(o.name||'—')}</div>
+    <div class="ph">${faN(o.phone||'')}</div>
+    <div class="rule"></div>
+    <div class="ad">${esc(CITY_NAME[o.city]||o.city||'')}${o.address?' — '+esc(o.address):''}</div>
+    ${o.postal?`<div class="pc">کد پستی &nbsp;${faN(o.postal)}</div>`:''}
+  </div>
+
+  <div class="sec due ${due?'':'ok'}">
+    ${due
+      ? `<div class="t">مبلغ قابل دریافت از گیرنده</div><div class="n">${money(due)}</div>`
+      : `<div class="n">پرداخت شده — وجهی دریافت نشود</div>`}
+  </div>
+
+  ${o.note?`<div class="sec"><div class="cap">توضیح تحویل</div><div class="note">${esc(o.note)}</div></div>`:''}
+
 </div>
-
-<div class="due">
-  ${due
-    ? `<div class="t">مبلغ قابل دریافت از گیرنده</div><div class="n">${money(due)}</div>`
-    : `<div class="n">پرداخت شده — وجهی دریافت نشود</div>`}
-</div>
-
-${o.note?`<div class="note">${esc(o.note)}</div>`:''}
 </body></html>`;
 
   const fr=document.createElement('iframe');
   fr.style.cssText='position:fixed;right:-10000px;top:0;width:0;height:0;border:0';
   document.body.appendChild(fr);
-  fr.onload=()=>{ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ toast('چاپ ممکن نشد.') }
-    setTimeout(()=>fr.remove(), 60000); };
+  fr.onload=()=>{
+    const w=fr.contentWindow;
+    /* تا فونت کامل نیامده چاپ نکن، وگرنه با فونت پیش‌فرض چاپ می‌شود */
+    const go=()=>{ try{ w.focus(); w.print() }catch(e){ toast('چاپ ممکن نشد.') }
+                   setTimeout(()=>fr.remove(), 60000) };
+    (w.document.fonts ? w.document.fonts.ready : Promise.resolve())
+      .then(()=>setTimeout(go,150)).catch(()=>go());
+  };
   fr.srcdoc=html;
 }
 
