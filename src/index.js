@@ -316,23 +316,30 @@ async function handleUpdate(env, pf, u) {
     return;
   }
 
-  /* «/start کد» — از روی لینک ورودِ سایت آمده */
-  if (text.startsWith('/start ')) {
-    const nonce = text.slice(7).trim();
-    const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', nonce);
-    if (!row || Date.now() - row.created > 10 * 60000) {
+  /* کد ورود سایت — یا از لینک «/start کد» می‌آید، یا کاربر خودش
+     کد را می‌فرستد. حالت دوم لازم است چون همهٔ پیام‌رسان‌ها لینکِ
+     پارامتردار را پشتیبانی نمی‌کنند. */
+  const loginCode = text.startsWith('/start ') ? text.slice(7).trim()
+                  : (/^[a-z0-9]{10,20}$/i.test(text) ? text : '');
+  if (loginCode) {
+    const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', loginCode);
+    if (row && Date.now() - row.created <= 10 * 60000) {
+      await run(env, 'UPDATE bot_logins SET platform=?, chat_id=? WHERE nonce=?', pf, chat, loginCode);
       await botCall(env, pf, 'sendMessage', { chat_id: chat,
-        text: 'این لینک ورود منقضی شده. دوباره از سایت امتحان کن.' });
+        text: 'برای ورود به سایت، دکمهٔ پایین را بزن تا شماره‌ات تأیید شود.',
+        reply_markup: {
+          keyboard: [[{ text: '📱 ارسال شمارهٔ من', request_contact: true }]],
+          resize_keyboard: true, one_time_keyboard: true
+        } });
       return;
     }
-    await run(env, 'UPDATE bot_logins SET platform=?, chat_id=? WHERE nonce=?', pf, chat, nonce);
-    await botCall(env, pf, 'sendMessage', { chat_id: chat,
-      text: 'برای ورود به سایت، دکمهٔ پایین را بزن تا شماره‌ات تأیید شود.',
-      reply_markup: {
-        keyboard: [[{ text: '📱 ارسال شمارهٔ من', request_contact: true }]],
-        resize_keyboard: true, one_time_keyboard: true
-      } });
-    return;
+    /* اگر با /start آمده بود ولی کد معتبر نبود، همین‌جا بگو.
+       اگر کاربر یک متن تصادفی فرستاده، بگذار مسیرهای بعدی امتحان کنند. */
+    if (text.startsWith('/start ')) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'این کد ورود منقضی شده. دوباره از سایت امتحان کن.' });
+      return;
+    }
   }
 
   if (text === '/start') {

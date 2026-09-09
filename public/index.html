@@ -1737,7 +1737,10 @@ async function startBotLogin(pf){
     const link=r.links&&r.links[pf];
     if(!link) throw new Error('این راه ورود فعال نیست');
     window.open(link,'_blank','noopener');
-    $('botLoginHint').textContent='ربات را باز کن و دکمهٔ «ارسال شمارهٔ من» را بزن. همین‌جا منتظرت هستم…';
+    $('botLoginHint').innerHTML='ربات را باز کن و دکمهٔ «ارسال شمارهٔ من» را بزن. همین‌جا منتظرت هستم…'
+      +'<br><span style="opacity:.75">اگر ربات چیزی نپرسید، این کد را برایش بفرست:</span>'
+      +'<br><b dir="ltr" style="display:inline-block;margin-top:4px;letter-spacing:1px;'
+      +'background:var(--soft);padding:3px 9px;border-radius:7px">'+r.nonce+'</b>';
     stopBotPoll();
     const until=Date.now()+10*60000;
     botPoll=setInterval(async()=>{
