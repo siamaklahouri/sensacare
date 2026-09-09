@@ -63,15 +63,55 @@ ${B}╭────────────────────────�
 
   /* ---------- ۱ بررسی توکن ---------- */
   step(1, 'بررسی توکن');
-  if (!process.env.CLOUDFLARE_API_TOKEN)
+  const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+  if (!TOKEN)
     die('CLOUDFLARE_API_TOKEN تنظیم نشده است. راهنمای-توکن-کلادفلر.md را بخوانید.');
-  if (!process.env.CLOUDFLARE_ACCOUNT_ID)
-    warn('CLOUDFLARE_ACCOUNT_ID تنظیم نشده — اگر حسابتان بیش از یک اکانت دارد، خطا می‌گیرید.');
 
-  const who = shq(`${WR} whoami`);
-  if (/Unable to authenticate|Authentication error|10000/i.test(who))
-    die('توکن پذیرفته نشد. دسترسی‌های توکن را با راهنما مطابقت دهید.');
-  ok('توکن سالم است');
+  const CF = 'https://api.cloudflare.com/client/v4';
+  const cf = async path => {
+    const r = await fetch(CF + path, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    return await r.json().catch(() => ({ success: false, errors: [{ message: 'پاسخ نامفهوم از کلادفلر' }] }));
+  };
+  const cfErrors = d => (d.errors || []).map(e => `${e.message} [code: ${e.code}]`).join(' / ') || 'دلیل نامشخص';
+
+  const v = await cf('/user/tokens/verify');
+  if (!v.success) {
+    err('توکن پذیرفته نشد: ' + cfErrors(v));
+    info('اگر code برابر 1000 / 6003 / 6111 است: توکن ناقص یا غلط کپی شده — دوباره کپی کنید.');
+    info('اگر code برابر 9109 است: توکن منقضی یا غیرفعال است — یکی جدید بسازید.');
+    process.exit(1);
+  }
+  ok('توکن سالم است' + (v.result && v.result.status ? ` (${v.result.status})` : ''));
+
+  /* شناسهٔ حساب — اگر ندادند، خودمان پیدا می‌کنیم */
+  if (!process.env.CLOUDFLARE_ACCOUNT_ID) {
+    const a = await cf('/accounts');
+    const list = (a.success && a.result) || [];
+    if (list.length === 1) {
+      process.env.CLOUDFLARE_ACCOUNT_ID = list[0].id;
+      ok(`شناسهٔ حساب خودکار پیدا شد: ${list[0].name}`);
+    } else if (list.length > 1) {
+      err('حساب شما بیش از یک اکانت دارد. CLOUDFLARE_ACCOUNT_ID را دستی بگذارید:');
+      list.forEach(x => info(`${x.name} → ${x.id}`));
+      process.exit(1);
+    } else {
+      warn('شناسهٔ حساب پیدا نشد. اگر خطا گرفتید، CLOUDFLARE_ACCOUNT_ID را دستی بگذارید.');
+      info('دسترسی لازم برای پیدا کردن خودکار: Account Settings → Read');
+    }
+  }
+
+  /* دسترسی D1 را همین‌جا چک کنیم تا وسط کار غافلگیر نشویم */
+  const acct = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (acct) {
+    const d1 = await cf(`/accounts/${acct}/d1/database?per_page=1`);
+    if (!d1.success) {
+      err('توکن به D1 دسترسی ندارد: ' + cfErrors(d1));
+      info('در صفحهٔ توکن، این ردیف را اضافه کنید:  Account → D1 → Edit');
+      info('راهنمای-توکن-کلادفلر.md ← قدم ۴');
+      process.exit(1);
+    }
+    ok('دسترسی D1 تأیید شد');
+  }
 
   /* ---------- ۲ دیتابیس D1 ---------- */
   step(2, 'دیتابیس D1');
