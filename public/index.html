@@ -320,6 +320,14 @@ footer li{list-style:none;font-size:13.5px;margin-bottom:9px;color:#B79EAB}
 footer .logo b{color:#fff}
 .f-bottom{border-top:1px solid rgba(255,255,255,.12);margin-top:36px;padding-top:18px;font-size:12.5px;color:#9C8492;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .f-bottom button,.f-bottom a{color:#9C8492;font-size:12.5px;text-decoration:underline}
+/* درِ ورود مدیر: یک کلید کوچک به‌جای متن تنها. */
+#adminLink{display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+  padding:6px 12px 6px 10px;border:1px solid rgba(255,255,255,.16);border-radius:999px;
+  transition:color .2s,border-color .2s,background .2s}
+#adminLink svg{width:15px;height:15px;flex:none;transition:transform .25s}
+#adminLink:hover{color:#fff;border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.07)}
+#adminLink:hover svg{transform:rotate(-18deg)}
+#adminLink:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 
 /* ===== overlays, drawer, sheets ===== */
 .overlay{position:fixed;inset:0;background:rgba(26,7,19,.5);opacity:0;visibility:hidden;transition:.25s;z-index:90}
@@ -805,7 +813,7 @@ footer #fContact ul{margin-top:4px}
       <div class="badge2"><span style="font-size:19px">✅</span><span><b>ضمانت اصالت</b>کد رهگیری روی هر جعبه</span></div>
       <div class="badge2"><span style="font-size:19px">↩️</span><span><b>مرجوعی ۷ روزه</b>بستهٔ باز نشده</span></div>
     </div>
-    <div class="f-bottom"><span>© ۱۴۰۵ سِنسا. قیمت‌ها به تومان است. <b style="opacity:.7">v8</b></span><a id="adminLink" href="#admin" target="_blank" rel="noopener">ورود مدیر</a></div>
+    <div class="f-bottom"><span>© ۱۴۰۵ سِنسا. قیمت‌ها به تومان است. <b style="opacity:.7">v8</b></span><a id="adminLink" href="#admin" target="_blank" rel="noopener" title="ورود مدیر" aria-label="ورود مدیر"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15.5" r="3.6"/><path d="M10.6 12.9 20 3.5"/><path d="M16.4 7.1l2.6 2.6"/><path d="M13.8 9.7l2 2"/></svg><span>ورود مدیر</span></a></div>
   </div>
 </footer>
 
