@@ -515,12 +515,16 @@ const ZONE = {
   khorasan_j:'z3', khorasan_sh:'z3'
 };
 
-async function shipFor(env, city, goods) {
+/* دو روش ارسال:
+     پست پیشتاز — همهٔ ایران
+     ارسال سریع — فقط تهران و کرج
+   قیمت اینجا حساب می‌شود نه در مرورگر، تا از بیرون دستکاری نشود. */
+async function shipFor(env, city, goods, method) {
   const z = ZONE[city];
   if (!z) return null;
-  const express = await getSetting(env, 'shipExpress', 400000);
-  const zones = await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 });
-  const cost = z === 'ex' ? express : (zones[z] ?? 320000);
+  const isEx = method === 'express' && z === 'ex';
+  const cost = isEx ? await getSetting(env, 'shipExpress', 400000)
+                    : await getSetting(env, 'shipPost', 250000);
   const free = await getSetting(env, 'freeOver', 0);
   return (free > 0 && goods >= free) ? 0 : cost;
 }
@@ -741,15 +745,14 @@ export default {
         }
         if (!items.length) return bad('کالای معتبری در سبد نیست');
 
-        /* هزینه و روش ارسال از روی استان محاسبه می‌شود، نه از مرورگر */
-        const ship = await shipFor(env, body.city, goods);
-        if (ship === null) return bad('استان انتخاب‌شده معتبر نیست');
-        const isEx = ZONE[body.city] === 'ex';
-        const okMethods = isEx
-          ? { peyk:'پیک موتوری سِنسا', alopeyk:'الوپیک', snapp:'اسنپ‌موتور' }
-          : { post:'پست پیشتاز' };
-        const methodId = okMethods[body.method] ? body.method : Object.keys(okMethods)[0];
+        /* روش و هزینهٔ ارسال از روی استان تعیین می‌شود، نه از مرورگر */
+        const okMethods = ZONE[body.city] === 'ex'
+          ? { post: 'پست پیشتاز', express: 'ارسال سریع' }
+          : { post: 'پست پیشتاز' };
+        const methodId = okMethods[body.method] ? body.method : 'post';
         const methodName = okMethods[methodId];
+        const ship = await shipFor(env, body.city, goods, methodId);
+        if (ship === null) return bad('استان انتخاب‌شده معتبر نیست');
         const id = 'S' + Date.now().toString().slice(-8);
         const invoice = await nextInvoice(env);
         await run(env, `INSERT INTO orders(id,created,phone,name,city,address,postal,note,lat,lng,
@@ -776,6 +779,9 @@ export default {
         else
           await run(env, 'UPDATE users SET name=?,city=?,address=?,postal=? WHERE phone=?',
             body.name || '', body.city || '', body.address || '', body.postal || '', body.phone);
+
+        if (body.wantsInvoice)
+          await run(env, 'INSERT OR REPLACE INTO order_extras(order_id,wants_invoice) VALUES(?,1)', id);
 
         ctx.waitUntil(sendInvoice(env, id).catch(e => console.log('invoice', e.message)));
         return json({ ok: true, id, invoice, goods, ship, total: goods + ship });
@@ -873,8 +879,12 @@ export default {
 
         if (p === '/api/admin/data') {
           const orders = await all(env, 'SELECT * FROM orders ORDER BY created DESC LIMIT 500');
-          for (const o of orders)
+          const wants = new Set((await all(env, 'SELECT order_id FROM order_extras WHERE wants_invoice=1'))
+            .map(r => r.order_id));
+          for (const o of orders) {
             o.items = await all(env, 'SELECT * FROM order_items WHERE order_id=?', o.id);
+            o.wantsInvoice = wants.has(o.id) ? 1 : 0;
+          }
           return json({
             products: await all(env, 'SELECT * FROM products ORDER BY pos'),
             categories: await all(env, 'SELECT * FROM categories ORDER BY pos'),

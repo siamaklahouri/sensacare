@@ -14,3 +14,8 @@ CREATE TABLE IF NOT EXISTS bot_logins(
   status TEXT DEFAULT 'pending');
 
 CREATE INDEX IF NOT EXISTS idx_bot_logins_created ON bot_logins(created);
+
+-- مشتری در مرحلهٔ سفارش می‌تواند بخواهد فاکتور چاپی داخل بسته باشد
+CREATE TABLE IF NOT EXISTS order_extras(
+  order_id TEXT PRIMARY KEY,
+  wants_invoice INTEGER DEFAULT 0);

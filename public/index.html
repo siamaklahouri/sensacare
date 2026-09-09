@@ -672,6 +672,14 @@ body.admin-mode{background:var(--ink)}
             <div id="map"></div>
           </div>
           <div class="full"><label for="cNote">چیزی هست پیک بدونه؟</label><input id="cNote" placeholder="مثلاً زنگ نزن، تماس بگیر"></div>
+          <div class="full">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:600">
+              <input type="checkbox" id="cWantInv" style="width:19px;height:19px;margin-top:3px;flex:none;accent-color:var(--red)">
+              <span>فاکتور کاغذی داخل بسته باشد
+                <span style="display:block;font-weight:400;font-size:12.5px;color:var(--body);margin-top:2px">
+                  اگر برای حسابداری یا بازگشت کالا لازمش داری.</span></span>
+            </label>
+          </div>
         </div>
         <button class="btn-main" id="toShip" style="width:100%;margin-top:20px">ادامه</button>
       </div>
@@ -1458,7 +1466,8 @@ async function submitOrder(){
   const payload={
     phone:enN($('cPhone').value).replace(/[\s-]/g,''), name:$('cName').value.trim(),
     city, address:$('cAddr').value.trim(), postal:enN($('cPost').value).replace(/[\s-]/g,''),
-    note:$('cNote').value.trim(), lat:pin?pin.lat:null, lng:pin?pin.lng:null,
+    note:$('cNote').value.trim(), wantsInvoice: $('cWantInv').checked?1:0,
+    lat:pin?pin.lat:null, lng:pin?pin.lng:null,
     method:m.id, methodName:m.name, ship,
     items:[...cart].map(([id,q])=>({id,q})),
     guest: authUser()?0:1, payMethod
@@ -2277,6 +2286,108 @@ function paintCatList(){
    مهم‌تر از همه نام کالاها. اگر این‌ها بیایند، هر کسی که بسته را
    جابه‌جا می‌کند می‌فهمد داخلش چیست — و کل قول «بسته‌بندی بی‌نشان»
    بی‌معنی می‌شود. */
+/* فاکتور فروش — داخل بسته گذاشته می‌شود، نه رویش.
+   چون مشتری خودش خواسته و کسی جز او بازش نمی‌کند، اینجا نام کالاها
+   و نام فروشگاه می‌آید. برچسب بیرونی همچنان چیزی لو نمی‌دهد. */
+function printInvoice(o){
+  const items=(o.items||[]);
+  const goods=items.reduce((s,i)=>s+(+i.pr||0)*(+i.q||0),0);
+  const ship=(+o.ship||0);
+  const rows=items.map((i,n)=>`<tr>
+      <td class="c">${fa(n+1)}</td>
+      <td>${esc(i.n)}</td>
+      <td class="c">${fa(i.q)}</td>
+      <td class="l">${money(i.pr)}</td>
+      <td class="l">${money((+i.pr||0)*(+i.q||0))}</td></tr>`).join('');
+  const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<title>فاکتور ${esc(o.invoice||o.id)}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:15mm 14mm;
+     font-size:11pt;line-height:1.85;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:2pt solid #0B0B0C;padding-bottom:12px;margin-bottom:18px}
+.shop{font-size:22pt;font-weight:800;letter-spacing:-.6px}
+.sub{font-size:10pt;color:#6B6B73;margin-top:2px}
+.ttl{text-align:left}
+.ttl b{font-size:13pt;display:block}
+.ttl .no{font-size:17pt;font-weight:800;direction:ltr;letter-spacing:1px}
+.ttl .dt{font-size:10pt;color:#6B6B73}
+.who{border:1pt solid #C9C9D0;border-radius:10px;padding:12px 16px;margin-bottom:16px}
+.cap{font-size:9pt;font-weight:800;color:#8A8A92;letter-spacing:1.4px;margin-bottom:5px}
+.who .nm{font-size:13.5pt;font-weight:700}
+.who .ln{font-size:11pt;margin-top:3px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1pt solid #C9C9D0;padding:8px 10px}
+th{background:#F3F3F6;font-size:10pt;font-weight:800;color:#3A3A42}
+td.c{text-align:center;width:44px}td.l{text-align:left;white-space:nowrap}
+tfoot td{border:none;padding:6px 10px}
+tfoot .k{text-align:left;color:#55555E}
+tfoot .v{text-align:left;font-weight:700;white-space:nowrap;width:150px}
+tfoot .tot .k,tfoot .tot .v{font-size:14pt;font-weight:800;border-top:2pt solid #0B0B0C;padding-top:10px}
+.pay{margin-top:16px;border:1.5pt solid #0B0B0C;border-radius:10px;padding:10px 16px;
+     display:flex;justify-content:space-between;font-size:11.5pt;font-weight:700}
+.ft{margin-top:22px;padding-top:10px;border-top:1pt solid #E6E6EB;
+    font-size:9.5pt;color:#8A8A92;text-align:center;line-height:1.9}
+@page{size:A4;margin:0}
+@media print{th{background:#F3F3F6 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+
+<div class="hd">
+  <div><div class="shop">${esc(settings.shopName||'سِنسا')}</div>
+       <div class="sub">فاکتور فروش</div></div>
+  <div class="ttl"><b>شمارهٔ فاکتور</b>
+    <div class="no">${esc(o.invoice||o.id)}</div>
+    <div class="dt">${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</div></div>
+</div>
+
+<div class="who">
+  <div class="cap">خریدار</div>
+  <div class="nm">${esc(o.name||'—')}</div>
+  <div class="ln" dir="ltr" style="text-align:right">${faN(o.phone||'')}</div>
+  <div class="ln">${esc(CITY_NAME[o.city]||o.city||'')}${o.address?' — '+esc(o.address):''}</div>
+  ${o.postal?`<div class="ln">کد پستی: ${faN(o.postal)}</div>`:''}
+</div>
+
+<table>
+  <thead><tr><th>ردیف</th><th>شرح کالا</th><th>تعداد</th><th>قیمت واحد</th><th>مبلغ</th></tr></thead>
+  <tbody>${rows||'<tr><td colspan="5" style="text-align:center">—</td></tr>'}</tbody>
+  <tfoot>
+    <tr><td colspan="3"></td><td class="k">جمع کالاها</td><td class="v">${money(goods)}</td></tr>
+    <tr><td colspan="3"></td><td class="k">هزینهٔ ارسال (${esc(o.method_name||o.methodName||'—')})</td>
+        <td class="v">${ship?money(ship):'رایگان'}</td></tr>
+    <tr class="tot"><td colspan="3"></td><td class="k">مبلغ کل</td><td class="v">${money(o.total)}</td></tr>
+  </tfoot>
+</table>
+
+<div class="pay">
+  <span>وضعیت پرداخت</span>
+  <span>${o.paid?'پرداخت شده':'پرداخت نشده — '+money(o.total)}</span>
+</div>
+
+<div class="ft">این فاکتور به درخواست خریدار صادر شده است.<br>
+از خرید شما سپاسگزاریم.</div>
+</body></html>`;
+  printSheet(html);
+}
+
+/* چاپ در یک قاب پنهان — تا مسدودکنندهٔ پنجره‌ها جلویش را نگیرد،
+   و تا وقتی فونت نیامده چاپ شروع نشود. */
+function printSheet(html){
+  const fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;right:-10000px;top:0;width:0;height:0;border:0';
+  document.body.appendChild(fr);
+  fr.onload=()=>{
+    const w=fr.contentWindow;
+    const go=()=>{ try{ w.focus(); w.print() }catch(e){ toast('چاپ ممکن نشد.') }
+                   setTimeout(()=>fr.remove(), 60000) };
+    (w.document.fonts ? w.document.fonts.ready : Promise.resolve())
+      .then(()=>setTimeout(go,150)).catch(()=>go());
+  };
+  fr.srcdoc=html;
+}
+
 function printLabel(o){
   const due = o.paid ? 0 : o.total;
   const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
@@ -2338,18 +2449,7 @@ body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:11m
 </div>
 </body></html>`;
 
-  const fr=document.createElement('iframe');
-  fr.style.cssText='position:fixed;right:-10000px;top:0;width:0;height:0;border:0';
-  document.body.appendChild(fr);
-  fr.onload=()=>{
-    const w=fr.contentWindow;
-    /* تا فونت کامل نیامده چاپ نکن، وگرنه با فونت پیش‌فرض چاپ می‌شود */
-    const go=()=>{ try{ w.focus(); w.print() }catch(e){ toast('چاپ ممکن نشد.') }
-                   setTimeout(()=>fr.remove(), 60000) };
-    (w.document.fonts ? w.document.fonts.ready : Promise.resolve())
-      .then(()=>setTimeout(go,150)).catch(()=>go());
-  };
-  fr.srcdoc=html;
+  printSheet(html);
 }
 
 function repOrders(){
@@ -2379,7 +2479,11 @@ function repOrders(){
       </select></td>
       <td><input data-otr="${o.id}" value="${esc(o.tracking||'')}" placeholder="اختیاری"
         style="padding:6px 9px;font-size:12.5px;width:130px;direction:ltr"></td>
-      <td><button class="mini" data-print="${o.id}">🖨 برچسب</button></td></tr>`).join('')}
+      <td style="white-space:nowrap">
+        <button class="mini" data-print="${o.id}">🖨 برچسب</button>
+        <button class="mini" data-inv="${o.id}" title="${o.wantsInvoice?'مشتری فاکتور خواسته':'مشتری فاکتور نخواسته'}"
+          style="margin-inline-start:5px${o.wantsInvoice?';border-color:#16A34A;color:#166534;font-weight:800':''}"
+          >🧾 فاکتور${o.wantsInvoice?' ●':''}</button></td></tr>`).join('')}
     </tbody></table>`:'<p class="empty">هنوز سفارشی ثبت نشده است.</p>'}`;
   $('xl2').onclick=exportXLSX;
   $('csv').onclick=()=>{
@@ -2398,6 +2502,8 @@ function repOrders(){
   });
   C.querySelectorAll('[data-print]').forEach(b=>b.onclick=()=>{
     const o=orders.find(x=>x.id===b.dataset.print); if(o) printLabel(o) });
+  C.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>{
+    const o=orders.find(x=>x.id===b.dataset.inv); if(o) printInvoice(o) });
   C.querySelectorAll('[data-mark]').forEach(b=>b.onclick=async()=>{
     const o=orders.find(x=>x.id===b.dataset.mark); if(!o)return;
     if(!confirm(`پرداخت سفارش ${o.id} به مبلغ ${money(o.total)} دریافت شد؟`))return;
