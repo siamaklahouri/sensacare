@@ -667,9 +667,9 @@ footer #fContact ul{margin-top:4px}
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="pill"><i></i> تا ساعت ۴ سفارش بدی، امروز می‌رسه</span>
-      <h1>می‌رسه دستت، <u>بدون اینکه کسی بفهمه</u> چی سفارش دادی.</h1>
-      <p>کاندوم و ژل اصل، با تاریخ انقضای معتبر. توی یه کارتن ساده و بی‌نشون می‌فرستیم — نه روی جعبه چیزی نوشته می‌شه، نه روی فاکتور، نه توی پیامک.</p>
+      <span class="pill" id="heroPill"><i></i> تا ساعت ۴ سفارش بدی، امروز می‌رسه</span>
+      <h1 id="heroTitle">می‌رسه دستت، <u>بدون اینکه کسی بفهمه</u> چی سفارش دادی.</h1>
+      <p id="heroSub">کاندوم و ژل اصل، با تاریخ انقضای معتبر. توی یه کارتن ساده و بی‌نشون می‌فرستیم — نه روی جعبه چیزی نوشته می‌شه، نه روی فاکتور، نه توی پیامک.</p>
       <div class="hero-actions">
         <a class="btn-main" href="#deals">بزن بریم خرید</a>
         <button class="btn-ghost" id="askBtn2">نمی‌دونم کدوم به دردم می‌خوره</button>
@@ -1319,7 +1319,7 @@ async function boot() {
   try {
     const d = await req('/api/bootstrap');
     ONLINE = true;
-    setTimeout(()=>{try{paintContact()}catch(_){}} ,0);
+    setTimeout(()=>{try{paintContact();paintHero()}catch(_){}} ,0);
     setTimeout(()=>{try{seoData()}catch(_){}} ,0);
     setTimeout(()=>{try{routeFromPath(false)}catch(_){}} ,0);
     if (d.categories?.length) cats = d.categories;
@@ -2936,6 +2936,14 @@ function repSet(){
         <input id="s_free" type="number" value="${settings.freeOver||0}">
         <p class="hint">اگر مبلغ خرید از این عدد بیشتر شود، هزینهٔ ارسال صفر می‌شود.</p></div>
       <div><label>نام فروشگاه</label><input id="s_name" value="${esc(settings.shopName)}"></div>
+      <div style="grid-column:1/-1"><label>نوار بالای تیتر (صفحهٔ اصلی)</label>
+        <input id="s_hpill" value="${esc((settings.hero||{}).pill||HERO_DEFAULT.pill)}">
+        <p class="hint">همان قابِ کوچک بالای تیتر. اگر خالی بگذارید، متن پیش‌فرض می‌ماند.</p></div>
+      <div style="grid-column:1/-1"><label>تیتر اصلی</label>
+        <input id="s_htitle" value="${esc((settings.hero||{}).title||HERO_DEFAULT.title)}">
+        <p class="hint">هرچه بین دو ستاره بگذارید زیرخط‌دار می‌شود. مثال: می‌رسه دستت، *بدون اینکه کسی بفهمه* چی سفارش دادی.</p></div>
+      <div style="grid-column:1/-1"><label>متن زیر تیتر</label>
+        <textarea id="s_hsub" style="min-height:80px">${esc((settings.hero||{}).sub||HERO_DEFAULT.sub)}</textarea></div>
       <div><label>شمارهٔ کارت برای کارت‌به‌کارت</label>
         <input id="s_card" value="${esc((settings.card||{}).number||'')}" dir="ltr" inputmode="numeric"
                placeholder="6037-9911-2233-4455">
@@ -3018,6 +3026,8 @@ function repSet(){
     settings.shipExpress=+$('s_ex').value||SHIP_EXPRESS;
     settings.shipPost=+$('s_post').value||SHIP_POST;
     settings.shopName=$('s_name').value.trim()||'سِنسا';
+    settings.hero={pill:$('s_hpill').value.trim(), title:$('s_htitle').value.trim(),
+                   sub:$('s_hsub').value.trim()};
     settings.aiKey=$('s_key').value.trim();
     settings.telegram=$('s_tg').value.trim().replace('@','')||'siamak_la';
     settings.trust={enamad:$('s_enamad').value.trim(),samandehi:$('s_saman').value.trim()};
@@ -3025,11 +3035,11 @@ function repSet(){
                    holder:$('s_cardholder').value.trim(), bank:$('s_cardbank').value.trim()};
     settings.contact={phone:$('s_phone').value.trim(), email:$('s_email').value.trim(),
                       hours:$('s_hours').value.trim()};
-    saveSet(); paintBadges(); paintContact();
+    saveSet(); paintBadges(); paintContact(); paintHero();
     if(ONLINE) req('/api/admin/settings',{method:'POST',asAdmin:true,
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
             shipExpress:settings.shipExpress,shipPost:settings.shipPost,trust:settings.trust,
-            card:settings.card, contact:settings.contact}}).catch(()=>{});
+            card:settings.card, contact:settings.contact, hero:settings.hero}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){
     products=JSON.parse(JSON.stringify(DEFAULTS));save();render();updateCart();toast('بازگردانی شد.')}};
@@ -3265,6 +3275,29 @@ function seoData(){
   }catch(e){}
 }
 
+/* سه متن بالای صفحه از پنل می‌آید. اگر چیزی ثبت نشده باشد، همان متنی
+   که در خودِ صفحه نوشته شده سر جایش می‌ماند — پس هم گوگل می‌بیندش، هم
+   اگر جاوااسکریپت اجرا نشود صفحه خالی نمی‌ماند.
+   در تیتر، هرچه بین دو ستاره باشد زیرخط‌دار می‌شود. */
+const HERO_DEFAULT = {
+  pill: 'تا ساعت ۴ سفارش بدی، امروز می‌رسه',
+  title: 'می‌رسه دستت، *بدون اینکه کسی بفهمه* چی سفارش دادی.',
+  sub: 'کاندوم و ژل اصل، با تاریخ انقضای معتبر. توی یه کارتن ساده و بی‌نشون می‌فرستیم — نه روی جعبه چیزی نوشته می‌شه، نه روی فاکتور، نه توی پیامک.'
+};
+function paintHero(){
+  const h=settings.hero||{};
+  if(h.pill!=null&&h.pill!==''){
+    const el=$('heroPill'); if(el) el.innerHTML='<i></i> '+esc(h.pill);
+  }
+  if(h.title!=null&&h.title!==''){
+    const el=$('heroTitle');
+    if(el) el.innerHTML=esc(h.title).replace(/\*([^*]+)\*/g,'<u>$1</u>');
+  }
+  if(h.sub!=null&&h.sub!==''){
+    const el=$('heroSub'); if(el) el.textContent=h.sub;
+  }
+}
+
 function paintContact(){
   const el=$('fContact'); if(!el) return;
   const bots=settings.botLogin||{}, c=settings.contact||{};
@@ -3293,7 +3326,7 @@ function paintBadges(){
 }
 $('cCity').innerHTML='<option value="">انتخاب کنید…</option>'+
   PROVINCES.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('');
-restoreCart(); boot(); paintBadges(); paintContact();
+restoreCart(); boot(); paintBadges(); paintContact(); paintHero();
 
 /* ============ صفحهٔ مدیریت ============ */
 function enterAdmin(){
