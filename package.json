@@ -1,0 +1,17 @@
+{
+  "name": "sensa-cf",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "node setup.js",
+    "deploy": "node deploy.js",
+    "update": "wrangler deploy",
+    "sms": "node sms.js",
+    "backup": "node backup.js",
+    "dev": "wrangler dev",
+    "bots": "node bots.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

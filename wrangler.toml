@@ -1,0 +1,23 @@
+name = "sensa"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# فایل‌های سایت (index.html)
+assets = { directory = "./public", binding = "ASSETS" }
+
+# دیتابیس — database_id را از خروجی دستور ساخت D1 اینجا بگذارید
+[[d1_databases]]
+binding = "DB"
+database_name = "sensa-db"
+database_id = "اینجا-شناسه-دیتابیس-را-بگذارید"
+
+[vars]
+ADMIN_USER = "admin"
+# رمز و کلیدها را با دستور secret بگذارید، نه اینجا:
+#   npx wrangler secret put ADMIN_PASS
+#   npx wrangler secret put JWT_SECRET
+#   npx wrangler secret put SMS_PROVIDER
+#   npx wrangler secret put SMS_API_KEY
+#   npx wrangler secret put SMS_TEMPLATE
+
+# ربات‌ها با دستور  npm run bots  تنظیم می‌شوند

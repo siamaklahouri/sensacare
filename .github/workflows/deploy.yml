@@ -1,0 +1,49 @@
+# استقرار خودکار سِنسا روی Cloudflare Workers
+# هر بار که روی گیت‌هاب چیزی تغییر کند، سایت خودش به‌روز می‌شود.
+#
+# قبلش در GitHub → Settings → Secrets and variables → Actions
+# این دو تا را بسازید:
+#   CLOUDFLARE_API_TOKEN
+#   CLOUDFLARE_ACCOUNT_ID
+# و اگر خواستید، این‌ها را هم:
+#   ADMIN_PASS, JWT_SECRET, D1_DATABASE_ID,
+#   SMS_PROVIDER, SMS_API_KEY, SMS_TEMPLATE,
+#   TELEGRAM_BOT_TOKEN, BALE_BOT_TOKEN, BOT_SECRET
+
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+      - claude/health-products-cloudflare-worker-5z2moc
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: نصب ابزارها
+        run: npm install --no-audit --no-fund
+
+      - name: استقرار
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          D1_DATABASE_ID:        ${{ secrets.D1_DATABASE_ID }}
+          ADMIN_USER:            ${{ vars.ADMIN_USER }}
+          ADMIN_PASS:            ${{ secrets.ADMIN_PASS }}
+          JWT_SECRET:            ${{ secrets.JWT_SECRET }}
+          SMS_PROVIDER:          ${{ secrets.SMS_PROVIDER }}
+          SMS_API_KEY:           ${{ secrets.SMS_API_KEY }}
+          SMS_TEMPLATE:          ${{ secrets.SMS_TEMPLATE }}
+          TELEGRAM_BOT_TOKEN:    ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BALE_BOT_TOKEN:        ${{ secrets.BALE_BOT_TOKEN }}
+          BOT_SECRET:            ${{ secrets.BOT_SECRET }}
+        run: npm run deploy
