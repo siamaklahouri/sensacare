@@ -61,6 +61,11 @@ ${B}╭────────────────────────�
 │   سِنسا — استقرار با توکن کلادفلر        │
 ╰──────────────────────────────────────────╯${R}`);
 
+  /* ---------- ۰ نسخهٔ Node ---------- */
+  const major = Number(process.versions.node.split('.')[0]);
+  if (major < 22)
+    die(`wrangler به Node نسخهٔ ۲۲ یا بالاتر نیاز دارد. شما ${process.versions.node} دارید.`);
+
   /* ---------- ۱ بررسی توکن ---------- */
   step(1, 'بررسی توکن');
   const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
@@ -149,18 +154,28 @@ ${B}╭────────────────────────�
   }
 
   /* ---------- ۴ جدول‌ها ---------- */
+  /* schema.sql با DROP TABLE شروع می‌شود، پس اجرایش داده‌ها را پاک می‌کند.
+     فقط وقتی اجرایش می‌کنیم که *مطمئن* باشیم دیتابیس خالی است. اگر نتوانستیم
+     مطمئن شویم، هیچ کاری نمی‌کنیم و با خطا می‌ایستیم — سکوت اینجا یعنی
+     احتمال پاک شدن کل فروشگاه. */
   step(3, 'جدول‌های دیتابیس');
-  const q = shq(`${WR} d1 execute sensa-db --remote --json ` +
+  const probe = shq(`${WR} d1 execute sensa-db --remote --json ` +
     `--command "SELECT name FROM sqlite_master WHERE type='table' AND name='products'"`);
-  const res = parseJSON(q, '[');
-  const hasTables = !!(res && res[0] && res[0].results && res[0].results.length);
+  const res = parseJSON(probe, '[');
+  if (!res || !res[0] || !Array.isArray(res[0].results)) {
+    err('نتوانستم بفهمم جدول‌ها هستند یا نه. برای امنیت داده‌ها همین‌جا ایستادم.');
+    info('پاسخ کلادفلر:'); say(probe.slice(-700));
+    process.exit(1);
+  }
+  const hasTables = res[0].results.length > 0;
 
   if (hasTables && process.env.RESET_DB !== 'yes') {
     ok('جدول‌ها از قبل هستند — دست نخوردند');
   } else {
     if (hasTables) warn('RESET_DB=yes — همهٔ داده‌ها پاک می‌شود!');
-    const out = shq(`${WR} d1 execute sensa-db --remote --file=./schema.sql -y`);
-    if (/error/i.test(out) && !/already exists/i.test(out)) {
+    const out = shq(`${WR} d1 execute sensa-db --remote --json --file=./schema.sql -y`);
+    const done = parseJSON(out, '[');
+    if (!done) {
       err('ساخت جدول‌ها انجام نشد:'); say(out.slice(-900)); process.exit(1);
     }
     ok('جدول‌ها ساخته شدند');
