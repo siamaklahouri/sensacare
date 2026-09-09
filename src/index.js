@@ -904,10 +904,21 @@ export default {
     /* تا حالا سایت robots.txt خودش را نداشت و آنچه سرو می‌شد نسخهٔ آمادهٔ
        کلادفلر بود. آن نسخه نقشهٔ سایت را به گوگل معرفی نمی‌کند، یعنی
        گوگل باید همهٔ صفحه‌ها را خودش پیدا می‌کرد. */
+    /* پنل مدیریت دیگر دکمه‌ای در صفحه ندارد؛ فقط با زدن همین آدرس
+       باز می‌شود. همان index.html داده می‌شود و خودِ صفحه پنل را
+       بالا می‌آورد. */
+    if (/^\/admin\/?$/.test(p)) {
+      const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+      return new Response(await res.text(), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8',
+                   'X-Robots-Tag': 'noindex, nofollow',
+                   'Cache-Control': 'no-store' } });
+    }
+
     if (p === '/robots.txt') {
       const base = `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${base}/sitemap.xml\n`,
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
