@@ -290,6 +290,15 @@ nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-in
 .save{font-size:11.5px;font-weight:700;color:var(--red);margin-top:3px}
 .add{margin-top:11px;width:100%;background:var(--tint);color:var(--acc);padding:10px;border-radius:12px;font-size:13.5px;font-weight:700;transition:.15s}
 .add:hover,.add.on{background:var(--acc);color:#fff}
+/* کالای تمام‌شده: هم روی عکس معلوم باشد، هم دکمه‌اش خاموش. */
+.card.out .thumb{filter:grayscale(1);opacity:.55}
+.card.out h3,.card.out .price{opacity:.75}
+.soldout{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);z-index:3;
+  background:rgba(26,7,19,.82);color:#fff;font-size:12.5px;font-weight:800;
+  padding:7px 0;text-align:center;letter-spacing:.3px}
+.stockline{font-size:11.5px;font-weight:700;margin-top:8px}
+.add[disabled]{background:var(--line);color:var(--body);cursor:not-allowed}
+.add[disabled]:hover{background:var(--line);color:var(--body)}
 .dots{display:flex;gap:6px;justify-content:center}
 .dots i{width:7px;height:7px;border-radius:99px;background:var(--line);cursor:pointer;transition:.2s}
 .dots i.on{width:22px;background:var(--acc)}
@@ -1366,16 +1375,27 @@ window.__art=art;
 /* ============ rails ============ */
 const catsEl=document.getElementById('cats'), promoEl=document.getElementById('promo');
 const timers=[];
+/* سه حالت موجودی، همان‌هایی که در صفحهٔ خود محصول هم نشان داده می‌شود:
+   تمام‌شده، رو به اتمام، موجود. */
+function stockState(p){
+  const n = p.stock===undefined ? 40 : Number(p.stock)||0;
+  if(n<=0) return {n, out:true,  txt:'ناموجود', color:'#B91C1C'};
+  if(n<=5) return {n, out:false, txt:`فقط ${fa(n)} تا مونده`, color:'#B45309'};
+  return {n, out:false, txt:'', color:''};
+}
 function cardHTML(p,badge){
-  return `<article class="card">
+  const st=stockState(p);
+  return `<article class="card${st.out?' out':''}">
     <div class="thumb">${badge||''}${p.tag&&!badge?`<span class="tag">${esc(p.tag)}</span>`:''}
+      ${st.out?'<span class="soldout">ناموجود</span>':''}
       ${p.img?`<img src="${esc(p.img)}" alt="${esc(p.n)}" loading="lazy" onerror="this.outerHTML=window.__art('${p.c}')">`:art(p.c)}</div>
     <div class="body">
       <span class="brand">${esc(p.b)}</span><h3>${esc(p.n)}</h3>
       <p class="desc">${esc(p.d)}</p>
       <div><span class="price">${money(p.pr)}</span>${p.old?`<span class="old">${money(p.old)}</span>`:''}</div>
       ${p.old&&p.old>p.pr?`<span class="save">${money(p.old-p.pr)} کمتر</span>`:''}
-      <button class="add" data-id="${p.id}">اضافه کن</button>
+      ${st.txt?`<div class="stockline" style="color:${st.color}">● ${st.txt}</div>`:''}
+      <button class="add" data-id="${p.id}"${st.out?' disabled':''}>${st.out?'ناموجود':'اضافه کن'}</button>
     </div></article>`;
 }
 function section(id,acc,tint,badge,title,sub,items,extra){
@@ -1448,6 +1468,9 @@ function render(){
 const cart=new Map();
 const drawer=document.getElementById('drawer'),overlay=document.getElementById('overlay'),dBody=document.getElementById('dBody');
 function onAdd(e){const b=e.target.closest('.add');if(!b)return;
+  /* اگر بین باز بودن صفحه و کلیک، کالا تمام شده باشد */
+  const pr=products.find(x=>x.id===b.dataset.id);
+  if(pr&&stockState(pr).out){toast('این کالا فعلاً ناموجود است.');return}
   cart.set(b.dataset.id,(cart.get(b.dataset.id)||0)+1);
   b.textContent='اضافه شد ✓';b.classList.add('on');
   setTimeout(()=>{b.textContent='اضافه کن';b.classList.remove('on')},1200);
@@ -1882,9 +1905,9 @@ function openProduct(id,push=true){
   const p=products.find(x=>x.id===id); if(!p) return;
   if(push) setPath('/p/'+encodeURIComponent(id), p.n+' | سِنسا');
   const c=catOf(p.c);
-  const stock=p.stock===undefined?40:p.stock;
-  const stockTxt = stock<=0 ? ['ناموجود','#B91C1C']
-    : stock<=5 ? [`فقط ${fa(stock)} تا مونده`,'#B45309'] : ['موجوده','#166534'];
+  const st=stockState(p), stock=st.n;
+  const stockTxt = st.out ? ['ناموجود','#B91C1C']
+    : st.txt ? [st.txt,st.color] : ['موجوده','#166534'];
   const rows=[['دسته‌بندی',c.name],['برند',p.b],['تعداد در بسته',p.count],['سایز',p.size],
     ['ضخامت',p.thickness],['جنس',p.material],['روان‌کننده',p.lube],['اعتبار',p.expiry]]
     .filter(r=>r[1]&&r[1]!=='—');
