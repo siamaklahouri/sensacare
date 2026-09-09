@@ -1418,6 +1418,31 @@ $('placeOrder').onclick=()=>{
   openAuth(()=>submitOrder(), ph);
 };
 
+/* عکس گوشی چند مگابایت است و آپلودش روی اینترنت موبایل طول می‌کشد.
+   قبل از فرستادن، در خود مرورگر کوچک و فشرده‌اش می‌کنیم. */
+function shrinkImage(file, maxSide=1600, quality=.82){
+  return new Promise((res,rej)=>{
+    if(!/^image\//.test(file.type)) return rej(new Error('فایل باید عکس باشد'));
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error('فایل خوانده نشد'));
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=()=>rej(new Error('عکس باز نشد'));
+      im.onload=()=>{
+        let {width:w,height:h}=im;
+        const sc=Math.min(1,maxSide/Math.max(w,h));
+        w=Math.round(w*sc); h=Math.round(h*sc);
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(im,0,0,w,h);
+        try{ res(cv.toDataURL('image/jpeg',quality)) }
+        catch(e){ rej(new Error('عکس آماده نشد')) }
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
 async function submitOrder(){
   const city=$('cCity').value, m=METHODS.find(x=>x.id===chosen);
   const ship=quote(m,city,subtotal())||0;
@@ -1433,7 +1458,7 @@ async function submitOrder(){
   if(ONLINE){
     try{
       const r=await req('/api/orders',{method:'POST',body:payload});
-      o={id:r.id, at:Date.now(), created:Date.now(), ...payload, methodName:m.name,
+      o={id:r.id, invoice:r.invoice, at:Date.now(), created:Date.now(), ...payload, methodName:m.name,
          goods:r.goods, total:r.total, status:'ثبت شده',
          items:[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);return{id,n:p.n,c:p.c,pr:p.pr,q}})};
     }catch(e){ toast(e.message||'ثبت نشد، دوباره امتحان کن.'); return }
@@ -1457,27 +1482,68 @@ async function submitOrder(){
   /* کارت به کارت ← نمایش فاکتور و لینک پیام‌رسان‌ها */
   goStep(3);
   const inv = o.invoice || o.id;
-  $('doneTxt').textContent='سفارشت ثبت شد. برای پرداخت، شمارهٔ فاکتور را در تلگرام یا بله بفرست.';
+  $('doneTxt').textContent = (settings.card||{}).number
+    ? 'سفارشت ثبت شد. مبلغ را به کارت زیر واریز کن و عکس فیش را همین‌جا بفرست.'
+    : 'سفارشت ثبت شد. برای پرداخت، شمارهٔ فاکتور را در تلگرام یا بله بفرست.';
   const msg=encodeURIComponent(`سلام، فاکتور ${inv} به مبلغ ${money(o.total)}. برای پرداخت راهنماییم کن.`);
+  const card=settings.card||{}, cnum=(card.number||'').replace(/\D/g,'');
+  const cardBlock = cnum ? `
+      <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px">
+        <div style="font-size:12px;color:var(--body);margin-bottom:6px">شمارهٔ کارت${card.bank?' — '+esc(card.bank):''}</div>
+        <div style="font-size:20px;font-weight:800;letter-spacing:2px;direction:ltr;text-align:center" id="cardNo">${faN(cnum.replace(/(\d{4})(?=\d)/g,'$1-'))}</div>
+        ${card.holder?`<div style="font-size:13px;text-align:center;margin-top:6px">به نام <b>${esc(card.holder)}</b></div>`:''}
+        <button class="mini" id="copyCard" style="padding:10px;width:100%;margin-top:10px">کپی شمارهٔ کارت</button>
+      </div>` : '';
+
   $('doneSum').innerHTML=`<div style="font-size:13.5px;line-height:2.1">
-      <div style="background:#fff;border:1px dashed var(--red);border-radius:12px;padding:12px;text-align:center;margin-bottom:12px">
+      <div style="background:#fff;border:1px dashed var(--red);border-radius:12px;padding:12px;text-align:center">
         <div style="font-size:12px;color:var(--body)">شمارهٔ فاکتور</div>
         <div style="font-size:23px;font-weight:800;letter-spacing:1px;direction:ltr" id="invNo">${esc(inv)}</div>
       </div>
-      مبلغ قابل پرداخت: <b>${money(o.total)}</b><br>
-      <span class="unpaid-badge">در انتظار پرداخت</span></div>
-    <div style="display:grid;gap:9px;margin-top:14px">
-      <a class="btn-main" href="https://t.me/${tgUser()}?text=${msg}" target="_blank" rel="noopener"
-         style="text-align:center;padding:13px;background:#229ED9;box-shadow:none">تلگرام</a>
-      <a class="btn-main" href="https://ble.ir/${tgUser()}" target="_blank" rel="noopener"
-         style="text-align:center;padding:13px;background:#3AA35A;box-shadow:none">بله</a>
-      <button class="mini" id="copyInv" style="padding:11px">کپی شمارهٔ فاکتور</button>
+      ${cardBlock}
+      <div style="margin-top:12px">مبلغ قابل پرداخت: <b>${money(o.total)}</b><br>
+      <span class="unpaid-badge">در انتظار پرداخت</span></div></div>
+
+    <div style="margin-top:14px">
+      <button class="btn-main" id="upRcpt" style="width:100%;padding:13px">📎 فرستادن عکس فیش</button>
+      <input type="file" id="rcptFile" accept="image/*" style="display:none">
+      <p class="hint" id="rcptMsg" style="text-align:center;margin-top:7px">
+        بعد از واریز، عکس فیش را همین‌جا بفرست. تأیید که شد خبرت می‌کنیم.</p>
     </div>
-    <p class="hint" style="text-align:center">شمارهٔ فاکتور را بفرست تا شماره کارت برات بیاد.
-    بعد از واریز، فیش را همان‌جا بفرست — تأیید که شد، خودش بهت اطلاع می‌ده.</p>`;
-  setTimeout(()=>{const c=$('copyInv'); if(c) c.onclick=()=>{
-    navigator.clipboard?.writeText(inv).then(()=>toast('کپی شد: '+inv),()=>{});
-  }},100);
+
+    <div style="display:grid;gap:9px;margin-top:10px">
+      <button class="mini" id="copyInv" style="padding:11px">کپی شمارهٔ فاکتور</button>
+      <p class="hint" style="text-align:center;margin:2px 0">اگر سؤالی داشتی:</p>
+      <a class="mini" href="https://t.me/${tgUser()}?text=${msg}" target="_blank" rel="noopener"
+         style="text-align:center;padding:11px;text-decoration:none">تلگرام</a>
+      <a class="mini" href="https://ble.ir/${tgUser()}" target="_blank" rel="noopener"
+         style="text-align:center;padding:11px;text-decoration:none">بله</a>
+    </div>`;
+
+  setTimeout(()=>{
+    const c=$('copyInv'); if(c) c.onclick=()=>{
+      navigator.clipboard?.writeText(inv).then(()=>toast('کپی شد: '+inv),()=>{}) };
+    const cc=$('copyCard'); if(cc) cc.onclick=()=>{
+      navigator.clipboard?.writeText(cnum).then(()=>toast('شمارهٔ کارت کپی شد'),()=>{}) };
+    const btn=$('upRcpt'), file=$('rcptFile'), msgEl=$('rcptMsg');
+    if(btn&&file){
+      btn.onclick=()=>file.click();
+      file.onchange=async e=>{
+        const f=e.target.files[0]; if(!f) return;
+        btn.disabled=true; btn.textContent='در حال فرستادن…';
+        try{
+          const dataUrl=await shrinkImage(f);
+          await req(`/api/orders/${encodeURIComponent(inv)}/receipt`,{method:'POST',body:{image:dataUrl}});
+          btn.textContent='✅ فیش فرستاده شد';
+          msgEl.textContent='رسید. بعد از بررسی، تأیید سفارشت را می‌فرستیم.';
+        }catch(err){
+          btn.disabled=false; btn.textContent='📎 فرستادن عکس فیش';
+          msgEl.textContent='فرستاده نشد: '+err.message;
+        }
+        e.target.value='';
+      };
+    }
+  },100);
   return;
 }
 
@@ -2439,6 +2505,14 @@ function repSet(){
         <input id="s_z3" type="number" value="${(settings.shipZones||{}).z3||400000}">
         <p class="hint">سیستان، هرمزگان، بوشهر، ایلام، کهگیلویه، خراسان جنوبی و شمالی</p></div>
       <div><label>نام فروشگاه</label><input id="s_name" value="${esc(settings.shopName)}"></div>
+      <div><label>شمارهٔ کارت برای کارت‌به‌کارت</label>
+        <input id="s_card" value="${esc((settings.card||{}).number||'')}" dir="ltr" inputmode="numeric"
+               placeholder="6037-9911-2233-4455">
+        <p class="hint">بعد از ثبت سفارش، همین شماره به مشتری نشان داده می‌شود.</p></div>
+      <div><label>نام صاحب کارت</label>
+        <input id="s_cardholder" value="${esc((settings.card||{}).holder||'')}" placeholder="نام و نام خانوادگی"></div>
+      <div><label>نام بانک (اختیاری)</label>
+        <input id="s_cardbank" value="${esc((settings.card||{}).bank||'')}" placeholder="مثلاً ملت"></div>
       <div><label>آی‌دی تلگرام برای کارت به کارت</label>
         <input id="s_tg" value="${esc(settings.telegram||'siamak_la')}" dir="ltr" placeholder="siamak_la">
         <p class="hint">بدون @ بنویسید. مشتری بعد از ثبت سفارش به این آی‌دی هدایت می‌شود.</p></div>
@@ -2509,10 +2583,13 @@ function repSet(){
     settings.aiKey=$('s_key').value.trim();
     settings.telegram=$('s_tg').value.trim().replace('@','')||'siamak_la';
     settings.trust={enamad:$('s_enamad').value.trim(),samandehi:$('s_saman').value.trim()};
+    settings.card={number:enN($('s_card').value).replace(/[\s-]/g,''),
+                   holder:$('s_cardholder').value.trim(), bank:$('s_cardbank').value.trim()};
     saveSet(); paintBadges();
     if(ONLINE) req('/api/admin/settings',{method:'POST',asAdmin:true,
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
-            shipExpress:settings.shipExpress,shipZones:settings.shipZones,trust:settings.trust}}).catch(()=>{});
+            shipExpress:settings.shipExpress,shipZones:settings.shipZones,trust:settings.trust,
+            card:settings.card}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){
     products=JSON.parse(JSON.stringify(DEFAULTS));save();render();updateCart();toast('بازگردانی شد.')}};

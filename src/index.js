@@ -161,6 +161,31 @@ async function adminChats(env, pf) {
   return ids;
 }
 
+/* فیش پرداخت را به‌صورت عکس برای مدیرها می‌فرستد.
+   عکس جایی ذخیره نمی‌شود؛ همان‌جا در پیام‌رسان می‌ماند — همان جایی که
+   قرار است دیده شود. */
+async function photoToAdmins(env, bytes, caption, keyboard) {
+  const out = [];
+  for (const pf of ['telegram', 'bale']) {
+    const token = await botToken(env, pf);
+    if (!token) continue;
+    for (const chat of await adminChats(env, pf)) {
+      const fd = new FormData();
+      fd.append('chat_id', String(chat));
+      fd.append('caption', caption);
+      fd.append('parse_mode', 'HTML');
+      if (keyboard) fd.append('reply_markup', JSON.stringify({ inline_keyboard: keyboard }));
+      fd.append('photo', new Blob([bytes], { type: 'image/jpeg' }), 'receipt.jpg');
+      try {
+        const r = await fetch(`${PLATFORMS[pf].api(token)}/sendPhoto`, { method: 'POST', body: fd });
+        const d = await r.json().catch(() => ({}));
+        out.push({ pf, chat, ok: !!d.ok });
+      } catch (e) { out.push({ pf, chat, ok: false, error: e.message }); }
+    }
+  }
+  return out;
+}
+
 async function notifyAdmins(env, text, keyboard) {
   const out = [];
   for (const pf of ['telegram', 'bale']) {
@@ -460,6 +485,7 @@ export default {
             shipExpress: await getSetting(env, 'shipExpress', 400000),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
             trust: await getSetting(env, 'trust', {}),
+            card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
             loginEnabled: smsReady(env) || Object.keys(await botLoginOptions(env)).length > 0,
             loginSms: smsReady(env),
             botLogin: await botLoginOptions(env)
@@ -648,6 +674,40 @@ export default {
         return json({ id: o.id, invoice: o.invoice, created: o.created, status: o.status,
           tracking: o.tracking, method_name: o.method_name, total: o.total, items: o.items,
           paid: o.paid, pay_method: o.pay_method, ref_id: o.ref_id });
+      }
+
+      /* --- مشتری فیش پرداخت را از خود سایت می‌فرستد --- */
+      if (/^\/api\/orders\/[^/]+\/receipt$/.test(p) && m === 'POST') {
+        const key = decodeURIComponent(p.split('/')[3]);
+        const o = await one(env, 'SELECT * FROM orders WHERE id=? OR invoice=?', key, key);
+        if (!o) return bad('سفارش پیدا نشد', 404);
+        if (o.paid) return bad('این سفارش قبلاً تأیید شده است', 409);
+
+        const img = String(body.image || '');
+        const mm = /^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(img);
+        if (!mm) return bad('فایل باید عکس باشد');
+        let bin;
+        try { bin = Uint8Array.from(atob(mm[2]), c => c.charCodeAt(0)); }
+        catch { return bad('عکس خوانده نشد'); }
+        if (bin.length > 4 * 1024 * 1024) return bad('عکس بیش از حد بزرگ است');
+
+        const kb = [[
+          { text: '✅ پرداخت شد', callback_data: `pay:${o.id}` },
+          { text: '❌ لغو سفارش', callback_data: `cancel:${o.id}` }
+        ]];
+        const caption = `📎 <b>فیش پرداخت رسید</b>\n` +
+          `فاکتور <code>${o.invoice || o.id}</code>\n` +
+          `${o.name || ''} · ${o.phone || ''}\n` +
+          `مبلغ: ${fa(o.total)} تومان`;
+        const sent = await photoToAdmins(env, bin, caption, kb);
+        const delivered = sent.filter(x => x.ok).length;
+
+        await run(env, 'UPDATE orders SET receipt=? WHERE id=?', String(Date.now()), o.id);
+        if (!delivered) {
+          ctx.waitUntil(notifyAdmins(env,
+            `📎 برای فاکتور <code>${o.invoice || o.id}</code> فیش آمد ولی عکسش فرستاده نشد.`, kb));
+        }
+        return json({ ok: true, delivered });
       }
 
       if (p === '/api/feedback' && m === 'POST') {
