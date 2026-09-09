@@ -32,6 +32,17 @@ jobs:
       - name: نصب ابزارها
         run: npm install --no-audit --no-fund
 
+      - name: بررسی اینکه رازها رسیده‌اند یا نه
+        env:
+          SECRET_NAMES: ${{ toJSON(secrets) }}
+        run: |
+          echo "نام رازهایی که به این اجرا رسیده‌اند:"
+          echo "$SECRET_NAMES" | grep -o '"[A-Za-z0-9_]*":' | tr -d '":' | sort
+          echo "---"
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::رازی به اسم دقیقاً CLOUDFLARE_API_TOKEN پیدا نشد."
+          fi
+
       - name: استقرار
         env:
           CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
