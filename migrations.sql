@@ -19,3 +19,10 @@ CREATE INDEX IF NOT EXISTS idx_bot_logins_created ON bot_logins(created);
 CREATE TABLE IF NOT EXISTS order_extras(
   order_id TEXT PRIMARY KEY,
   wants_invoice INTEGER DEFAULT 0);
+
+-- عکس محصولات جدا از جدول محصولات نگهداری می‌شود، تا در هر بار باز شدن
+-- صفحه همراه فهرست محصولات فرستاده نشود.
+CREATE TABLE IF NOT EXISTS product_images(
+  product_id TEXT PRIMARY KEY,
+  data TEXT,
+  updated INTEGER);

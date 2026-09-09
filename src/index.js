@@ -69,6 +69,21 @@ const asUser = async (env, req) => {
    قبلاً کد تأیید در پاسخ برگردانده می‌شد و روی صفحه نشان داده می‌شد،
    یعنی هر کسی می‌توانست با شمارهٔ هر کس دیگری وارد شود و آدرس و
    سفارش‌هایش را ببیند. */
+/* عکس محصولات در جدول جداگانه است و هیچ‌وقت داخل پاسخ فهرست محصولات
+   نمی‌آید — وگرنه هر بازدیدکننده در هر بار باز شدن صفحه چند مگابایت
+   دانلود می‌کرد. به‌جایش یک نشانی می‌فرستیم که لبهٔ کلادفلر کشش می‌کند. */
+async function withImages(env, rows) {
+  const stored = rows.filter(r => r.img === 'stored').map(r => r.id);
+  if (!stored.length) return rows;
+  const marks = stored.map(() => '?').join(',');
+  const vers = Object.fromEntries(
+    (await all(env, `SELECT product_id, updated FROM product_images WHERE product_id IN (${marks})`,
+      ...stored)).map(r => [r.product_id, r.updated || 0]));
+  return rows.map(r => r.img === 'stored'
+    ? { ...r, img: `/api/img/${encodeURIComponent(r.id)}?v=${vers[r.id] || 0}` }
+    : r);
+}
+
 const smsReady = env => !!(env.SMS_PROVIDER && env.SMS_API_KEY);
 
 /* ورود با ربات: اگر توکن ربات و آی‌دی‌اش را داشته باشیم، مشتری می‌تواند
@@ -231,8 +246,9 @@ async function fileToAdmins(env, bytes, filename, caption) {
    جدول‌ها تا هیچ چیزی جا نماند. */
 async function buildBackup(env) {
   const T = {};
-  for (const t of ['products', 'categories', 'menu', 'users', 'orders', 'order_items',
-                   'feedback', 'articles', 'pages', 'settings', 'counters', 'bot_chats'])
+  for (const t of ['products', 'product_images', 'categories', 'menu', 'users', 'orders',
+                   'order_items', 'feedback', 'articles', 'pages', 'settings', 'counters',
+                   'bot_chats', 'order_extras'])
     T[t] = await all(env, `SELECT * FROM ${t}`);
 
   const settings = {};
@@ -591,7 +607,7 @@ export default {
         return json({
           ok: true,
           categories: await all(env, 'SELECT * FROM categories ORDER BY pos'),
-          products: await all(env, 'SELECT * FROM products WHERE active=1 ORDER BY pos'),
+          products: await withImages(env, await all(env, 'SELECT * FROM products WHERE active=1 ORDER BY pos')),
           menu: await buildMenu(env),
           articles: await all(env, 'SELECT id,slug,title,excerpt,cover,created FROM articles WHERE published=1 ORDER BY created DESC'),
           pages: await all(env, 'SELECT slug,title FROM pages'),
@@ -613,7 +629,22 @@ export default {
 
       if (p.startsWith('/api/products/') && m === 'GET') {
         const r = await one(env, 'SELECT * FROM products WHERE id=?', p.split('/')[3]);
-        return r ? json(r) : bad('پیدا نشد', 404);
+        if (!r) return bad('پیدا نشد', 404);
+        return json((await withImages(env, [r]))[0]);
+      }
+
+      /* عکس یک محصول — با کش طولانی، چون نشانی‌اش با هر تغییر عوض می‌شود */
+      if (p.startsWith('/api/img/') && m === 'GET') {
+        const id = decodeURIComponent(p.split('/')[3]);
+        const row = await one(env, 'SELECT data FROM product_images WHERE product_id=?', id);
+        const mm = row && /^data:(image\/[a-z+]+);base64,(.+)$/s.exec(row.data || '');
+        if (!mm) return new Response('not found', { status: 404 });
+        const bin = Uint8Array.from(atob(mm[2]), c => c.charCodeAt(0));
+        return new Response(bin, { headers: {
+          'Content-Type': mm[1],
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'Access-Control-Allow-Origin': '*'
+        } });
       }
       if (p.startsWith('/api/articles/') && m === 'GET') {
         const slug = p.split('/')[3];
@@ -740,6 +771,11 @@ export default {
           const pr = await one(env, 'SELECT * FROM products WHERE id=? AND active=1', it.id);
           if (!pr) continue;
           const q = Math.max(1, Math.min(20, Number(it.q) || 1));
+          /* موجودی اینجا هم بررسی می‌شود، نه فقط در مرورگر — وگرنه
+             می‌شد بیشتر از موجودی سفارش داد. */
+          const have = Number(pr.stock ?? 0);
+          if (have <= 0) return bad(`«${pr.n}» تمام شده است. لطفاً از سبد حذفش کن.`, 409);
+          if (q > have) return bad(`از «${pr.n}» فقط ${fa(have)} عدد موجود است.`, 409);
           goods += pr.pr * q;
           items.push({ id: pr.id, n: pr.n, c: pr.c, pr: pr.pr, q });
         }
@@ -886,7 +922,7 @@ export default {
             o.wantsInvoice = wants.has(o.id) ? 1 : 0;
           }
           return json({
-            products: await all(env, 'SELECT * FROM products ORDER BY pos'),
+            products: await withImages(env, await all(env, 'SELECT * FROM products ORDER BY pos')),
             categories: await all(env, 'SELECT * FROM categories ORDER BY pos'),
             menu: await buildMenu(env),
             orders,
@@ -907,21 +943,39 @@ export default {
         }
 
         if (p === '/api/admin/products' && m === 'POST') {
-          const x = body;
+          const x = { ...body };
+          /* عکس اگر فایل آپلودی باشد، جدا ذخیره می‌شود تا فهرست محصولات
+             سبک بماند. اگر نشانی اینترنتی باشد، همان‌طور می‌ماند. */
+          const pid = x.id || crypto.randomUUID();
+          x.id = pid;
+          if (typeof x.img === 'string' && x.img.startsWith('data:')) {
+            if (x.img.length > 6 * 1024 * 1024) return bad('عکس بیش از حد بزرگ است');
+            await run(env, `INSERT INTO product_images(product_id,data,updated) VALUES(?,?,?)
+              ON CONFLICT(product_id) DO UPDATE SET data=excluded.data, updated=excluded.updated`,
+              pid, x.img, Date.now());
+            x.img = 'stored';
+          } else if (x.img === 'stored' || /^\/api\/img\//.test(x.img || '')) {
+            x.img = 'stored';   /* دست‌نخورده بماند */
+          } else if (!x.img) {
+            await run(env, 'DELETE FROM product_images WHERE product_id=?', pid);
+            x.img = '';
+          }
           await run(env, `INSERT INTO products(id,n,b,pr,old,d,c,tag,img,stock,size,thickness,count,
             material,lube,expiry,active,pos) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(id) DO UPDATE SET n=excluded.n,b=excluded.b,pr=excluded.pr,old=excluded.old,
             d=excluded.d,c=excluded.c,tag=excluded.tag,img=excluded.img,stock=excluded.stock,
             size=excluded.size,thickness=excluded.thickness,count=excluded.count,
             material=excluded.material,lube=excluded.lube,expiry=excluded.expiry,active=excluded.active`,
-            x.id || crypto.randomUUID(), x.n, x.b || '', Number(x.pr) || 0, Number(x.old) || 0,
+            x.id, x.n, x.b || '', Number(x.pr) || 0, Number(x.old) || 0,
             x.d || '', x.c || '', x.tag || '', x.img || '', Number(x.stock) || 0,
             x.size || '', x.thickness || '', x.count || '', x.material || '',
             x.lube || '', x.expiry || '', x.active === 0 ? 0 : 1, Number(x.pos) || 0);
           return json({ ok: true });
         }
         if (p.startsWith('/api/admin/products/') && m === 'DELETE') {
-          await run(env, 'DELETE FROM products WHERE id=?', p.split('/')[4]);
+          const pid = decodeURIComponent(p.split('/')[4]);
+          await run(env, 'DELETE FROM products WHERE id=?', pid);
+          await run(env, 'DELETE FROM product_images WHERE product_id=?', pid);
           return json({ ok: true });
         }
 
@@ -952,8 +1006,35 @@ export default {
 
         if (p.startsWith('/api/admin/orders/') && m === 'PATCH') {
           const oid = p.split('/')[4];
+          const before = await one(env, 'SELECT status, tracking, phone, invoice FROM orders WHERE id=?', oid);
           await run(env, 'UPDATE orders SET status=COALESCE(?,status), tracking=COALESCE(?,tracking) WHERE id=?',
             body.status ?? null, body.tracking ?? null, oid);
+
+          /* لحظه‌ای که مشتری بیشترین کنجکاوی را دارد همین است، پس اگر
+             به ربات پیام داده باشد خبرش می‌کنیم. */
+          const newStatus = body.status ?? before?.status;
+          const newTrack = body.tracking ?? before?.tracking;
+          const changed = before && (newStatus !== before.status || newTrack !== before.tracking);
+          if (changed && before.phone) {
+            const NOTE = {
+              'در حال آماده‌سازی': '📦 سفارشت در حال آماده‌سازیه.',
+              'ارسال شده': '🚚 سفارشت ارسال شد.',
+              'تحویل شده': '✅ سفارشت تحویل داده شد. ممنون از خریدت!',
+              'لغو شده': '❌ سفارشت لغو شد.'
+            };
+            const head = NOTE[newStatus];
+            if (head) ctx.waitUntil((async () => {
+              const c = await one(env, 'SELECT * FROM bot_chats WHERE phone=? AND role=?',
+                before.phone, 'customer');
+              if (!c) return;
+              await botCall(env, c.platform, 'sendMessage', {
+                chat_id: c.chat_id, parse_mode: 'HTML',
+                text: `${head}\nفاکتور <code>${before.invoice || oid}</code>` +
+                      (newStatus === 'ارسال شده' && newTrack
+                        ? `\nکد رهگیری پستی: <code>${newTrack}</code>` : '')
+              });
+            })().catch(e => console.log('notify', e.message)));
+          }
           if (body.paid) { ctx.waitUntil(markPaid(env, oid, 'تأیید از پنل').catch(() => {})); }
           else if (body.paid === 0)
             await run(env, 'UPDATE orders SET paid=0, paid_at=NULL WHERE id=?', oid);
