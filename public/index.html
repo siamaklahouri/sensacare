@@ -150,17 +150,98 @@ nav{display:flex;gap:2px;justify-content:flex-start;align-items:center;margin-in
 .journey>svg{width:100%;height:auto;display:block}
 .jp{stroke-dasharray:1180;stroke-dashoffset:1180;animation:draw 5.5s ease-in-out infinite}
 @keyframes draw{0%{stroke-dashoffset:1180}55%,100%{stroke-dashoffset:0}}
-.jbox{animation:none}
-.jn{position:absolute;display:flex;align-items:center;gap:10px;opacity:0;animation:pop .55s ease forwards}
+.jbox{animation:jbob 1.1s ease-in-out infinite}
+@keyframes jbob{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+
+/* هر ایستگاه تا وقتی بسته نرسیده خاموش است و با رسیدنش روشن می‌شود.
+   زمان‌بندی از خودِ انیمیشن مسیر گرفته می‌شود، نه با حدس. */
+.jn{position:absolute;display:flex;align-items:center;gap:10px;
+  opacity:.32;filter:saturate(.25);transition:opacity .45s ease, filter .45s ease}
 .jn.a{transform:translate(-22px,-50%)}
 .jn.b{transform:translate(calc(-100% + 22px),-50%)}
-.jn.n1{animation-delay:.4s}.jn.n2{animation-delay:1.3s}.jn.n3{animation-delay:2.2s}
-.jn.n4{animation-delay:3.1s}.jn.n5{animation-delay:4s}
-@keyframes pop{from{opacity:0}to{opacity:1}}
+.jn.on{opacity:1;filter:none}
+
 .jdot{width:44px;height:44px;border-radius:99px;background:var(--card);color:var(--red);flex:none;
-  display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.28)}
-.jdot svg{width:21px;height:21px}
-.jdot.done{background:#4ADE80;color:#0B3D1E}
+  display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.28);position:relative;
+  transform:scale(.86);transition:transform .5s cubic-bezier(.34,1.56,.64,1), box-shadow .45s ease}
+.jdot svg{width:21px;height:21px;transition:transform .45s cubic-bezier(.34,1.56,.64,1)}
+.jn.on .jdot{transform:scale(1);box-shadow:0 8px 26px rgba(212,14,56,.45)}
+.jn.on .jdot svg{transform:scale(1.06)}
+
+/* حلقه‌ای که در لحظهٔ رسیدن باز می‌شود */
+.jdot::after{content:'';position:absolute;inset:0;border-radius:99px;
+  border:2px solid var(--red);opacity:0;pointer-events:none}
+.jn.on .jdot::after{animation:jring .85s ease-out}
+@keyframes jring{
+  0%{opacity:.85;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.85)}}
+
+/* ایستگاه آخر: تحویل شد */
+.jdot.done{background:var(--card);color:var(--red)}
+.jn.on .jdot.done{background:#4ADE80;color:#0B3D1E;box-shadow:0 8px 28px rgba(74,222,128,.5)}
+.jn.on .jdot.done::after{border-color:#4ADE80}
+.jtx b{transition:color .4s ease}
+.jn.on .jtx b{color:#fff}
+
+/* هر ایستگاه واکنش خودش را دارد، متناسب با کاری که آنجا انجام می‌شود */
+
+/* ۱ · ورود — قفل باز می‌شود */
+.jn.n1.on .jdot svg{animation:jUnlock .7s cubic-bezier(.34,1.56,.64,1)}
+@keyframes jUnlock{
+  0%{transform:rotate(0) scale(1)}
+  35%{transform:rotate(-16deg) scale(1.12)}
+  70%{transform:rotate(6deg) scale(1.02)}
+  100%{transform:rotate(0) scale(1.06)}}
+
+/* ۲ · انتخاب محصول — چیزی داخل سبد می‌افتد */
+.jn.n2.on .jdot svg{animation:jDrop .75s cubic-bezier(.34,1.7,.5,1)}
+@keyframes jDrop{
+  0%{transform:translateY(-13px) scale(.7);opacity:.3}
+  55%{transform:translateY(2px) scale(1.14);opacity:1}
+  75%{transform:translateY(-2px) scale(.98)}
+  100%{transform:translateY(0) scale(1.06)}}
+
+/* ۳ · پرداخت — کارت کشیده می‌شود و برقی روی آن می‌رود */
+.jn.n3.on .jdot svg{animation:jSwipe .8s cubic-bezier(.5,0,.2,1)}
+@keyframes jSwipe{
+  0%{transform:translateX(15px);opacity:0}
+  40%{transform:translateX(-4px);opacity:1}
+  70%{transform:translateX(2px)}
+  100%{transform:translateX(0) scale(1.06)}}
+.jn.n3 .jdot{overflow:hidden}
+.jn.n3.on .jdot::before{content:'';position:absolute;top:0;bottom:0;width:42%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.85),transparent);
+  animation:jShine .8s .12s ease-out}
+@keyframes jShine{from{inset-inline-start:-45%}to{inset-inline-start:115%}}
+
+/* ۴ · بسته‌بندی — جعبه پلمب می‌شود */
+.jn.n4.on .jdot svg{animation:jSeal .7s cubic-bezier(.34,1.56,.64,1)}
+@keyframes jSeal{
+  0%{transform:scaleX(1.22) scaleY(.72)}
+  45%{transform:scaleX(.9) scaleY(1.14)}
+  75%{transform:scaleX(1.05) scaleY(.97)}
+  100%{transform:scale(1.06)}}
+
+/* ۵ · تحویل — تیک کشیده می‌شود و انفجار سبز */
+.jn.n5 .jdot.done svg path{stroke-dasharray:24;stroke-dashoffset:24}
+.jn.n5.on .jdot.done svg path{animation:jCheck .55s .12s ease-out forwards}
+@keyframes jCheck{to{stroke-dashoffset:0}}
+.jn.n5.on .jdot.done{animation:jPop .6s cubic-bezier(.34,1.7,.5,1)}
+@keyframes jPop{0%{transform:scale(.7)}55%{transform:scale(1.16)}100%{transform:scale(1)}}
+
+/* متن هر ایستگاه هم با رسیدن بسته کمی جلو می‌آید */
+.jtx{transform:translateX(0);transition:transform .5s cubic-bezier(.34,1.56,.64,1)}
+.jn.a .jtx{transform:translateX(-7px)}
+.jn.b .jtx{transform:translateX(7px)}
+.jn.on .jtx{transform:translateX(0)}
+
+@media(prefers-reduced-motion:reduce){
+  .jn{opacity:1;filter:none}
+  .jbox{animation:none}
+  .jn.on .jdot svg,.jn.on .jdot.done,.jn.on .jdot::after,.jn.on .jdot::before{animation:none}
+  .jn.n5 .jdot.done svg path{stroke-dashoffset:0}
+  .jtx{transform:none!important}
+}
 .jtx{direction:rtl;text-align:right;white-space:nowrap}
 .jtx b{display:block;font-size:13px;font-weight:700;color:#fff;line-height:1.5}
 .jtx span{display:block;font-size:11px;color:#DCC0CB;line-height:1.5}
@@ -3081,6 +3162,38 @@ let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(render,260)
 /* بخش «سؤالی داری؟» در پاورقی — ربات‌ها اول، بعد راه‌های دیگر اگر پر شده باشند */
 const TG_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3 18.8 19c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.9 9-8.1c.4-.3-.1-.5-.6-.2L6.7 13.1 1.9 11.6c-1-.3-1-1 .2-1.5l18.5-7.1c.9-.3 1.6.2 1.3 1.3z"/></svg>';
 const BALE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 7.2-1.5 7.1c-.1.5-.4.6-.8.4l-2.3-1.7-1.1 1.1c-.1.1-.3.2-.5.2l.2-2.4 4.3-3.9c.2-.2 0-.3-.3-.1l-5.3 3.3-2.3-.7c-.5-.2-.5-.5.1-.7l8.9-3.4c.4-.2.8.1.6.8z"/></svg>';
+/* ---- انیمیشن نقشهٔ سفارش ----
+   بسته در ۵۵٪ از چرخهٔ ۵٫۵ ثانیه‌ای مسیر را طی می‌کند. هر ایستگاه
+   دقیقاً وقتی روشن می‌شود که بسته به آن می‌رسد. زمان‌بندی از رویداد
+   خودِ انیمیشنِ خط گرفته می‌شود، پس هیچ‌وقت از هم جدا نمی‌افتند. */
+(function journey(){
+  const wrap=document.querySelector('.journey'); if(!wrap) return;
+  const line=wrap.querySelector('.jp');
+  const nodes=[...wrap.querySelectorAll('.jn')];
+  if(!line||!nodes.length) return;
+
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+    nodes.forEach(n=>n.classList.add('on')); return;
+  }
+
+  const CYCLE=5500, TRAVEL=CYCLE*0.55;
+  const timers=[];
+  function run(){
+    timers.forEach(clearTimeout); timers.length=0;
+    nodes.forEach(n=>n.classList.remove('on'));
+    nodes.forEach((n,i)=>{
+      /* ایستگاه اول در ابتدای مسیر است و آخری در انتهای آن */
+      const at = TRAVEL * (i/(nodes.length-1));
+      timers.push(setTimeout(()=>n.classList.add('on'), Math.max(80, at)));
+    });
+  }
+  line.addEventListener('animationiteration', run);
+  run();
+
+  /* وقتی صفحه در پس‌زمینه است، چرخه را نگه دار تا از خط عقب نیفتد */
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) run() });
+})();
+
 /* ---- مسیریابی با آدرس واقعی ----
    هر محصول و مقاله آدرس خودش را دارد (/p/... و /a/...) تا گوگل
    صفحهٔ مستقل ببیند. سرور همان صفحه را با عنوان و توضیحات همان مورد
