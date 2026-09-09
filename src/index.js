@@ -972,6 +972,78 @@ export default {
         return json({ ok: true, delivered });
       }
 
+      /* --- دستیار فروشگاه --- */
+      if (p === '/api/ask' && m === 'POST') {
+        if (!env.AI) return bad('دستیار فعلاً در دسترس نیست', 503);
+        const q = String(body.q || '').trim().slice(0, 500);
+        if (!q) return bad('سؤالت را بنویس');
+
+        /* تاریخچهٔ کوتاه، تا گفتگو رشته را گم نکند */
+        const history = (Array.isArray(body.history) ? body.history : [])
+          .slice(-6)
+          .filter(x => x && (x.role === 'user' || x.role === 'assistant') && typeof x.content === 'string')
+          .map(x => ({ role: x.role, content: String(x.content).slice(0, 700) }));
+
+        /* محصولات واقعی فروشگاه را به دستیار می‌دهیم تا از روی همین‌ها
+           پیشنهاد بدهد، نه از حافظهٔ خودش. */
+        const rows = await all(env,
+          `SELECT p.n, p.b, p.pr, p.d, p.size, p.thickness, p.material, p.lube, p.count,
+                  p.stock, c.name AS cat
+             FROM products p LEFT JOIN categories c ON c.id = p.c
+            WHERE p.active = 1 ORDER BY p.pos LIMIT 60`);
+        const catalog = rows.map(r =>
+          `- ${r.n}${r.b ? ` (${r.b})` : ''} | دستهٔ ${r.cat || '—'} | ${fa(r.pr)} تومان` +
+          `${r.count ? ` | ${r.count}` : ''}${r.material ? ` | جنس ${r.material}` : ''}` +
+          `${r.thickness ? ` | ضخامت ${r.thickness}` : ''}${r.stock > 0 ? '' : ' | ناموجود'}` +
+          `${r.d ? `\n   ${String(r.d).slice(0, 110)}` : ''}`).join('\n');
+
+        const post = await getSetting(env, 'shipPost', 250000);
+        const express = await getSetting(env, 'shipExpress', 400000);
+        const freeOver = await getSetting(env, 'freeOver', 0);
+
+        const system =
+`تو دستیار فروشگاه اینترنتی «سِنسا» هستی؛ فروشگاه کاندوم، ژل و محصولات بهداشت جنسی در ایران.
+
+چطور حرف بزن:
+- فارسی، کوتاه و روان. حداکثر ۴ جمله، مگر اینکه سؤال واقعاً توضیح بیشتری بخواهد.
+- محترمانه و بدون قضاوت. مشتری ممکن است خجالت بکشد؛ کاری کن راحت باشد.
+- ساده حرف بزن، نه کتابی. از اصطلاح پزشکی فقط وقتی لازم است استفاده کن.
+
+چه کار بکن:
+- در انتخاب محصول کمک کن و فقط از فهرست زیر پیشنهاد بده. اسم دقیق کالا را بنویس.
+- اگر چیزی در فهرست نیست، صادقانه بگو موجود نیست.
+- نکات ایمنی و استفادهٔ درست را بگو (مثل اینکه ژل پایه‌روغنی به کاندوم لاتکس آسیب می‌زند).
+- دربارهٔ ارسال و پرداخت جواب بده.
+
+چه کار نکن:
+- تشخیص پزشکی نده و دارو تجویز نکن. اگر نشانهٔ بیماری، درد، زخم یا عفونت مطرح شد،
+  کوتاه بگو باید پزشک ببیند.
+- عدد و قیمتی که در فهرست نیست از خودت نساز.
+- محتوای صریح جنسی ننویس. لحن باید مثل داروخانه باشد، نه غیر آن.
+- اگر پرسش ربطی به فروشگاه و سلامت جنسی ندارد، مؤدبانه برگردان به موضوع.
+
+اطلاعات ارسال:
+- پست پیشتاز ${fa(post)} تومان، همهٔ ایران، ۲ تا ۳ روز کاری.
+- ارسال سریع ${fa(express)} تومان، فقط تهران و کرج، همان روز.
+${freeOver > 0 ? `- خرید بالای ${fa(freeOver)} تومان ارسال رایگان دارد.` : ''}
+- بسته‌بندی بی‌نشان است؛ روی جعبه هیچ اسمی از محتوا نوشته نمی‌شود.
+- پرداخت کارت‌به‌کارت است و مشتری عکس فیش را در همان صفحهٔ سفارش می‌فرستد.
+
+فهرست محصولات موجود:
+${catalog || '(فعلاً محصولی ثبت نشده)'}`;
+
+        const messages = [{ role: 'system', content: system }, ...history, { role: 'user', content: q }];
+        const MODELS = ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct-fast'];
+        for (const model of MODELS) {
+          try {
+            const r = await env.AI.run(model, { messages, max_tokens: 420, temperature: 0.4 });
+            const text = String(r?.response || '').trim();
+            if (text) return json({ ok: true, answer: text, model });
+          } catch (e) { console.log('ai', model, e.message); }
+        }
+        return bad('دستیار الان جواب نمی‌دهد. کمی بعد دوباره بپرس.', 503);
+      }
+
       if (p === '/api/feedback' && m === 'POST') {
         const r = Number(body.rating);
         if (!(r >= 1 && r <= 5)) return bad('امتیاز معتبر نیست');

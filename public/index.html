@@ -543,6 +543,12 @@ body.admin-mode{background:var(--dark)}
 .ask-btn small{display:block;font-weight:400;font-size:11.5px;opacity:.65;margin-top:1px}
 footer #fContact ul{margin-top:4px}
 
+.typing{display:inline-flex;gap:4px;align-items:center;padding:2px 0}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--red);opacity:.35;
+  animation:typing 1.1s infinite ease-in-out}
+.typing i:nth-child(2){animation-delay:.16s}.typing i:nth-child(3){animation-delay:.32s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
 /* ===== responsive ===== */
 @media(max-width:1120px){ .card{flex:0 0 calc((100% - 3*16px)/4)}
   nav{gap:0;margin-inline-start:20px} .nav-item>a{padding:9px 11px;font-size:14px} }
@@ -1799,22 +1805,26 @@ function localAnswer(q){
   if(hit) return hit.a+suggestProducts(hit.c);
   return 'بگو دقیقاً دنبال چی هستی تا بهتر راهنماییت کنم: می‌خوای دیرتر تموم شه؟ حس طبیعی‌تر می‌خوای؟ تحریک بیشتر؟ یا مشکل خشکی داری؟ سؤال دربارهٔ سایز و حساسیت به لاتکس رو هم بپرس.';
 }
+/* دستیار از سرور خودمان جواب می‌گیرد، نه مستقیم از سرویس بیرونی.
+   اینطور نه کلیدی در مرورگر می‌ماند، نه مشتری به سرویس فیلترشده وصل می‌شود. */
+let chatHistory=[];
 async function ask(q){
   meSay(q); $('chatIn').value='';
-  const key=settings.aiKey;
-  if(!key){ setTimeout(()=>botSay(localAnswer(q)),350); return }
-  botSay('در حال فکر کردن…');
+  if(!ONLINE){ setTimeout(()=>botSay(localAnswer(q)),350); return }
+
+  botSay('<span class="typing"><i></i><i></i><i></i></span>');
   const ph=chatBody.lastChild;
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,
-        system:'تو دستیار فروشگاه بهداشت جنسی «سِنسا» هستی. کوتاه، محترمانه و دقیق به فارسی جواب بده. فقط دربارهٔ انتخاب کاندوم، ژل و نکات ایمنی راهنمایی کن. ادعای پزشکی نکن و در موارد پزشکی به پزشک ارجاع بده.',
-        messages:[{role:'user',content:q}]})});
-    const d=await r.json();
-    ph.innerHTML=(d.content||[]).filter(x=>x.type==='text').map(x=>esc(x.text)).join('<br>')||localAnswer(q);
-  }catch(e){ ph.innerHTML=localAnswer(q) }
+    const r=await req('/api/ask',{method:'POST',body:{q,history:chatHistory.slice(-6)}});
+    const a=String(r.answer||'').trim();
+    if(!a) throw new Error('empty');
+    ph.innerHTML=esc(a).replace(/\n/g,'<br>');
+    chatHistory.push({role:'user',content:q},{role:'assistant',content:a});
+    if(chatHistory.length>12) chatHistory=chatHistory.slice(-12);
+  }catch(e){
+    ph.innerHTML=localAnswer(q);
+  }
+  chatBody.scrollTop=chatBody.scrollHeight;
 }
 function openChat(){
   chat.classList.add('open');
@@ -2950,7 +2960,7 @@ function repSet(){
       <div class="full"><label>کد نماد ساماندهی</label>
         <textarea id="s_saman" style="min-height:70px" dir="ltr">${esc((settings.trust||{}).samandehi||'')}</textarea></div>
       <div class="full"><label>کلید API دستیار هوشمند (اختیاری)</label>
-        <input id="s_key" value="${esc(settings.aiKey)}" placeholder="خالی = دستیار آفلاین">
+        <input id="s_key" value="${esc(settings.aiKey||'')}" placeholder="لازم نیست — دستیار از هوش مصنوعی کلادفلر استفاده می‌کند" disabled style="opacity:.55">
         <p class="hint">بدون کلید، دستیار با دانش داخلی سایت جواب می‌دهد و کاملاً کار می‌کند. اگر کلید بگذارید، از هوش مصنوعی استفاده می‌شود — ولی توجه کنید که کلید در مرورگر کاربران قابل دیدن است، پس برای فروشگاه واقعی باید روی سرور خودتان قرار بگیرد.</p></div>
     </div>
     <button class="btn-main" id="s_save" style="margin-top:16px;padding:12px 28px">ذخیره</button></div>

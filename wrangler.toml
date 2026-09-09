@@ -2,6 +2,11 @@ name = "sensa"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
+# هوش مصنوعی کلادفلر — برای دستیار فروشگاه.
+# کلیدی لازم ندارد؛ درخواست از خودِ ورکر می‌رود، نه از مرورگر مشتری.
+[ai]
+binding = "AI"
+
 # فایل‌های سایت (index.html)
 assets = { directory = "./public", binding = "ASSETS" }
 
