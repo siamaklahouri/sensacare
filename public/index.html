@@ -89,7 +89,9 @@
 :root[data-theme="dark"] table{border:1px solid var(--line)}
 :root[data-theme="dark"] img{filter:brightness(.94)}
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+/* پرش به یک دسته نباید زیر هدرِ چسبان بیفتد — حالا که دسته‌بندی‌ها روی
+   گوشی از نوار پایین باز می‌شوند، بیشتر از قبل به کار می‌آید. */
+html{scroll-behavior:smooth;scroll-padding-top:100px}
 body{font-family:Vazirmatn,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font-family:inherit}
@@ -262,7 +264,10 @@ nav::-webkit-scrollbar{display:none}
 .trust p{font-size:12.5px;color:var(--body);line-height:1.7;display:block}
 
 /* ===== sections / rails ===== */
-.cats{padding:70px 0 30px}
+/* padding کامل، فاصلهٔ کناریِ .wrap را هم صفر می‌کرد و سرتیتر دسته‌ها
+   («کاندوم تأخیری»، «۱۰ محصول») می‌چسبید به لبهٔ صفحه و روی گوشی
+   بریده می‌شد. فقط بالا و پایین را دست می‌زنیم. */
+.cats{padding-block:70px 30px}
 .cat{margin-bottom:50px}
 /* بخش «پرفروش‌ترین‌ها» درست زیر باکس پیشنهاد ویژه می‌آید و هیچ فاصله‌ای
    نداشت — برچسبش به لبهٔ باکس بالا چسبیده بود. */
@@ -358,7 +363,12 @@ body.quiet .sub a:hover{filter:none}
 .qa .qitem p{font-size:13px;color:var(--body);line-height:1.9}
 .qa textarea{min-height:74px}
 .quiet-note{position:fixed;bottom:16px;inset-inline-end:16px;z-index:70;background:var(--dark);color:#fff;
-  padding:9px 15px;border-radius:12px;font-size:12.5px;box-shadow:var(--shadow);display:none}
+  padding:9px 15px;border-radius:12px;font-size:12.5px;box-shadow:var(--shadow);display:none;
+  max-width:calc(100vw - 32px)}
+/* روی صفحهٔ لمسی نشانگری در کار نیست؛ راهنما باید همان کاری را بگوید که
+   واقعاً جواب می‌دهد. */
+.qn-touch{display:none}
+@media(hover:none){ .qn-mouse{display:none} .qn-touch{display:inline} }
 body.quiet .quiet-note{display:block}
 .add[disabled]:hover{background:var(--line);color:var(--body)}
 .dots{display:flex;gap:6px;justify-content:center}
@@ -458,6 +468,7 @@ textarea{resize:vertical;min-height:74px;line-height:1.7}
 /* ===== assistant ===== */
 .fab{position:fixed;bottom:22px;inset-inline-start:22px;z-index:85;background:var(--dark);color:#fff;border-radius:999px;padding:13px 20px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:9px;box-shadow:0 12px 30px rgba(26,7,19,.3)}
 .fab .dot{width:8px;height:8px;border-radius:99px;background:#4ADE80}
+.fab-ic{display:none}
 .chat{position:fixed;bottom:22px;inset-inline-start:22px;width:min(390px,92vw);height:min(560px,80vh);background:var(--card);border-radius:22px;z-index:120;display:none;flex-direction:column;overflow:hidden;box-shadow:0 22px 60px rgba(26,7,19,.32)}
 .chat.open{display:flex}
 .chat-head{background:var(--dark);color:#fff;padding:15px 18px;display:flex;align-items:center;gap:11px}
@@ -622,21 +633,85 @@ footer #fContact ul{margin-top:4px}
 .typing i:nth-child(2){animation-delay:.16s}.typing i:nth-child(3){animation-delay:.32s}
 @keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
+/* ===== منوی پایین صفحه — فقط روی گوشی =====
+   بیشترِ خریدها با گوشی است و سبد و حساب و دسته‌بندی همه بالای صفحه بودند،
+   جایی که با یک دست به‌سختی می‌شود بهشان رسید. حالا پایین‌اند، جایی که شست
+   می‌رسد — مثل اپ فروشگاه‌ها. */
+.tabbar{display:none}
+.catsheet{display:none}
+@media(max-width:1040px){
+  .tabbar{display:grid;grid-template-columns:repeat(4,1fr);
+    margin:0;gap:0;overflow:visible;
+    position:fixed;inset-inline:0;bottom:0;z-index:80;
+    background:var(--card);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);
+    box-shadow:0 -5px 22px rgba(26,7,19,.09)}
+  .tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:8px 2px 7px;min-height:56px;position:relative;
+    font-size:11px;font-weight:700;color:var(--body);transition:color .15s}
+  .tb svg{width:23px;height:23px}
+  .tb.on{color:var(--red)}
+  .tb-badge{position:absolute;top:3px;inset-inline-start:calc(50% - 25px);
+    min-width:18px;height:18px;padding:0 4px;border-radius:6px;
+    background:var(--red);color:#fff;font-size:10px;font-weight:800;font-style:normal;
+    display:grid;place-items:center}
+  .tb-badge[hidden]{display:none}
+  body.admin-mode .tabbar{display:none}
+  /* جا برای منوی پایین، وگرنه ته صفحه زیرش پنهان می‌ماند */
+  body{padding-bottom:calc(57px + env(safe-area-inset-bottom))}
+  .fab{bottom:calc(69px + env(safe-area-inset-bottom));
+    inset-inline-start:auto;inset-inline-end:14px;
+    width:52px;height:52px;padding:0;border-radius:50%;justify-content:center;gap:0;
+    background:var(--red);box-shadow:0 8px 22px rgba(226,29,72,.36)}
+  .fab .fab-tx{display:none}
+  .fab-ic{display:block;width:24px;height:24px}
+  .fab .dot{position:absolute;top:3px;inset-inline-end:3px;width:9px;height:9px;
+    border:2px solid var(--card);box-sizing:content-box}
+  .chat{inset-inline-start:auto;inset-inline-end:14px;
+    bottom:calc(69px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(70px + env(safe-area-inset-bottom))}
+  .quiet-note{bottom:calc(131px + env(safe-area-inset-bottom));
+    inset-inline:14px;max-width:none;text-align:center}
+
+  /* دسته‌بندی‌ها از پایین بالا می‌آیند، درست کنار دکمه‌ای که بازشان می‌کند.
+     منوی بالای صفحه روی گوشی کنار گذاشته شده و جایش را به این داده. */
+  .catsheet{display:block;position:fixed;inset:0;z-index:79;
+    visibility:hidden;transition:visibility .28s}
+  .catsheet.open{visibility:visible}
+  .catsheet::before{content:'';position:absolute;inset:0;
+    background:rgba(26,7,19,.45);opacity:0;transition:opacity .28s}
+  .catsheet.open::before{opacity:1}
+  .cs-in{position:absolute;inset-inline:0;bottom:calc(57px + env(safe-area-inset-bottom));
+    background:var(--card);border-radius:22px 22px 0 0;padding:8px 14px 16px;
+    max-height:70vh;overflow-y:auto;transform:translateY(102%);
+    transition:transform .28s ease;box-shadow:0 -16px 44px rgba(26,7,19,.26)}
+  .catsheet.open .cs-in{transform:none}
+  .catsheet.open ~ .fab{opacity:0;visibility:hidden;pointer-events:none}
+  .fab{transition:opacity .2s,visibility .2s}
+  .cs-grab{width:42px;height:4px;border-radius:99px;background:var(--line);margin:2px auto 10px}
+  .cs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+  .cs-head h3{font-size:16px;font-weight:800}
+  .cs-group{border-top:1px solid var(--line)}
+  .cs-group:first-child{border-top:0}
+  .cs-main{display:block;padding:13px 4px 11px;font-size:15px;font-weight:700;color:var(--ink)}
+  .cs-kids{display:flex;flex-wrap:wrap;gap:7px;padding:0 4px 12px}
+  .cs-kids a{background:var(--soft);border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;font-size:13px;font-weight:600;color:var(--body)}
+  .cs-kids a:active{background:var(--red-2);color:var(--red)}
+}
+
 /* ===== responsive ===== */
 @media(max-width:1120px){ .card{flex:0 0 calc((100% - 3*16px)/4)}
   nav{gap:0;margin-inline-start:20px} .nav-item>a{padding:9px 11px;font-size:14px} }
 @media(max-width:1040px){
   .bar{grid-template-columns:auto 1fr;height:74px}
-  nav{position:fixed;top:78px;right:14px;left:14px;background:var(--card);border-radius:20px;flex-direction:column;align-items:stretch;padding:10px;box-shadow:var(--shadow);display:none;max-height:74vh;overflow-y:auto;z-index:70}
-  nav.open{display:flex}
-  .nav-item>a{color:var(--ink);justify-content:space-between;font-size:15px;padding:12px 14px}
-  .sub{position:static;opacity:1;visibility:visible;transform:none;box-shadow:none;padding:0 0 6px 0;display:none}
-  .nav-item.open .sub{display:block}
-  /* روی موبایل منو تا وقتی خودِ کاربر بازش نکند دیده نمی‌شود، پس محو کردنش
-     چیزی را پنهان نمی‌کند و فقط منو را غیرقابل‌خواندن می‌کند. */
-  body.quiet .nav-item>a, body.quiet .sub a{filter:none}
-  .sub a{padding-inline-start:28px;font-size:14px}
-  .burger{display:grid}
+  /* منو، سبد و حساب رفته‌اند به نوار پایین؛ هدر فقط لوگو و جست‌وجو می‌ماند
+     تا یک‌سوم صفحهٔ گوشی را نخورد. */
+  nav{display:none}
+  #burger,#acctBtn,#openCart{display:none}
+  /* دسته‌بندی‌ها روی گوشی در برگهٔ پایین باز می‌شوند و تا وقتی خودِ کاربر
+     بازشان نکند دیده نمی‌شوند، پس محو کردنشان چیزی را پنهان نمی‌کند. */
+  body.quiet .cs-main, body.quiet .cs-kids a{filter:none}
   .head-act{grid-column:2;justify-self:end}
   .hero{padding:44px 0 62px}
   .hero-grid{grid-template-columns:1fr;gap:30px}
@@ -648,6 +723,7 @@ footer #fContact ul{margin-top:4px}
   .arts{grid-template-columns:1fr 1fr}
 }
 @media(max-width:640px){
+  html{scroll-padding-top:118px}
   /* جلوگیری از زوم خودکار iOS هنگام تایپ */
   input,select,textarea{font-size:16px}
   .modal{padding:16px;align-items:flex-start}
@@ -656,7 +732,31 @@ footer #fContact ul{margin-top:4px}
   .p-head h3{width:100%;margin-bottom:4px}
   .p-head button{flex:1;min-width:calc(50% - 4px);padding:10px 8px;font-size:12.5px}
   .p-body{padding:16px 14px}
-  .card{flex:0 0 78%}
+  /* قبلاً هر کارت ۷۸٪ عرض گوشی بود و فقط عکسش نصف صفحه را می‌گرفت — یعنی
+     در هر نگاه یک کالا. حالا دو کالا در هر نگاه دیده می‌شود و سرکِ سومی هم
+     پیداست تا معلوم باشد ردیف ادامه دارد. */
+  .rail{gap:11px;padding:4px 2px 11px}
+  .card{flex:0 0 calc(50% - 18px);border-radius:15px}
+  .body{padding:10px 11px 12px}
+  .brand{font-size:10.5px}
+  .card h3{font-size:13px;line-height:1.55;margin-top:1px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  /* توضیح کالا روی گوشی جا نمی‌شود و بلندترین بخش کارت بود؛ متن کاملش در
+     صفحهٔ خود کالاست. */
+  .desc{display:none}
+  .price{font-size:14.5px}
+  .old,.save{font-size:10.5px}
+  /* قیمت قبلی کنار قیمت جا نمی‌شد و فقط یک خط‌تیره از آن پیدا بود؛
+     می‌رود سطر خودش. */
+  .old{display:block;margin-inline-start:0;margin-top:2px}
+  .stockline{font-size:10.5px;margin-top:6px}
+  .soldout{font-size:11px;padding:5px 0}
+  .add{margin-top:9px;padding:8px;font-size:12.5px;border-radius:10px}
+  .tag,.off{font-size:10px;padding:3px 7px;border-radius:7px;top:7px}
+  .tag{inset-inline-end:7px} .off{inset-inline-start:7px}
+  .rank{width:23px;height:23px;font-size:11px;border-radius:8px;top:7px;inset-inline-start:7px}
+  .cat{margin-bottom:36px}
+  .cat-head h2{font-size:21px}
   .trust{grid-template-columns:1fr;gap:9px}
   .trust>div{padding:14px 15px;border-radius:15px;align-items:center}
   .trust .ic{width:38px;height:38px}
@@ -666,7 +766,7 @@ footer #fContact ul{margin-top:4px}
   .band{padding:20px 15px 14px;border-radius:22px}
   .band + .cat{margin-top:38px}
   .sheet{padding:0} .sheet-in{border-radius:0;min-height:100%}
-  .fab{bottom:16px;inset-inline-start:16px;padding:12px 17px}
+
   .chat{inset:0;width:100%;height:100%;border-radius:0}
   table{display:block;overflow-x:auto;white-space:nowrap}
   /* ---- هدر در گوشی: جا شدن بدون شکستن صفحه ---- */
@@ -679,7 +779,6 @@ footer #fContact ul{margin-top:4px}
   .cart-btn .count{min-width:19px;height:19px;font-size:11px}
   /* جستجو می‌رود به سطر بعد و تمام عرض را می‌گیرد */
   .search{order:9;flex:1 0 100%;max-width:none}
-  nav{top:auto;margin-top:6px}
 }
 /* ---- گوشی‌های خیلی کوچک ---- */
 @media(max-width:380px){
@@ -893,7 +992,29 @@ footer #fContact ul{margin-top:4px}
   </div>
 </footer>
 
-<button class="fab" id="fab"><span class="dot"></span> یه سؤال دارم</button>
+<!-- نوار پایین صفحه: فقط روی گوشی دیده می‌شود -->
+<nav class="tabbar" id="tabbar" aria-label="منوی اصلی">
+  <button class="tb on" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.4 12 4l8 6.4V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/></svg><span>خانه</span></button>
+  <button class="tb" data-tab="cats" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.6" y="3.6" width="7" height="7" rx="2"/><rect x="13.4" y="3.6" width="7" height="7" rx="2"/><rect x="3.6" y="13.4" width="7" height="7" rx="2"/><rect x="13.4" y="13.4" width="7" height="7" rx="2"/></svg><span>دسته‌بندی</span></button>
+  <button class="tb" data-tab="cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17.5" cy="19.5" r="1.5"/><path d="M2.6 3.6h2.3l2.4 11.3h11.2l2.1-8H6.4"/></svg><i class="tb-badge" id="tbCount" hidden>۰</i><span>سبد خرید</span></button>
+  <button class="tb" data-tab="acct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg><span>حساب کاربری</span></button>
+</nav>
+
+<div class="catsheet" id="catSheet" role="dialog" aria-modal="true" aria-label="دسته‌بندی‌ها">
+  <div class="cs-in">
+    <div class="cs-grab"></div>
+    <div class="cs-head"><h3>دسته‌بندی‌ها</h3>
+      <button class="close-x" id="csClose" aria-label="بستن">×</button></div>
+    <div id="csBody"></div>
+  </div>
+</div>
+
+<button class="fab" id="fab" aria-label="یه سؤال دارم"><span class="dot"></span>
+  <svg class="fab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L7 21l1-3.6A8.4 8.4 0 1 1 21 11.5z"/>
+    <path d="M9.2 9.5a2.8 2.8 0 0 1 5.5.8c0 1.9-2.7 2.3-2.7 4"/><path d="M12 17.3h.01"/></svg>
+  <span class="fab-tx">یه سؤال دارم</span></button>
 
 <div class="modal" id="finder"><div class="box">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -901,7 +1022,9 @@ footer #fContact ul{margin-top:4px}
     <button class="close-x" id="finderClose" aria-label="بستن">×</button></div>
   <div id="finderBody"></div>
 </div></div>
-<div class="quiet-note">حالت خلوت روشن است · برای دیدن، نشانگر را روی کالا ببر</div>
+<div class="quiet-note">حالت خلوت روشن است ·
+  <span class="qn-mouse">برای دیدن، نشانگر را روی کالا ببر</span><span
+   class="qn-touch">برای دیدن، انگشتت را روی کالا نگه دار</span></div>
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer" aria-label="سبد خرید">
   <div class="d-head"><h3>سبد خریدت</h3><button id="closeCart" class="close-x" aria-label="بستن">×</button></div>
@@ -1219,6 +1342,13 @@ function renderMenu(){
         ${esc(m.label)}${m.kids&&m.kids.length?'<span class="caret">▾</span>':''}</a>
       ${m.kids&&m.kids.length?`<div class="sub">${m.kids.map(k=>`<a href="${esc(k.href)}">${esc(k.label)}</a>`).join('')}</div>`:''}
     </div>`).join('');
+  const cs=document.getElementById('csBody');
+  if(cs) cs.innerHTML=menu.map(m=>`
+    <div class="cs-group">
+      <a class="cs-main" href="${esc(m.href)}">${esc(m.label)}</a>
+      ${m.kids&&m.kids.length?`<div class="cs-kids">${m.kids.map(k=>
+        `<a href="${esc(k.href)}">${esc(k.label)}</a>`).join('')}</div>`:''}
+    </div>`).join('');
   document.getElementById('fCats').innerHTML=cats.map(c=>`<li><a href="#c-${c.id}">${esc(c.name)}</a></li>`).join('');
 }
 
@@ -1524,7 +1654,9 @@ function section(id,acc,tint,badge,title,sub,items,extra){
 function initRail(id){
   const rail=document.querySelector(`[data-rail="${id}"]`), dots=document.querySelector(`[data-dots="${id}"]`);
   if(!rail||!rail.children.length) return;
-  const step=()=>{const c=rail.querySelector('.card');return c?c.offsetWidth+16:200};
+  const step=()=>{const c=rail.querySelector('.card');if(!c)return 200;
+    const st=getComputedStyle(rail);
+    return c.offsetWidth+(parseFloat(st.columnGap||st.gap)||16)};
   const pages=()=>Math.max(1,Math.ceil((rail.scrollWidth-rail.clientWidth)/step())+1);
   const pos=()=>Math.round(Math.abs(rail.scrollLeft)/step());
   const paint=()=>{const n=pages(),cur=Math.min(pos(),n-1);
@@ -1599,6 +1731,8 @@ const itemCount=()=>[...cart].reduce((s,[,q])=>s+q,0);
 function updateCart(){
   [...cart].forEach(([id])=>{if(!products.find(x=>x.id===id))cart.delete(id)});
   document.getElementById('count').textContent=fa(itemCount());
+  const tbc=document.getElementById('tbCount');
+  if(tbc){tbc.textContent=fa(itemCount());tbc.hidden=itemCount()===0}
   document.getElementById('total').textContent=money(subtotal());
   try{ paintPackHint() }catch(_){}
   dBody.innerHTML=cart.size?[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);
@@ -1972,6 +2106,36 @@ navEl.addEventListener('click',e=>{
   }
   if(e.target.closest('a')) navEl.classList.remove('open');
 });
+
+/* ============ نوار پایین صفحه (گوشی) ============
+   چهار کاری که مشتری بیشتر از همه می‌خواهد، در دسترسِ شست. */
+const tabbar=$('tabbar'), catSheet=$('catSheet');
+const csBtn=()=>tabbar.querySelector('[data-tab="cats"]');
+function markTab(t){
+  [...tabbar.children].forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+}
+function openCats(){
+  catSheet.classList.add('open'); csBtn().setAttribute('aria-expanded','true'); markTab('cats');
+}
+function closeCats(){
+  catSheet.classList.remove('open'); csBtn().setAttribute('aria-expanded','false');
+  markTab('home');
+}
+tabbar.addEventListener('click',e=>{
+  const b=e.target.closest('.tb'); if(!b) return;
+  const t=b.dataset.tab;
+  if(t!=='cats' && catSheet.classList.contains('open')) closeCats();
+  if(t==='home'){ closeAllSheets(); closeD(); navEl.classList.remove('open');
+    backHome(); scrollTo({top:0,behavior:'smooth'}); markTab('home'); }
+  else if(t==='cats'){ catSheet.classList.contains('open')?closeCats():openCats() }
+  else if(t==='cart'){ openD() }
+  else if(t==='acct'){ $('acctBtn').click() }
+});
+catSheet.addEventListener('click',e=>{
+  if(e.target===catSheet||e.target.id==='csClose'){ closeCats(); return }
+  if(e.target.closest('a')) closeCats();
+});
+addEventListener('keydown',e=>{ if(e.key==='Escape'&&catSheet.classList.contains('open')) closeCats() });
 
 /* ============ assistant ============ */
 const chat=$('chat'), chatBody=$('chatBody');
