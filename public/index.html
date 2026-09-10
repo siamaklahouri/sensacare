@@ -310,6 +310,27 @@ nav::-webkit-scrollbar{display:none}
   padding:7px 0;text-align:center;letter-spacing:.3px}
 .stockline{font-size:11.5px;font-weight:700;margin-top:8px}
 .add[disabled]{background:var(--line);color:var(--body);cursor:not-allowed}
+/* حالت خلوت — برای وقتی که مشتری در اتوبوس یا سرِ کار سایت را باز می‌کند.
+   قول سایت «کسی نفهمه» است؛ این همان قول، یک قدم عقب‌تر از درِ خانه. */
+body.quiet .thumb, body.quiet .pd-img{filter:blur(14px) grayscale(.6)}
+body.quiet .thumb:hover, body.quiet .pd-img:hover{filter:blur(5px) grayscale(.3)}
+body.quiet .card h3, body.quiet .desc, body.quiet .brand,
+body.quiet #pdBody h2, body.quiet .art h4, body.quiet .art p,
+body.quiet .hero p, body.quiet .trust .tx p{filter:blur(4.5px);transition:filter .15s}
+body.quiet .card:hover h3, body.quiet .card:hover .desc, body.quiet .card:hover .brand,
+body.quiet .art:hover h4, body.quiet .art:hover p,
+body.quiet .hero p:hover, body.quiet .trust>div:hover .tx p{filter:none}
+body.quiet #pdBody h2{filter:none}
+#quietBtn.on{background:var(--red);color:#fff}
+.qa{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}
+.qa h4{font-size:15.5px;font-weight:800;margin-bottom:4px}
+.qa .qitem{background:var(--soft);border-radius:14px;padding:13px 15px;margin-top:10px}
+.qa .qitem b{display:block;font-size:13.5px;margin-bottom:6px}
+.qa .qitem p{font-size:13px;color:var(--body);line-height:1.9}
+.qa textarea{min-height:74px}
+.quiet-note{position:fixed;bottom:16px;inset-inline-end:16px;z-index:70;background:var(--dark);color:#fff;
+  padding:9px 15px;border-radius:12px;font-size:12.5px;box-shadow:var(--shadow);display:none}
+body.quiet .quiet-note{display:block}
 .add[disabled]:hover{background:var(--line);color:var(--body)}
 .dots{display:flex;gap:6px;justify-content:center}
 .dots i{width:7px;height:7px;border-radius:99px;background:var(--line);cursor:pointer;transition:.2s}
@@ -677,6 +698,13 @@ footer #fContact ul{margin-top:4px}
         <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round"></svg>
       </button>
+      <button class="icon-btn" id="quietBtn" aria-label="حالت خلوت" title="حالت خلوت — محو کردن عکس‌ها و نام‌ها">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/>
+          <path d="M10.6 10.6a2 2 0 002.8 2.8"/>
+          <path d="M9.4 5.2A9.6 9.6 0 0112 5c5 0 9 4.5 9 7a11 11 0 01-2.3 3.4"/>
+          <path d="M6.2 6.7C3.9 8.2 3 10.5 3 12c0 2.5 4 7 9 7a9.4 9.4 0 003.6-.7"/></svg>
+      </button>
       <button class="icon-btn" id="acctBtn" aria-label="حساب کاربری">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
       </button>
@@ -835,12 +863,20 @@ footer #fContact ul{margin-top:4px}
 
 <button class="fab" id="fab"><span class="dot"></span> یه سؤال دارم</button>
 
+<div class="modal" id="finder"><div class="box">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <b style="font-size:15px">راهنمای انتخاب</b>
+    <button class="close-x" id="finderClose" aria-label="بستن">×</button></div>
+  <div id="finderBody"></div>
+</div></div>
+<div class="quiet-note">حالت خلوت روشن است · برای دیدن، نشانگر را روی کالا ببر</div>
 <div class="overlay" id="overlay"></div>
 <aside class="drawer" id="drawer" aria-label="سبد خرید">
   <div class="d-head"><h3>سبد خریدت</h3><button id="closeCart" class="close-x" aria-label="بستن">×</button></div>
   <div class="d-body" id="dBody"></div>
   <div class="d-foot">
     <div class="total"><span>جمع کالاها</span><span id="total">۰ تومان</span></div>
+    <div id="packHint" class="hint" style="display:none;margin:0 0 8px"></div>
     <button class="checkout" id="toCheckout">بریم ثبت سفارش</button>
     <p class="note">هزینهٔ ارسال رو مرحلهٔ بعد، بعد از دیدن آدرست حساب می‌کنیم.</p>
   </div>
@@ -1070,6 +1106,7 @@ footer #fContact ul{margin-top:4px}
     <button data-t="users">کاربران</button>
     <button data-t="blog">مجله و صفحات</button>
     <button data-t="fb">بازخوردها</button>
+    <button data-t="qa">پرسش‌ها</button>
     <button data-t="coupon">کد تخفیف</button>
     <button data-t="stats">آمار بازدید</button>
     <button data-t="set">تنظیمات</button>
@@ -1524,6 +1561,7 @@ function updateCart(){
   [...cart].forEach(([id])=>{if(!products.find(x=>x.id===id))cart.delete(id)});
   document.getElementById('count').textContent=fa(itemCount());
   document.getElementById('total').textContent=money(subtotal());
+  try{ paintPackHint() }catch(_){}
   dBody.innerHTML=cart.size?[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);
     return `<div class="line">${p.img?`<img class="sq" src="${esc(p.img)}" alt="">`:`<span class="sq"></span>`}
       <div><h4>${esc(p.n)}</h4><span class="p">${money(p.pr)}</span></div>
@@ -1707,14 +1745,40 @@ async function applyCoupon(){
   }
   paintSum();
 }
+/* تخفیف پک — همان چیزی که سرور هم حساب می‌کند، اینجا فقط برای نشان دادن. */
+function packInfo(){
+  const min=+(settings.packMin??3), pct=+(settings.packPct??10), q=itemCount(), g=subtotal();
+  if(!min||!pct) return {on:false,left:0,amount:0,min,pct};
+  return { on:q>=min, left:Math.max(0,min-q), amount:q>=min?Math.round(g*pct/100):0, min, pct };
+}
+function paintPackHint(){
+  const el=$('packHint'); if(!el) return;
+  const p=packInfo(), free=+(settings.freeOver||0), g=subtotal();
+  const bits=[];
+  if(p.min&&p.pct){
+    bits.push(p.on
+      ? `<span style="color:#166534">✓ تخفیف پک ${fa(p.pct)}٪ فعال شد — ${money(p.amount)} کمتر</span>`
+      : `${fa(p.left)} قلم دیگه اضافه کن تا ${fa(p.pct)}٪ تخفیف پک بگیری`);
+  }
+  if(free>0&&g>0){
+    bits.push(g>=free
+      ? '<span style="color:#166534">✓ ارسال این سفارش رایگانه</span>'
+      : `${money(free-g)} دیگه بخری، ارسال رایگان می‌شه`);
+  }
+  el.innerHTML=bits.join('<br>');
+  el.style.display=bits.length?'':'none';
+}
 function paintSum(){
   const city=$('cCity').value, m=METHODS.find(x=>x.id===chosen);
   const ship=quote(m,city,subtotal())||0, goods=subtotal();
   /* اگر سبد بعد از گرفتن کد عوض شود، تخفیف نباید از خودِ خرید بیشتر شود */
-  const off=Math.min(coupon.amount||0, goods);
+  /* کد تخفیف و تخفیف پک با هم جمع نمی‌شوند — هرکدام بیشتر بود، همان.
+     دقیقاً همان قاعده‌ای که سرور هم اعمال می‌کند. */
+  const off=Math.min(Math.max(coupon.amount||0, packInfo().amount||0), goods);
+  const viaPack = off>0 && off===packInfo().amount && off!==(coupon.amount||0);
   $('sum').innerHTML=`
     <div><span>کالاها (${fa(itemCount())} قلم)</span><span>${money(goods)}</span></div>
-    ${off>0?`<div style="color:#166534"><span>تخفیف — ${esc(coupon.code)}</span><span>−${money(off)}</span></div>`:''}
+    ${off>0?`<div style="color:#166534"><span>تخفیف — ${viaPack?'پک':esc(coupon.code)}</span><span>−${money(off)}</span></div>`:''}
     <div><span>ارسال — ${m.name}</span><span>${ship===0?'رایگان':money(ship)}</span></div>
     ${(settings.freeOver>0&&goods<settings.freeOver)?`<div style="color:var(--red)"><span>تا ارسال رایگان</span><span>${money(settings.freeOver-goods)}</span></div>`:''}
     <div class="big"><span>جمعاً می‌شه</span><span>${money(Math.max(0,goods-off)+ship)}</span></div>`;
@@ -1930,7 +1994,10 @@ function openChat(){
     chips(['می‌خوام دیرتر تموم شه','سایزم چنده؟','به لاتکس حساسیت دارم','حس طبیعی‌تر می‌خوام','کدوم ژل بهتره؟']);
   }
 }
-$('fab').onclick=openChat; $('askBtn').onclick=openChat; $('askBtn2').onclick=openChat;
+$('fab').onclick=openChat; $('askBtn').onclick=openChat;
+$('askBtn2').onclick=openFinder;
+$('finderClose').onclick=()=>$('finder').classList.remove('open');
+$('finder').onclick=e=>{ if(e.target.id==='finder') $('finder').classList.remove('open') };
 $('closeChat').onclick=()=>chat.classList.remove('open');
 $('chatSend').onclick=()=>{const v=$('chatIn').value.trim();if(v)ask(v)};
 $('chatIn').onkeydown=e=>{if(e.key==='Enter'){const v=$('chatIn').value.trim();if(v)ask(v)}};
@@ -1991,8 +2058,132 @@ function openProduct(id,push=true){
       <button class="btn-main add" data-id="${p.id}" style="width:100%;margin-top:16px;padding:14px;background:${c.acc};box-shadow:none"
         ${stock<=0?'disabled style="opacity:.5"':''}>${stock<=0?'ناموجود':'اضافه کن'}</button>
       <p class="hint" style="text-align:center">توی بسته‌بندی بی‌نشون می‌فرستیم · تا ۷ روز برگشت می‌خوره</p>
-    </div></div>`;
+      ${st.out?`<button class="btn-ghost" id="notifyMe" data-p="${p.id}" style="width:100%;margin-top:10px;padding:12px;color:var(--ink);background:var(--card);border:1px solid var(--line)">🔔 خبرم کن وقتی موجود شد</button>`:''}
+    </div></div>
+    <div class="qa" id="qaBox" data-p="${p.id}"></div>`;
   pdSheet.classList.add('open');
+  paintQA(p.id);
+  const nb=$('notifyMe');
+  if(nb) nb.onclick=()=>askRestock(nb.dataset.p);
+}
+
+/* ۵ مقاله داشتیم که به هیچ محصولی لینک نمی‌دادند — یعنی کسی که از گوگل
+   می‌آمد، می‌خواند و می‌رفت. حالا ته هر مقاله محصول‌های مرتبط می‌آید. */
+function relatedHTML(kind,slug){
+  if(kind!=='article'&&kind!=='a') return '';   /* مسیر داخلی 'article' می‌فرستد، آدرس /a/ می‌دهد */
+  const map=(settings.articleProducts||{}), ids=(map[slug]||'').split(',').filter(Boolean);
+  let list=ids.map(id=>products.find(p=>p.id===id)).filter(Boolean);
+  if(!list.length){
+    /* اگر مدیر چیزی انتخاب نکرده، از روی دستهٔ مقاله حدس می‌زنیم. */
+    const art=articles.find(a=>a.slug===slug)||{};
+    const t=(art.title||'')+' '+(art.excerpt||'');
+    const cat=/سایز|اندازه/.test(t)?'thin':/تأخیر/.test(t)?'delay':/ژل|روان/.test(t)?'lube':
+              /لاتکس|حساسیت/.test(t)?'thin':'';
+    list=products.filter(p=>(p.stock??40)>0&&(!cat||p.c===cat)).slice(0,3);
+  }
+  list=list.slice(0,3);
+  if(!list.length) return '';
+  return `<div style="margin-top:26px;border-top:1px solid var(--line);padding-top:18px">
+    <h4 style="font-size:15.5px;font-weight:800;margin-bottom:10px">اینا به این مطلب می‌خوره</h4>
+    <div style="display:grid;gap:9px">${list.map(p=>`
+      <button data-relp="${p.id}" style="display:flex;gap:12px;align-items:center;text-align:right;
+        background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:11px;width:100%">
+        <span style="flex:1;min-width:0"><b style="display:block;font-size:13.5px">${esc(p.n)}</b>
+        <span style="font-size:12px;color:var(--body)">${esc(p.b||'')}</span></span>
+        <b style="white-space:nowrap;font-size:13px">${money(p.pr)}</b></button>`).join('')}</div></div>`;
+}
+
+/* ---------- راهنمای انتخاب ----------
+   دکمهٔ «نمی‌دونم کدوم به دردم می‌خوره» می‌رفت به گفتگو. چهار سؤال ساده
+   بیشتر از گفتگو به انتخاب ختم می‌شود، چون مشتری نمی‌داند چه بپرسد. */
+const FINDER=[
+  {q:'دنبال چی می‌گردی؟',a:[
+    ['دیرتر تموم شه','delay'],['حس طبیعی‌تر','thin'],
+    ['حس متفاوت','dotted'],['ژل و روان‌کننده','lube']]},
+  {q:'به لاتکس حساسیت داری؟',a:[['نه','no'],['آره یا مطمئن نیستم','yes']]},
+  {q:'چند تا می‌خوای؟',a:[['کم، امتحان کنم','few'],['بستهٔ معمولی','normal'],['زیاد، به‌صرفه‌تر','many']]},
+  {q:'بودجه‌ات چقدره؟',a:[['هرچی باشه','any'],['اقتصادی','low']]}
+];
+let fStep=0, fAns=[];
+function openFinder(){ fStep=0; fAns=[]; paintFinder(); $('finder').classList.add('open') }
+function paintFinder(){
+  const box=$('finderBody');
+  if(fStep<FINDER.length){
+    const s=FINDER[fStep];
+    box.innerHTML=`<p class="hint">پرسش ${fa(fStep+1)} از ${fa(FINDER.length)}</p>
+      <h3 style="font-size:19px;font-weight:800;margin:6px 0 16px">${s.q}</h3>
+      <div style="display:grid;gap:9px">${s.a.map(([lbl,v])=>
+        `<button class="btn-ghost fpick" data-v="${v}" style="padding:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);text-align:right">${lbl}</button>`).join('')}</div>
+      ${fStep?'<button class="mini" id="fBack" style="margin-top:14px">برگرد</button>':''}`;
+    box.querySelectorAll('.fpick').forEach(b=>b.onclick=()=>{ fAns[fStep]=b.dataset.v; fStep++; paintFinder() });
+    const bk=$('fBack'); if(bk) bk.onclick=()=>{ fStep--; paintFinder() };
+    return;
+  }
+  const [want,latex,howMany,budget]=fAns;
+  let list=products.filter(p=>(p.stock??40)>0);
+  if(latex==='yes') list=list.filter(p=>/پلی‌ایزوپرن|لاتکس‌فری|بدون لاتکس/.test((p.material||'')+(p.n||'')+(p.tag||'')));
+  const byCat=list.filter(p=>p.c===want);
+  if(byCat.length) list=byCat;
+  if(howMany==='few') list=[...list].sort((a,b)=>(+(a.count||'').replace(/\D/g,'')||99)-(+(b.count||'').replace(/\D/g,'')||99));
+  if(howMany==='many') list=[...list].sort((a,b)=>(+(b.count||'').replace(/\D/g,'')||0)-(+(a.count||'').replace(/\D/g,'')||0));
+  if(budget==='low') list=[...list].sort((a,b)=>a.pr-b.pr);
+  const pick=list.slice(0,3);
+  box.innerHTML=`<h3 style="font-size:19px;font-weight:800;margin-bottom:4px">اینا به دردت می‌خوره</h3>
+    <p class="hint">از روی همین چیزی که گفتی، بین کالاهای موجود.</p>
+    ${pick.length?`<div style="display:grid;gap:10px;margin-top:14px">${pick.map(p=>`
+      <button class="fgo" data-id="${p.id}" style="display:flex;gap:12px;align-items:center;text-align:right;
+        background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:12px;width:100%">
+        <span style="flex:1;min-width:0">
+          <b style="display:block;font-size:14px">${esc(p.n)}</b>
+          <span style="font-size:12px;color:var(--body)">${esc(p.b||'')} ${p.count?'· '+esc(p.count):''}</span></span>
+        <b style="white-space:nowrap">${money(p.pr)}</b></button>`).join('')}</div>`
+    :'<p class="empty">با این شرط‌ها چیزی پیدا نشد. از دستیار بپرس.</p>'}
+    <button class="mini" id="fAgain" style="margin-top:16px">از اول</button>`;
+  box.querySelectorAll('.fgo').forEach(b=>b.onclick=()=>{
+    $('finder').classList.remove('open'); openProduct(b.dataset.id) });
+  $('fAgain').onclick=openFinder;
+}
+
+/* ---------- پرسش بی‌نام ----------
+   کسی در این دسته با اسم خودش سؤال نمی‌پرسد. اینجا هیچ نام و شماره‌ای
+   گرفته نمی‌شود؛ فقط متن. جواب‌ها هم بعد از تأیید مدیر دیده می‌شوند. */
+async function paintQA(pid){
+  const box=$('qaBox'); if(!box) return;
+  let list=[];
+  if(ONLINE){ try{ list=(await req('/api/questions/'+encodeURIComponent(pid))).list||[] }catch(e){} }
+  box.innerHTML=`
+    <h4>سؤالی داری؟</h4>
+    <p class="hint">بی‌نام بپرس — نه اسمت را می‌پرسیم نه شماره‌ات. جواب همین‌جا می‌آید.</p>
+    ${list.map(x=>`<div class="qitem"><b>${esc(x.q)}</b><p>${esc(x.a).replace(/\n/g,'<br>')}</p></div>`).join('')}
+    <textarea id="qText" placeholder="مثلاً: این با ژل سیلیکونی سازگاره؟" style="margin-top:12px"></textarea>
+    <button class="mini" id="qSend" style="margin-top:8px;padding:10px 20px">بفرست</button>
+    <span class="hint" id="qMsg" style="margin-inline-start:8px"></span>`;
+  $('qSend').onclick=async()=>{
+    const t=$('qText').value.trim(), msg=$('qMsg');
+    if(t.length<5){ msg.style.color='var(--red)'; msg.textContent='کمی کامل‌تر بنویس.'; return }
+    if(!ONLINE){ msg.textContent='برای فرستادن باید آنلاین باشی.'; return }
+    $('qSend').disabled=true;
+    try{
+      await req('/api/questions',{method:'POST',body:{product:pid,q:t}});
+      $('qText').value='';
+      msg.style.color='#166534'; msg.textContent='رسید. بعد از جواب، همین‌جا می‌بینی‌اش.';
+    }catch(e){ msg.style.color='var(--red)'; msg.textContent=e.message||'فرستاده نشد' }
+    $('qSend').disabled=false;
+  };
+}
+
+/* ---------- خبرم کن ----------
+   هیچ راه تماسی از سایت گرفته نمی‌شود؛ مشتری در ربات دکمه می‌زند. */
+async function askRestock(pid){
+  if(!ONLINE){ toast('برای این کار باید آنلاین باشی.'); return }
+  try{
+    const r=await req('/api/restock/link',{method:'POST',body:{product:pid}});
+    const l=r.links||{};
+    const go=l.telegram||l.bale;
+    if(!go){ toast('فعلاً این امکان در دسترس نیست.'); return }
+    toast('ربات باز می‌شود — همان‌جا یک دکمه بزن.');
+    window.open(go,'_blank','noopener');
+  }catch(e){ toast(e.message||'انجام نشد') }
 }
 $('pdBody').addEventListener('click',onAdd);
 catsEl.addEventListener('click',e=>{
@@ -2035,8 +2226,10 @@ async function openDoc(kind,slug,push=true){
   if((!item||!item.body) && kind==='article') item = LOCAL_ARTICLES.find(p=>p.slug===slug);
   if(!item){ toast('مطلب پیدا نشد.'); return }
   $('docTitle').textContent=item.title;
-  $('docBody').innerHTML=md(item.body);
+  $('docBody').innerHTML=md(item.body)+relatedHTML(kind,slug);
   $('docSheet').classList.add('open');
+  $('docBody').querySelectorAll('[data-relp]').forEach(b=>b.onclick=()=>{
+    $('docSheet').classList.remove('open'); openProduct(b.dataset.relp) });
 }
 $('docClose').onclick=()=>{$('docSheet').classList.remove('open');backHome()};
 $('docSheet').onclick=e=>{if(e.target===$('docSheet')){$('docSheet').classList.remove('open');backHome()}};
@@ -2397,7 +2590,7 @@ function drawPanel(){
   const mt=$('modeTag');
   if(mt){ mt.className='mode '+(ONLINE?'on2':'off2');
     mt.textContent=ONLINE?'متصل به سرور':'حالت محلی — فقط این مرورگر'; }
-({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,coupon:repCoupon,stats:repStats,set:repSet})[ptab]()}
+({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,qa:repQA,coupon:repCoupon,stats:repStats,set:repSet})[ptab]()}
 const C=$('pContent');
 const bar=(label,val,max,color)=>`<div class="brow"><span>${esc(label)}</span>
   <span class="btrack"><span class="bfill" style="width:${max?Math.round(val/max*100):0}%;background:${color||'var(--red)'}"></span></span>
@@ -3025,6 +3218,38 @@ function repFb(){
         <p style="font-size:13.5px;margin-top:4px">${esc(f.text)||'<span style="color:var(--body)">بدون متن</span>'}</p></div>`).join('')
       :'<p class="empty">هنوز بازخوردی ثبت نشده است.</p>'}</div>`;
 }
+/* --- پرسش‌های مشتری‌ها --- */
+let qList=[], qLoaded=false;
+function repQA(){
+  if(!qLoaded && ONLINE){ qLoaded=true;
+    req('/api/admin/data',{asAdmin:true}).then(d=>{ qList=d.questions||[]; if(ptab==='qa') repQA() }).catch(()=>{}); }
+  const pend=qList.filter(q=>!q.answered), done=qList.filter(q=>q.answered);
+  const row=q=>`<div class="box" style="padding:14px">
+    <div style="font-size:12px;color:var(--body)">${esc(q.product||'—')} · ${new Date(q.created).toLocaleDateString('fa-IR')}</div>
+    <b style="display:block;margin:6px 0;font-size:14px">${esc(q.q)}</b>
+    <textarea data-qa="${q.id}" placeholder="جوابت را اینجا بنویس…" style="min-height:70px">${esc(q.a||'')}</textarea>
+    <label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:13px">
+      <input type="checkbox" data-qp="${q.id}" ${q.published?'checked':''} style="width:auto">
+      روی صفحهٔ محصول نشان داده شود</label>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="mini" data-qsave="${q.id}">ذخیره</button>
+      <button class="mini del" data-qdel="${q.id}">حذف</button></div></div>`;
+  C.innerHTML=`<div class="box"><h3>پرسش‌های بی‌جواب ${pend.length?`(${fa(pend.length)})`:''}</h3>
+      ${pend.length?pend.map(row).join(''):'<p class="empty">پرسش بی‌جوابی نیست.</p>'}</div>
+    <div class="box"><h3>جواب‌داده‌شده‌ها</h3>
+      ${done.length?done.map(row).join(''):'<p class="empty">هنوز چیزی جواب نداده‌اید.</p>'}</div>`;
+  const send=async(id,extra)=>{
+    const a=C.querySelector(`[data-qa="${id}"]`), pub=C.querySelector(`[data-qp="${id}"]`);
+    try{ await req('/api/admin/questions',{method:'POST',asAdmin:true,
+        body:{id:+id, a:a?a.value:'', publish:pub?pub.checked:false, ...extra}});
+      const d=await req('/api/admin/data',{asAdmin:true}); qList=d.questions||[]; repQA(); toast('ذخیره شد.');
+    }catch(e){ toast(e.message) }
+  };
+  C.querySelectorAll('[data-qsave]').forEach(b=>b.onclick=()=>send(b.dataset.qsave));
+  C.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=()=>{
+    if(confirm('این پرسش حذف شود؟')) send(b.dataset.qdel,{delete:true}) });
+}
+
 /* --- کد تخفیف --- */
 let coupons=[];
 const faDate=t=>t?new Date(t).toLocaleDateString('fa-IR'):'—';
@@ -3150,6 +3375,12 @@ function repSet(){
       <div><label>سقف ارسال رایگان (۰ = غیرفعال)</label>
         <input id="s_free" type="number" value="${settings.freeOver||0}">
         <p class="hint">اگر مبلغ خرید از این عدد بیشتر شود، هزینهٔ ارسال صفر می‌شود.</p></div>
+      <div><label>تخفیف پک — از چند قلم به بالا</label>
+        <input id="s_packmin" type="number" value="${settings.packMin??3}">
+        <p class="hint">ارسال ۲۵۰ هزار است و میانگین کالا حدود ۱۵۰ هزار؛ خرید تک‌قلمی برای مشتری صرف نمی‌کند. ۰ = غیرفعال.</p></div>
+      <div><label>تخفیف پک — چند درصد</label>
+        <input id="s_packpct" type="number" value="${settings.packPct??10}">
+        <p class="hint">با کد تخفیف جمع نمی‌شود؛ هرکدام بیشتر بود اعمال می‌شود.</p></div>
       <div><label>نام فروشگاه</label><input id="s_name" value="${esc(settings.shopName)}"></div>
       <div style="grid-column:1/-1"><label>نوار بالای تیتر (صفحهٔ اصلی)</label>
         <input id="s_hpill" value="${esc((settings.hero||{}).pill||HERO_DEFAULT.pill)}">
@@ -3243,6 +3474,8 @@ function repSet(){
     settings.shopName=$('s_name').value.trim()||'سِنسا';
     settings.hero={pill:$('s_hpill').value.trim(), title:$('s_htitle').value.trim(),
                    sub:$('s_hsub').value.trim()};
+    settings.packMin=Math.max(0,+$('s_packmin').value||0);
+    settings.packPct=Math.max(0,Math.min(90,+$('s_packpct').value||0));
     settings.aiKey=$('s_key').value.trim();
     settings.telegram=$('s_tg').value.trim().replace('@','')||'siamak_la';
     settings.trust={enamad:$('s_enamad').value.trim(),samandehi:$('s_saman').value.trim()};
@@ -3254,7 +3487,8 @@ function repSet(){
     if(ONLINE) req('/api/admin/settings',{method:'POST',asAdmin:true,
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
             shipExpress:settings.shipExpress,shipPost:settings.shipPost,trust:settings.trust,
-            card:settings.card, contact:settings.contact, hero:settings.hero}}).catch(()=>{});
+            card:settings.card, contact:settings.contact, hero:settings.hero,
+            packMin:settings.packMin, packPct:settings.packPct}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){
     products=JSON.parse(JSON.stringify(DEFAULTS));save();render();updateCart();toast('بازگردانی شد.')}};
@@ -3546,6 +3780,20 @@ function paintBadges(){
 }
 $('cCity').innerHTML='<option value="">انتخاب کنید…</option>'+
   PROVINCES.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('');
+/* حالت خلوت. عنوان تب هم عوض می‌شود، چون همان هم لو می‌دهد. */
+const QUIET_TITLE='یادداشت‌ها';
+let realTitle=document.title;
+function setQuiet(on){
+  document.body.classList.toggle('quiet',on);
+  $('quietBtn').classList.toggle('on',on);
+  $('quietBtn').setAttribute('aria-pressed',on?'true':'false');
+  if(on){ realTitle=document.title; document.title=QUIET_TITLE }
+  else document.title=realTitle;
+  store.set('sensa_quiet',on?1:0);
+}
+$('quietBtn').onclick=()=>setQuiet(!document.body.classList.contains('quiet'));
+try{ if(store.get('sensa_quiet',0)) setQuiet(true) }catch(_){}
+
 restoreCart(); boot(); paintBadges(); paintContact(); paintHero();
 
 /* ============ صفحهٔ مدیریت ============ */

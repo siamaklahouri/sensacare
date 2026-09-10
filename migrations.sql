@@ -91,3 +91,33 @@ CREATE TABLE IF NOT EXISTS order_discounts(
   order_id TEXT PRIMARY KEY,
   code TEXT,
   amount INTEGER DEFAULT 0);
+
+-- ۴ پرسش بی‌نام روی صفحهٔ محصول. هیچ نام و شماره‌ای ذخیره نمی‌شود؛ فقط
+-- خودِ متن. تا وقتی مدیر تأیید نکند، نمایش داده نمی‌شود.
+CREATE TABLE IF NOT EXISTS questions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT,
+  q TEXT,
+  a TEXT,
+  created INTEGER,
+  answered INTEGER DEFAULT 0,
+  published INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_q_product ON questions(product_id, published);
+
+-- ۵ «خبرم کن» وقتی کالا موجود شد. به گفتگوی ربات وصل است، نه به شماره.
+CREATE TABLE IF NOT EXISTS restock_watch(
+  product_id TEXT,
+  platform TEXT,
+  chat_id TEXT,
+  created INTEGER,
+  PRIMARY KEY(product_id, platform, chat_id));
+
+-- ۲ یادآور خرید دوباره — تا برای یک سفارش دوبار فرستاده نشود.
+CREATE TABLE IF NOT EXISTS reorder_sent(
+  order_id TEXT PRIMARY KEY,
+  sent INTEGER);
+
+-- ۷ محصول‌های مرتبط با هر مقاله (چند شناسه با ویرگول)
+CREATE TABLE IF NOT EXISTS article_products(
+  slug TEXT PRIMARY KEY,
+  ids TEXT);

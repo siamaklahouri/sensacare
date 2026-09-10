@@ -525,6 +525,19 @@ async function handleUpdate(env, pf, u) {
     if (act === 'pay') {
       const r = await markPaid(env, oid, `تأیید از ${PLATFORMS[pf].name}`);
       note = r.ok ? '✅ تأیید شد' : r.error;
+    } else if (act === 'again') {
+      /* سفارش دوباره فقط برای همان گفتگویی که یادآور برایش رفته. */
+      const o = await one(env, 'SELECT * FROM orders WHERE id=?', oid);
+      const mine = o && await one(env,
+        'SELECT 1 AS x FROM bot_chats WHERE platform=? AND chat_id=? AND phone=?', pf, String(chat), o.phone);
+      note = mine ? '🛒 سبدت آماده شد' : 'این سفارش برای این گفتگو نیست.';
+      if (mine) {
+        const its = await all(env, 'SELECT n,q FROM order_items WHERE order_id=?', oid);
+        const host = env.PUBLIC_HOST || 'sensacare.ir';
+        await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
+          text: `سفارش قبلی‌ات:\n${its.map(i => `• ${stripHtml(i.n)} × ${fa(i.q)}`).join('\n')}\n\n` +
+                `برای ثبت دوباره برو به https://${host} و همین‌ها را به سبد اضافه کن.` });
+      }
     } else if (act === 'cancel') {
       await run(env, "UPDATE orders SET status='لغو شده' WHERE id=?", oid);
       note = '❌ سفارش لغو شد';
@@ -609,6 +622,28 @@ async function handleUpdate(env, pf, u) {
     await notifyAdmins(env, `📎 فیش پرداخت از <code>${chat}</code> رسید. برای دیدنش به ربات سر بزنید.`);
     await botCall(env, pf, 'sendMessage', { chat_id: chat,
       text: 'فیش رسید. بعد از بررسی، تأیید سفارشت را می‌فرستیم.' });
+    return;
+  }
+
+  /* «خبرم کن وقتی موجود شد» — مشتری از صفحهٔ محصول به ربات می‌آید و
+     همین‌جا ثبت می‌شود. هیچ شماره یا ایمیلی در کار نیست. */
+  const rw = /^\/start\s+r_(.+)$/.exec(text) || /^r_([A-Za-z0-9-]{8,})$/.exec(text);
+  if (rw) {
+    const pid = rw[1].trim();
+    const pr = await one(env, 'SELECT id,n,stock FROM products WHERE id=? AND active=1', pid);
+    if (!pr) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat, text: 'این کالا را پیدا نکردم.' });
+      return;
+    }
+    if ((pr.stock || 0) > 0) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: `خبر خوب — «${stripHtml(pr.n)}» همین الان موجود است. از سایت سفارشش بده.` });
+      return;
+    }
+    await run(env, `INSERT INTO restock_watch(product_id,platform,chat_id,created) VALUES(?,?,?,?)
+      ON CONFLICT(product_id,platform,chat_id) DO NOTHING`, pid, pf, chat, Date.now());
+    await botCall(env, pf, 'sendMessage', { chat_id: chat,
+      text: `باشه. تا «${stripHtml(pr.n)}» موجود شد، همین‌جا خبرت می‌کنم.` });
     return;
   }
 
@@ -863,6 +898,17 @@ function withSecurity(res, extra) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 
+/* ---------- تخفیف پک ----------
+   ارسال ۲۵۰ هزار است و میانگین کالا حدود ۱۵۰ هزار؛ یعنی خرید تک‌قلمی
+   برای مشتری صرف نمی‌کند. این تخفیف او را به سبد بزرگ‌تر تشویق می‌کند.
+   مثل کد تخفیف، همیشه سمت سرور حساب می‌شود. */
+async function packOff(env, qty, goods) {
+  const min = Number(await getSetting(env, 'packMin', 3)) || 0;
+  const pct = Number(await getSetting(env, 'packPct', 10)) || 0;
+  if (!min || !pct || qty < min) return 0;
+  return Math.max(0, Math.min(goods, Math.round(goods * pct / 100)));
+}
+
 /* ---------- کد تخفیف ----------
    مقدار تخفیف همیشه اینجا حساب می‌شود، نه در مرورگر. اگر از سمت مشتری
    می‌آمد، هرکس می‌توانست هر عددی بفرستد. */
@@ -924,6 +970,51 @@ async function injectMeta(env, req, meta) {
 
 const rnd6 = () => String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
 
+/* وقتی کالایی از ناموجود به موجود برگردد، به هرکس که خواسته خبر می‌دهد
+   و بعد فهرست را پاک می‌کند تا دوبار پیام نرود. */
+async function tellRestock(env, pid) {
+  const pr = await one(env, 'SELECT n, stock FROM products WHERE id=?', pid);
+  if (!pr || (pr.stock || 0) <= 0) return 0;
+  const rows = await all(env, 'SELECT platform, chat_id FROM restock_watch WHERE product_id=?', pid);
+  let sent = 0;
+  for (const r of rows) {
+    const ok = await botCall(env, r.platform, 'sendMessage', { chat_id: r.chat_id,
+      text: `«${stripHtml(pr.n)}» دوباره موجود شد. اگر هنوز می‌خواهی، از سایت سفارشش بده.` });
+    if (ok?.ok) sent++;
+  }
+  if (rows.length) await run(env, 'DELETE FROM restock_watch WHERE product_id=?', pid);
+  return sent;
+}
+
+/* یادآور خرید دوباره. کاندوم و ژل مصرفی‌اند؛ کسی که یک‌بار خریده دوباره
+   لازمش می‌شود ولی معمولاً یادش می‌رود. هر شب سفارش‌های تحویل‌شدهٔ حدود
+   یک ماه پیش را نگاه می‌کند و یک پیام می‌فرستد — فقط یک‌بار برای هر سفارش،
+   و فقط به کسی که خودش قبلاً در ربات وارد شده. */
+async function reorderReminders(env) {
+  const days = await getSetting(env, 'reorderDays', 30);
+  if (!days) return 0;
+  const from = Date.now() - (days + 7) * 86400000;
+  const to = Date.now() - days * 86400000;
+  const rows = await all(env,
+    `SELECT o.id, o.phone FROM orders o
+      LEFT JOIN reorder_sent r ON r.order_id = o.id
+      WHERE o.status='تحویل شده' AND o.created BETWEEN ? AND ? AND r.order_id IS NULL
+      LIMIT 40`, from, to);
+  let sent = 0;
+  for (const o of rows) {
+    const chats = await all(env,
+      "SELECT platform, chat_id FROM bot_chats WHERE phone=? AND role='customer'", o.phone);
+    for (const c of chats) {
+      const r = await botCall(env, c.platform, 'sendMessage', { chat_id: c.chat_id, parse_mode: 'HTML',
+        text: 'حدود یک ماه از سفارشت گذشته. اگر تمام شده، همان‌ها را دوباره برایت بفرستم؟',
+        reply_markup: { inline_keyboard: [[{ text: '🛒 همان سفارش قبلی', callback_data: `again:${o.id}` }]] } });
+      if (r?.ok) sent++;
+    }
+    await run(env, 'INSERT OR REPLACE INTO reorder_sent(order_id,sent) VALUES(?,?)', o.id, Date.now());
+  }
+  return sent;
+}
+
 /* ==========================================================
    مسیرها
    ========================================================== */
@@ -931,6 +1022,7 @@ export default {
   /* هر شب یک بار: پشتیبان کامل را در تلگرام و بله می‌فرستد */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runBackup(env).catch(e => console.log('backup', e.message)));
+    ctx.waitUntil(reorderReminders(env).catch(e => console.log('reorder', e.message)));
   },
 
   async fetch(req, env, ctx) {
@@ -1116,6 +1208,10 @@ export default {
             card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
             contact: await getSetting(env, 'contact', { phone: '', email: '', hours: '' }),
             hero: await getSetting(env, 'hero', {}),
+            packMin: await getSetting(env, 'packMin', 3),
+            packPct: await getSetting(env, 'packPct', 10),
+            articleProducts: Object.fromEntries(
+              (await all(env, 'SELECT slug, ids FROM article_products')).map(r => [r.slug, r.ids || ''])),
             loginEnabled: smsReady(env) || Object.keys(await botLoginOptions(env)).length > 0,
             loginSms: smsReady(env),
             botLogin: await botLoginOptions(env)
@@ -1258,6 +1354,48 @@ export default {
       }
 
       /* ---------------- سفارش ---------------- */
+      /* ---------- پرسش بی‌نام روی محصول ----------
+         هیچ نام، شماره یا شناسه‌ای ذخیره نمی‌شود — فقط متن پرسش. تا وقتی
+         مدیر تأیید نکند هم جایی نشان داده نمی‌شود، وگرنه صفحهٔ محصول
+         می‌شد جای هر متنی. */
+      if (p === '/api/questions' && m === 'POST') {
+        const rl = await rateLimit(env, 'ask-q:' + clientIp(req), 5, 3600);
+        if (!rl.ok) return tooMany(rl);
+        const pid = String(body.product || '');
+        const q = String(body.q || '').trim().slice(0, 500);
+        if (q.length < 5) return bad('سؤالت را کامل‌تر بنویس');
+        const pr = await one(env, 'SELECT n FROM products WHERE id=? AND active=1', pid);
+        if (!pr) return bad('محصول پیدا نشد', 404);
+        await run(env, 'INSERT INTO questions(product_id,q,created) VALUES(?,?,?)', pid, q, Date.now());
+        ctx.waitUntil(notifyAdmins(env,
+          `❓ <b>پرسش تازه</b>\nدربارهٔ: ${esc(pr.n)}\n\n${esc(q)}\n\nبرای جواب دادن به پنل سر بزنید.`)
+          .catch(() => {}));
+        return json({ ok: true });
+      }
+
+      if (p.startsWith('/api/questions/') && m === 'GET') {
+        const pid = decodeURIComponent(p.split('/')[3]);
+        return json({ ok: true, list: await all(env,
+          `SELECT q, a, created FROM questions
+            WHERE product_id=? AND published=1 AND a IS NOT NULL AND a<>''
+            ORDER BY created DESC LIMIT 20`, pid) });
+      }
+
+      /* ---------- خبرم کن وقتی موجود شد ----------
+         هیچ راه تماسی از سایت گرفته نمی‌شود؛ مشتری در ربات دکمه می‌زند و
+         خبر هم همان‌جا می‌آید. یعنی نه شماره‌ای ذخیره می‌شود نه ایمیلی. */
+      if (p === '/api/restock/link' && m === 'POST') {
+        const pid = String(body.product || '');
+        const pr = await one(env, 'SELECT id FROM products WHERE id=? AND active=1', pid);
+        if (!pr) return bad('محصول پیدا نشد', 404);
+        const bots = await botLoginOptions(env);
+        const links = {};
+        if (bots.telegram) links.telegram = `https://t.me/${bots.telegram}?start=r_${pid}`;
+        if (bots.bale) links.bale = `https://ble.ir/${bots.bale}?start=r_${pid}`;
+        if (!Object.keys(links).length) return bad('فعلاً این امکان در دسترس نیست', 503);
+        return json({ ok: true, links, code: 'r_' + pid });
+      }
+
       /* مشتری کد را می‌زند و همان‌جا می‌بیند چقدر کم می‌شود. */
       if (p === '/api/coupon/check' && m === 'POST') {
         const rl = await rateLimit(env, 'coupon:' + clientIp(req), 25, 600);
@@ -1310,7 +1448,11 @@ export default {
         /* تخفیف سمت سرور حساب می‌شود؛ هر عددی که مرورگر بفرستد نادیده است. */
         const cp = await couponFor(env, body.coupon, goods);
         if (!cp.ok) return bad(cp.error, 409);
-        const discount = cp.amount || 0;
+        const qty = items.reduce((n, i) => n + i.q, 0);
+        const pack = await packOff(env, qty, goods);
+        /* کد تخفیف و تخفیف پک روی هم جمع نمی‌شوند — هرکدام بیشتر بود. */
+        const discount = Math.max(cp.amount || 0, pack);
+        const usedCoupon = (cp.amount || 0) >= pack && cp.code ? cp.code : '';
         const total = Math.max(0, goods - discount) + ship;
         /* شناسه قبلاً «S» + هشت رقمِ آخرِ ساعت بود، یعنی قابل حدس.
            هرکس می‌توانست شناسه‌ها را امتحان کند و ببیند دیگران چه خریده‌اند —
@@ -1345,15 +1487,16 @@ export default {
 
         if (discount > 0) {
           await run(env, 'INSERT OR REPLACE INTO order_discounts(order_id,code,amount) VALUES(?,?,?)',
-            id, cp.code, discount);
-          await run(env, 'UPDATE coupons SET used = used + 1 WHERE code=?', cp.code);
+            id, usedCoupon || 'پک', discount);
+          if (usedCoupon) await run(env, 'UPDATE coupons SET used = used + 1 WHERE code=?', usedCoupon);
         }
 
         if (body.wantsInvoice)
           await run(env, 'INSERT OR REPLACE INTO order_extras(order_id,wants_invoice) VALUES(?,1)', id);
 
         ctx.waitUntil(sendInvoice(env, id).catch(e => console.log('invoice', e.message)));
-        return json({ ok: true, id, invoice, goods, ship, discount, coupon: cp.code || '', total });
+        return json({ ok: true, id, invoice, goods, ship, discount,
+          coupon: usedCoupon, pack: discount > 0 && !usedCoupon, total });
       }
 
       if (p.startsWith('/api/orders/') && m === 'GET') {
@@ -1490,6 +1633,9 @@ export default {
             articles: await all(env, 'SELECT * FROM articles ORDER BY created DESC'),
             pages: await all(env, 'SELECT * FROM pages'),
             coupons: await all(env, 'SELECT * FROM coupons ORDER BY created DESC'),
+            questions: await all(env, `SELECT q.*, p.n AS product FROM questions q
+              LEFT JOIN products p ON p.id = q.product_id ORDER BY q.created DESC LIMIT 200`),
+            articleProducts: await all(env, 'SELECT * FROM article_products'),
             settings: {
               freeOver: await getSetting(env, 'freeOver', 500000),
               shopName: await getSetting(env, 'shopName', 'سِنسا'),
@@ -1534,6 +1680,9 @@ export default {
             x.d || '', x.c || '', x.tag || '', x.img || '', Number(x.stock) || 0,
             x.size || '', x.thickness || '', x.count || '', x.material || '',
             x.lube || '', x.expiry || '', x.active === 0 ? 0 : 1, Number(x.pos) || 0);
+          /* اگر کالا از ناموجود به موجود برگشت، به منتظرها خبر بده. */
+          if ((Number(x.stock) || 0) > 0)
+            ctx.waitUntil(tellRestock(env, pid).catch(() => {}));
           return json({ ok: true });
         }
         if (p.startsWith('/api/admin/products/') && m === 'DELETE') {
@@ -1624,6 +1773,26 @@ export default {
           await run(env, `INSERT INTO pages(slug,title,body,updated) VALUES(?,?,?,?)
             ON CONFLICT(slug) DO UPDATE SET title=excluded.title,body=excluded.body,updated=excluded.updated`,
             body.slug, body.title, body.body || '', Date.now());
+          return json({ ok: true });
+        }
+
+        if (p === '/api/admin/questions' && m === 'POST') {
+          const id = Number(body.id) || 0;
+          if (!id) return bad('شناسه لازم است');
+          if (body.delete) { await run(env, 'DELETE FROM questions WHERE id=?', id); return json({ ok: true }); }
+          const a = String(body.a || '').trim().slice(0, 1200);
+          await run(env, `UPDATE questions SET a=?, answered=?, published=? WHERE id=?`,
+            a, a ? 1 : 0, body.publish ? 1 : 0, id);
+          return json({ ok: true });
+        }
+
+        if (p === '/api/admin/article-products' && m === 'POST') {
+          const slug = String(body.slug || '').trim();
+          if (!slug) return bad('نشانی مقاله لازم است');
+          const ids = (Array.isArray(body.ids) ? body.ids : []).slice(0, 6)
+            .map(x => String(x)).filter(Boolean).join(',');
+          await run(env, `INSERT INTO article_products(slug,ids) VALUES(?,?)
+            ON CONFLICT(slug) DO UPDATE SET ids=excluded.ids`, slug, ids);
           return json({ ok: true });
         }
 
