@@ -311,17 +311,46 @@ nav::-webkit-scrollbar{display:none}
 .stockline{font-size:11.5px;font-weight:700;margin-top:8px}
 .add[disabled]{background:var(--line);color:var(--body);cursor:not-allowed}
 /* حالت خلوت — برای وقتی که مشتری در اتوبوس یا سرِ کار سایت را باز می‌کند.
-   قول سایت «کسی نفهمه» است؛ این همان قول، یک قدم عقب‌تر از درِ خانه. */
-body.quiet .thumb, body.quiet .pd-img{filter:blur(14px) grayscale(.6)}
+   قول سایت «کسی نفهمه» است؛ این همان قول، یک قدم عقب‌تر از درِ خانه.
+
+   هرجا که نام یا عکس کالا دیده می‌شود اینجا آمده. اولین نسخه فقط کارت‌ها
+   را می‌پوشاند و نام کالا در سبد، جست‌وجو، صفحهٔ خود محصول، راهنمای
+   انتخاب و ته مقاله خوانا می‌ماند — یعنی حس امنیت می‌داد بدون اینکه
+   واقعاً چیزی را پنهان کند. */
+body.quiet .thumb, body.quiet .pd-img,
+body.quiet #dBody .sq, body.quiet .sres img{filter:blur(14px) grayscale(.6)}
 body.quiet .thumb:hover, body.quiet .pd-img:hover{filter:blur(5px) grayscale(.3)}
+
 body.quiet .card h3, body.quiet .desc, body.quiet .brand,
-body.quiet #pdBody h2, body.quiet .art h4, body.quiet .art p,
-body.quiet .hero p, body.quiet .trust .tx p{filter:blur(4.5px);transition:filter .15s}
+body.quiet #pdBody h2, body.quiet #pdBody .spec,
+body.quiet .art h3, body.quiet .art p,
+body.quiet .hero p, body.quiet .trust .tx p,
+body.quiet .cat-head h2, body.quiet .cat-head p, body.quiet .cat-head .badge,
+body.quiet .sres a, body.quiet #dBody h4,
+body.quiet #finderBody .fgo b, body.quiet #docBody [data-relp] b,
+body.quiet #docTitle, body.quiet #chatBody, body.quiet #doneSum,
+body.quiet .qa .qitem,
+body.quiet .nav-item>a, body.quiet .sub a{filter:blur(4.5px);transition:filter .15s}
+
+/* با بردن نشانگر روی همان مورد، خودش موقتاً پیدا می‌شود. */
 body.quiet .card:hover h3, body.quiet .card:hover .desc, body.quiet .card:hover .brand,
-body.quiet .art:hover h4, body.quiet .art:hover p,
-body.quiet .hero p:hover, body.quiet .trust>div:hover .tx p{filter:none}
-body.quiet #pdBody h2{filter:none}
+body.quiet .art:hover h3, body.quiet .art:hover p,
+body.quiet .hero p:hover, body.quiet .trust>div:hover .tx p,
+body.quiet .cat-head:hover h2, body.quiet .cat-head:hover p, body.quiet .cat-head:hover .badge,
+body.quiet .sres a:hover, body.quiet #dBody .line:hover h4,
+body.quiet #finderBody .fgo:hover b, body.quiet #docBody [data-relp]:hover b,
+body.quiet #docTitle:hover, body.quiet #chatBody:hover, body.quiet #doneSum:hover,
+body.quiet .qa .qitem:hover, body.quiet #pdBody h2:hover,
+body.quiet #pdBody .spec:hover,
+body.quiet .nav-item:hover>a, body.quiet .nav-item>a:focus,
+body.quiet .sub a:hover{filter:none}
 #quietBtn.on{background:var(--red);color:#fff}
+/* صفحهٔ لمسی نشانگر ندارد، پس «ببر روی متن تا خوانا شود» آنجا کار نمی‌کند و
+   محو شدن به بن‌بست تبدیل می‌شود. نگه‌داشتن انگشت همان نقش را بازی می‌کند. */
+@media(hover:none){
+  body.quiet :active, body.quiet :active *{filter:none!important}
+}
+
 .qa{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}
 .qa h4{font-size:15.5px;font-weight:800;margin-bottom:4px}
 .qa .qitem{background:var(--soft);border-radius:14px;padding:13px 15px;margin-top:10px}
@@ -603,6 +632,9 @@ footer #fContact ul{margin-top:4px}
   .nav-item>a{color:var(--ink);justify-content:space-between;font-size:15px;padding:12px 14px}
   .sub{position:static;opacity:1;visibility:visible;transform:none;box-shadow:none;padding:0 0 6px 0;display:none}
   .nav-item.open .sub{display:block}
+  /* روی موبایل منو تا وقتی خودِ کاربر بازش نکند دیده نمی‌شود، پس محو کردنش
+     چیزی را پنهان نمی‌کند و فقط منو را غیرقابل‌خواندن می‌کند. */
+  body.quiet .nav-item>a, body.quiet .sub a{filter:none}
   .sub a{padding-inline-start:28px;font-size:14px}
   .burger{display:grid}
   .head-act{grid-column:2;justify-self:end}
@@ -3691,16 +3723,26 @@ const BALE_ICON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 
    هر محصول و مقاله آدرس خودش را دارد (/p/... و /a/...) تا گوگل
    صفحهٔ مستقل ببیند. سرور همان صفحه را با عنوان و توضیحات همان مورد
    می‌فرستد؛ اینجا فقط پنجرهٔ درست را باز می‌کنیم. */
+const QUIET_TITLE='یادداشت‌ها';
 const HOME_TITLE=document.title;
+/* عنوان تب فقط از اینجا عوض می‌شود. قبلاً هر جایی مستقیم می‌نوشت و در
+   حالت خلوت، باز کردن یک محصول عنوان را به «تأخیری کلاسیک | سِنسا»
+   برمی‌گرداند — یعنی همان چیزی که قرار بود پنهان بماند، بالای مرورگر
+   می‌نشست. */
+let pageTitle=document.title;
+function setTitle(t){
+  pageTitle=t;
+  document.title = document.body.classList.contains('quiet') ? QUIET_TITLE : t;
+}
 function setPath(path,title){
   try{
     if(location.pathname!==path) history.pushState({p:path},'',path);
-    if(title) document.title=title;
+    if(title) setTitle(title);
   }catch(e){}
 }
 function backHome(){
   if(/^\/(p|a|s)\//.test(location.pathname)){
-    try{ history.pushState({},'','/'); document.title=HOME_TITLE }catch(e){}
+    try{ history.pushState({},'','/'); setTitle(HOME_TITLE) }catch(e){}
   }
 }
 function closeAllSheets(){
@@ -3800,14 +3842,12 @@ function paintBadges(){
 $('cCity').innerHTML='<option value="">انتخاب کنید…</option>'+
   PROVINCES.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('');
 /* حالت خلوت. عنوان تب هم عوض می‌شود، چون همان هم لو می‌دهد. */
-const QUIET_TITLE='یادداشت‌ها';
-let realTitle=document.title;
 function setQuiet(on){
   document.body.classList.toggle('quiet',on);
   $('quietBtn').classList.toggle('on',on);
   $('quietBtn').setAttribute('aria-pressed',on?'true':'false');
-  if(on){ realTitle=document.title; document.title=QUIET_TITLE }
-  else document.title=realTitle;
+  $('quietBtn').title = on ? 'حالت خلوت روشن است' : 'حالت خلوت — محو کردن عکس‌ها و نام‌ها';
+  document.title = on ? QUIET_TITLE : pageTitle;
   store.set('sensa_quiet',on?1:0);
 }
 $('quietBtn').onclick=()=>setQuiet(!document.body.classList.contains('quiet'));
@@ -3818,7 +3858,7 @@ restoreCart(); bootReady = boot(); paintBadges(); paintContact(); paintHero();
 /* ============ صفحهٔ مدیریت ============ */
 function enterAdmin(){
   document.body.classList.add('admin-mode');
-  document.title='پنل مدیریت سِنسا';
+  setTitle('پنل مدیریت سِنسا');
   closeD(); chat.classList.remove('open'); sheet.classList.remove('open');
   scrollTo(0,0);
   if(store.get('sensa_session',0)) openPanel();
@@ -3827,7 +3867,7 @@ function enterAdmin(){
 function exitAdmin(){
   document.body.classList.remove('admin-mode');
   panel.classList.remove('open'); loginModal.classList.remove('open');
-  document.title='سِنسا | ارسال محرمانه';
+  setTitle('سِنسا | ارسال محرمانه');
   try{
     if(location.hash==='#admin') history.replaceState(null,'',location.pathname+location.search);
     if(/^\/admin\/?$/.test(location.pathname)) history.replaceState(null,'','/');
