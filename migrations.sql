@@ -51,3 +51,10 @@ CREATE TABLE IF NOT EXISTS support_relay(
   cust_chat TEXT,
   created INTEGER,
   PRIMARY KEY(platform, admin_chat, message_id));
+
+-- شمارندهٔ محدودیت درخواست. هر ردیف یک پنجرهٔ زمانی برای یک کلید است.
+CREATE TABLE IF NOT EXISTS rate_limits(
+  k TEXT PRIMARY KEY,
+  n INTEGER DEFAULT 0,
+  reset INTEGER);
+CREATE INDEX IF NOT EXISTS idx_rate_reset ON rate_limits(reset);

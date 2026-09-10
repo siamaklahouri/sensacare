@@ -1816,7 +1816,7 @@ async function submitOrder(){
         btn.disabled=true; btn.textContent='در حال فرستادن…';
         try{
           const dataUrl=await shrinkImage(f);
-          await req(`/api/orders/${encodeURIComponent(inv)}/receipt`,{method:'POST',body:{image:dataUrl}});
+          await req(`/api/orders/${encodeURIComponent(inv)}/receipt`,{method:'POST',body:{image:dataUrl,phone:o.phone}});
           btn.textContent='✅ فیش فرستاده شد';
           msgEl.textContent='رسید. بعد از بررسی، تأیید سفارشت را می‌فرستیم.';
         }catch(err){

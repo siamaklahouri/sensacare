@@ -650,6 +650,13 @@ async function handleUpdate(env, pf, u) {
 
   /* ثبت مدیر:  /admin رمزعبور */
   if (text.startsWith('/admin')) {
+    /* بدون این، می‌شد از داخل ربات بی‌نهایت رمز مدیر را امتحان کرد. */
+    const rl = await rateLimit(env, `botadmin:${pf}:${chat}`, 5, 900);
+    if (!rl.ok) {
+      await botCall(env, pf, 'sendMessage', { chat_id: chat,
+        text: 'تلاش زیاد شد. ۱۵ دقیقهٔ دیگر دوباره امتحان کن.' });
+      return;
+    }
     const pass = text.split(/\s+/)[1] || '';
     const real = await getSetting(env, 'adminPass', env.ADMIN_PASS || '');
     if (pass && pass === real) {
@@ -673,9 +680,8 @@ async function handleUpdate(env, pf, u) {
       await botCall(env, pf, 'sendMessage', { chat_id: chat, text: 'با این شماره چیزی پیدا نکردم.' });
       return;
     }
-    await run(env, `INSERT INTO bot_chats(platform,chat_id,role,phone,created) VALUES(?,?,?,?,?)
-      ON CONFLICT(platform,chat_id) DO UPDATE SET phone=excluded.phone`,
-      pf, chat, 'customer', o.phone, Date.now());
+    /* شمارهٔ فاکتور قابل حدس است، پس صرفِ دانستنش نباید شمارهٔ موبایل
+       صاحب سفارش را به این گفتگو بچسباند. */
     await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
       text: `🧾 فاکتور <code>${o.invoice}</code>\n` +
             `وضعیت: <b>${o.status}</b>\n` +
@@ -785,6 +791,78 @@ function productDesc(row) {
   return out;
 }
 
+/* دادهٔ ساختاریافته داخل یک تگ <script> می‌نشیند. اگر اسم محصولی
+   «</script>» داشته باشد، JSON.stringify آن را دست‌نخورده می‌گذارد و متن
+   از تگ بیرون می‌زند — یعنی هر کدی که آنجا نوشته شده باشد در مرورگر
+   بازدیدکننده اجرا می‌شود. این تابع همان چند نویسه را بی‌خطر می‌کند. */
+function jsonForScript(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
+/* محدودیت تعداد درخواست. بدون این، حدس زدن رمز، پر کردن دیتابیس با
+   سفارش قلابی و تمام کردن سهمیهٔ هوش مصنوعی هیچ مانعی ندارد. */
+async function rateLimit(env, key, limit, windowSec) {
+  if (!env.DB) return { ok: true };
+  const now = Math.floor(Date.now() / 1000);
+  const k = `${key}`;
+  try {
+    const row = await one(env, 'SELECT n, reset FROM rate_limits WHERE k=?', k);
+    if (!row || row.reset <= now) {
+      await run(env, `INSERT INTO rate_limits(k,n,reset) VALUES(?,1,?)
+        ON CONFLICT(k) DO UPDATE SET n=1, reset=excluded.reset`, k, now + windowSec);
+      return { ok: true, left: limit - 1 };
+    }
+    if (row.n >= limit) return { ok: false, retry: row.reset - now };
+    await run(env, 'UPDATE rate_limits SET n=n+1 WHERE k=?', k);
+    return { ok: true, left: limit - row.n - 1 };
+  } catch (e) { return { ok: true }; }   /* اگر جدول نبود، جلوی سایت را نگیر */
+}
+
+const clientIp = req => req.headers.get('CF-Connecting-IP')
+  || req.headers.get('X-Forwarded-For') || 'unknown';
+
+const tooMany = r => new Response(
+  JSON.stringify({ error: `درخواست‌ها زیاد شد. ${r.retry || 60} ثانیهٔ دیگر دوباره امتحان کن.` }),
+  { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8',
+                            'Retry-After': String(r.retry || 60) } });
+
+/* هدرهای امنیتی. سایت هیچ‌کدام را نداشت:
+   - بدون X-Frame-Options می‌شد صفحه را داخل سایت دیگری جا داد و کلیک
+     کاربر را دزدید.
+   - بدون Referrer-Policy، با کلیک روی هر لینک بیرونی، نشانی صفحهٔ محصول
+     — یعنی اینکه کاربر چه چیزی نگاه می‌کرده — به آن سایت می‌رفت. برای
+     این فروشگاه بدترینش همین بود.
+   - بدون CSP، یک اسکریپت تزریق‌شده می‌توانست به هر جایی وصل شود. */
+const SEC_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
+  'Strict-Transport-Security': 'max-age=15552000; includeSubDomains',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+    "font-src 'self' data: https://cdn.jsdelivr.net",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'"
+  ].join('; ')
+};
+
+function withSecurity(res, extra) {
+  const h = new Headers(res.headers);
+  for (const [k, v] of Object.entries(SEC_HEADERS)) h.set(k, v);
+  if (extra) for (const [k, v] of Object.entries(extra)) h.set(k, v);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
+
 async function injectMeta(env, req, meta) {
   const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
   let html = await res.text();
@@ -805,12 +883,12 @@ async function injectMeta(env, req, meta) {
 
   if (meta.ld)
     html = html.replace('</head>',
-      `<script type="application/ld+json">${JSON.stringify(meta.ld)}</script>\n</head>`);
+      `<script type="application/ld+json">${jsonForScript(meta.ld)}</script>\n</head>`);
 
-  return new Response(html, { headers: {
+  return withSecurity(new Response(html, { headers: {
     'Content-Type': 'text/html; charset=utf-8',
     'Cache-Control': 'public, max-age=300'
-  } });
+  } }));
 }
 
 const rnd6 = () => String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
@@ -909,10 +987,10 @@ export default {
        بالا می‌آورد. */
     if (/^\/admin\/?$/.test(p)) {
       const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
-      return new Response(await res.text(), {
+      return withSecurity(new Response(await res.text(), {
         headers: { 'Content-Type': 'text/html; charset=utf-8',
                    'X-Robots-Tag': 'noindex, nofollow',
-                   'Cache-Control': 'no-store' } });
+                   'Cache-Control': 'no-store' } }));
     }
 
     if (p === '/robots.txt') {
@@ -952,14 +1030,14 @@ export default {
         'باید بالاتر از همهٔ [بخش]ها باشد، وگرنه داخل بخش قبلی حساب می‌شود.',
         { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
       try {
-        const res = await env.ASSETS.fetch(req);
+        const res = withSecurity(await env.ASSETS.fetch(req));
         /* آدرس اشتباه یا لینک خراب، صفحهٔ سفید کلادفلر را نشان می‌داد.
            به‌جایش خودِ فروشگاه باز می‌شود تا بازدیدکننده گم نشود — ولی
            با کد ۴۰۴، تا گوگل آن را صفحهٔ واقعی حساب نکند. */
         if (res.status === 404 && req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(p)) {
           const home = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
-          if (home.ok) return new Response(await home.text(), { status: 404,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+          if (home.ok) return withSecurity(new Response(await home.text(), { status: 404,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
         }
         return res;
       }
@@ -1136,6 +1214,8 @@ export default {
 
       /* ---------------- سفارش ---------------- */
       if (p === '/api/orders' && m === 'POST') {
+        const rl = await rateLimit(env, 'order:' + clientIp(req), 6, 900);
+        if (!rl.ok) return tooMany(rl);
         if (!Array.isArray(body.items) || !body.items.length) return bad('سبد خالی است');
         if (!/^09\d{9}$/.test(String(body.phone || ''))) return bad('شمارهٔ موبایل معتبر نیست');
         /* نام و آدرس را مرورگر بررسی می‌کرد ولی سرور نه. یعنی سفارشی بدون
@@ -1170,7 +1250,11 @@ export default {
         const methodName = okMethods[methodId];
         const ship = await shipFor(env, body.city, goods, methodId);
         if (ship === null) return bad('استان انتخاب‌شده معتبر نیست');
-        const id = 'S' + Date.now().toString().slice(-8);
+        /* شناسه قبلاً «S» + هشت رقمِ آخرِ ساعت بود، یعنی قابل حدس.
+           هرکس می‌توانست شناسه‌ها را امتحان کند و ببیند دیگران چه خریده‌اند —
+           برای فروشگاهی که تمام حرفش محرمانه بودن است، بدترین نشتی. */
+        const id = 'S' + [...crypto.getRandomValues(new Uint8Array(9))]
+          .map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 16).toUpperCase();
         const invoice = await nextInvoice(env);
         await run(env, `INSERT INTO orders(id,created,phone,name,city,address,postal,note,lat,lng,
           method,method_name,ship,goods,total,status,guest,pay_method,invoice)
@@ -1205,6 +1289,10 @@ export default {
       }
 
       if (p.startsWith('/api/orders/') && m === 'GET') {
+        /* شناسهٔ سفارش حالا تصادفی است، ولی محدودیت هم می‌گذاریم تا کسی
+           نتواند شناسه‌ها را پشت‌سرهم اسکن کند. */
+        const rlv = await rateLimit(env, 'ordview:' + clientIp(req), 40, 600);
+        if (!rlv.ok) return tooMany(rlv);
         const o = await one(env, 'SELECT * FROM orders WHERE id=?', p.split('/')[3]);
         if (!o) return bad('سفارشی با این کد پیدا نشد', 404);
         o.items = await all(env, 'SELECT * FROM order_items WHERE order_id=?', o.id);
@@ -1215,9 +1303,16 @@ export default {
 
       /* --- مشتری فیش پرداخت را از خود سایت می‌فرستد --- */
       if (/^\/api\/orders\/[^/]+\/receipt$/.test(p) && m === 'POST') {
+        const rl = await rateLimit(env, 'receipt:' + clientIp(req), 10, 600);
+        if (!rl.ok) return tooMany(rl);
         const key = decodeURIComponent(p.split('/')[3]);
         const o = await one(env, 'SELECT * FROM orders WHERE id=? OR invoice=?', key, key);
         if (!o) return bad('سفارش پیدا نشد', 404);
+        /* پیش از این هرکس شمارهٔ فاکتوری را می‌دانست می‌توانست عکس بفرستد و
+           عکسش مستقیم در تلگرام فروشگاه بالا می‌آمد. حالا باید شمارهٔ همان
+           سفارش را هم بداند. */
+        const claim = String(body.phone || '').replace(/[\s-]/g, '');
+        if (!claim || claim !== String(o.phone || '')) return bad('این سفارش با شمارهٔ تو ثبت نشده', 403);
         if (o.paid) return bad('این سفارش قبلاً تأیید شده است', 409);
 
         const img = String(body.image || '');
@@ -1249,6 +1344,8 @@ export default {
 
       /* --- دستیار فروشگاه --- */
       if (p === '/api/ask' && m === 'POST') {
+        const rl = await rateLimit(env, 'ask:' + clientIp(req), 20, 600);
+        if (!rl.ok) return tooMany(rl);
         if (!env.AI) return bad('دستیار فعلاً در دسترس نیست', 503);
         const q = String(body.q || '').trim().slice(0, 500);
         if (!q) return bad('سؤالت را بنویس');
@@ -1288,6 +1385,8 @@ export default {
 
       /* ---------------- مدیریت ---------------- */
       if (p === '/api/admin/login' && m === 'POST') {
+        const rl = await rateLimit(env, 'login:' + clientIp(req), 8, 600);
+        if (!rl.ok) return tooMany(rl);
         const u = await getSetting(env, 'adminUser', env.ADMIN_USER || 'admin');
         const pw = await getSetting(env, 'adminPass', env.ADMIN_PASS || 'sana1405');
         if (body.user !== u || body.pass !== pw) return bad('نام کاربری یا رمز درست نیست', 401);

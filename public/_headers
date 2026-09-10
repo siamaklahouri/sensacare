@@ -1,0 +1,11 @@
+# هدرهای امنیتی برای فایل‌هایی که مستقیم از لبهٔ کلادفلر سرو می‌شوند و
+# اصلاً به کد ورکر نمی‌رسند (صفحهٔ اصلی، لوگو، تصاویر). مسیرهایی که ورکر
+# می‌سازد — صفحه‌های محصول و مقاله و پنل — همین هدرها را از خودِ کد
+# می‌گیرند، پس هر دو راه پوشش داده شده است.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=()
+  Strict-Transport-Security: max-age=15552000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
