@@ -1388,6 +1388,11 @@ hi@sensa.example
    اگر نباشد، سایت در «حالت محلی» با مرورگر کار می‌کند تا هیچ‌وقت از کار نیفتد. */
 const API_BASE = (window.SENSA_API !== undefined) ? window.SENSA_API : '';
 let ONLINE = false;
+/* تا وقتی این وعده تمام نشده، هنوز معلوم نیست به سرور وصلیم یا نه.
+   پنل مدیریت باید منتظرش بماند، وگرنه با دادهٔ قدیمیِ همین مرورگر
+   کشیده می‌شود و مدیر خیال می‌کند همان است. */
+let bootReady = null;
+let bootDone = false;
 const tokenOf = k => store.get(k, '');
 
 async function req(path, opt = {}) {
@@ -1418,11 +1423,13 @@ async function boot() {
     pages = d.pages || [];
     Object.assign(settings, d.settings || {});
     store.set('sensa_articles', articles); store.set('sensa_pages', pages);
+
   } catch (e) {
     ONLINE = false;
     if (!articles.length) articles = LOCAL_ARTICLES;
     if (!pages.length) pages = LOCAL_PAGES.map(p => ({ slug: p.slug, title: p.title }));
   }
+  bootDone = true;
   render(); renderArticles(); updateCart(); paintAcctBtn();
 }
 
@@ -2568,9 +2575,10 @@ $('logout').onclick=()=>{
   } else toast('خارج شدید.')};
 let ptab='dash';
 async function pullAdminData(){
-  if(!ONLINE)return;
+  if(!ONLINE && bootDone) return;    /* واقعاً آفلاین است */
   try{
     const d=await req('/api/admin/data',{asAdmin:true});
+    ONLINE = true;                   /* جواب داد، پس وصلیم */
     if(d.products) products=d.products;
     if(d.categories) cats=d.categories;
     if(d.menu) menu=d.menu;
@@ -2583,13 +2591,24 @@ async function pullAdminData(){
     render();
   }catch(e){ toast('اطلاعات سرور خوانده نشد.') }
 }
-function openPanel(){panel.classList.add('open');drawPanel();pullAdminData().then(()=>drawPanel())}
+async function openPanel(){
+  panel.classList.add('open');
+  drawPanel();                 /* چیزی نشان بده تا صفحه خالی نماند */
+  try{ await bootReady }catch(_){}   /* حالا معلوم است وصل هستیم یا نه */
+  couponsLoaded=false; qLoaded=false;
+  drawPanel();
+  await pullAdminData();
+  drawPanel();
+}
 $('ptabs').onclick=e=>{const b=e.target.closest('button[data-t]');if(!b)return;
   ptab=b.dataset.t;[...$('ptabs').children].forEach(x=>x.classList.toggle('on',x===b));drawPanel()};
 function drawPanel(){
   const mt=$('modeTag');
-  if(mt){ mt.className='mode '+(ONLINE?'on2':'off2');
-    mt.textContent=ONLINE?'متصل به سرور':'حالت محلی — فقط این مرورگر'; }
+  if(mt){
+    if(!bootDone){ mt.className='mode'; mt.textContent='در حال بررسی اتصال…' }
+    else { mt.className='mode '+(ONLINE?'on2':'off2');
+      mt.textContent=ONLINE?'متصل به سرور':'حالت محلی — فقط این مرورگر' }
+  }
 ({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,qa:repQA,coupon:repCoupon,stats:repStats,set:repSet})[ptab]()}
 const C=$('pContent');
 const bar=(label,val,max,color)=>`<div class="brow"><span>${esc(label)}</span>
@@ -3794,7 +3813,7 @@ function setQuiet(on){
 $('quietBtn').onclick=()=>setQuiet(!document.body.classList.contains('quiet'));
 try{ if(store.get('sensa_quiet',0)) setQuiet(true) }catch(_){}
 
-restoreCart(); boot(); paintBadges(); paintContact(); paintHero();
+restoreCart(); bootReady = boot(); paintBadges(); paintContact(); paintHero();
 
 /* ============ صفحهٔ مدیریت ============ */
 function enterAdmin(){
