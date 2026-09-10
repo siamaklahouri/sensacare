@@ -940,13 +940,25 @@ async function countVisit(env, kind, key) {
   } catch (e) { /* آمار هیچ‌وقت نباید جلوی باز شدن صفحه را بگیرد */ }
 }
 
+/* اگر بازدیدکننده حالت خلوت را روشن کرده، همین‌جا — پیش از اینکه صفحه از
+   سرور بیرون برود — نام کالا از عنوان برداشته می‌شود. تنها راهِ رسیدن به
+   صفرِ واقعی همین است: کد داخل صفحه هرچقدر هم زود اجرا شود، باز یک لحظه
+   نام واقعی در تب نشسته. موتورهای جست‌وجو این کوکی را ندارند، پس عنوانِ
+   درست را می‌گیرند و رتبهٔ سایت دست نمی‌خورد. */
+const QUIET_TITLE = 'یادداشت‌ها';
+function wantsQuiet(req) {
+  return /(?:^|;\s*)sq=1(?:;|$)/.test(req.headers.get('Cookie') || '');
+}
+
 async function injectMeta(env, req, meta) {
   const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
   let html = await res.text();
+  const quiet = wantsQuiet(req);
 
   const swap = (re, val) => { html = html.replace(re, val); };
-  swap(/<title>[\s\S]*?<\/title>/, `<title>${esc(meta.title)}</title>`);
-  swap(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(meta.desc)}">`);
+  swap(/<title>[\s\S]*?<\/title>/, `<title>${esc(quiet ? QUIET_TITLE : meta.title)}</title>`);
+  swap(/<meta name="description" content="[^"]*">/,
+       `<meta name="description" content="${esc(quiet ? '' : meta.desc)}">`);
   swap(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${esc(meta.url)}">`);
   swap(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(meta.title)}">`);
   swap(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(meta.desc)}">`);
@@ -962,9 +974,11 @@ async function injectMeta(env, req, meta) {
     html = html.replace('</head>',
       `<script type="application/ld+json">${jsonForScript(meta.ld)}</script>\n</head>`);
 
+  /* نسخهٔ خلوت هیچ‌جا ذخیره نمی‌شود، وگرنه ممکن است دست کس دیگری برسد. */
   return withSecurity(new Response(html, { headers: {
     'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': 'public, max-age=300'
+    'Cache-Control': quiet ? 'private, no-store' : 'public, max-age=300',
+    'Vary': 'Cookie'
   } }));
 }
 
