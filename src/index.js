@@ -950,7 +950,10 @@ export default {
     if (seoRoute && m === 'GET' && env.DB) {
       const [, kind, rawKey] = seoRoute;
       const key = decodeURIComponent(rawKey);
-      const base = `${url.protocol}//${url.host}`;
+      /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
+         گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
+         www — و اعتبار صفحه بین دوتا نصف می‌شود. */
+      const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       let meta = null;
 
       try {
@@ -1026,14 +1029,20 @@ export default {
     }
 
     if (p === '/robots.txt') {
-      const base = `${url.protocol}//${url.host}`;
+      /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
+         گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
+         www — و اعتبار صفحه بین دوتا نصف می‌شود. */
+      const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
         `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
     if (p === '/sitemap.xml') {
-      const base = `${url.protocol}//${url.host}`;
+      /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
+         گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
+         www — و اعتبار صفحه بین دوتا نصف می‌شود. */
+      const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
       const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
