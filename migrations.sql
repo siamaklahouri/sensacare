@@ -58,3 +58,36 @@ CREATE TABLE IF NOT EXISTS rate_limits(
   n INTEGER DEFAULT 0,
   reset INTEGER);
 CREATE INDEX IF NOT EXISTS idx_rate_reset ON rate_limits(reset);
+
+-- کد تخفیف. مقدار و شرط‌ها اینجا می‌مانند و همیشه سمت سرور حساب می‌شوند،
+-- تا از مرورگر قابل دستکاری نباشد.
+CREATE TABLE IF NOT EXISTS coupons(
+  code TEXT PRIMARY KEY,            -- همیشه با حروف بزرگ ذخیره می‌شود
+  kind TEXT DEFAULT 'percent',      -- percent یا amount
+  value INTEGER DEFAULT 0,          -- درصد، یا مبلغ به تومان
+  min_total INTEGER DEFAULT 0,      -- حداقل خرید لازم
+  max_uses INTEGER DEFAULT 0,       -- ۰ یعنی بی‌نهایت
+  used INTEGER DEFAULT 0,
+  expires INTEGER DEFAULT 0,        -- ۰ یعنی بدون تاریخ انقضا
+  active INTEGER DEFAULT 1,
+  created INTEGER);
+
+-- آمار بازدید. فقط شمارش روزانه نگه داشته می‌شود — نه آی‌پی، نه شناسهٔ
+-- کاربر، نه هیچ چیزی که بشود با آن کسی را دنبال کرد. هیچ سرویس بیرونی
+-- هم در کار نیست، چون فرستادن رفتار بازدیدکنندهٔ این فروشگاه به شرکت
+-- دیگری با قول محرمانگی جور درنمی‌آید.
+CREATE TABLE IF NOT EXISTS visits(
+  day TEXT,                         -- YYYY-MM-DD
+  kind TEXT,                        -- home | product | article | page | other
+  key TEXT,                         -- شناسهٔ محصول یا نشانی صفحه
+  n INTEGER DEFAULT 0,
+  PRIMARY KEY(day, kind, key));
+CREATE INDEX IF NOT EXISTS idx_visits_day ON visits(day);
+
+-- تخفیفِ هر سفارش در جدول خودش می‌ماند. ALTER TABLE اینجا نمی‌آید چون این
+-- فایل هر بار موقع استقرار اجرا می‌شود و بار دوم خطا می‌داد و کل استقرار
+-- را می‌خواباند.
+CREATE TABLE IF NOT EXISTS order_discounts(
+  order_id TEXT PRIMARY KEY,
+  code TEXT,
+  amount INTEGER DEFAULT 0);

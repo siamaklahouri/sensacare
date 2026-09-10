@@ -863,6 +863,37 @@ function withSecurity(res, extra) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 
+/* ---------- کد تخفیف ----------
+   مقدار تخفیف همیشه اینجا حساب می‌شود، نه در مرورگر. اگر از سمت مشتری
+   می‌آمد، هرکس می‌توانست هر عددی بفرستد. */
+async function couponFor(env, code, goods) {
+  const c = String(code || '').trim().toUpperCase();
+  if (!c) return { ok: true, amount: 0, code: '' };
+  const row = await one(env, 'SELECT * FROM coupons WHERE code=?', c);
+  if (!row || !row.active) return { ok: false, error: 'این کد معتبر نیست.' };
+  if (row.expires && Date.now() > row.expires) return { ok: false, error: 'اعتبار این کد تمام شده.' };
+  if (row.max_uses && row.used >= row.max_uses) return { ok: false, error: 'ظرفیت این کد پر شده.' };
+  if (row.min_total && goods < row.min_total)
+    return { ok: false, error: `این کد برای خرید بالای ${fa(row.min_total)} تومان است.` };
+  let amount = row.kind === 'amount'
+    ? Number(row.value) || 0
+    : Math.round(goods * (Number(row.value) || 0) / 100);
+  amount = Math.max(0, Math.min(amount, goods));   /* تخفیف از خودِ خرید بیشتر نشود */
+  return { ok: true, amount, code: c, kind: row.kind, value: row.value };
+}
+
+/* ---------- شمارش بازدید ----------
+   فقط یک عدد در روز برای هر صفحه. نه آی‌پی، نه کوکی، نه شناسه — چیزی که
+   بشود با آن کسی را دنبال کرد ذخیره نمی‌شود. */
+function today() { return new Date().toISOString().slice(0, 10); }
+async function countVisit(env, kind, key) {
+  if (!env.DB) return;
+  try {
+    await run(env, `INSERT INTO visits(day,kind,key,n) VALUES(?,?,?,1)
+      ON CONFLICT(day,kind,key) DO UPDATE SET n = n + 1`, today(), kind, String(key || '').slice(0, 120));
+  } catch (e) { /* آمار هیچ‌وقت نباید جلوی باز شدن صفحه را بگیرد */ }
+}
+
 async function injectMeta(env, req, meta) {
   const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
   let html = await res.text();
@@ -976,6 +1007,7 @@ export default {
       } catch (e) { /* اگر دیتابیس جواب نداد، صفحهٔ عادی را بده */ }
 
       if (!meta) return Response.redirect(base + '/', 302);
+      ctx.waitUntil(countVisit(env, kind === 'p' ? 'product' : kind === 'a' ? 'article' : 'page', key));
       return injectMeta(env, req, meta);
     }
 
@@ -1052,6 +1084,10 @@ export default {
     try {
       /* ---------------- عمومی ---------------- */
       if (p === '/api/bootstrap') {
+        /* صفحهٔ اصلی مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد،
+           پس بازدید را از همین درخواست می‌شماریم که هر بار باز شدن سایت
+           یک‌بار صدا زده می‌شود. */
+        ctx.waitUntil(countVisit(env, 'home', '/'));
         await seedIfEmpty(env);
         return json({
           ok: true,
@@ -1213,6 +1249,17 @@ export default {
       }
 
       /* ---------------- سفارش ---------------- */
+      /* مشتری کد را می‌زند و همان‌جا می‌بیند چقدر کم می‌شود. */
+      if (p === '/api/coupon/check' && m === 'POST') {
+        const rl = await rateLimit(env, 'coupon:' + clientIp(req), 25, 600);
+        if (!rl.ok) return tooMany(rl);
+        const goods = Math.max(0, Math.floor(Number(body.goods) || 0));
+        const c = await couponFor(env, body.code, goods);
+        if (!c.ok) return bad(c.error, 404);
+        if (!c.amount) return bad('این کد معتبر نیست.', 404);
+        return json({ ok: true, amount: c.amount, code: c.code });
+      }
+
       if (p === '/api/orders' && m === 'POST') {
         const rl = await rateLimit(env, 'order:' + clientIp(req), 6, 900);
         if (!rl.ok) return tooMany(rl);
@@ -1250,6 +1297,12 @@ export default {
         const methodName = okMethods[methodId];
         const ship = await shipFor(env, body.city, goods, methodId);
         if (ship === null) return bad('استان انتخاب‌شده معتبر نیست');
+
+        /* تخفیف سمت سرور حساب می‌شود؛ هر عددی که مرورگر بفرستد نادیده است. */
+        const cp = await couponFor(env, body.coupon, goods);
+        if (!cp.ok) return bad(cp.error, 409);
+        const discount = cp.amount || 0;
+        const total = Math.max(0, goods - discount) + ship;
         /* شناسه قبلاً «S» + هشت رقمِ آخرِ ساعت بود، یعنی قابل حدس.
            هرکس می‌توانست شناسه‌ها را امتحان کند و ببیند دیگران چه خریده‌اند —
            برای فروشگاهی که تمام حرفش محرمانه بودن است، بدترین نشتی. */
@@ -1261,7 +1314,7 @@ export default {
           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           id, Date.now(), body.phone, body.name || '', body.city || '', body.address || '',
           body.postal || '', body.note || '', body.lat ?? null, body.lng ?? null,
-          methodId, methodName, ship, goods, goods + ship,
+          methodId, methodName, ship, goods, total,
           'در انتظار پرداخت',
           body.guest ? 1 : 0, 'card', invoice);
 
@@ -1281,11 +1334,17 @@ export default {
           await run(env, 'UPDATE users SET name=?,city=?,address=?,postal=? WHERE phone=?',
             body.name || '', body.city || '', body.address || '', body.postal || '', body.phone);
 
+        if (discount > 0) {
+          await run(env, 'INSERT OR REPLACE INTO order_discounts(order_id,code,amount) VALUES(?,?,?)',
+            id, cp.code, discount);
+          await run(env, 'UPDATE coupons SET used = used + 1 WHERE code=?', cp.code);
+        }
+
         if (body.wantsInvoice)
           await run(env, 'INSERT OR REPLACE INTO order_extras(order_id,wants_invoice) VALUES(?,1)', id);
 
         ctx.waitUntil(sendInvoice(env, id).catch(e => console.log('invoice', e.message)));
-        return json({ ok: true, id, invoice, goods, ship, total: goods + ship });
+        return json({ ok: true, id, invoice, goods, ship, discount, coupon: cp.code || '', total });
       }
 
       if (p.startsWith('/api/orders/') && m === 'GET') {
@@ -1421,6 +1480,7 @@ export default {
             feedback: await all(env, 'SELECT * FROM feedback ORDER BY created DESC'),
             articles: await all(env, 'SELECT * FROM articles ORDER BY created DESC'),
             pages: await all(env, 'SELECT * FROM pages'),
+            coupons: await all(env, 'SELECT * FROM coupons ORDER BY created DESC'),
             settings: {
               freeOver: await getSetting(env, 'freeOver', 500000),
               shopName: await getSetting(env, 'shopName', 'سِنسا'),
@@ -1556,6 +1616,55 @@ export default {
             ON CONFLICT(slug) DO UPDATE SET title=excluded.title,body=excluded.body,updated=excluded.updated`,
             body.slug, body.title, body.body || '', Date.now());
           return json({ ok: true });
+        }
+
+        if (p === '/api/admin/coupons' && m === 'POST') {
+          const code = String(body.code || '').trim().toUpperCase().replace(/\s+/g, '');
+          if (!/^[A-Z0-9_-]{3,24}$/.test(code))
+            return bad('کد باید ۳ تا ۲۴ نویسه و فقط حروف انگلیسی، عدد یا خط تیره باشد');
+          const kind = body.kind === 'amount' ? 'amount' : 'percent';
+          const value = Math.max(0, Math.floor(Number(body.value) || 0));
+          if (!value) return bad('مقدار تخفیف را بنویس');
+          if (kind === 'percent' && value > 90) return bad('درصد تخفیف بیشتر از ۹۰ نمی‌شود');
+          await run(env, `INSERT INTO coupons(code,kind,value,min_total,max_uses,used,expires,active,created)
+            VALUES(?,?,?,?,?,COALESCE((SELECT used FROM coupons WHERE code=?),0),?,?,?)
+            ON CONFLICT(code) DO UPDATE SET kind=excluded.kind, value=excluded.value,
+              min_total=excluded.min_total, max_uses=excluded.max_uses,
+              expires=excluded.expires, active=excluded.active`,
+            code, kind, value,
+            Math.max(0, Math.floor(Number(body.minTotal) || 0)),
+            Math.max(0, Math.floor(Number(body.maxUses) || 0)),
+            code,
+            Math.max(0, Math.floor(Number(body.expires) || 0)),
+            body.active === false ? 0 : 1,
+            Date.now());
+          return json({ ok: true, code });
+        }
+
+        if (p.startsWith('/api/admin/coupons/') && m === 'DELETE') {
+          await run(env, 'DELETE FROM coupons WHERE code=?',
+            decodeURIComponent(p.split('/')[4]).toUpperCase());
+          return json({ ok: true });
+        }
+
+        /* آمار بازدید — همه از دیتابیس خودمان، بدون سرویس بیرونی. */
+        if (p === '/api/admin/stats') {
+          const days = Math.min(90, Math.max(7, Number(url.searchParams.get('days')) || 30));
+          const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+          return json({
+            byDay: await all(env, `SELECT day, SUM(n) v FROM visits WHERE day>=?
+              GROUP BY day ORDER BY day`, from),
+            byKind: await all(env, `SELECT kind, SUM(n) v FROM visits WHERE day>=?
+              GROUP BY kind ORDER BY v DESC`, from),
+            topProducts: await all(env, `SELECT v.key AS k, SUM(v.n) v, p.n AS name
+              FROM visits v LEFT JOIN products p ON p.id = v.key
+              WHERE v.day>=? AND v.kind='product' GROUP BY v.key ORDER BY v DESC LIMIT 12`, from),
+            orders: await all(env, `SELECT date(created/1000,'unixepoch') day, COUNT(*) n,
+              COALESCE(SUM(total),0) rev FROM orders
+              WHERE date(created/1000,'unixepoch')>=? GROUP BY day ORDER BY day`, from),
+            couponUse: await all(env, `SELECT code, COUNT(*) n, COALESCE(SUM(amount),0) sum
+              FROM order_discounts GROUP BY code ORDER BY n DESC LIMIT 12`)
+          });
         }
 
         if (p === '/api/admin/settings' && m === 'POST') {

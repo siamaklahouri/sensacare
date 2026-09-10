@@ -887,6 +887,12 @@ footer #fContact ul{margin-top:4px}
         <div class="ships" id="ships"></div>
         <label style="margin-top:18px">روش پرداخت</label>
         <div class="pays" id="pays"></div>
+        <label style="margin-top:16px">کد تخفیف داری؟</label>
+        <div style="display:flex;gap:8px">
+          <input id="cCoupon" placeholder="کد را اینجا بزن" dir="ltr" style="flex:1;text-transform:uppercase">
+          <button class="mini" id="applyCoupon" style="padding:0 18px;white-space:nowrap">اعمال کن</button>
+        </div>
+        <p class="hint" id="couponMsg"></p>
         <div class="sum" id="sum"></div>
         <div style="display:flex;gap:10px;margin-top:18px">
           <button class="btn-main" id="placeOrder" style="flex:1">تمام، ثبتش کن</button>
@@ -1064,6 +1070,8 @@ footer #fContact ul{margin-top:4px}
     <button data-t="users">کاربران</button>
     <button data-t="blog">مجله و صفحات</button>
     <button data-t="fb">بازخوردها</button>
+    <button data-t="coupon">کد تخفیف</button>
+    <button data-t="stats">آمار بازدید</button>
     <button data-t="set">تنظیمات</button>
   </div>
   <div class="p-body"><div class="p-inner" id="pContent"></div></div>
@@ -1683,15 +1691,36 @@ function paintPays(){
     </label>`;
 }
 
+/* کد تخفیف. مقدارش را سرور می‌گوید، نه اینجا — این فقط نمایش است. */
+let coupon={code:'',amount:0};
+async function applyCoupon(){
+  const code=$('cCoupon').value.trim().toUpperCase(), msg=$('couponMsg');
+  if(!code){ coupon={code:'',amount:0}; msg.textContent=''; msg.style.color=''; paintSum(); return }
+  msg.style.color=''; msg.textContent='یک لحظه…';
+  try{
+    const r=await req('/api/coupon/check',{method:'POST',body:{code,goods:subtotal()}});
+    coupon={code:r.code,amount:r.amount};
+    msg.style.color='#166534'; msg.textContent=`کد «${r.code}» اعمال شد — ${money(r.amount)} کمتر.`;
+  }catch(e){
+    coupon={code:'',amount:0};
+    msg.style.color='var(--red)'; msg.textContent=e.message||'این کد معتبر نیست.';
+  }
+  paintSum();
+}
 function paintSum(){
   const city=$('cCity').value, m=METHODS.find(x=>x.id===chosen);
   const ship=quote(m,city,subtotal())||0, goods=subtotal();
+  /* اگر سبد بعد از گرفتن کد عوض شود، تخفیف نباید از خودِ خرید بیشتر شود */
+  const off=Math.min(coupon.amount||0, goods);
   $('sum').innerHTML=`
     <div><span>کالاها (${fa(itemCount())} قلم)</span><span>${money(goods)}</span></div>
+    ${off>0?`<div style="color:#166534"><span>تخفیف — ${esc(coupon.code)}</span><span>−${money(off)}</span></div>`:''}
     <div><span>ارسال — ${m.name}</span><span>${ship===0?'رایگان':money(ship)}</span></div>
     ${(settings.freeOver>0&&goods<settings.freeOver)?`<div style="color:var(--red)"><span>تا ارسال رایگان</span><span>${money(settings.freeOver-goods)}</span></div>`:''}
-    <div class="big"><span>جمعاً می‌شه</span><span>${money(goods+ship)}</span></div>`;
+    <div class="big"><span>جمعاً می‌شه</span><span>${money(Math.max(0,goods-off)+ship)}</span></div>`;
 }
+$('applyCoupon').onclick=applyCoupon;
+$('cCoupon').onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); applyCoupon() } };
 let lastOrder=null;
 $('placeOrder').onclick=()=>{
   const u=authUser(), ph=enN($('cPhone').value).replace(/[\s-]/g,'');
@@ -1733,7 +1762,7 @@ async function submitOrder(){
     city, address:$('cAddr').value.trim(), postal:enN($('cPost').value).replace(/[\s-]/g,''),
     note:$('cNote').value.trim(), wantsInvoice: $('cWantInv').checked?1:0,
     lat:pin?pin.lat:null, lng:pin?pin.lng:null,
-    method:m.id, methodName:m.name, ship,
+    method:m.id, methodName:m.name, ship, coupon:coupon.code||'',
     items:[...cart].map(([id,q])=>({id,q})),
     guest: authUser()?0:1, payMethod
   };
@@ -2368,7 +2397,7 @@ function drawPanel(){
   const mt=$('modeTag');
   if(mt){ mt.className='mode '+(ONLINE?'on2':'off2');
     mt.textContent=ONLINE?'متصل به سرور':'حالت محلی — فقط این مرورگر'; }
-({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,set:repSet})[ptab]()}
+({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,coupon:repCoupon,stats:repStats,set:repSet})[ptab]()}
 const C=$('pContent');
 const bar=(label,val,max,color)=>`<div class="brow"><span>${esc(label)}</span>
   <span class="btrack"><span class="bfill" style="width:${max?Math.round(val/max*100):0}%;background:${color||'var(--red)'}"></span></span>
@@ -2996,6 +3025,118 @@ function repFb(){
         <p style="font-size:13.5px;margin-top:4px">${esc(f.text)||'<span style="color:var(--body)">بدون متن</span>'}</p></div>`).join('')
       :'<p class="empty">هنوز بازخوردی ثبت نشده است.</p>'}</div>`;
 }
+/* --- کد تخفیف --- */
+let coupons=[];
+const faDate=t=>t?new Date(t).toLocaleDateString('fa-IR'):'—';
+let couponsLoaded=false;
+function repCoupon(){
+  /* اولین بار که این بخش باز می‌شود، فهرست را از سرور می‌گیریم. */
+  if(!couponsLoaded && ONLINE){
+    couponsLoaded=true;
+    loadCoupons().then(()=>{ if(ptab==='coupon') repCoupon() });
+  }
+  C.innerHTML=`<div class="box"><h3>ساخت کد تخفیف</h3>
+    <div class="f2">
+      <div><label>کد</label><input id="k_code" dir="ltr" placeholder="مثلاً WELCOME10" style="text-transform:uppercase">
+        <p class="hint">حروف انگلیسی، عدد یا خط تیره. همین را به مشتری می‌دهید.</p></div>
+      <div><label>نوع تخفیف</label>
+        <select id="k_kind"><option value="percent">درصدی</option><option value="amount">مبلغ ثابت</option></select></div>
+      <div><label>مقدار</label><input id="k_value" type="number" placeholder="۱۰">
+        <p class="hint">اگر درصدی است عدد درصد، اگر مبلغ ثابت است تومان.</p></div>
+      <div><label>مدت اعتبار (روز)</label><input id="k_days" type="number" placeholder="۳۰">
+        <p class="hint">خالی یا صفر یعنی بدون تاریخ انقضا.</p></div>
+      <div><label>چند بار قابل استفاده</label><input id="k_uses" type="number" placeholder="۱۰۰">
+        <p class="hint">خالی یا صفر یعنی بی‌نهایت.</p></div>
+      <div><label>حداقل خرید (تومان)</label><input id="k_min" type="number" placeholder="۰">
+        <p class="hint">اگر بگذارید، کد فقط برای خریدهای بالاتر از این مبلغ کار می‌کند.</p></div>
+    </div>
+    <button class="btn-main" id="k_save" style="margin-top:16px;padding:12px 28px">ذخیرهٔ کد</button></div>
+
+    <div class="box"><h3>کدهای ساخته‌شده</h3>
+    ${coupons.length?`<div style="overflow-x:auto"><table><thead><tr>
+      <th>کد</th><th>تخفیف</th><th>حداقل خرید</th><th>استفاده</th><th>انقضا</th><th>وضعیت</th><th></th>
+      </tr></thead><tbody>${coupons.map(c=>{
+        const dead=(c.expires&&Date.now()>c.expires)||(c.max_uses&&c.used>=c.max_uses)||!c.active;
+        return `<tr${dead?' style="opacity:.5"':''}>
+        <td><code style="font-weight:700">${esc(c.code)}</code></td>
+        <td>${c.kind==='amount'?money(c.value):fa(c.value)+'٪'}</td>
+        <td>${c.min_total?money(c.min_total):'—'}</td>
+        <td>${fa(c.used||0)}${c.max_uses?' از '+fa(c.max_uses):''}</td>
+        <td>${c.expires?faDate(c.expires):'بدون انقضا'}</td>
+        <td>${dead?'<span style="color:var(--red)">تمام‌شده</span>':'<span style="color:#166534">فعال</span>'}</td>
+        <td><button class="mini del" data-kdel="${esc(c.code)}">حذف</button></td></tr>`}).join('')}
+      </tbody></table></div>`
+    :'<p class="empty">هنوز کدی نساخته‌اید.</p>'}</div>`;
+
+  $('k_save').onclick=async()=>{
+    const code=$('k_code').value.trim().toUpperCase();
+    const days=+$('k_days').value||0;
+    const body={ code, kind:$('k_kind').value, value:+$('k_value').value||0,
+      minTotal:+$('k_min').value||0, maxUses:+$('k_uses').value||0,
+      expires: days>0 ? Date.now()+days*86400000 : 0 };
+    if(!ONLINE){ toast('برای ساخت کد باید به سرور وصل باشید.'); return }
+    try{
+      await req('/api/admin/coupons',{method:'POST',asAdmin:true,body});
+      toast('کد ذخیره شد.'); await loadCoupons(); repCoupon();
+    }catch(e){ toast(e.message||'ذخیره نشد') }
+  };
+  C.querySelectorAll('[data-kdel]').forEach(b=>b.onclick=async()=>{
+    const c=b.dataset.kdel;
+    if(!confirm(`کد «${c}» حذف شود؟`))return;
+    try{ await req('/api/admin/coupons/'+encodeURIComponent(c),{method:'DELETE',asAdmin:true});
+      await loadCoupons(); repCoupon(); toast('حذف شد.') }catch(e){ toast(e.message) }
+  });
+}
+async function loadCoupons(){
+  if(!ONLINE) return;
+  try{ const d=await req('/api/admin/data',{asAdmin:true}); coupons=d.coupons||[] }catch(e){}
+}
+
+/* --- آمار بازدید --- */
+function statBar(rows, label, val){
+  if(!rows.length) return '<p class="empty">هنوز چیزی ثبت نشده.</p>';
+  const top=Math.max(1,...rows.map(val));
+  return `<div style="display:grid;gap:7px">${rows.map(r=>`
+    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
+      <div style="min-width:0">
+        <div style="font-size:12.5px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(label(r))}</div>
+        <div style="height:7px;border-radius:9px;background:var(--line)">
+          <div style="height:100%;border-radius:9px;background:var(--red);width:${Math.round(val(r)/top*100)}%"></div></div>
+      </div>
+      <b style="font-size:13px">${fa(val(r))}</b></div>`).join('')}</div>`;
+}
+function repStats(){
+  C.innerHTML='<div class="box"><p class="empty">در حال خواندن آمار…</p></div>';
+  if(!ONLINE){ C.innerHTML='<div class="box"><p class="empty">آمار فقط وقتی به سرور وصل باشید کار می‌کند.</p></div>'; return }
+  req('/api/admin/stats?days=30',{asAdmin:true}).then(d=>{
+    const KIND={home:'صفحهٔ اصلی',product:'صفحهٔ محصول',article:'مقاله',page:'صفحهٔ ثابت'};
+    const totalV=(d.byKind||[]).reduce((s,x)=>s+x.v,0);
+    const totalO=(d.orders||[]).reduce((s,x)=>s+x.n,0);
+    const rev=(d.orders||[]).reduce((s,x)=>s+x.rev,0);
+    const rate=totalV?(totalO/totalV*100):0;
+    C.innerHTML=`
+      <div class="stats">
+        <div class="stat"><span>بازدید ۳۰ روز</span><b>${fa(totalV)}</b></div>
+        <div class="stat"><span>سفارش ۳۰ روز</span><b>${fa(totalO)}</b></div>
+        <div class="stat"><span>فروش ۳۰ روز</span><b>${money(rev)}</b></div>
+        <div class="stat"><span>از هر ۱۰۰ بازدید</span><b>${fa(rate.toFixed(1))} سفارش</b></div>
+      </div>
+      <div class="box"><h3>بازدید روزانه</h3>
+        ${statBar((d.byDay||[]).slice(-14), r=>new Date(r.day).toLocaleDateString('fa-IR'), r=>r.v)}</div>
+      <div class="box"><h3>کدام صفحه‌ها</h3>
+        ${statBar(d.byKind||[], r=>KIND[r.kind]||r.kind, r=>r.v)}</div>
+      <div class="box"><h3>پربازدیدترین محصولات</h3>
+        ${statBar(d.topProducts||[], r=>r.name||r.k, r=>r.v)}</div>
+      <div class="box"><h3>استفاده از کدهای تخفیف</h3>
+        ${(d.couponUse||[]).length
+          ? `<table><thead><tr><th>کد</th><th>چند بار</th><th>جمع تخفیف</th></tr></thead><tbody>
+             ${d.couponUse.map(c=>`<tr><td><code>${esc(c.code)}</code></td><td>${fa(c.n)}</td><td>${money(c.sum)}</td></tr>`).join('')}
+             </tbody></table>`
+          : '<p class="empty">هنوز کسی از کد تخفیف استفاده نکرده.</p>'}</div>
+      <p class="hint" style="margin-top:14px">شمارش روی سرور خودمان انجام می‌شود — نه آی‌پی ذخیره می‌شود، نه کوکی، و هیچ سرویس بیرونی‌ای در کار نیست.</p>`;
+  }).catch(e=>{ C.innerHTML=`<div class="box"><p class="empty">آمار خوانده نشد: ${esc(e.message)}</p></div>` });
+}
+
 /* --- تنظیمات --- */
 function repSet(){
   C.innerHTML=`<div class="box"><h3>تنظیمات فروشگاه</h3>
