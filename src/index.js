@@ -1222,6 +1222,7 @@ export default {
             card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
             contact: await getSetting(env, 'contact', { phone: '', email: '', hours: '' }),
             hero: await getSetting(env, 'hero', {}),
+            texts: await getSetting(env, 'texts', {}),
             packMin: await getSetting(env, 'packMin', 3),
             packPct: await getSetting(env, 'packPct', 10),
             articleProducts: Object.fromEntries(
@@ -1659,6 +1660,7 @@ export default {
               card: await getSetting(env, 'card', { number: '', holder: '', bank: '' }),
               contact: await getSetting(env, 'contact', { phone: '', email: '', hours: '' }),
               hero: await getSetting(env, 'hero', {}),
+            texts: await getSetting(env, 'texts', {}),
               botLogin: await botLoginOptions(env),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {})
