@@ -310,7 +310,7 @@ nav::-webkit-scrollbar{display:none}
 .card{flex:0 0 calc((100% - 4*16px)/5);scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
 .card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
 .thumb{position:relative;aspect-ratio:1/1;background:var(--tint);display:grid;place-items:center;overflow:hidden}
-.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb img{width:100%;height:100%;object-fit:contain}
 .thumb svg{width:58%}
 .tag{position:absolute;top:10px;inset-inline-end:10px;background:var(--acc);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px;z-index:2}
 .off{position:absolute;top:10px;inset-inline-start:10px;background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;z-index:2}
@@ -532,7 +532,9 @@ table{width:100%;border-collapse:collapse;background:var(--card);border:1px soli
 th,td{padding:11px 12px;text-align:right;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle}
 th{background:var(--red-2);color:var(--red);font-weight:700;font-size:12.5px}
 tr:last-child td{border-bottom:none}
-td img,td .ph{width:42px;height:42px;border-radius:11px;object-fit:cover;background:var(--red-2)}
+/* زمینهٔ قاب عکس در هر دو تم سفید بماند — در تم شب قرمزِ تیره بود و هر
+   عکسِ پس‌زمینه‌شفافی سیاه دیده می‌شد. */
+td img,td .ph{width:42px;height:42px;border-radius:11px;object-fit:contain;background:#fff}
 .mini{font-size:12px;font-weight:600;padding:6px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card)}
 .mini.del{color:#D1163C;border-color:#F6D3DA}
 .box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px}
@@ -567,7 +569,7 @@ body.admin-mode{background:var(--dark)}
 /* صفحه محصول */
 .pd{display:grid;grid-template-columns:1fr 1.15fr;gap:26px}
 .pd-img{aspect-ratio:1;border-radius:20px;display:grid;place-items:center;overflow:hidden;background:var(--tint)}
-.pd-img img{width:100%;height:100%;object-fit:cover}
+.pd-img img{width:100%;height:100%;object-fit:contain}
 .pd-img svg{width:62%}
 .pd h2{font-size:23px;font-weight:800;line-height:1.5;margin:4px 0 6px}
 .spec{width:100%;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -633,7 +635,7 @@ body.admin-mode{background:var(--dark)}
 .mrow .mv{display:flex;gap:5px}
 .mrow .mv button{width:30px;height:30px;border:1px solid var(--line);border-radius:9px;font-size:14px}
 .subrow{margin-inline-start:26px;border-inline-start:2px solid var(--line);padding-inline-start:12px}
-.preview{width:160px;aspect-ratio:1/1;border-radius:14px;object-fit:cover;background:var(--red-2);margin-top:10px}
+.preview{width:160px;aspect-ratio:1/1;border-radius:14px;object-fit:contain;background:#fff;margin-top:10px}
 .toast{position:fixed;bottom:22px;inset-inline-end:22px;background:var(--dark);color:#fff;padding:13px 21px;border-radius:13px;font-size:14px;z-index:200;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none}
 .toast.show{opacity:1;transform:none}
 
@@ -2009,6 +2011,60 @@ function shrinkImage(file, maxSide=1600, quality=.82){
   });
 }
 
+/* عکس محصول، هرچه باشد، پیش از ذخیره این مسیر را رد می‌کند:
+   ۱ — روی بوم سفید می‌نشیند. عکس‌هایی که پس‌زمینهٔ شفاف دارند (بیشترِ
+       عکس‌های محصول همین‌طورند) در تم شبِ پنل روی زمینهٔ #3D1020
+       می‌افتادند و سیاه دیده می‌شدند.
+   ۲ — کامل توی کادر جا می‌شود، نه اینکه لبه‌هایش بریده شود. قبلاً عکس
+       ۳۰۲۴×۴۰۳۲ گوشی داخل کادر مربع، از بالا و پایین قیچی می‌شد.
+   ۳ — مربع و حداکثر ۱۰۰۰ پیکسل و فشرده می‌شود. عکس خام گوشی چند مگابایت
+       است؛ سرور بالای حدود ۴.۵ مگابایت اصلاً قبولش نمی‌کرد و پایین‌تر از
+       آن هم برای اینترنت موبایلِ مشتری سنگین بود. */
+const IMG_CAP = 400000;   /* نویسه — اندازه‌گیری شد که سرور بالای ۵۲۴۲۸۸ نویسه
+                             رشته را می‌بُرد و عکس نیمه‌سیاه ذخیره می‌شد */
+function squareImage(file, side=1000, quality=.82){
+  return new Promise((res,rej)=>{
+    if(!/^image\//.test(file.type)) return rej(new Error('فایل باید عکس باشد.'));
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error('فایل خوانده نشد.'));
+    fr.onload=()=>{
+      const im=new Image();
+      im.onerror=()=>rej(new Error('این فایل باز نشد. اگر از آیفون است، یک‌بار در خود گوشی ذخیره‌اش کنید تا JPG شود.'));
+      im.onload=()=>{
+        const cv=document.createElement('canvas'); cv.width=cv.height=side;
+        const x=cv.getContext('2d');
+        x.fillStyle='#fff'; x.fillRect(0,0,side,side);
+        const sc=Math.min(side/im.width, side/im.height);
+        const w=Math.round(im.width*sc), h=Math.round(im.height*sc);
+        x.drawImage(im,Math.round((side-w)/2),Math.round((side-h)/2),w,h);
+        /* تا وقتی زیر سقف نیامده، کیفیت و بعد اندازه را کم می‌کنیم.
+           هیچ عکسی نباید نصفه ذخیره شود. */
+        const enc=q=>{
+          let u=''; try{ u=cv.toDataURL('image/webp',q) }catch(e){}
+          if(!/^data:image\/webp/.test(u)) u=cv.toDataURL('image/jpeg',q);
+          return u;
+        };
+        let url=enc(quality), q=quality;
+        while(url.length>IMG_CAP && q>0.4){ q-=0.1; url=enc(q) }
+        if(url.length>IMG_CAP){
+          const half=document.createElement('canvas');
+          half.width=half.height=Math.round(side*0.7);
+          const hx=half.getContext('2d');
+          hx.fillStyle='#fff'; hx.fillRect(0,0,half.width,half.height);
+          hx.drawImage(cv,0,0,half.width,half.height);
+          let u=''; try{ u=half.toDataURL('image/webp',0.8) }catch(e){}
+          if(!/^data:image\/webp/.test(u)) u=half.toDataURL('image/jpeg',0.8);
+          url=u;
+        }
+        if(url.length>IMG_CAP) return rej(new Error('این عکس حتی بعد از فشرده‌سازی هم بزرگ است. یک عکس ساده‌تر بگذارید.'));
+        res({url, kb:Math.round(url.length*3/4/1024)});
+      };
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
 async function submitOrder(){
   const city=$('cCity').value, m=METHODS.find(x=>x.id===chosen);
   const ship=quote(m,city,subtotal())||0;
@@ -2931,9 +2987,10 @@ function editor(p){
       <div><label>روان‌کننده</label><input id="f_lube" value="${esc(p.lube||'')}" placeholder="سیلیکونی"></div>
       <div class="full"><label>توضیح کوتاه</label><textarea id="f_d">${esc(p.d)}</textarea></div>
       <div class="full"><label>عکس محصول</label>
-        <input id="f_img" placeholder="آدرس عکس یا خالی" value="${esc(p.img)}">
-        <p class="hint">یا فایل از دستگاه خودتان (زیر ۳۰۰ کیلوبایت):</p>
+        <input id="f_img" placeholder="آدرس عکس یا خالی" value="${/^data:/.test(p.img||'')?'':esc(p.img)}">
+        <p class="hint">یا فایل از دستگاه خودتان — هر اندازه‌ای باشد خودش کوچک می‌شود:</p>
         <input type="file" id="f_file" accept="image/*" style="margin-top:6px;padding:8px">
+        <p class="hint" id="f_hint"></p>
         <img class="preview" id="f_prev" src="${esc(p.img)}" alt="" onerror="this.removeAttribute('src')"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:18px">
@@ -2941,15 +2998,26 @@ function editor(p){
       <button class="mini" id="f_cancel" style="padding:12px 22px">انصراف</button></div></div>`;
   $('editorSlot').scrollIntoView({behavior:'smooth',block:'start'});
   const img=$('f_img'),prev=$('f_prev');
-  img.oninput=()=>prev.src=img.value;
-  $('f_file').onchange=e=>{const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=()=>{img.value=r.result;prev.src=r.result};r.readAsDataURL(f)};
+  /* دادهٔ خود عکس در یک متغیر می‌ماند، نه داخل ورودی متنی. */
+  let picked = /^data:/.test(p.img||'') ? p.img : '';
+  img.oninput=()=>{ picked=''; prev.src=img.value };
+  const imgHint=$('f_hint');
+  $('f_file').onchange=async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    imgHint.textContent='در حال آماده‌سازی عکس…';
+    try{
+      const out=await squareImage(f);
+      picked=out.url; img.value=''; prev.src=out.url;
+      imgHint.textContent=`آماده شد — از ${fa(Math.round(f.size/1024))} به ${fa(out.kb)} کیلوبایت`;
+    }catch(err){ imgHint.textContent=err.message; toast(err.message) }
+    e.target.value='';
+  };
   $('f_cancel').onclick=()=>$('editorSlot').innerHTML='';
   $('f_save').onclick=()=>{
     const v=id=>$(id).value.trim();
     if(!v('f_n')||!v('f_pr')){toast('نام و قیمت الزامی است.');return}
     const data={n:v('f_n'),b:v('f_b'),pr:+v('f_pr'),old:+v('f_old')||0,d:v('f_d'),c:v('f_c'),
-      tag:v('f_tag'),img:v('f_img'),stock:+v('f_stock')||0,count:v('f_count'),size:v('f_size'),
+      tag:v('f_tag'),img:picked||v('f_img'),stock:+v('f_stock')||0,count:v('f_count'),size:v('f_size'),
       thickness:v('f_th'),material:v('f_mat'),lube:v('f_lube')};
     let saved;
     if(isNew){ saved={id:uid(),...data}; products.push(saved) }

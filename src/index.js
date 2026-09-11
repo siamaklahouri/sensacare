@@ -1673,7 +1673,12 @@ export default {
           const pid = x.id || crypto.randomUUID();
           x.id = pid;
           if (typeof x.img === 'string' && x.img.startsWith('data:')) {
-            if (x.img.length > 6 * 1024 * 1024) return bad('عکس بیش از حد بزرگ است');
+            /* اندازه‌گیری شد: بالای ۵۲۴۲۸۸ نویسه، رشته در دیتابیس بریده
+               می‌شد و عکس نصفه‌سیاه ذخیره می‌گشت — بدون هیچ خطایی. سقف قبلی
+               ۶ مگابایت بود، یعنی خیلی بالاتر از جایی که واقعاً می‌شکست.
+               حالا جلوتر از آن نقطه جلویش گرفته می‌شود تا هیچ‌وقت عکس
+               نصفه ذخیره نشود. */
+            if (x.img.length > 450000) return bad('عکس بیش از حد بزرگ است — از پنل دوباره انتخابش کنید تا خودش کوچک شود.');
             await run(env, `INSERT INTO product_images(product_id,data,updated) VALUES(?,?,?)
               ON CONFLICT(product_id) DO UPDATE SET data=excluded.data, updated=excluded.updated`,
               pid, x.img, Date.now());
