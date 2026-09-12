@@ -1029,6 +1029,9 @@ footer #fContact ul{margin-top:4px}
       <span class="badge" style="background:var(--red-2);color:var(--red)" data-tx="blogBadge">مجلهٔ سِنسا</span>
       <h2 data-tx="blogTitle">چیزایی که خوبه بدونی</h2><p data-tx="blogSub">ساده و بی‌تعارف، بدون تبلیغ</p></div></div>
     <div class="arts" id="arts"></div>
+    <div style="text-align:center;margin-top:22px">
+      <button class="mini" id="artsMore" hidden style="padding:12px 26px"></button>
+    </div>
   </div>
 </section>
 
@@ -2738,22 +2741,37 @@ promoEl.addEventListener('click',e=>{
 });
 
 /* ============ مجله و صفحات ============ */
+/* شش تای اول نشان داده می‌شود و بقیه پشت یک دکمه — وگرنه با زیاد شدن
+   مقاله‌ها، صفحهٔ اول کشیده می‌شود. قبلاً بقیه اصلاً دیده نمی‌شدند. */
+let artsAll=false;
 function renderArticles(){
-  const list=(articles||[]).slice(0,6);
+  const all=articles||[];
+  const list=artsAll?all:all.slice(0,6);
   $('arts').innerHTML = list.length ? list.map(a=>`
     <article class="art" data-slug="${esc(a.slug)}">
       <h3>${esc(a.title)}</h3><p>${esc(a.excerpt)}</p><span>بخونش ←</span>
     </article>`).join('') : '<p class="empty">هنوز مطلبی ننوشتیم.</p>';
+  const more=$('artsMore');
+  if(more){
+    more.hidden = all.length<=6;
+    more.textContent = artsAll ? 'کمتر نشون بده' : `${fa(all.length-6)} مطلب دیگه`;
+  }
 }
 $('arts').onclick=e=>{const a=e.target.closest('[data-slug]');if(a)openDoc('article',a.dataset.slug)};
+$('artsMore').onclick=()=>{ artsAll=!artsAll; renderArticles();
+  if(!artsAll) $('blog').scrollIntoView({block:'start'}) };
 document.querySelectorAll('[data-page]').forEach(a=>a.onclick=e=>{e.preventDefault();openDoc('page',a.dataset.page)});
 
 function md(t){
+  /* پررنگ بعد از esc اعمال می‌شود، پس فقط خودِ ستاره‌ها تبدیل می‌شوند و
+     هیچ تگی از متن مقاله بیرون نمی‌آید. قبلاً این نبود و در مقاله‌ها
+     «**دور**» با ستاره‌هایش دیده می‌شد. */
+  const b = h => h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
   return String(t||'').split('\n\n').map(block=>{
-    if(block.startsWith('## ')) return '<h2>'+esc(block.slice(3))+'</h2>';
-    if(block.startsWith('> ')) return '<blockquote>'+esc(block.slice(2))+'</blockquote>';
-    if(/^[-•]\s/m.test(block)) return '<ul>'+block.split('\n').map(l=>'<li>'+esc(l.replace(/^[-•]\s*/,''))+'</li>').join('')+'</ul>';
-    return '<p>'+esc(block).replace(/\n/g,'<br>')+'</p>';
+    if(block.startsWith('## ')) return '<h2>'+b(esc(block.slice(3)))+'</h2>';
+    if(block.startsWith('> ')) return '<blockquote>'+b(esc(block.slice(2)))+'</blockquote>';
+    if(/^[-•]\s/m.test(block)) return '<ul>'+block.split('\n').map(l=>'<li>'+b(esc(l.replace(/^[-•]\s*/,'')))+'</li>').join('')+'</ul>';
+    return '<p>'+b(esc(block)).replace(/\n/g,'<br>')+'</p>';
   }).join('');
 }
 async function openDoc(kind,slug,push=true){
