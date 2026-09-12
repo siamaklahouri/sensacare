@@ -385,6 +385,34 @@ html.quiet #pdBody .spec:hover,
 html.quiet .nav-item:hover>a, html.quiet .nav-item>a:focus,
 html.quiet .sub a:hover{filter:none}
 #quietBtn.on{background:var(--red);color:#fff}
+/* --- صفحهٔ دسته و فیلترها --- */
+.cp-head{margin-bottom:16px}
+.cp-head p{font-size:13.5px;color:var(--body);margin-top:4px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.fgrp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fgrp>b{font-size:11.5px;font-weight:700;color:var(--body);margin-inline-end:2px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);
+  padding:7px 13px;border-radius:99px;font-size:12.5px;font-weight:600;transition:.15s;
+  white-space:nowrap}
+.chip:hover{border-color:var(--acc)}
+.chip.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.cp-count{font-size:12.5px;color:var(--body);margin:14px 0 10px}
+.cp-count b{color:var(--ink);font-weight:800}
+.cp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.cp-grid .card{flex:none}
+@media(max-width:1040px){.cp-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.cp-grid{grid-template-columns:1fr 1fr;gap:11px}}
+.cp-none{padding:40px 10px;text-align:center;color:var(--body);font-size:14px}
+.cp-toggle{display:none;margin-top:12px}
+/* روی گوشی، فیلترها جمع‌اند تا کالاها همان اول دیده شوند — وگرنه با پنج
+   گروه فیلتر، کالا می‌رفت زیر صفحه. */
+@media(max-width:760px){
+  .cp-toggle{display:inline-flex}
+  .filters{display:none}
+  .filters.open{display:flex}
+  .fgrp{width:100%}
+}
+
 /* --- نظر و امتیاز --- */
 .stars{display:inline-flex;gap:1px;direction:ltr;line-height:1}
 .stars i{font-style:normal;font-size:inherit;color:#D8C7CE}
@@ -1196,6 +1224,12 @@ footer #fContact ul{margin-top:4px}
   </div>
 </div>
 
+<div class="sheet" id="catSheetPage"><div class="sheet-in">
+  <div class="sheet-head"><h3 id="cpTitle">دسته</h3>
+    <button class="close-x" id="cpClose" aria-label="بستن">×</button></div>
+  <div class="sheet-body" id="cpBody"></div>
+</div></div>
+
 <div class="sheet" id="pdSheet"><div class="sheet-in">
   <div class="sheet-head"><h3 data-tx="pdTitle">مشخصات کامل</h3><button class="close-x" id="pdClose" aria-label="بستن">×</button></div>
   <div class="sheet-body" id="pdBody"></div>
@@ -1873,7 +1907,7 @@ function onAdd(e){const b=e.target.closest('.add');if(!b)return;
   if(pr&&stockState(pr).out){toast('این کالا فعلاً ناموجود است.');return}
   cart.set(b.dataset.id,(cart.get(b.dataset.id)||0)+1);
   b.textContent='اضافه شد ✓';b.classList.add('on');
-  setTimeout(()=>{b.textContent='اضافه کن';b.classList.remove('on')},1200);
+  setTimeout(()=>{b.textContent=T('addBtn');b.classList.remove('on')},1200);
   updateCart()}
 catsEl.addEventListener('click',onAdd); promoEl.addEventListener('click',onAdd);
 const subtotal=()=>[...cart].reduce((s,[id,q])=>{const p=products.find(x=>x.id===id);return s+(p?p.pr*q:0)},0);
@@ -4333,7 +4367,7 @@ function backHome(){
   }
 }
 function closeAllSheets(){
-  ['pdSheet','docSheet'].forEach(id=>{const e=$(id); if(e) e.classList.remove('open')});
+  ['pdSheet','docSheet','catSheetPage'].forEach(id=>{const e=$(id); if(e) e.classList.remove('open')});
 }
 function routeFromPath(push=false){
   const m=/^\/(p|a|s|c)\/([^/]+)\/?$/.exec(location.pathname);
@@ -4354,15 +4388,103 @@ addEventListener('click',e=>{
 
 /* هر دسته آدرس خودش را دارد تا گوگل بتواند رتبه‌اش بدهد؛ در مرورگر همان
    بخشِ همان دسته باز می‌شود، نه یک صفحهٔ جدا. */
+let cpCat=null, cpF={}, cpOpen=false;
 function goCategory(id,push=true){
+  const c=cats.find(x=>x.id===id);
+  if(!c){ backHome(); return }
   closeAllSheets();
-  const sec=document.getElementById('c-'+id);
-  if(!sec){ backHome(); return }
-  const c=catOf(id);
+  cpCat=id; cpF={}; cpOpen=false;
   if(push) setPath('/c/'+encodeURIComponent(id), `خرید ${c.name} | سِنسا`);
   else setTitle(`خرید ${c.name} | سِنسا`);
-  sec.scrollIntoView({block:'start'});
+  $('cpTitle').textContent=c.name;
+  paintCatPage();
+  $('catSheetPage').classList.add('open');
 }
+
+/* فیلترها از روی خودِ کالاهای همان دسته ساخته می‌شوند، نه از یک فهرست
+   ثابت — تا وقتی کالایی اضافه شد فیلترش هم خودش بیاید، و فیلتری که فقط
+   یک جواب دارد اصلاً نشان داده نشود. */
+function cpFacets(list){
+  const junk=v=>!v || /^[—–\-.…]+$/.test(v) || v==='ندارد';
+  const uniq=k=>[...new Set(list.map(p=>(p[k]||'').trim()).filter(v=>!junk(v)))];
+  const out=[];
+  const brands=uniq('b');   if(brands.length>1) out.push(['b','برند',brands.sort()]);
+  const counts=uniq('count');if(counts.length>1) out.push(['count','تعداد',counts]);
+  const mats=uniq('material');
+  if(mats.length>1) out.push(['material','جنس',mats.sort()]);
+  return out;
+}
+
+function cpPriceBands(list){
+  const pr=list.map(p=>p.pr).sort((a,b)=>a-b);
+  if(pr.length<4) return [];
+  const a=pr[Math.floor(pr.length/3)], b=pr[Math.floor(pr.length*2/3)];
+  if(a===b) return [];
+  const r=n=>Math.round(n/10000)*10000;
+  return [['lo',`تا ${money(r(a))}`,p=>p.pr<=r(a)],
+          ['mid',`${money(r(a))} تا ${money(r(b))}`,p=>p.pr>r(a)&&p.pr<=r(b)],
+          ['hi',`بالای ${money(r(b))}`,p=>p.pr>r(b)]];
+}
+
+function paintCatPage(){
+  const c=cats.find(x=>x.id===cpCat); if(!c) return;
+  const all=products.filter(p=>p.c===cpCat);
+  const facets=cpFacets(all), bands=cpPriceBands(all);
+  let list=all.slice();
+  facets.forEach(([k])=>{ if(cpF[k]) list=list.filter(p=>(p[k]||'').trim()===cpF[k]) });
+  if(cpF.band){ const f=bands.find(b=>b[0]===cpF.band); if(f) list=list.filter(f[2]) }
+  if(cpF.inStock) list=list.filter(p=>!stockState(p).out);
+  if(cpF.sort==='cheap') list.sort((a,b)=>a.pr-b.pr);
+  else if(cpF.sort==='rich') list.sort((a,b)=>b.pr-a.pr);
+  else if(cpF.sort==='top') list.sort((a,b)=>((ratingOf(b.id)||{}).avg||0)-((ratingOf(a.id)||{}).avg||0));
+
+  const grp=(key,label,opts)=>`<div class="fgrp"><b>${esc(label)}</b>${
+    opts.map(([v,lbl])=>`<button class="chip${cpF[key]===v?' on':''}" data-f="${key}" data-v="${esc(v)}">${esc(lbl)}</button>`).join('')}</div>`;
+
+  $('cpBody').innerHTML=`
+    <div class="cp-head" style="--acc:${c.acc};--tint:${c.tint}">
+      <span class="badge" style="background:${c.tint};color:${c.acc}">${fa(all.length)} کالا</span>
+      <h2 style="font-size:23px;font-weight:800;margin-top:8px">${esc(c.name)}</h2>
+      ${c.sub?`<p>${esc(c.sub)}</p>`:''}
+    </div>
+    <button class="chip cp-toggle" id="cpToggle" aria-expanded="false">
+      فیلتر و ترتیب${Object.keys(cpF).length?` · ${fa(Object.keys(cpF).length)} فعال`:''}</button>
+    <div class="filters${cpOpen?' open':''}" style="--acc:${c.acc}">
+      ${facets.map(([k,lbl,vals])=>grp(k,lbl,vals.map(v=>[v,v]))).join('')}
+      ${bands.length?grp('band','قیمت',bands.map(b=>[b[0],b[1]])):''}
+      <div class="fgrp"><b>ترتیب</b>
+        ${[['cheap','ارزان‌تر'],['rich','گران‌تر'],['top','محبوب‌تر']].map(([v,l])=>
+          `<button class="chip${cpF.sort===v?' on':''}" data-f="sort" data-v="${v}">${l}</button>`).join('')}</div>
+      <div class="fgrp">
+        <button class="chip${cpF.inStock?' on':''}" data-f="inStock" data-v="1">فقط موجودها</button>
+        ${Object.keys(cpF).length?'<button class="chip" id="cpClear">پاک کردن فیلترها</button>':''}
+      </div>
+    </div>
+    <p class="cp-count"><b>${fa(list.length)}</b> کالا${list.length!==all.length?` از ${fa(all.length)}`:''}</p>
+    ${list.length
+      ? `<div class="cp-grid" style="--acc:${c.acc};--tint:${c.tint}">${list.map(p=>cardHTML(p)).join('')}</div>`
+      : '<p class="cp-none">با این فیلترها چیزی پیدا نشد.<br>یکی‌شان را بردار.</p>'}`;
+}
+
+$('cpBody').onclick=e=>{
+  const clr=e.target.closest('#cpClear');
+  if(clr){ cpF={}; paintCatPage(); return }
+  if(e.target.closest('#cpToggle')){ cpOpen=!cpOpen; paintCatPage(); return }
+  const ch=e.target.closest('[data-f]');
+  if(ch){
+    const k=ch.dataset.f, v=ch.dataset.v;
+    if(k==='inStock') cpF.inStock=cpF.inStock?0:1;
+    else cpF[k]= cpF[k]===v ? '' : v;
+    if(!cpF[k]) delete cpF[k];
+    paintCatPage(); return;
+  }
+  if(e.target.closest('.add')){ onAdd(e); return }
+  const card=e.target.closest('.card');
+  if(card){ const b=card.querySelector('.add'); if(b) openProduct(b.dataset.id) }
+};
+$('cpClose').onclick=()=>{ $('catSheetPage').classList.remove('open'); backHome() };
+$('catSheetPage').onclick=e=>{ if(e.target===$('catSheetPage')){
+  $('catSheetPage').classList.remove('open'); backHome() } };
 addEventListener('popstate',()=>{ closeAllSheets(); routeFromPath(false) });
 
 /* دادهٔ ساختاریافته برای گوگل — محصولات و مقالات واقعی، نه فهرست ثابت.
