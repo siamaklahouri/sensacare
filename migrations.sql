@@ -145,3 +145,15 @@ CREATE TABLE IF NOT EXISTS reviews(
   created INTEGER,
   published INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_rv_product ON reviews(product_id, published);
+
+/* ۱۳ سبد رهاشده.
+   فقط برای کسی که خودش با ربات وارد شده، یعنی از قبل پذیرفته که در ربات
+   با او حرف بزنیم. پیام یادآوری هیچ‌وقت نام کالا را نمی‌گوید — همان قولی
+   که روی جعبه و فاکتور و پیامک داده‌ایم، اینجا هم باید سرِ جایش باشد،
+   چون ممکن است کسی گوشی را دست بگیرد. سبد بعد از یادآوری یا بعد از ۷ روز
+   پاک می‌شود. */
+CREATE TABLE IF NOT EXISTS carts(
+  phone TEXT PRIMARY KEY,
+  items TEXT,
+  updated INTEGER,
+  nudged INTEGER DEFAULT 0);

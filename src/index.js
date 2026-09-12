@@ -1022,6 +1022,36 @@ async function tellRestock(env, pid) {
    لازمش می‌شود ولی معمولاً یادش می‌رود. هر شب سفارش‌های تحویل‌شدهٔ حدود
    یک ماه پیش را نگاه می‌کند و یک پیام می‌فرستد — فقط یک‌بار برای هر سفارش،
    و فقط به کسی که خودش قبلاً در ربات وارد شده. */
+/* سبد رهاشده. پیام عمداً نام کالا را نمی‌گوید: ممکن است کسی گوشی را دست
+   بگیرد و همان قولی که روی جعبه داده‌ایم اینجا هم باید سرِ جایش باشد. */
+async function cartNudges(env) {
+  const hours = await getSetting(env, 'cartNudgeHours', 6);
+  if (!hours) return 0;
+  const cut = Date.now() - hours * 3600000;
+  const old = Date.now() - 7 * 86400000;
+  await run(env, 'DELETE FROM carts WHERE updated < ?', old);
+  const rows = await all(env,
+    'SELECT phone, items FROM carts WHERE nudged=0 AND updated < ? LIMIT 40', cut);
+  const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : '';
+  let sent = 0;
+  for (const row of rows) {
+    let n = 0;
+    try { n = (JSON.parse(row.items) || []).reduce((s, i) => s + (Number(i.q) || 0), 0); } catch (e) {}
+    if (n > 0) {
+      const chats = await all(env,
+        "SELECT platform, chat_id FROM bot_chats WHERE phone=? AND role='customer'", row.phone);
+      for (const c of chats) {
+        const r = await botCall(env, c.platform, 'sendMessage', { chat_id: c.chat_id,
+          text: `${faNum(n)} چیز توی سبدت مونده و ثبت نشده.` +
+                (base ? `\nاگر هنوز می‌خوایش: ${base}` : '') });
+        if (r?.ok) sent++;
+      }
+    }
+    await run(env, 'UPDATE carts SET nudged=1 WHERE phone=?', row.phone);
+  }
+  return sent;
+}
+
 async function reorderReminders(env) {
   const days = await getSetting(env, 'reorderDays', 30);
   if (!days) return 0;
@@ -1055,6 +1085,7 @@ export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil(runBackup(env).catch(e => console.log('backup', e.message)));
     ctx.waitUntil(reorderReminders(env).catch(e => console.log('reorder', e.message)));
+    ctx.waitUntil(cartNudges(env).catch(e => console.log('cart', e.message)));
   },
 
   async fetch(req, env, ctx) {
@@ -1452,6 +1483,21 @@ export default {
         return json({ ok: true });
       }
 
+      /* سبد فقط برای کسی که خودش وارد شده نگه داشته می‌شود، و با ثبت
+         سفارش پاک می‌شود. */
+      if (p === '/api/cart/keep' && m === 'POST') {
+        const sess = await asUser(env, req);
+        if (!sess) return json({ ok: true });          /* مهمان؟ چیزی ذخیره نمی‌شود */
+        const items = Array.isArray(body.items) ? body.items.slice(0, 30)
+          .map(i => ({ id: String(i.id || '').slice(0, 60), q: Math.max(0, Math.min(20, Number(i.q) || 0)) }))
+          .filter(i => i.id && i.q) : [];
+        if (!items.length) { await run(env, 'DELETE FROM carts WHERE phone=?', sess.phone); return json({ ok: true }); }
+        await run(env, `INSERT INTO carts(phone,items,updated,nudged) VALUES(?,?,?,0)
+          ON CONFLICT(phone) DO UPDATE SET items=excluded.items, updated=excluded.updated, nudged=0`,
+          sess.phone, JSON.stringify(items), Date.now());
+        return json({ ok: true });
+      }
+
       /* ---------- نظر و امتیاز ---------- */
       if (p === '/api/reviews' && m === 'POST') {
         const rl = await rateLimit(env, 'rev:' + clientIp(req), 3, 3600);
@@ -1595,6 +1641,8 @@ export default {
         items.forEach(i => stmts.push(env.DB
           .prepare('UPDATE products SET stock=MAX(0,stock-?) WHERE id=?').bind(i.q, i.id)));
         await env.DB.batch(stmts);
+        /* سفارش ثبت شد، پس دیگر سبدِ رهاشده‌ای در کار نیست */
+        await run(env, 'DELETE FROM carts WHERE phone=?', body.phone).catch(() => {});
 
         const known = await one(env, 'SELECT 1 AS x FROM users WHERE phone=?', body.phone);
         if (!known)

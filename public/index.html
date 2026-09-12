@@ -1906,6 +1906,7 @@ function onAdd(e){const b=e.target.closest('.add');if(!b)return;
   const pr=products.find(x=>x.id===b.dataset.id);
   if(pr&&stockState(pr).out){toast('این کالا فعلاً ناموجود است.');return}
   cart.set(b.dataset.id,(cart.get(b.dataset.id)||0)+1);
+  persistCart();
   b.textContent='اضافه شد ✓';b.classList.add('on');
   setTimeout(()=>{b.textContent=T('addBtn');b.classList.remove('on')},1200);
   updateCart()}
@@ -2447,7 +2448,19 @@ $('chatIn').onkeydown=e=>{if(e.key==='Enter'){const v=$('chatIn').value.trim();i
 
 /* ============ سبد ماندگار ============ */
 const CART_KEY='sensa_cart';
-const persistCart=()=>store.set(CART_KEY,[...cart]);
+/* سبد روی همین مرورگر می‌ماند. اگر کاربر با حساب خودش وارد شده باشد،
+   یک نسخهٔ کوچک (فقط شناسه و تعداد) روی سرور هم می‌ماند تا اگر سفارش را
+   ناتمام گذاشت، ربات یادآوری کند — و با ثبت سفارش پاک می‌شود. */
+let cartPush=null;
+const persistCart=()=>{
+  store.set(CART_KEY,[...cart]);
+  if(!ONLINE || !authUser()) return;
+  clearTimeout(cartPush);
+  cartPush=setTimeout(()=>{
+    req('/api/cart/keep',{method:'POST',body:{items:[...cart].map(([id,q])=>({id,q}))}})
+      .catch(()=>{});
+  },1500);
+};
 const restoreCart=()=>{ (store.get(CART_KEY,[])||[]).forEach(([id,q])=>cart.set(id,q)) };
 
 /* ============ جستجو ============
