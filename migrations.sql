@@ -130,3 +130,18 @@ UPDATE settings SET v='600000'
   WHERE k='freeOver'
     AND NOT EXISTS (SELECT 1 FROM settings WHERE k='freeOverSet');
 INSERT OR IGNORE INTO settings(k,v) VALUES('freeOverSet','1');
+
+/* ۱۲ نظر و امتیاز بی‌نام روی محصول.
+   در این دسته کسی با اسم خودش نظر نمی‌دهد، پس نه نامی گرفته می‌شود نه
+   شماره‌ای — فقط ستاره و متن. اگر نظردهنده با حساب خودش وارد شده باشد و
+   همان کالا را واقعاً خریده باشد، نشانِ «خریدار» می‌گیرد؛ شماره‌اش
+   ذخیره نمی‌شود، فقط همین یک بیت. */
+CREATE TABLE IF NOT EXISTS reviews(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id TEXT,
+  rating INTEGER,
+  body TEXT,
+  buyer INTEGER DEFAULT 0,
+  created INTEGER,
+  published INTEGER DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_rv_product ON reviews(product_id, published);

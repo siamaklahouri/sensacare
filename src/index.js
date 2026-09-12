@@ -955,6 +955,17 @@ function wantsQuiet(req) {
   return /(?:^|;\s*)sq=1(?:;|$)/.test(req.headers.get('Cookie') || '');
 }
 
+/* میانگین امتیاز همهٔ محصولات در یک پرس‌وجو — وگرنه کارت‌ها باید برای هر
+   کالا یک درخواست جدا بزنند. فقط نظرهای تأییدشده حساب می‌شوند. */
+async function ratingMap(env) {
+  try {
+    const rows = await all(env,
+      `SELECT product_id, COUNT(*) n, ROUND(AVG(rating),1) avg
+         FROM reviews WHERE published=1 GROUP BY product_id`);
+    return Object.fromEntries(rows.map(r => [r.product_id, { n: r.n, avg: r.avg }]));
+  } catch (e) { return {}; }
+}
+
 async function injectMeta(env, req, meta) {
   const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
   let html = await res.text();
@@ -1093,6 +1104,15 @@ export default {
                 }
               }
             };
+            /* امتیاز فقط وقتی به گوگل گفته می‌شود که واقعاً نظر تأییدشده
+               وجود داشته باشد. ستارهٔ ساختگی هم خلاف قانون گوگل است هم
+               اعتماد را خراب می‌کند. */
+            const rv = (await ratingMap(env))[row.id];
+            if (rv && rv.n > 0) meta.ld.aggregateRating = {
+              '@type': 'AggregateRating',
+              ratingValue: String(rv.avg), reviewCount: String(rv.n),
+              bestRating: '5', worstRating: '1'
+            };
           }
         } else if (kind === 'a') {
           const row = await one(env, 'SELECT * FROM articles WHERE slug=? AND published=1', key);
@@ -1230,6 +1250,7 @@ export default {
             texts: await getSetting(env, 'texts', {}),
             packMin: await getSetting(env, 'packMin', 3),
             packPct: await getSetting(env, 'packPct', 10),
+            ratings: await ratingMap(env),
             articleProducts: Object.fromEntries(
               (await all(env, 'SELECT slug, ids FROM article_products')).map(r => [r.slug, r.ids || ''])),
             loginEnabled: smsReady(env) || Object.keys(await botLoginOptions(env)).length > 0,
@@ -1391,6 +1412,47 @@ export default {
           `❓ <b>پرسش تازه</b>\nدربارهٔ: ${esc(pr.n)}\n\n${esc(q)}\n\nبرای جواب دادن به پنل سر بزنید.`)
           .catch(() => {}));
         return json({ ok: true });
+      }
+
+      /* ---------- نظر و امتیاز ---------- */
+      if (p === '/api/reviews' && m === 'POST') {
+        const rl = await rateLimit(env, 'rev:' + clientIp(req), 3, 3600);
+        if (!rl.ok) return tooMany(rl);
+        const pid = String(body.product || '');
+        const rating = Math.round(Number(body.rating) || 0);
+        if (rating < 1 || rating > 5) return bad('امتیاز باید بین ۱ تا ۵ باشد');
+        const text = String(body.body || '').trim().slice(0, 600);
+        const pr = await one(env, 'SELECT n FROM products WHERE id=? AND active=1', pid);
+        if (!pr) return bad('محصول پیدا نشد', 404);
+        /* اگر با حساب خودش وارد شده و همین کالا را خریده، نشان «خریدار»
+           می‌گیرد. شماره‌اش هیچ‌جا در نظر ذخیره نمی‌شود. */
+        let buyer = 0;
+        try {
+          const sess = await asUser(env, req);
+          if (sess) {
+            const hit = await one(env,
+              `SELECT 1 x FROM order_items i JOIN orders o ON o.id=i.order_id
+                WHERE o.phone=? AND i.product_id=? LIMIT 1`, sess.phone, pid);
+            if (hit) buyer = 1;
+          }
+        } catch (e) { /* نداشتنِ نشان، دلیل رد کردن نظر نیست */ }
+        await run(env, 'INSERT INTO reviews(product_id,rating,body,buyer,created) VALUES(?,?,?,?,?)',
+          pid, rating, text, buyer, Date.now());
+        ctx.waitUntil(notifyAdmins(env,
+          `⭐ <b>نظر تازه</b> (${rating} از ۵)${buyer ? ' — خریدار' : ''}\nدربارهٔ: ${esc(pr.n)}` +
+          (text ? `\n\n${esc(text)}` : '') + `\n\nبرای تأیید به پنل سر بزنید.`)
+          .catch(() => {}));
+        return json({ ok: true });
+      }
+
+      if (p.startsWith('/api/reviews/') && m === 'GET') {
+        const pid = decodeURIComponent(p.split('/')[3]);
+        const list = await all(env,
+          `SELECT rating, body, buyer, created FROM reviews
+            WHERE product_id=? AND published=1 ORDER BY created DESC LIMIT 30`, pid);
+        const n = list.length;
+        const avg = n ? Math.round(list.reduce((s, r) => s + r.rating, 0) / n * 10) / 10 : 0;
+        return json({ ok: true, list, n, avg });
       }
 
       if (p.startsWith('/api/questions/') && m === 'GET') {
@@ -1653,6 +1715,8 @@ export default {
             articles: await all(env, 'SELECT * FROM articles ORDER BY created DESC'),
             pages: await all(env, 'SELECT * FROM pages'),
             coupons: await all(env, 'SELECT * FROM coupons ORDER BY created DESC'),
+            reviews: await all(env, `SELECT r.*, p.n AS product FROM reviews r
+              LEFT JOIN products p ON p.id=r.product_id ORDER BY r.created DESC LIMIT 200`),
             questions: await all(env, `SELECT q.*, p.n AS product FROM questions q
               LEFT JOIN products p ON p.id = q.product_id ORDER BY q.created DESC LIMIT 200`),
             articleProducts: await all(env, 'SELECT * FROM article_products'),
@@ -1799,6 +1863,13 @@ export default {
           await run(env, `INSERT INTO pages(slug,title,body,updated) VALUES(?,?,?,?)
             ON CONFLICT(slug) DO UPDATE SET title=excluded.title,body=excluded.body,updated=excluded.updated`,
             body.slug, body.title, body.body || '', Date.now());
+          return json({ ok: true });
+        }
+
+        if (p === '/api/admin/reviews' && m === 'POST') {
+          const id = Number(body.id) || 0;
+          if (body.delete) { await run(env, 'DELETE FROM reviews WHERE id=?', id); return json({ ok: true }); }
+          await run(env, 'UPDATE reviews SET published=? WHERE id=?', body.published ? 1 : 0, id);
           return json({ ok: true });
         }
 

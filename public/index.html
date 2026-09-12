@@ -385,6 +385,24 @@ html.quiet #pdBody .spec:hover,
 html.quiet .nav-item:hover>a, html.quiet .nav-item>a:focus,
 html.quiet .sub a:hover{filter:none}
 #quietBtn.on{background:var(--red);color:#fff}
+/* --- نظر و امتیاز --- */
+.stars{display:inline-flex;gap:1px;direction:ltr;line-height:1}
+.stars i{font-style:normal;font-size:inherit;color:#D8C7CE}
+.stars i.on{color:#E8A33B}
+.rateline{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--body);margin-top:7px}
+.rateline .stars{font-size:13px}
+.card .rateline{margin-top:6px;font-size:11.5px}
+.rv{border-top:1px solid var(--line);padding:13px 0}
+.rv:first-of-type{border-top:0}
+.rv-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.rv-top .stars{font-size:14px}
+.rv-buyer{font-size:10.5px;font-weight:800;color:#166534;background:#DCFCE7;
+  padding:2px 8px;border-radius:7px}
+.rv-when{font-size:11.5px;color:var(--body);margin-inline-start:auto}
+.rv p{font-size:13.5px;line-height:1.9;margin-top:6px}
+.rv-pick{display:inline-flex;gap:3px;direction:ltr;font-size:27px;line-height:1;cursor:pointer}
+.rv-pick i{font-style:normal;color:#D8C7CE;transition:color .12s}
+.rv-pick i.on{color:#E8A33B}
 /* زمان تحویل، همان‌جا که آدم تصمیم می‌گیرد — نه فقط بالای صفحهٔ اول */
 .shipnote{display:flex;align-items:center;justify-content:center;gap:7px;
   font-size:12.5px;font-weight:700;color:#166534;margin:10px 0 0}
@@ -1317,6 +1335,7 @@ footer #fContact ul{margin-top:4px}
     <button data-t="qa">پرسش‌ها</button>
     <button data-t="coupon">کد تخفیف</button>
     <button data-t="stats">آمار بازدید</button>
+    <button data-t="rev">نظرها</button>
     <button data-t="texts">نوشته‌ها و دکمه‌ها</button>
     <button data-t="set">تنظیمات</button>
   </div>
@@ -1761,7 +1780,7 @@ function cardHTML(p,badge){
       ${st.out?`<span class="soldout">${esc(T('outBtn'))}</span>`:''}
       ${p.img?`<img src="${esc(p.img)}" alt="${esc(p.n)}" loading="lazy" onerror="this.outerHTML=window.__art('${p.c}')">`:art(p.c)}</div>
     <div class="body">
-      <span class="brand">${esc(p.b)}</span><h3>${esc(p.n)}</h3>
+      <span class="brand">${esc(p.b)}</span><h3>${esc(p.n)}</h3>${rateLine(p.id)}
       <p class="desc">${esc(p.d)}</p>
       ${st.out?'':`<div><span class="price">${money(p.pr)}</span>${p.old?`<span class="old">${money(p.old)}</span>`:''}</div>
       ${p.old&&p.old>p.pr?`<span class="save">${money(p.old-p.pr)} کمتر</span>`:''}`}
@@ -2454,22 +2473,23 @@ function openProduct(id,push=true){
     <div><div class="pd-img">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.n)}">`:art(p.c)}</div></div>
     <div>
       <span class="badge" style="background:${c.tint};color:${c.acc}">${esc(c.name)}</span>
-      <h2>${esc(p.n)}</h2>
+      <h2>${esc(p.n)}</h2>${rateLine(p.id)}
       <p style="font-size:13.5px;color:var(--body);line-height:1.9">${esc(p.d)}</p>
       ${st.out?'':`<div style="margin-top:14px"><span class="price" style="font-size:24px">${money(p.pr)}</span>
         ${p.old&&p.old>p.pr?`<span class="old">${money(p.old)}</span>
         <span class="save" style="display:inline-block;margin-inline-start:8px">${fa(Math.round((p.old-p.pr)/p.old*100))}٪ تخفیف</span>`:''}</div>`}
       <div class="stockbar" style="color:${stockTxt[1]}">● ${stockTxt[0]}</div>
       <div class="spec">${rows.map(r=>`<div><span>${r[0]}</span><span>${esc(r[1])}</span></div>`).join('')}</div>
-      <button class="btn-main add" data-id="${p.id}" style="width:100%;margin-top:16px;padding:14px;background:${c.acc};box-shadow:none"
+      <button class="btn-main add" data-id="${p.id}" style="width:100%;margin-top:16px;padding:14px;background:${c.acc};color:#fff;box-shadow:none"
         ${stock<=0?'disabled style="opacity:.5"':''}>${stock<=0?'ناموجود':'اضافه کن'}</button>
       ${st.out?'':`<p class="shipnote">${esc(T('shipNote'))}</p>`}
       <p class="hint" style="text-align:center">توی بسته‌بندی بی‌نشون می‌فرستیم · تا ۷ روز برگشت می‌خوره</p>
       ${st.out?`<button class="btn-ghost" id="notifyMe" data-p="${p.id}" style="width:100%;margin-top:10px;padding:12px;color:var(--ink);background:var(--card);border:1px solid var(--line)">🔔 خبرم کن وقتی موجود شد</button>`:''}
     </div></div>
+    <div class="qa" id="rvBox" data-p="${p.id}"></div>
     <div class="qa" id="qaBox" data-p="${p.id}"></div>`;
   pdSheet.classList.add('open');
-  paintQA(p.id);
+  paintReviews(p.id); paintQA(p.id);
   const nb=$('notifyMe');
   if(nb) nb.onclick=()=>askRestock(nb.dataset.p);
 }
@@ -2554,6 +2574,71 @@ function paintFinder(){
 /* ---------- پرسش بی‌نام ----------
    کسی در این دسته با اسم خودش سؤال نمی‌پرسد. اینجا هیچ نام و شماره‌ای
    گرفته نمی‌شود؛ فقط متن. جواب‌ها هم بعد از تأیید مدیر دیده می‌شوند. */
+/* ============ نظر و امتیاز ============
+   مثل پرسش‌ها بی‌نام است: نه اسمی گرفته می‌شود نه شماره‌ای. اگر کسی با
+   حساب خودش وارد شده باشد و همان کالا را خریده باشد، سرور نشانِ «خریدار»
+   می‌زند — بدون اینکه شماره‌اش در نظر ذخیره شود. */
+const starsHTML = (v, n=5) =>
+  `<span class="stars">${Array.from({length:n},(_,i)=>
+    `<i class="${i < Math.round(v) ? 'on' : ''}">★</i>`).join('')}</span>`;
+
+function ratingOf(pid){
+  const r = (settings.ratings||{})[pid];
+  return (r && r.n) ? r : null;
+}
+
+function rateLine(pid){
+  const r = ratingOf(pid);
+  if(!r) return '';
+  return `<div class="rateline">${starsHTML(r.avg)}<span>${faN(r.avg)} از ۵</span>
+    <span>· ${fa(r.n)} نظر</span></div>`;
+}
+
+async function paintReviews(pid){
+  const box=$('rvBox'); if(!box) return;
+  let d={list:[],n:0,avg:0};
+  if(ONLINE){ try{ d=await req('/api/reviews/'+encodeURIComponent(pid)) }catch(e){} }
+  const when=t=>new Date(t).toLocaleDateString('fa-IR');
+  box.innerHTML=`
+    <h4>نظر خریدارها</h4>
+    ${d.n?`<div class="rateline" style="margin-bottom:10px">${starsHTML(d.avg)}
+        <b style="color:var(--ink)">${faN(d.avg)} از ۵</b><span>· ${fa(d.n)} نظر</span></div>`
+        :'<p class="hint">هنوز نظری ثبت نشده. اولین نفر باش.</p>'}
+    ${d.list.map(r=>`<div class="rv"><div class="rv-top">${starsHTML(r.rating)}
+        ${r.buyer?'<span class="rv-buyer">خریدار</span>':''}
+        <span class="rv-when">${when(r.created)}</span></div>
+      ${r.body?`<p>${esc(r.body).replace(/\n/g,'<br>')}</p>`:''}</div>`).join('')}
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+      <p class="hint" style="margin:0 0 8px">نظرت را بی‌نام بنویس — نه اسمت را می‌پرسیم نه شماره‌ات.</p>
+      <span class="rv-pick" id="rvPick" role="radiogroup" aria-label="امتیاز">${
+        Array.from({length:5},(_,i)=>`<i data-v="${i+1}" role="radio" aria-checked="false"
+          aria-label="${i+1} ستاره" tabindex="0">★</i>`).join('')}</span>
+      <textarea id="rvText" placeholder="اختیاری — اگر حرفی داری بنویس" style="margin-top:10px"></textarea>
+      <button class="mini" id="rvSend" style="margin-top:8px;padding:10px 20px">ثبت نظر</button>
+      <span class="hint" id="rvMsg" style="margin-inline-start:8px"></span>
+    </div>`;
+  let pick=0;
+  const pk=$('rvPick');
+  const paint=()=>pk.querySelectorAll('i').forEach((el,i)=>{
+    el.classList.toggle('on', i<pick); el.setAttribute('aria-checked', i+1===pick?'true':'false') });
+  const choose=v=>{ pick=v; paint() };
+  pk.onclick=e=>{ const i=e.target.closest('[data-v]'); if(i) choose(+i.dataset.v) };
+  pk.onkeydown=e=>{ const i=e.target.closest('[data-v]');
+    if(i&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); choose(+i.dataset.v) } };
+  $('rvSend').onclick=async()=>{
+    const msg=$('rvMsg');
+    if(!pick){ msg.style.color='var(--red)'; msg.textContent='اول ستاره بده.'; return }
+    if(!ONLINE){ msg.textContent='برای فرستادن باید آنلاین باشی.'; return }
+    $('rvSend').disabled=true;
+    try{
+      await req('/api/reviews',{method:'POST',body:{product:pid,rating:pick,body:$('rvText').value.trim()}});
+      $('rvText').value=''; choose(0);
+      msg.style.color='#166534'; msg.textContent='رسید. بعد از تأیید همین‌جا دیده می‌شود.';
+    }catch(e){ msg.style.color='var(--red)'; msg.textContent=e.message||'فرستاده نشد' }
+    $('rvSend').disabled=false;
+  };
+}
+
 async function paintQA(pid){
   const box=$('qaBox'); if(!box) return;
   let list=[];
@@ -3009,11 +3094,57 @@ function drawPanel(){
     else { mt.className='mode '+(ONLINE?'on2':'off2');
       mt.textContent=ONLINE?'متصل به سرور':'حالت محلی — فقط این مرورگر' }
   }
-({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,qa:repQA,coupon:repCoupon,stats:repStats,texts:repTexts,set:repSet})[ptab]()}
+({dash:repDash,prod:repProd,menu:repMenu,orders:repOrders,users:repUsers,blog:repBlog,fb:repFb,qa:repQA,coupon:repCoupon,stats:repStats,rev:repRev,texts:repTexts,set:repSet})[ptab]()}
 const C=$('pContent');
 const bar=(label,val,max,color)=>`<div class="brow"><span>${esc(label)}</span>
   <span class="btrack"><span class="bfill" style="width:${max?Math.round(val/max*100):0}%;background:${color||'var(--red)'}"></span></span>
   <b>${money(val)}</b></div>`;
+
+/* --- نظرها --- */
+let reviews=[], rvLoaded=false;
+async function repRev(){
+  if(!rvLoaded && ONLINE){
+    try{ const d=await req('/api/admin/data',{asAdmin:true}); reviews=d.reviews||[]; rvLoaded=true }catch(e){}
+  }
+  const when=t=>new Date(t).toLocaleDateString('fa-IR');
+  const wait=reviews.filter(r=>!r.published), live=reviews.filter(r=>r.published);
+  const row=r=>`<tr>
+    <td style="white-space:nowrap">${starsHTML(r.rating)}</td>
+    <td>${esc(r.product||'—')}</td>
+    <td>${esc(r.body||'—')}</td>
+    <td style="white-space:nowrap">${r.buyer?'<span class="rv-buyer">خریدار</span>':'—'}</td>
+    <td style="white-space:nowrap">${when(r.created)}</td>
+    <td style="white-space:nowrap">
+      <button class="mini" data-rv="${r.id}" data-pub="${r.published?0:1}">${r.published?'پنهان کن':'تأیید'}</button>
+      <button class="mini del" data-rvdel="${r.id}">حذف</button></td></tr>`;
+  C.innerHTML=`
+    <div class="box"><h3>نظرها</h3>
+      <p class="sub">نظرها بی‌نام‌اند و تا تأیید نکنید روی سایت دیده نمی‌شوند.
+        «خریدار» یعنی نظردهنده با حساب خودش وارد بوده و همان کالا را واقعاً خریده.</p>
+      ${!ONLINE?'<p class="hint">فقط وقتی به سرور وصل باشید کار می‌کند.</p>':''}</div>
+    <div class="box"><h3>در انتظار تأیید (${fa(wait.length)})</h3>
+      ${wait.length?`<table><thead><tr><th>امتیاز</th><th>کالا</th><th>متن</th><th></th><th>تاریخ</th><th></th></tr></thead>
+        <tbody>${wait.map(row).join('')}</tbody></table>`:'<p class="hint">چیزی در انتظار نیست.</p>'}</div>
+    <div class="box"><h3>روی سایت (${fa(live.length)})</h3>
+      ${live.length?`<table><thead><tr><th>امتیاز</th><th>کالا</th><th>متن</th><th></th><th>تاریخ</th><th></th></tr></thead>
+        <tbody>${live.map(row).join('')}</tbody></table>`:'<p class="hint">هنوز نظری تأیید نشده.</p>'}</div>`;
+  C.onclick=async e=>{
+    const pub=e.target.closest('[data-rv]'), del=e.target.closest('[data-rvdel]');
+    if(!pub&&!del) return;
+    try{
+      if(del){ if(!confirm('این نظر حذف شود؟')) return;
+        await req('/api/admin/reviews',{method:'POST',asAdmin:true,body:{id:+del.dataset.rvdel,delete:1}});
+        reviews=reviews.filter(r=>r.id!=del.dataset.rvdel);
+      }else{
+        const on=+pub.dataset.pub;
+        await req('/api/admin/reviews',{method:'POST',asAdmin:true,body:{id:+pub.dataset.rv,published:on}});
+        const r=reviews.find(x=>x.id==pub.dataset.rv); if(r) r.published=on;
+      }
+      repRev(); toast('انجام شد.');
+      try{ const d=await req('/api/bootstrap'); settings.ratings=d.settings.ratings||{}; render() }catch(_){}
+    }catch(err){ toast(err.message||'انجام نشد') }
+  };
+}
 
 /* --- نوشته‌ها و دکمه‌ها --- */
 function repTexts(){
