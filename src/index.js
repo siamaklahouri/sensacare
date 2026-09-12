@@ -8,6 +8,11 @@ const json = (data, status = 200) =>
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
+      /* robots.txt ما بعد از بلوک آمادهٔ کلادفلر می‌آید و خزندهٔ سخت‌گیر
+         ممکن است فقط اولی را بخواند. این هدر به خودِ پاسخ می‌چسبد و
+         وابسته به خوانده شدن robots.txt نیست. فقط روی پاسخ‌های API —
+         صفحه‌های سایت باید حتماً در گوگل بمانند. */
+      'X-Robots-Tag': 'noindex',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
@@ -880,8 +885,8 @@ const SEC_HEADERS = {
   'Content-Security-Policy': [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-    "font-src 'self' data: https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
+    "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
     "connect-src 'self'",
     "frame-ancestors 'none'",

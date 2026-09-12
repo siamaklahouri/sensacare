@@ -121,3 +121,12 @@ CREATE TABLE IF NOT EXISTS reorder_sent(
 CREATE TABLE IF NOT EXISTS article_products(
   slug TEXT PRIMARY KEY,
   ids TEXT);
+
+/* آستانهٔ ارسال رایگان روی ۶۰۰ هزار تومان. ارسال ۲۵۰ تا ۴۰۰ هزار است و
+   میانگین قیمت کالا حدود ۱۵۰ هزار، یعنی خریدِ تک‌قلمی برای مشتری صرف
+   نمی‌کرد. فقط یک‌بار اجرا می‌شود؛ بعد از آن هر عددی که در پنل بگذارید
+   دست‌نخورده می‌ماند، حتی اگر صفر باشد. */
+UPDATE settings SET v='600000'
+  WHERE k='freeOver'
+    AND NOT EXISTS (SELECT 1 FROM settings WHERE k='freeOverSet');
+INSERT OR IGNORE INTO settings(k,v) VALUES('freeOverSet','1');
