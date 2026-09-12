@@ -1422,7 +1422,8 @@ function renderMenu(){
       ${m.kids&&m.kids.length?`<div class="cs-kids">${m.kids.map(k=>
         `<a href="${esc(k.href)}">${esc(k.label)}</a>`).join('')}</div>`:''}
     </div>`).join('');
-  document.getElementById('fCats').innerHTML=cats.map(c=>`<li><a href="#c-${c.id}">${esc(c.name)}</a></li>`).join('');
+  document.getElementById('fCats').innerHTML=cats.map(c=>
+    `<li><a href="/c/${encodeURIComponent(c.id)}">${esc(c.name)}</a></li>`).join('');
 }
 
 /* ============ products ============ */
@@ -4335,12 +4336,32 @@ function closeAllSheets(){
   ['pdSheet','docSheet'].forEach(id=>{const e=$(id); if(e) e.classList.remove('open')});
 }
 function routeFromPath(push=false){
-  const m=/^\/(p|a|s)\/([^/]+)\/?$/.exec(location.pathname);
+  const m=/^\/(p|a|s|c)\/([^/]+)\/?$/.exec(location.pathname);
   if(!m){ closeAllSheets(); return false }
   const key=decodeURIComponent(m[2]);
   if(m[1]==='p') openProduct(key,push);
+  else if(m[1]==='c') goCategory(key,push);
   else openDoc(m[1]==='a'?'article':'page',key,push);
   return true;
+}
+
+addEventListener('click',e=>{
+  const a=e.target.closest('a[href^="/c/"]');
+  if(!a || e.metaKey || e.ctrlKey || e.shiftKey || a.target==='_blank') return;
+  e.preventDefault();
+  goCategory(decodeURIComponent(a.getAttribute('href').split('/')[2]));
+});
+
+/* هر دسته آدرس خودش را دارد تا گوگل بتواند رتبه‌اش بدهد؛ در مرورگر همان
+   بخشِ همان دسته باز می‌شود، نه یک صفحهٔ جدا. */
+function goCategory(id,push=true){
+  closeAllSheets();
+  const sec=document.getElementById('c-'+id);
+  if(!sec){ backHome(); return }
+  const c=catOf(id);
+  if(push) setPath('/c/'+encodeURIComponent(id), `خرید ${c.name} | سِنسا`);
+  else setTitle(`خرید ${c.name} | سِنسا`);
+  sec.scrollIntoView({block:'start'});
 }
 addEventListener('popstate',()=>{ closeAllSheets(); routeFromPath(false) });
 

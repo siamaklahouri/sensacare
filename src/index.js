@@ -813,6 +813,8 @@ const esc = t => String(t == null ? '' : t)
    بودند و گوگل توضیح‌های خیلی کوتاه را نادیده می‌گیرد و خودش چیزی
    می‌سازد. این تابع از همان اطلاعاتی که در دیتابیس هست جمله می‌سازد:
    جنس، تعداد، ضخامت، سایز، برند و قول همیشگی بسته‌بندی بی‌نشان. */
+const faNum = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
 function productDesc(row) {
   const bits = [];
   if (row.d) bits.push(String(row.d).trim().replace(/\s+/g, ' '));
@@ -1068,7 +1070,7 @@ export default {
        محصولات و مقالات جای مستقلی در نتایج ندارند. اینجا همان index.html
        را می‌گیریم و عنوان، توضیحات و دادهٔ ساختاریافتهٔ همان مورد را
        داخلش می‌گذاریم. مرورگر کاربر بعداً خودش صفحه را کامل می‌کند. */
-    const seoRoute = /^\/(p|a|s)\/([^/]+)\/?$/.exec(p);
+    const seoRoute = /^\/(p|a|s|c)\/([^/]+)\/?$/.exec(p);
     if (seoRoute && m === 'GET' && env.DB) {
       const [, kind, rawKey] = seoRoute;
       const key = decodeURIComponent(rawKey);
@@ -1129,6 +1131,38 @@ export default {
               publisher: { '@type': 'Organization', name: 'سِنسا' }
             }
           };
+        } else if (kind === 'c') {
+          /* بیشترِ جست‌وجوهای خرید در گوگل دسته‌ای است («خرید کاندوم
+             تأخیری»)، ولی دسته‌ها تا حالا آدرس خودشان را نداشتند و همه
+             زیر یک صفحه با لنگر بودند — یعنی گوگل چیزی برای رتبه دادن
+             نداشت. */
+          const row = await one(env, 'SELECT * FROM categories WHERE id=?', key);
+          if (row) {
+            const list = await all(env,
+              `SELECT id, n FROM products WHERE c=? AND active=1 ORDER BY pos LIMIT 30`, key);
+            const names = list.slice(0, 6).map(x => x.n).join('، ');
+            meta = {
+              title: `خرید ${row.name}${row.sub ? ` — ${row.sub}` : ''} | سِنسا`,
+              desc: `${row.name} اصل با ارسال محرمانه و بسته‌بندی بی‌نشان. ` +
+                    (names ? `از جمله ${names}. ` : '') +
+                    `${list.length ? `${faNum(list.length)} کالا` : ''} با تاریخ انقضای معتبر و کد رهگیری.`,
+              url: `${base}/c/${encodeURIComponent(row.id)}`,
+              image: base + '/og.png',
+              ld: {
+                '@context': 'https://schema.org', '@type': 'CollectionPage',
+                name: row.name, description: row.sub || undefined,
+                url: `${base}/c/${encodeURIComponent(row.id)}`,
+                mainEntity: {
+                  '@type': 'ItemList',
+                  numberOfItems: list.length,
+                  itemListElement: list.map((x, i) => ({
+                    '@type': 'ListItem', position: i + 1, name: x.n,
+                    url: `${base}/p/${encodeURIComponent(x.id)}`
+                  }))
+                }
+              }
+            };
+          }
         } else {
           const row = await one(env, 'SELECT * FROM pages WHERE slug=?', key);
           if (row) meta = {
@@ -1141,7 +1175,8 @@ export default {
       } catch (e) { /* اگر دیتابیس جواب نداد، صفحهٔ عادی را بده */ }
 
       if (!meta) return Response.redirect(base + '/', 302);
-      ctx.waitUntil(countVisit(env, kind === 'p' ? 'product' : kind === 'a' ? 'article' : 'page', key));
+      ctx.waitUntil(countVisit(env,
+        kind === 'p' ? 'product' : kind === 'a' ? 'article' : kind === 'c' ? 'category' : 'page', key));
       return injectMeta(env, req, meta);
     }
 
@@ -1182,6 +1217,9 @@ export default {
         for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
           urls.push(`<url><loc>${base}/p/${enc(pr.id)}</loc><changefreq>weekly</changefreq>` +
                     `<priority>0.8</priority></url>`);
+        for (const c of await all(env, 'SELECT id FROM categories ORDER BY pos'))
+          urls.push(`<url><loc>${base}/c/${enc(c.id)}</loc><changefreq>weekly</changefreq>` +
+                    `<priority>0.9</priority></url>`);
         for (const a of await all(env, 'SELECT slug,created FROM articles WHERE published=1'))
           urls.push(`<url><loc>${base}/a/${enc(a.slug)}</loc><lastmod>${day(a.created)}</lastmod>` +
                     `<changefreq>monthly</changefreq><priority>0.7</priority></url>`);
