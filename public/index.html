@@ -1739,8 +1739,8 @@ function cardHTML(p,badge){
     <div class="body">
       <span class="brand">${esc(p.b)}</span><h3>${esc(p.n)}</h3>
       <p class="desc">${esc(p.d)}</p>
-      <div><span class="price">${money(p.pr)}</span>${p.old?`<span class="old">${money(p.old)}</span>`:''}</div>
-      ${p.old&&p.old>p.pr?`<span class="save">${money(p.old-p.pr)} کمتر</span>`:''}
+      ${st.out?'':`<div><span class="price">${money(p.pr)}</span>${p.old?`<span class="old">${money(p.old)}</span>`:''}</div>
+      ${p.old&&p.old>p.pr?`<span class="save">${money(p.old-p.pr)} کمتر</span>`:''}`}
       ${st.txt?`<div class="stockline" style="color:${st.color}">● ${st.txt}</div>`:''}
       <button class="add" data-id="${p.id}"${st.out?' disabled':''}>${st.out?T('outBtn'):T('addBtn')}</button>
     </div></article>`;
@@ -2311,7 +2311,7 @@ const KB=[
   {k:['محرمانه','بسته','کارتن','کسی','بفهمد'],a:'بسته در کارتن ساده و بدون لوگو ارسال می‌شود. روی کارتن، فاکتور و پیامک پیگیری هیچ اشاره‌ای به محتویات نیست و نام فرستنده یک عنوان خنثی است.'}
 ];
 function suggestProducts(catId){
-  const l=products.filter(p=>!catId||p.c===catId).slice(0,3);
+  const l=products.filter(p=>(!catId||p.c===catId) && !stockState(p).out).slice(0,3);
   if(!l.length)return '';
   return '<div style="margin-top:9px;font-size:12.5px;line-height:2">اینا رو پیشنهاد می‌دم:<br>'+
     l.map(p=>`• ${esc(p.n)} — ${money(p.pr)}`).join('<br>')+'</div>';
@@ -2382,7 +2382,7 @@ function runSearch(){
   sres.innerHTML = hits.length ? hits.map(p=>`
     <a href="#" data-pid="${p.id}">
       ${p.img?`<img src="${esc(p.img)}" alt="">`:`<span class="sq2" style="background:${catOf(p.c).tint}"></span>`}
-      <span style="flex:1"><b>${esc(p.n)}</b><small>${esc(p.b)} · ${money(p.pr)}</small></span>
+      <span style="flex:1"><b>${esc(p.n)}</b><small>${esc(p.b)} · ${stockState(p).out?T('outBtn'):money(p.pr)}</small></span>
     </a>`).join('') : '<p class="empty" style="padding:22px 8px">چیزی پیدا نکردم.</p>';
   sres.classList.add('open');
 }
@@ -2414,9 +2414,9 @@ function openProduct(id,push=true){
       <span class="badge" style="background:${c.tint};color:${c.acc}">${esc(c.name)}</span>
       <h2>${esc(p.n)}</h2>
       <p style="font-size:13.5px;color:var(--body);line-height:1.9">${esc(p.d)}</p>
-      <div style="margin-top:14px"><span class="price" style="font-size:24px">${money(p.pr)}</span>
+      ${st.out?'':`<div style="margin-top:14px"><span class="price" style="font-size:24px">${money(p.pr)}</span>
         ${p.old&&p.old>p.pr?`<span class="old">${money(p.old)}</span>
-        <span class="save" style="display:inline-block;margin-inline-start:8px">${fa(Math.round((p.old-p.pr)/p.old*100))}٪ تخفیف</span>`:''}</div>
+        <span class="save" style="display:inline-block;margin-inline-start:8px">${fa(Math.round((p.old-p.pr)/p.old*100))}٪ تخفیف</span>`:''}</div>`}
       <div class="stockbar" style="color:${stockTxt[1]}">● ${stockTxt[0]}</div>
       <div class="spec">${rows.map(r=>`<div><span>${r[0]}</span><span>${esc(r[1])}</span></div>`).join('')}</div>
       <button class="btn-main add" data-id="${p.id}" style="width:100%;margin-top:16px;padding:14px;background:${c.acc};box-shadow:none"
@@ -2454,7 +2454,7 @@ function relatedHTML(kind,slug){
         background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:11px;width:100%">
         <span style="flex:1;min-width:0"><b style="display:block;font-size:13.5px">${esc(p.n)}</b>
         <span style="font-size:12px;color:var(--body)">${esc(p.b||'')}</span></span>
-        <b style="white-space:nowrap;font-size:13px">${money(p.pr)}</b></button>`).join('')}</div></div>`;
+        <b style="white-space:nowrap;font-size:13px">${stockState(p).out?T('outBtn'):money(p.pr)}</b></button>`).join('')}</div></div>`;
 }
 
 /* ---------- راهنمای انتخاب ----------
