@@ -268,3 +268,8 @@ INSERT OR IGNORE INTO articles(id,slug,title,excerpt,body,cover,created,publishe
 
 ## اگه سؤالی داری
 زیر هر محصول می‌تونی بی‌نام سؤال بپرسی — نه اسمت رو می‌پرسیم نه شماره‌ات. جوابش همون‌جا میاد.','',1788740800000,1);
+
+/* ۱۵ یادآور سفارشی که ثبت شده ولی پولش نیامده. فقط یک‌بار برای هر سفارش. */
+CREATE TABLE IF NOT EXISTS pay_nudged(
+  order_id TEXT PRIMARY KEY,
+  sent INTEGER);

@@ -97,7 +97,7 @@ function repTexts(){
     const cur = texts[k]!=null ? texts[k] : '';
     const long = def.length > 55;
     const box = long
-      ? `<textarea data-txin="${k}" rows="2" placeholder="${esc(def)}">${esc(cur)}</textarea>`
+      ? `<textarea data-txin="${k}" rows="${def.length>160?4:2}" placeholder="${esc(def)}">${esc(cur)}</textarea>`
       : `<input data-txin="${k}" value="${esc(cur)}" placeholder="${esc(def)}">`;
     return `<div class="txrow" data-find="${esc((label+' '+def+' '+cur).toLowerCase())}">
       <label>${esc(label)}</label>
@@ -391,7 +391,7 @@ function printInvoice(o){
       <td class="l">${money(i.pr)}</td>
       <td class="l">${money((+i.pr||0)*(+i.q||0))}</td></tr>`).join('');
   const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
-<title>فاکتور ${esc(o.invoice||o.id)}</title>
+<title>فاکتور ${esc(faN(o.invoice||o.id))}</title>
 <style>@font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
   src:url(/f/Vazirmatn-Regular.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:500;font-display:swap;
@@ -438,7 +438,7 @@ tfoot .tot .k,tfoot .tot .v{font-size:10.5pt;font-weight:800;border-top:1.5pt so
   <div><div class="shop">${esc(settings.shopName||'سِنسا')}</div>
        <div class="sub">فاکتور فروش</div></div>
   <div class="ttl"><b>شمارهٔ فاکتور</b>
-    <div class="no">${esc(o.invoice||o.id)}</div>
+    <div class="no">${esc(faN(o.invoice||o.id))}</div>
     <div class="dt">${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</div></div>
 </div>
 
@@ -491,7 +491,7 @@ function printSheet(html){
 function printLabel(o){
   const due = o.paid ? 0 : o.total;
   const html=`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
-<title>${esc(o.invoice||o.id)}</title>
+<title>${esc(faN(o.invoice||o.id))}</title>
 <style>@font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
   src:url(/f/Vazirmatn-Regular.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:500;font-display:swap;
@@ -534,7 +534,7 @@ body{font-family:Vazirmatn,Tahoma,system-ui,sans-serif;color:#0B0B0C;padding:11m
 <div class="card">
 
   <div class="hd">
-    <div class="code">${esc(o.invoice||o.id)}</div>
+    <div class="code">${esc(faN(o.invoice||o.id))}</div>
     <div class="date">${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</div>
   </div>
 
@@ -575,7 +575,7 @@ function repOrders(){
     ${list.length?`<table><thead><tr><th>شمارهٔ فاکتور</th><th>تاریخ</th><th>مشتری</th><th>شهر</th>
       <th>ارسال</th><th>مبلغ</th><th>پرداخت</th><th>وضعیت</th><th>کد رهگیری پستی</th><th>چاپ</th></tr></thead>
     <tbody>${list.map(o=>`<tr>
-      <td><b>${esc(o.invoice||o.id)}</b><br><small style="color:var(--body)">${o.id}</small></td>
+      <td><b>${esc(faN(o.invoice||o.id))}</b><br><small style="color:var(--body)">${faN(o.id)}</small></td>
       <td>${new Date(o.created||o.at).toLocaleDateString('fa-IR')}</td>
       <td>${esc(o.name)}<br><small style="color:var(--body);direction:ltr;display:inline-block">${faN(o.phone)}</small></td>
       <td>${CITY_NAME[o.city]||o.city}</td><td>${esc(o.method_name||o.methodName||'')}</td>

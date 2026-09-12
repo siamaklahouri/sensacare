@@ -34,7 +34,7 @@
   }
 }catch(e){}})();
 </script>
-<script type="application/ld+json">
+<script type="application/ld+json" id="baseLd">
 {"@context":"https://schema.org","@graph":[
  {"@type":"OnlineStore","@id":"https://sensacare.ir/#store","name":"سِنسا",
   "alternateName":"Sensa","url":"https://sensacare.ir/","logo":"https://sensacare.ir/logo-mark.svg",
@@ -44,7 +44,8 @@
   "currenciesAccepted":"IRT","paymentAccepted":"کارت به کارت",
   "inLanguage":"fa-IR"},
  {"@type":"WebSite","@id":"https://sensacare.ir/#site","url":"https://sensacare.ir/",
-  "name":"سِنسا","inLanguage":"fa-IR","publisher":{"@id":"https://sensacare.ir/#store"}}
+  "name":"سِنسا","inLanguage":"fa-IR","publisher":{"@id":"https://sensacare.ir/#store"}},
+ {"@type":"FAQPage","@id":"https://sensacare.ir/#faq","inLanguage":"fa-IR","url":"https://sensacare.ir/","mainEntity":[{"@type":"Question","name":"روی بسته چی نوشته می‌شه؟","acceptedAnswer":{"@type":"Answer","text":"فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه."}},{"@type":"Question","name":"از کجا بدونم جنس اصله؟","acceptedAnswer":{"@type":"Answer","text":"روی هر جعبه کد رهگیری وارداتی هست. کد رو توی سامانهٔ اصالت کالا وارد کن تا خودت مطمئن بشی."}},{"@type":"Question","name":"سایزم رو چطور انتخاب کنم؟","acceptedAnswer":{"@type":"Answer","text":"ملاک دوره، نه طول. زیر ۱۱ سانت کوچیک، بین ۱۱ تا ۱۳ استاندارد، بالای ۱۳ بزرگ. سایز اشتباه یعنی احتمال پارگی یا سُر خوردن، پس این یکی رو جدی بگیر."}},{"@type":"Question","name":"ژل آبی بهتره یا سیلیکونی؟","acceptedAnswer":{"@type":"Answer","text":"پایه آبی گزینهٔ مطمئن‌تره: با لاتکس مشکلی نداره و راحت شسته می‌شه. سیلیکونی بیشتر دووم میاره. فقط یادت باشه روغن و وازلین با کاندوم نه — لاتکس رو خراب می‌کنه."}},{"@type":"Question","name":"چطور پرداخت کنم؟","acceptedAnswer":{"@type":"Answer","text":"کارت به کارت. بعد از ثبت سفارش یه شمارهٔ فاکتور می‌گیری؛ اون رو در تلگرام یا بله برامون بفرست تا شماره کارت بیاد. بعد از واریز، فیش رو همون‌جا بفرست. تأیید که شد، خودش بهت خبر می‌ده."}},{"@type":"Question","name":"ارسال چقدر می‌شه؟","acceptedAnswer":{"@type":"Answer","text":"تهران و کرج ۴۰۰ هزار تومان با پیک، همون روز. بقیهٔ استان‌ها با پست پیشتاز بین ۲۵۰ تا ۴۰۰ هزار تومان بسته به فاصله، ۲ تا ۳ روز کاری. استانت رو که انتخاب کنی، دقیقش رو می‌بینی."}},{"@type":"Question","name":"اگه پشیمون شدم چی؟","acceptedAnswer":{"@type":"Answer","text":"چون کالا بهداشتیه، فقط بسته‌هایی که باز نشدن یا آسیب دیدن تا ۷ روز برگشت می‌خورن."}}]}
 ]}
 </script>
 <meta property="og:type" content="website">
@@ -1040,13 +1041,13 @@ footer #fContact ul{margin-top:4px}
     <div><h2 data-tx="faqTitle">هر چی بخوای بپرسی، جواب داریم</h2>
       <p class="lead" data-tx="faqSub">اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۲۱ جواب می‌دیم.</p></div>
     <div>
-      <details open><summary>روی بسته چی نوشته می‌شه؟</summary><p>فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه.</p></details>
-      <details><summary>از کجا بدونم جنس اصله؟</summary><p>روی هر جعبه کد رهگیری وارداتی هست. کد رو توی سامانهٔ اصالت کالا وارد کن تا خودت مطمئن بشی.</p></details>
-      <details><summary>سایزم رو چطور انتخاب کنم؟</summary><p>ملاک دوره، نه طول. زیر ۱۱ سانت کوچیک، بین ۱۱ تا ۱۳ استاندارد، بالای ۱۳ بزرگ. سایز اشتباه یعنی احتمال پارگی یا سُر خوردن، پس این یکی رو جدی بگیر.</p></details>
-      <details><summary>ژل آبی بهتره یا سیلیکونی؟</summary><p>پایه آبی گزینهٔ مطمئن‌تره: با لاتکس مشکلی نداره و راحت شسته می‌شه. سیلیکونی بیشتر دووم میاره. فقط یادت باشه روغن و وازلین با کاندوم نه — لاتکس رو خراب می‌کنه.</p></details>
-      <details><summary>چطور پرداخت کنم؟</summary><p>کارت به کارت. بعد از ثبت سفارش یه شمارهٔ فاکتور می‌گیری؛ اون رو در تلگرام یا بله برامون بفرست تا شماره کارت بیاد. بعد از واریز، فیش رو همون‌جا بفرست. تأیید که شد، خودش بهت خبر می‌ده.</p></details>
-      <details><summary>ارسال چقدر می‌شه؟</summary><p>تهران و کرج ۴۰۰ هزار تومان با پیک، همون روز. بقیهٔ استان‌ها با پست پیشتاز بین ۲۵۰ تا ۴۰۰ هزار تومان بسته به فاصله، ۲ تا ۳ روز کاری. استانت رو که انتخاب کنی، دقیقش رو می‌بینی.</p></details>
-      <details><summary>اگه پشیمون شدم چی؟</summary><p>چون کالا بهداشتیه، فقط بسته‌هایی که باز نشدن یا آسیب دیدن تا ۷ روز برگشت می‌خورن.</p></details>
+      <details open><summary data-tx="faq1q">روی بسته چی نوشته می‌شه؟</summary><p data-tx="faq1a">فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه.</p></details>
+      <details><summary data-tx="faq2q">از کجا بدونم جنس اصله؟</summary><p data-tx="faq2a">روی هر جعبه کد رهگیری وارداتی هست. کد رو توی سامانهٔ اصالت کالا وارد کن تا خودت مطمئن بشی.</p></details>
+      <details><summary data-tx="faq3q">سایزم رو چطور انتخاب کنم؟</summary><p data-tx="faq3a">ملاک دوره، نه طول. زیر ۱۱ سانت کوچیک، بین ۱۱ تا ۱۳ استاندارد، بالای ۱۳ بزرگ. سایز اشتباه یعنی احتمال پارگی یا سُر خوردن، پس این یکی رو جدی بگیر.</p></details>
+      <details><summary data-tx="faq4q">ژل آبی بهتره یا سیلیکونی؟</summary><p data-tx="faq4a">پایه آبی گزینهٔ مطمئن‌تره: با لاتکس مشکلی نداره و راحت شسته می‌شه. سیلیکونی بیشتر دووم میاره. فقط یادت باشه روغن و وازلین با کاندوم نه — لاتکس رو خراب می‌کنه.</p></details>
+      <details><summary data-tx="faq5q">چطور پرداخت کنم؟</summary><p data-tx="faq5a">کارت به کارت. بعد از ثبت سفارش یه شمارهٔ فاکتور می‌گیری؛ اون رو در تلگرام یا بله برامون بفرست تا شماره کارت بیاد. بعد از واریز، فیش رو همون‌جا بفرست. تأیید که شد، خودش بهت خبر می‌ده.</p></details>
+      <details><summary data-tx="faq6q">ارسال چقدر می‌شه؟</summary><p data-tx="faq6a">تهران و کرج ۴۰۰ هزار تومان با پیک، همون روز. بقیهٔ استان‌ها با پست پیشتاز بین ۲۵۰ تا ۴۰۰ هزار تومان بسته به فاصله، ۲ تا ۳ روز کاری. استانت رو که انتخاب کنی، دقیقش رو می‌بینی.</p></details>
+      <details><summary data-tx="faq7q">اگه پشیمون شدم چی؟</summary><p data-tx="faq7a">چون کالا بهداشتیه، فقط بسته‌هایی که باز نشدن یا آسیب دیدن تا ۷ روز برگشت می‌خورن.</p></details>
     </div>
   </div>
 </section>
@@ -1089,7 +1090,7 @@ footer #fContact ul{margin-top:4px}
       <div class="badge2"><span style="font-size:19px">✅</span><span><b>ضمانت اصالت</b>کد رهگیری روی هر جعبه</span></div>
       <div class="badge2"><span style="font-size:19px">↩️</span><span><b>مرجوعی ۷ روزه</b>بستهٔ باز نشده</span></div>
     </div>
-    <div class="f-bottom"><span><span data-tx="copyright">© ۱۴۰۵ سِنسا. قیمت‌ها به تومان است.</span> <b style="opacity:.7">v8</b></span></div>
+    <div class="f-bottom"><span><span data-tx="copyright">© ۱۴۰۵ سِنسا. قیمت‌ها به تومان است.</span> <b style="opacity:.7">نسخهٔ ۸</b></span></div>
   </div>
 </footer>
 
@@ -1245,7 +1246,7 @@ footer #fContact ul{margin-top:4px}
 
 <div class="modal" id="trackModal"><div class="box">
   <h3>سفارشم کجاست؟</h3><p class="sub">شمارهٔ فاکتورت رو بزن تا ببینی به کجا رسیده.</p>
-  <input id="trackIn" placeholder="مثلاً SNS-10001" dir="ltr">
+  <input id="trackIn" placeholder="مثلاً SNS-۱۰۰۰۱" dir="ltr">
   <div id="trackOut"></div>
   <div style="display:flex;gap:10px;margin-top:16px">
     <button class="btn-main" id="trackGo" style="flex:1;padding:12px" data-tx="btnTrack">ببین کجاست</button>
@@ -1355,7 +1356,7 @@ footer #fContact ul{margin-top:4px}
 
 <section class="panel" id="panel">
   <div class="p-head">
-    <h3>پنل مدیریت سِنسا <span style="font-size:11.5px;color:var(--body);font-weight:600">v8</span>
+    <h3>پنل مدیریت سِنسا <span style="font-size:11.5px;color:var(--body);font-weight:600">نسخهٔ ۸</span>
       <span class="mode" id="modeTag">…</span></h3>
     <button id="xlsxBtn" class="primary" style="background:#166534;border-color:#166534">خروجی اکسل</button>
     <button id="exportBtn">پشتیبان JSON</button><button id="importBtn">بازیابی JSON</button><button id="tgBackupBtn">پشتیبان در تلگرام</button>
@@ -1412,7 +1413,8 @@ const uid=()=>crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).s
 const fa=n=>Number(n||0).toLocaleString('fa-IR');
 const money=n=>fa(Math.round(n||0))+' تومان';
 const faN=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
-const enN=s=>String(s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+const enN=s=>String(s==null?'':s).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                                 .replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 const esc=s=>String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)};
 
@@ -1539,6 +1541,20 @@ const TX = {
   blogSub:    ['بخش مجله', 'زیرعنوان', 'ساده و بی‌تعارف، بدون تبلیغ'],
   faqTitle:   ['بخش پرسش‌ها', 'عنوان', 'هر چی بخوای بپرسی، جواب داریم'],
   faqSub:     ['بخش پرسش‌ها', 'زیرعنوان', 'اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۲۱ جواب می‌دیم.'],
+  faq1q:     ['پرسش‌های پرتکرار', 'پرسش 1', 'روی بسته چی نوشته می‌شه؟'],
+  faq1a:     ['پرسش‌های پرتکرار', 'پاسخ 1', 'فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه.'],
+  faq2q:     ['پرسش‌های پرتکرار', 'پرسش 2', 'از کجا بدونم جنس اصله؟'],
+  faq2a:     ['پرسش‌های پرتکرار', 'پاسخ 2', 'روی هر جعبه کد رهگیری وارداتی هست. کد رو توی سامانهٔ اصالت کالا وارد کن تا خودت مطمئن بشی.'],
+  faq3q:     ['پرسش‌های پرتکرار', 'پرسش 3', 'سایزم رو چطور انتخاب کنم؟'],
+  faq3a:     ['پرسش‌های پرتکرار', 'پاسخ 3', 'ملاک دوره، نه طول. زیر ۱۱ سانت کوچیک، بین ۱۱ تا ۱۳ استاندارد، بالای ۱۳ بزرگ. سایز اشتباه یعنی احتمال پارگی یا سُر خوردن، پس این یکی رو جدی بگیر.'],
+  faq4q:     ['پرسش‌های پرتکرار', 'پرسش 4', 'ژل آبی بهتره یا سیلیکونی؟'],
+  faq4a:     ['پرسش‌های پرتکرار', 'پاسخ 4', 'پایه آبی گزینهٔ مطمئن‌تره: با لاتکس مشکلی نداره و راحت شسته می‌شه. سیلیکونی بیشتر دووم میاره. فقط یادت باشه روغن و وازلین با کاندوم نه — لاتکس رو خراب می‌کنه.'],
+  faq5q:     ['پرسش‌های پرتکرار', 'پرسش 5', 'چطور پرداخت کنم؟'],
+  faq5a:     ['پرسش‌های پرتکرار', 'پاسخ 5', 'کارت به کارت. بعد از ثبت سفارش یه شمارهٔ فاکتور می‌گیری؛ اون رو در تلگرام یا بله برامون بفرست تا شماره کارت بیاد. بعد از واریز، فیش رو همون‌جا بفرست. تأیید که شد، خودش بهت خبر می‌ده.'],
+  faq6q:     ['پرسش‌های پرتکرار', 'پرسش 6', 'ارسال چقدر می‌شه؟'],
+  faq6a:     ['پرسش‌های پرتکرار', 'پاسخ 6', 'تهران و کرج ۴۰۰ هزار تومان با پیک، همون روز. بقیهٔ استان‌ها با پست پیشتاز بین ۲۵۰ تا ۴۰۰ هزار تومان بسته به فاصله، ۲ تا ۳ روز کاری. استانت رو که انتخاب کنی، دقیقش رو می‌بینی.'],
+  faq7q:     ['پرسش‌های پرتکرار', 'پرسش 7', 'اگه پشیمون شدم چی؟'],
+  faq7a:     ['پرسش‌های پرتکرار', 'پاسخ 7', 'چون کالا بهداشتیه، فقط بسته‌هایی که باز نشدن یا آسیب دیدن تا ۷ روز برگشت می‌خورن.'],
   addBtn:     ['روی کارت کالا', 'دکمهٔ افزودن', 'اضافه کن'],
   outBtn:     ['روی کارت کالا', 'وقتی تمام شده', 'ناموجود'],
   cartTitle:  ['سبد خرید', 'عنوان', 'سبد خریدت'],
@@ -1588,6 +1604,32 @@ const saveTexts = () => store.set('sensa_texts', texts);
 function applyTexts(){
   document.querySelectorAll('[data-tx]').forEach(el=>{ el.textContent = T(el.dataset.tx) });
   document.querySelectorAll('[data-txph]').forEach(el=>{ el.placeholder = T(el.dataset.txph) });
+  faqLd();
+}
+
+/* پرسش‌های پرتکرار در بالای صفحه هم به زبان گوگل نوشته شده‌اند تا همان
+   پرسش و پاسخ زیر نتیجهٔ جست‌وجو نشان داده شود. متنِ ثابت همان چیزی است
+   که در خودِ صفحه نوشته شده؛ اگر از پنل عوضش کردند، این هم از روی همان
+   چیزی که واقعاً روی صفحه است دوباره ساخته می‌شود. */
+function faqLd(){
+  try{
+    const el = document.getElementById('baseLd'); if(!el) return;
+    const rows = [...document.querySelectorAll('#faq details')].map(d=>({
+      q: (d.querySelector('summary')||{}).textContent || '',
+      a: (d.querySelector('p')||{}).textContent || ''
+    })).filter(r=>r.q.trim() && r.a.trim());
+    if(!rows.length) return;
+    const data = JSON.parse(el.textContent);
+    const node = {
+      '@type':'FAQPage', '@id':'https://sensacare.ir/#faq',
+      inLanguage:'fa-IR', url:'https://sensacare.ir/',
+      mainEntity: rows.map(r=>({ '@type':'Question', name:r.q.trim(),
+        acceptedAnswer:{ '@type':'Answer', text:r.a.trim() } }))
+    };
+    const i = data['@graph'].findIndex(n=>n['@id']==='https://sensacare.ir/#faq');
+    if(i>=0) data['@graph'][i] = node; else data['@graph'].push(node);
+    el.textContent = JSON.stringify(data);
+  }catch(e){}
 }
 
 
@@ -2264,7 +2306,6 @@ async function submitOrder(){
   if(uu){ uu.name=o.name; uu.city=o.city; uu.address=o.address; uu.postal=o.postal;
           uu.orders=(uu.orders||0)+1; uu.spent=(uu.spent||0)+o.total; saveUsers();
           if(ONLINE) req('/api/me',{method:'PATCH',asUser:true,body:{name:o.name,city:o.city,address:o.address,postal:o.postal}}).catch(()=>{}) }
-  $('doneTxt').textContent=`کد پیگیری: ${o.id} — همین الان باهات تماس می‌گیریم برای تأیید.`;
   $('doneSum').innerHTML=`<div style="font-size:13.5px;line-height:2">
     <b>${esc(o.name)}</b> · ${faN(o.phone)}<br>${CITY_NAME[o.city]} — ${esc(o.address)}<br>
     روش ارسال: ${o.methodName} · مبلغ: <b>${money(o.total)}</b></div>`;
@@ -2276,7 +2317,7 @@ async function submitOrder(){
   $('doneTxt').textContent = (settings.card||{}).number
     ? 'سفارشت ثبت شد. مبلغ را به کارت زیر واریز کن و عکس فیش را همین‌جا بفرست.'
     : 'سفارشت ثبت شد. برای پرداخت، شمارهٔ فاکتور را در تلگرام یا بله بفرست.';
-  const msg=encodeURIComponent(`سلام، فاکتور ${inv} به مبلغ ${money(o.total)}. برای پرداخت راهنماییم کن.`);
+  const msg=encodeURIComponent(`سلام، فاکتور ${faN(inv)} به مبلغ ${money(o.total)}. برای پرداخت راهنماییم کن.`);
   const card=settings.card||{}, cnum=(card.number||'').replace(/\D/g,'');
   const cardBlock = cnum ? `
       <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px">
@@ -2289,7 +2330,7 @@ async function submitOrder(){
   $('doneSum').innerHTML=`<div style="font-size:13.5px;line-height:2.1">
       <div style="background:#fff;border:1px dashed var(--red);border-radius:12px;padding:12px;text-align:center">
         <div style="font-size:12px;color:var(--body)">شمارهٔ فاکتور</div>
-        <div style="font-size:23px;font-weight:800;letter-spacing:1px;direction:ltr" id="invNo">${esc(inv)}</div>
+        <div style="font-size:23px;font-weight:800;letter-spacing:1px;direction:ltr" id="invNo">${esc(faN(inv))}</div>
       </div>
       ${cardBlock}
       <div style="margin-top:12px">مبلغ قابل پرداخت: <b>${money(o.total)}</b><br>
@@ -2799,13 +2840,13 @@ const stClass=s=>({'در انتظار پرداخت':'st-cancel','ثبت شده':
 $('trackLink').onclick=e=>{e.preventDefault();$('trackModal').classList.add('open')};
 $('trackClose').onclick=()=>$('trackModal').classList.remove('open');
 $('trackGo').onclick=async()=>{
-  const id=$('trackIn').value.trim().toUpperCase();
+  const id=enN($('trackIn').value).trim().toUpperCase();
   if(!id){toast('کد پیگیری رو بزن.');return}
   let o=null;
   if(ONLINE){ try{ o=await req('/api/orders/'+id) }catch(e){} }
   if(!o) o=orders.find(x=>x.id===id||x.invoice===id);
   $('trackOut').innerHTML = o ? `<div class="ordcard" style="margin-top:14px">
-      <div class="top"><b>${esc(o.invoice||o.id)}</b><span class="status ${stClass(o.status)}">${esc(o.status)}</span></div>
+      <div class="top"><b>${esc(faN(o.invoice||o.id))}</b><span class="status ${stClass(o.status)}">${esc(o.status)}</span></div>
       <div style="font-size:12.5px;color:var(--body)">${new Date(o.created||o.at).toLocaleDateString('fa-IR')} ·
         ${esc(o.method_name||o.methodName||'')}</div>
       <div style="font-weight:800;margin-top:5px">${money(o.total)}</div>
@@ -3080,7 +3121,7 @@ $('acctBtn').onclick=()=>{
   $('acctPhone').textContent=faN(u.phone);
   const mine=orders.filter(o=>o.phone===u.phone).sort((a,b)=>b.at-a.at);
   $('acctOrders').innerHTML = mine.length ? mine.map(o=>`
-    <div class="ordcard"><div class="top"><b>${esc(o.invoice||o.id)}</b><span class="status ${stClass(o.status)}">${esc(o.status)}</span></div>
+    <div class="ordcard"><div class="top"><b>${esc(faN(o.invoice||o.id))}</b><span class="status ${stClass(o.status)}">${esc(o.status)}</span></div>
       <div style="font-size:12.5px;color:var(--body)">${new Date(o.at||o.created).toLocaleDateString('fa-IR')} ·
       ${fa(o.items.reduce((s,i)=>s+i.q,0))} قلم · ${esc(o.methodName||o.method_name||'')}</div>
       <div style="margin-top:5px">${o.paid?'<span class="paid-badge">پرداخت شده</span>':'<span class="unpaid-badge">در انتظار پرداخت</span>'}</div>

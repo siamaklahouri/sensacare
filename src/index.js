@@ -319,6 +319,19 @@ async function askAI(env, q, history = []) {
     `${r.thickness ? ` | ضخامت ${r.thickness}` : ''}${r.stock > 0 ? '' : ' | ناموجود'}` +
     `${r.d ? `\n   ${String(r.d).slice(0, 110)}` : ''}`).join('\n');
 
+  /* مقاله‌های مجله هم به دستیار داده می‌شوند. بدون این‌ها، دستیار برای
+     سؤال‌هایی مثل «سایز ۵۲ برای من مناسبه؟» جواب کلی و گاهی بی‌ربط
+     می‌داد، در حالی که جواب دقیقش همین‌جا در مجله نوشته شده. */
+  let guides = '';
+  try {
+    const arts = await all(env,
+      'SELECT title, excerpt, body, slug FROM articles WHERE published=1 ORDER BY created DESC LIMIT 12');
+    guides = arts.map(a =>
+      `### ${a.title}  (نشانی: /a/${a.slug})\n` +
+      String(a.body || a.excerpt || '').replace(/\*\*/g, '').replace(/\n{2,}/g, '\n').slice(0, 1100)
+    ).join('\n\n');
+  } catch (e) { /* مقاله نبود؟ دستیار بدون آن هم کار می‌کند */ }
+
   const post = await getSetting(env, 'shipPost', 250000);
   const express = await getSetting(env, 'shipExpress', 400000);
   const freeOver = await getSetting(env, 'freeOver', 0);
@@ -336,6 +349,9 @@ async function askAI(env, q, history = []) {
 - اگر چیزی در فهرست نیست، صادقانه بگو موجود نیست.
 - نکات ایمنی و استفادهٔ درست را بگو (مثل اینکه ژل پایه‌روغنی به کاندوم لاتکس آسیب می‌زند).
 - دربارهٔ ارسال و پرداخت جواب بده.
+- برای سؤال‌های آموزشی (سایز، ضخامت، ژل، اصالت، نگهداری، طرز استفاده) جوابت را از
+  «راهنماهای مجله» در پایین بردار، نه از حافظهٔ خودت. اگر راهنمای مربوطه‌ای هست،
+  آخر جواب یک جمله اضافه کن: «توی مجله یه مطلب کامل‌تر هم داریم: [اسم مطلب]».
 
 چه کار نکن:
 - تشخیص پزشکی نده و دارو تجویز نکن. اگر نشانهٔ بیماری، درد، زخم یا عفونت مطرح شد،
@@ -353,7 +369,10 @@ ${freeOver > 0 ? `- خرید بالای ${fa(freeOver)} تومان ارسال ر
 - پرداخت کارت‌به‌کارت است و مشتری عکس فیش را در همان صفحهٔ سفارش می‌فرستد.
 
 فهرست محصولات موجود:
-${catalog || '(فعلاً محصولی ثبت نشده)'}`;
+${catalog || '(فعلاً محصولی ثبت نشده)'}
+
+${guides ? `راهنماهای مجله (اینها نوشتهٔ خودِ سِنسا هستند؛ برای سؤال‌های آموزشی از همین‌ها جواب بده):
+${guides}` : ''}`;
 
   const messages = [{ role: 'system', content: system }, ...past, { role: 'user', content: q }];
   /* گاهی مدل وسط جملهٔ فارسی یک واژهٔ چینی یا روسی می‌اندازد.
@@ -470,8 +489,8 @@ function invoiceText(o, items, paid) {
   const lines = items.map(i => `• ${i.n} × ${fa(i.q)} — ${fa(i.pr * i.q)}`).join('\n');
   return `${paid ? '✅ <b>پرداخت تأیید شد</b>' : '🧾 <b>فاکتور جدید</b>'}
 
-<b>شمارهٔ فاکتور:</b> <code>${o.invoice}</code>
-<b>کد سفارش:</b> ${o.id}
+<b>شمارهٔ فاکتور:</b> <code>${faNum(o.invoice)}</code>
+<b>کد سفارش:</b> ${faNum(o.id)}
 
 <b>مشتری:</b> ${o.name}
 <b>موبایل:</b> <code>${o.phone}</code>
@@ -512,7 +531,7 @@ async function markPaid(env, orderId, by) {
   const c = await one(env, 'SELECT * FROM bot_chats WHERE phone=? AND role=?', o.phone, 'customer');
   if (c) await botCall(env, c.platform, 'sendMessage', {
     chat_id: c.chat_id,
-    text: `✅ پرداخت سفارش <code>${o.invoice}</code> تأیید شد.\nسفارشت آمادهٔ ارساله. ممنون از خریدت!`,
+    text: `✅ پرداخت سفارش <code>${faNum(o.invoice)}</code> تأیید شد.\nسفارشت آمادهٔ ارساله. ممنون از خریدت!`,
     parse_mode: 'HTML'
   });
   return { ok: true };
@@ -711,7 +730,7 @@ async function handleUpdate(env, pf, u) {
   }
 
   /* پیگیری با شمارهٔ فاکتور یا کد سفارش */
-  const code = text.toUpperCase().replace(/\s/g, '');
+  const code = enNum(text).toUpperCase().replace(/\s/g, '');
   if (/^(SNS-)?\d{4,}$/.test(code) || /^S\d{6,}$/.test(code)) {
     const o = await one(env,
       'SELECT * FROM orders WHERE invoice=? OR invoice=? OR id=?',
@@ -723,7 +742,7 @@ async function handleUpdate(env, pf, u) {
     /* شمارهٔ فاکتور قابل حدس است، پس صرفِ دانستنش نباید شمارهٔ موبایل
        صاحب سفارش را به این گفتگو بچسباند. */
     await botCall(env, pf, 'sendMessage', { chat_id: chat, parse_mode: 'HTML',
-      text: `🧾 فاکتور <code>${o.invoice}</code>\n` +
+      text: `🧾 فاکتور <code>${faNum(o.invoice)}</code>\n` +
             `وضعیت: <b>${o.status}</b>\n` +
             `پرداخت: ${o.paid ? '✅ تأیید شده' : '⏳ در انتظار'}\n` +
             `مبلغ: ${fa(o.total)} تومان` +
@@ -814,6 +833,11 @@ const esc = t => String(t == null ? '' : t)
    می‌سازد. این تابع از همان اطلاعاتی که در دیتابیس هست جمله می‌سازد:
    جنس، تعداد، ضخامت، سایز، برند و قول همیشگی بسته‌بندی بی‌نشان. */
 const faNum = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+/* کد فاکتور و رهگیری را با رقم فارسی نشان می‌دهیم، پس ممکن است همان
+   شکل فارسی هم برگردد. هرجا کدی از کاربر می‌گیریم اول از این رد می‌شود. */
+const enNum = s => String(s == null ? '' : s)
+  .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+  .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 
 function productDesc(row) {
   const bits = [];
@@ -988,6 +1012,18 @@ async function injectMeta(env, req, meta) {
   swap(/<meta property="og:type" content="[^"]*">/,
        `<meta property="og:type" content="${meta.ld && meta.ld['@type'] === 'Product' ? 'product' : 'article'}">`);
 
+  /* دادهٔ پرسش‌های پرتکرار مالِ صفحهٔ اول است. این صفحه‌ها همان فایل را
+     می‌گیرند، پس اگر برش نداریم گوگل همان پرسش‌ها را زیر هر کالا و هر
+     مقاله هم می‌بیند و تکراری حسابش می‌کند. */
+  html = html.replace(/(<script type="application\/ld\+json" id="baseLd">)([\s\S]*?)(<\/script>)/,
+    (whole, open_, body, close) => {
+      try {
+        const d = JSON.parse(body);
+        d['@graph'] = (d['@graph'] || []).filter(n => n['@type'] !== 'FAQPage');
+        return open_ + JSON.stringify(d) + close;
+      } catch (e) { return whole; }
+    });
+
   if (meta.ld)
     html = html.replace('</head>',
       `<script type="application/ld+json">${jsonForScript(meta.ld)}</script>\n</head>`);
@@ -1022,6 +1058,74 @@ async function tellRestock(env, pid) {
    لازمش می‌شود ولی معمولاً یادش می‌رود. هر شب سفارش‌های تحویل‌شدهٔ حدود
    یک ماه پیش را نگاه می‌کند و یک پیام می‌فرستد — فقط یک‌بار برای هر سفارش،
    و فقط به کسی که خودش قبلاً در ربات وارد شده. */
+/* هر شب یک نگاه به انبار. چهل کالا را هیچ‌کس دستی نمی‌پاید و تا حالا
+   تمام شدن یک کالا را از شکایت مشتری می‌فهمیدید. اگر همه‌چیز روبه‌راه
+   بود، پیامی هم نمی‌آید. */
+async function stockAlert(env) {
+  const low = await getSetting(env, 'lowStock', 5);
+  const rows = await all(env,
+    'SELECT n, stock FROM products WHERE active=1 AND stock<=? ORDER BY stock, n LIMIT 30', low);
+  if (!rows.length) return 0;
+  const out = rows.filter(r => (r.stock || 0) <= 0);
+  const few = rows.filter(r => (r.stock || 0) > 0);
+  const lines = [];
+  if (out.length) lines.push(`❌ <b>تمام شده (${faNum(out.length)})</b>\n` +
+    out.map(r => `• ${esc(r.n)}`).join('\n'));
+  if (few.length) lines.push(`⚠️ <b>کم مانده (${faNum(few.length)})</b>\n` +
+    few.map(r => `• ${esc(r.n)} — ${faNum(r.stock)} تا`).join('\n'));
+  const res = await notifyAdmins(env, '📦 <b>وضعیت انبار</b>\n\n' + lines.join('\n\n'));
+  return res.filter(x => x.ok).length;
+}
+
+/* خلاصهٔ روز، تا برای فهمیدن اینکه چه خبر است مجبور نباشید پنل را باز
+   کنید. روزی که هیچ اتفاقی نیفتاده، پیامی هم نمی‌رود. */
+async function dailyDigest(env) {
+  const from = Date.now() - 86400000;
+  const g = async (sql, ...a) => { try { return await one(env, sql, ...a) } catch (e) { return null } };
+  const ord = await g('SELECT COUNT(*) n, COALESCE(SUM(total),0) rev FROM orders WHERE created>=?', from);
+  const unpaid = await g("SELECT COUNT(*) n, COALESCE(SUM(total),0) rev FROM orders WHERE status='در انتظار پرداخت'");
+  const rev = await g('SELECT COUNT(*) n FROM reviews WHERE published=0');
+  const qs = await g('SELECT COUNT(*) n FROM questions WHERE answered=0');
+  const vis = await g("SELECT COALESCE(SUM(n),0) n FROM visits WHERE day=?", today());
+  const nothing = !(ord?.n) && !(unpaid?.n) && !(rev?.n) && !(qs?.n);
+  if (nothing) return 0;
+  const L = [];
+  L.push(`🧾 سفارش امروز: <b>${faNum(ord?.n || 0)}</b>` +
+         (ord?.rev ? ` — ${fa(ord.rev)} تومان` : ''));
+  if (vis?.n) L.push(`👀 بازدید امروز: ${faNum(vis.n)}`);
+  if (unpaid?.n) L.push(`⏳ منتظر پرداخت: <b>${faNum(unpaid.n)}</b> فاکتور — ${fa(unpaid.rev)} تومان`);
+  if (rev?.n) L.push(`⭐ نظر منتظر تأیید: <b>${faNum(rev.n)}</b>`);
+  if (qs?.n) L.push(`❓ پرسش بی‌جواب: <b>${faNum(qs.n)}</b>`);
+  const res = await notifyAdmins(env, '🌙 <b>خلاصهٔ امروز</b>\n\n' + L.join('\n'));
+  return res.filter(x => x.ok).length;
+}
+
+/* سفارشی که ثبت شده ولی فیشی نیامده، پولِ از دست‌رفته است و هیچ‌کس
+   یادش نمی‌انداخت. مثل سبد رهاشده، این هم نام کالا را نمی‌گوید. */
+async function payNudges(env) {
+  const hours = await getSetting(env, 'payNudgeHours', 8);
+  if (!hours) return 0;
+  const cut = Date.now() - hours * 3600000;
+  const rows = await all(env,
+    `SELECT o.id, o.phone, o.invoice, o.total FROM orders o
+       LEFT JOIN pay_nudged p ON p.order_id = o.id
+      WHERE o.status='در انتظار پرداخت' AND o.created < ? AND p.order_id IS NULL
+      LIMIT 30`, cut);
+  let sent = 0;
+  for (const o of rows) {
+    const chats = await all(env,
+      "SELECT platform, chat_id FROM bot_chats WHERE phone=? AND role='customer'", o.phone);
+    for (const c of chats) {
+      const r = await botCall(env, c.platform, 'sendMessage', { chat_id: c.chat_id,
+        text: `سفارش ${faNum(o.invoice || o.id)} هنوز پرداخت نشده.\n` +
+              `مبلغ ${fa(o.total)} تومان. اگر واریز کردی، عکس فیش را همین‌جا بفرست.` });
+      if (r?.ok) sent++;
+    }
+    await run(env, 'INSERT OR REPLACE INTO pay_nudged(order_id,sent) VALUES(?,?)', o.id, Date.now());
+  }
+  return sent;
+}
+
 /* سبد رهاشده. پیام عمداً نام کالا را نمی‌گوید: ممکن است کسی گوشی را دست
    بگیرد و همان قولی که روی جعبه داده‌ایم اینجا هم باید سرِ جایش باشد. */
 async function cartNudges(env) {
@@ -1086,6 +1190,9 @@ export default {
     ctx.waitUntil(runBackup(env).catch(e => console.log('backup', e.message)));
     ctx.waitUntil(reorderReminders(env).catch(e => console.log('reorder', e.message)));
     ctx.waitUntil(cartNudges(env).catch(e => console.log('cart', e.message)));
+    ctx.waitUntil(payNudges(env).catch(e => console.log('pay', e.message)));
+    ctx.waitUntil(stockAlert(env).catch(e => console.log('stock', e.message)));
+    ctx.waitUntil(dailyDigest(env).catch(e => console.log('digest', e.message)));
   },
 
   async fetch(req, env, ctx) {
@@ -1672,7 +1779,9 @@ export default {
            نتواند شناسه‌ها را پشت‌سرهم اسکن کند. */
         const rlv = await rateLimit(env, 'ordview:' + clientIp(req), 40, 600);
         if (!rlv.ok) return tooMany(rlv);
-        const o = await one(env, 'SELECT * FROM orders WHERE id=?', p.split('/')[3]);
+        const o = await one(env, 'SELECT * FROM orders WHERE id=? OR invoice=?',
+          enNum(decodeURIComponent(p.split('/')[3])).toUpperCase(),
+          enNum(decodeURIComponent(p.split('/')[3])).toUpperCase());
         if (!o) return bad('سفارشی با این کد پیدا نشد', 404);
         o.items = await all(env, 'SELECT * FROM order_items WHERE order_id=?', o.id);
         return json({ id: o.id, invoice: o.invoice, created: o.created, status: o.status,
@@ -1684,7 +1793,7 @@ export default {
       if (/^\/api\/orders\/[^/]+\/receipt$/.test(p) && m === 'POST') {
         const rl = await rateLimit(env, 'receipt:' + clientIp(req), 10, 600);
         if (!rl.ok) return tooMany(rl);
-        const key = decodeURIComponent(p.split('/')[3]);
+        const key = enNum(decodeURIComponent(p.split('/')[3])).toUpperCase();
         const o = await one(env, 'SELECT * FROM orders WHERE id=? OR invoice=?', key, key);
         if (!o) return bad('سفارش پیدا نشد', 404);
         /* پیش از این هرکس شمارهٔ فاکتوری را می‌دانست می‌توانست عکس بفرستد و
@@ -1707,7 +1816,7 @@ export default {
           { text: '❌ لغو سفارش', callback_data: `cancel:${o.id}` }
         ]];
         const caption = `📎 <b>فیش پرداخت رسید</b>\n` +
-          `فاکتور <code>${o.invoice || o.id}</code>\n` +
+          `فاکتور <code>${faNum(o.invoice || o.id)}</code>\n` +
           `${o.name || ''} · ${o.phone || ''}\n` +
           `مبلغ: ${fa(o.total)} تومان`;
         const sent = await photoToAdmins(env, bin, caption, kb);
@@ -1716,7 +1825,7 @@ export default {
         await run(env, 'UPDATE orders SET receipt=? WHERE id=?', String(Date.now()), o.id);
         if (!delivered) {
           ctx.waitUntil(notifyAdmins(env,
-            `📎 برای فاکتور <code>${o.invoice || o.id}</code> فیش آمد ولی عکسش فرستاده نشد.`, kb));
+            `📎 برای فاکتور <code>${faNum(o.invoice || o.id)}</code> فیش آمد ولی عکسش فرستاده نشد.`, kb));
         }
         return json({ ok: true, delivered });
       }
