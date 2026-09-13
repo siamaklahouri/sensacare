@@ -306,3 +306,11 @@ UPDATE pages SET body = REPLACE(body,
   ' ایمیل' || char(10) || 'sensacareinfo',
   '## ایمیل' || char(10) || 'sensacareinfo')
   WHERE slug='contact';
+
+/* ۱۹ نظرهایی که از دعوتنامهٔ پس از تحویل آمده‌اند. فقط برای اینکه یک
+   سفارش دوبار برای یک کالا نظر نفرستد؛ متن نظر اینجا نیست. */
+CREATE TABLE IF NOT EXISTS review_done(
+  order_id   TEXT,
+  product_id TEXT,
+  created    INTEGER,
+  PRIMARY KEY(order_id, product_id));

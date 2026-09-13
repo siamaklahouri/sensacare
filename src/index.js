@@ -1068,6 +1068,47 @@ async function tellRestock(env, pid) {
    لازمش می‌شود ولی معمولاً یادش می‌رود. هر شب سفارش‌های تحویل‌شدهٔ حدود
    یک ماه پیش را نگاه می‌کند و یک پیام می‌فرستد — فقط یک‌بار برای هر سفارش،
    و فقط به کسی که خودش قبلاً در ربات وارد شده. */
+/* ---------- سلامت ربات ----------
+   ورود مشتری و پرداخت هر دو از ربات می‌گذرند، پس اگر وب‌هوک بخورد،
+   سفارش‌ها بی‌سروصدا می‌خوابند و ممکن است چند روز طول بکشد تا کسی
+   بفهمد. هر شب وضعیت را می‌پرسیم؛ اگر یکی خراب بود، از طریق آن یکی
+   خبر می‌دهیم و نتیجه را هم ذخیره می‌کنیم تا در پنل دیده شود. */
+async function botHealth(env) {
+  const out = {};
+  for (const pf of ['telegram', 'bale']) {
+    const token = await botToken(env, pf);
+    if (!token) continue;
+    let st = { ok: false, why: 'جواب نداد' };
+    try {
+      const r = await botCall(env, pf, 'getWebhookInfo', {});
+      const info = r?.result || {};
+      if (!r?.ok) st = { ok: false, why: 'ربات جواب نداد (شاید توکن عوض شده)' };
+      else if (!info.url) st = { ok: false, why: 'وب‌هوک ثبت نشده — پیام‌ها به سایت نمی‌رسند' };
+      else if (info.last_error_message)
+        st = { ok: false, why: 'آخرین تحویل خطا داد: ' + String(info.last_error_message).slice(0, 120) };
+      else st = { ok: true, why: '', pending: info.pending_update_count || 0 };
+    } catch (e) { st = { ok: false, why: 'خطا: ' + e.message }; }
+    out[pf] = st;
+  }
+  await setSetting(env, 'botHealth', { at: Date.now(), pf: out });
+
+  const broken = Object.entries(out).filter(([, v]) => !v.ok);
+  if (!broken.length) return 0;
+  /* از رباتی خبر می‌دهیم که خودش سالم است — با ربات خراب نمی‌شود. */
+  const alive = Object.entries(out).filter(([, v]) => v.ok).map(([k]) => k);
+  if (!alive.length) return 0;
+  const text = '🔴 <b>ربات مشکل دارد</b>\n\n' +
+    broken.map(([k, v]) => `• ${PLATFORMS[k].name}: ${esc(v.why)}`).join('\n') +
+    '\n\nتا وقتی درست نشده، ورود و پرداختِ مشتری از آن سمت کار نمی‌کند.';
+  let sent = 0;
+  for (const pf of alive)
+    for (const chat of await adminChats(env, pf)) {
+      const r = await botCall(env, pf, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML' });
+      if (r?.ok) sent++;
+    }
+  return sent;
+}
+
 /* هر شب یک نگاه به انبار. چهل کالا را هیچ‌کس دستی نمی‌پاید و تا حالا
    تمام شدن یک کالا را از شکایت مشتری می‌فهمیدید. اگر همه‌چیز روبه‌راه
    بود، پیامی هم نمی‌آید. */
@@ -1203,6 +1244,7 @@ export default {
     ctx.waitUntil(payNudges(env).catch(e => console.log('pay', e.message)));
     ctx.waitUntil(stockAlert(env).catch(e => console.log('stock', e.message)));
     ctx.waitUntil(dailyDigest(env).catch(e => console.log('digest', e.message)));
+    ctx.waitUntil(botHealth(env).catch(e => console.log('bothealth', e.message)));
   },
 
   async fetch(req, env, ctx) {
@@ -1616,8 +1658,39 @@ export default {
       }
 
       /* ---------- نظر و امتیاز ---------- */
+      /* ---------- قیف فروش ----------
+         تا حالا فقط بازدید صفحه‌ها شمرده می‌شد، پس معلوم نبود کسی که خرید
+         نکرده کجا بی‌خیال شده. اینجا فقط «مرحله» ثبت می‌شود — نه نام کالا،
+         نه شناسهٔ کاربر، نه شمارهٔ موبایل. همان قولی که به مشتری داده‌ایم. */
+      if (p === '/api/ev' && m === 'POST') {
+        const step = String(body.k || '');
+        if (!['cart', 'checkout'].includes(step)) return json({ ok: true });
+        const rl = await rateLimit(env, 'ev:' + clientIp(req), 60, 3600);
+        if (!rl.ok) return json({ ok: true });   /* شمارش است، نه سفارش — خطا ندهیم */
+        ctx.waitUntil(countVisit(env, 'step_' + step, '-'));
+        return json({ ok: true });
+      }
+
+      /* ---------- دعوت به نوشتن نظر ----------
+         با همان لینکی که بعد از تحویل در ربات رفته. توکن امضاشده است، پس
+         بدون ورود هم معلوم است که این شخص واقعاً همین سفارش را گرفته. */
+      if (p === '/api/review-invite' && m === 'GET') {
+        const tk = await verify(env, url.searchParams.get('t') || '');
+        if (!tk || !tk.rev) return bad('این لینک معتبر نیست یا تاریخش گذشته', 401);
+        const o = await one(env, 'SELECT id, invoice, status FROM orders WHERE id=?', tk.rev);
+        if (!o) return bad('سفارش پیدا نشد', 404);
+        const items = await all(env,
+          `SELECT i.product_id id, i.n, (d.order_id IS NOT NULL) done
+             FROM order_items i
+             LEFT JOIN review_done d ON d.order_id = i.order_id AND d.product_id = i.product_id
+            WHERE i.order_id = ?`, o.id);
+        return json({ ok: true, invoice: o.invoice || o.id, items });
+      }
+
       if (p === '/api/reviews' && m === 'POST') {
-        const rl = await rateLimit(env, 'rev:' + clientIp(req), 3, 3600);
+        /* سفارش چندقلمی یعنی چند نظر پشت سر هم؛ با سقف ۳ تایی، نفر سوم
+           به در بسته می‌خورد. همه‌شان هم تا تأیید مدیر جایی دیده نمی‌شوند. */
+        const rl = await rateLimit(env, 'rev:' + clientIp(req), 8, 3600);
         if (!rl.ok) return tooMany(rl);
         const pid = String(body.product || '');
         const rating = Math.round(Number(body.rating) || 0);
@@ -1627,18 +1700,34 @@ export default {
         if (!pr) return bad('محصول پیدا نشد', 404);
         /* اگر با حساب خودش وارد شده و همین کالا را خریده، نشان «خریدار»
            می‌گیرد. شماره‌اش هیچ‌جا در نظر ذخیره نمی‌شود. */
-        let buyer = 0;
-        try {
-          const sess = await asUser(env, req);
-          if (sess) {
-            const hit = await one(env,
-              `SELECT 1 x FROM order_items i JOIN orders o ON o.id=i.order_id
-                WHERE o.phone=? AND i.product_id=? LIMIT 1`, sess.phone, pid);
-            if (hit) buyer = 1;
-          }
-        } catch (e) { /* نداشتنِ نشان، دلیل رد کردن نظر نیست */ }
+        let buyer = 0, fromOrder = '';
+        /* آمده از لینکِ پس از تحویل: خودِ لینک ثابت می‌کند که خریده. */
+        if (body.t) {
+          const tk = await verify(env, String(body.t));
+          if (!tk || !tk.rev) return bad('این لینک معتبر نیست یا تاریخش گذشته', 401);
+          const hit = await one(env,
+            'SELECT 1 x FROM order_items WHERE order_id=? AND product_id=? LIMIT 1', tk.rev, pid);
+          if (!hit) return bad('این کالا در آن سفارش نبوده', 403);
+          const already = await one(env,
+            'SELECT 1 x FROM review_done WHERE order_id=? AND product_id=?', tk.rev, pid);
+          if (already) return bad('برای این کالا قبلاً نظر فرستاده‌ای. ممنون!', 409);
+          buyer = 1; fromOrder = tk.rev;
+        } else {
+          try {
+            const sess = await asUser(env, req);
+            if (sess) {
+              const hit = await one(env,
+                `SELECT 1 x FROM order_items i JOIN orders o ON o.id=i.order_id
+                  WHERE o.phone=? AND i.product_id=? LIMIT 1`, sess.phone, pid);
+              if (hit) buyer = 1;
+            }
+          } catch (e) { /* نداشتنِ نشان، دلیل رد کردن نظر نیست */ }
+        }
         await run(env, 'INSERT INTO reviews(product_id,rating,body,buyer,created) VALUES(?,?,?,?,?)',
           pid, rating, text, buyer, Date.now());
+        if (fromOrder) await run(env,
+          'INSERT OR IGNORE INTO review_done(order_id,product_id,created) VALUES(?,?,?)',
+          fromOrder, pid, Date.now());
         ctx.waitUntil(notifyAdmins(env,
           `⭐ <b>نظر تازه</b> (${rating} از ۵)${buyer ? ' — خریدار' : ''}\nدربارهٔ: ${esc(pr.n)}` +
           (text ? `\n\n${esc(text)}` : '') + `\n\nبرای تأیید به پنل سر بزنید.`)
@@ -1940,7 +2029,8 @@ export default {
             texts: await getSetting(env, 'texts', {}),
               botLogin: await botLoginOptions(env),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
-              trust: await getSetting(env, 'trust', {})
+              trust: await getSetting(env, 'trust', {}),
+              botHealth: await getSetting(env, 'botHealth', null)
             }
           });
         }
@@ -2038,11 +2128,24 @@ export default {
               const c = await one(env, 'SELECT * FROM bot_chats WHERE phone=? AND role=?',
                 before.phone, 'customer');
               if (!c) return;
+              /* بعد از تحویل، بهترین وقت برای پرسیدن نظر است. لینک امضا
+                 می‌شود تا بدون ورود هم بشود نظر داد و نشانِ «خریدار»
+                 بگیرد. متنِ پیام نام کالا را نمی‌گوید — مثل بقیهٔ
+                 یادآورها، چون ممکن است کسی گوشی را دست بگیرد. */
+              let ask = '';
+              if (newStatus === 'تحویل شده') {
+                try {
+                  const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
+                  const t = await sign(env, { rev: oid }, 24 * 30);
+                  ask = `\n\nاگر چند لحظه وقت داری، نظرت دربارهٔ خریدت را بنویس — ` +
+                        `به بقیه خیلی کمک می‌کند:\n${base}/?r=${encodeURIComponent(t)}`;
+                } catch (e) { /* نشد؟ همان تشکر برود */ }
+              }
               await botCall(env, c.platform, 'sendMessage', {
                 chat_id: c.chat_id, parse_mode: 'HTML',
-                text: `${head}\nفاکتور <code>${before.invoice || oid}</code>` +
+                text: `${head}\nفاکتور <code>${faNum(before.invoice || oid)}</code>` +
                       (newStatus === 'ارسال شده' && newTrack
-                        ? `\nکد رهگیری پستی: <code>${newTrack}</code>` : '')
+                        ? `\nکد رهگیری پستی: <code>${newTrack}</code>` : '') + ask
               });
             })().catch(e => console.log('notify', e.message)));
           }
@@ -2135,10 +2238,24 @@ export default {
           const days = Math.min(90, Math.max(7, Number(url.searchParams.get('days')) || 30));
           const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
           return json({
-            byDay: await all(env, `SELECT day, SUM(n) v FROM visits WHERE day>=?
+            /* رویدادهای قیف با step_ شروع می‌شوند و جزو بازدید نیستند؛
+               اگر اینجا کنارشان نگذاریم، آمار بازدید الکی بالا می‌رود. */
+            byDay: await all(env, `SELECT day, SUM(n) v FROM visits
+              WHERE day>=? AND kind NOT LIKE 'step\\_%' ESCAPE '\\'
               GROUP BY day ORDER BY day`, from),
-            byKind: await all(env, `SELECT kind, SUM(n) v FROM visits WHERE day>=?
+            byKind: await all(env, `SELECT kind, SUM(n) v FROM visits
+              WHERE day>=? AND kind NOT LIKE 'step\\_%' ESCAPE '\\'
               GROUP BY kind ORDER BY v DESC`, from),
+            funnel: {
+              seen: (await one(env, `SELECT COALESCE(SUM(n),0) v FROM visits
+                WHERE day>=? AND kind='home'`, from))?.v || 0,
+              cart: (await one(env, `SELECT COALESCE(SUM(n),0) v FROM visits
+                WHERE day>=? AND kind='step_cart'`, from))?.v || 0,
+              checkout: (await one(env, `SELECT COALESCE(SUM(n),0) v FROM visits
+                WHERE day>=? AND kind='step_checkout'`, from))?.v || 0,
+              ordered: (await one(env, `SELECT COUNT(*) v FROM orders
+                WHERE date(created/1000,'unixepoch')>=?`, from))?.v || 0
+            },
             topProducts: await all(env, `SELECT v.key AS k, SUM(v.n) v, p.n AS name
               FROM visits v LEFT JOIN products p ON p.id = v.key
               WHERE v.day>=? AND v.kind='product' GROUP BY v.key ORDER BY v DESC LIMIT 12`, from),

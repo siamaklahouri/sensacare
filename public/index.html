@@ -1244,6 +1244,16 @@ footer #fContact ul{margin-top:4px}
   <div class="sheet-body doc" id="docBody"></div>
 </div></div>
 
+<div class="modal" id="rvInviteModal"><div class="box">
+  <h3>نظرت دربارهٔ خریدت</h3>
+  <p class="sub" id="rvInvSub">…</p>
+  <div id="rvInvList"></div>
+  <div style="display:flex;gap:10px;margin-top:16px">
+    <button class="btn-main" id="rvInvSend" style="flex:1;padding:12px">بفرست</button>
+    <button class="mini" id="rvInvClose" style="padding:12px 20px">بعداً</button></div>
+  <p class="hint" id="rvInvMsg" style="margin-top:10px"></p>
+</div></div>
+
 <div class="modal" id="trackModal"><div class="box">
   <h3>سفارشم کجاست؟</h3><p class="sub">شمارهٔ فاکتورت رو بزن تا ببینی به کجا رسیده.</p>
   <input id="trackIn" placeholder="مثلاً SNS-۱۰۰۰۱" dir="ltr">
@@ -1947,11 +1957,25 @@ function onAdd(e){const b=e.target.closest('.add');if(!b)return;
   const pr=products.find(x=>x.id===b.dataset.id);
   if(pr&&stockState(pr).out){toast('این کالا فعلاً ناموجود است.');return}
   cart.set(b.dataset.id,(cart.get(b.dataset.id)||0)+1);
-  persistCart();
+  persistCart(); ev('cart');
   b.textContent='اضافه شد ✓';b.classList.add('on');
   setTimeout(()=>{b.textContent=T('addBtn');b.classList.remove('on')},1200);
   updateCart()}
 catsEl.addEventListener('click',onAdd); promoEl.addEventListener('click',onAdd);
+/* ---------- قیف فروش ----------
+   فقط همین که «به سبد اضافه شد» یا «ثبت سفارش شروع شد» را می‌فرستیم.
+   نه نام کالا، نه شماره، نه شناسه — هیچ‌چیزی که بشود با آن فهمید چه کسی
+   چه چیزی نگاه کرده. هر مرحله در هر بازدید یک‌بار، وگرنه آمار دروغ می‌شود. */
+const evSent = {};
+function ev(k){
+  if(evSent[k]) return; evSent[k] = true;
+  try{ if(sessionStorage.getItem('sensa_ev_'+k)) return;
+       sessionStorage.setItem('sensa_ev_'+k,'1') }catch(_){}
+  if(!ONLINE) return;
+  try{ fetch('/api/ev',{method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({k}),keepalive:true}).catch(()=>{}) }catch(_){}
+}
+
 const subtotal=()=>[...cart].reduce((s,[id,q])=>{const p=products.find(x=>x.id===id);return s+(p?p.pr*q:0)},0);
 const itemCount=()=>[...cart].reduce((s,[,q])=>s+q,0);
 function updateCart(){
@@ -2033,7 +2057,7 @@ const $=id=>document.getElementById(id);
 
 document.getElementById('toCheckout').onclick=()=>{
   if(!cart.size){toast('سبدت خالیه!');return}
-  closeD();
+  closeD(); ev('checkout');
   sheet.classList.add('open'); goStep(1);
   const u=authUser();               /* ورود اجباری نیست — فقط اگر قبلاً وارد شده، پر می‌شود */
   if(u){ $('cName').value=u.name||''; $('cPhone').value=faN(u.phone||'');
@@ -2726,6 +2750,82 @@ async function paintReviews(pid){
     $('rvSend').disabled=false;
   };
 }
+
+/* ---------- دعوت به نوشتن نظر ----------
+   با لینکی که بعد از تحویل در ربات رفته. خودِ لینک ثابت می‌کند که این
+   شخص همین سفارش را گرفته، پس بدون ورود هم نشانِ «خریدار» می‌گیرد.
+   نام کالاها فقط اینجا — بعد از اینکه خودش لینک را باز کرده — دیده
+   می‌شود، نه در پیامِ ربات. */
+async function openReviewInvite(token){
+  if(!ONLINE) return;
+  let d;
+  try{ d = await req('/api/review-invite?t='+encodeURIComponent(token)) }
+  catch(e){ toast(e.message||'این لینک دیگر کار نمی‌کند.'); return }
+  const todo = (d.items||[]).filter(x=>!x.done);
+  if(!todo.length){ toast('برای این سفارش قبلاً نظر فرستادی. ممنون!'); return }
+
+  $('rvInvSub').textContent =
+    `فاکتور ${faN(d.invoice)} — به هرکدام که دوست داری ستاره بده. بی‌نام ثبت می‌شود.`;
+  $('rvInvList').innerHTML = todo.map((it,i)=>`
+    <div style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px">
+      <b style="font-size:14px">${esc(it.n)}</b>
+      <span class="rv-pick" data-i="${i}" role="radiogroup" aria-label="امتیاز ${esc(it.n)}"
+        style="display:block;margin-top:6px">${
+        Array.from({length:5},(_,k)=>`<i data-v="${k+1}" role="radio" aria-checked="false"
+          aria-label="${k+1} ستاره" tabindex="0">★</i>`).join('')}</span>
+      <textarea data-t="${i}" placeholder="اختیاری — اگر حرفی داری بنویس"
+        style="margin-top:8px"></textarea>
+    </div>`).join('');
+
+  const picks = todo.map(()=>0);
+  const box = $('rvInvList');
+  const paint = i => box.querySelector(`[data-i="${i}"]`).querySelectorAll('i')
+    .forEach((el,k)=>{ el.classList.toggle('on', k<picks[i]);
+                       el.setAttribute('aria-checked', k+1===picks[i]?'true':'false') });
+  const choose = (i,v) => { picks[i]=v; paint(i) };
+  box.onclick = e => { const st=e.target.closest('[data-v]'); if(!st) return;
+    choose(+st.closest('[data-i]').dataset.i, +st.dataset.v) };
+  box.onkeydown = e => { const st=e.target.closest('[data-v]');
+    if(st&&(e.key==='Enter'||e.key===' ')){ e.preventDefault();
+      choose(+st.closest('[data-i]').dataset.i, +st.dataset.v) } };
+
+  const M=$('rvInviteModal'), msg=$('rvInvMsg');
+  const close=()=>M.classList.remove('open');
+  $('rvInvClose').onclick=close;
+  $('rvInvSend').onclick=async()=>{
+    const chosen = picks.map((v,i)=>({v,i})).filter(x=>x.v);
+    if(!chosen.length){ msg.style.color='var(--red)'; msg.textContent='به یکی ستاره بده.'; return }
+    $('rvInvSend').disabled=true; msg.style.color=''; msg.textContent='می‌فرستم…';
+    let done=0, fail='';
+    for(const {v,i} of chosen){
+      try{
+        await req('/api/reviews',{method:'POST',body:{ product:todo[i].id, rating:v,
+          body:(box.querySelector(`[data-t="${i}"]`).value||'').trim(), t:token }});
+        done++;
+      }catch(e){ fail = e.message||'فرستاده نشد' }
+    }
+    $('rvInvSend').disabled=false;
+    if(done){ msg.style.color='#166534';
+      msg.textContent='رسید. بعد از تأیید روی صفحهٔ کالا دیده می‌شود. ممنون!';
+      setTimeout(close, 2200);
+    } else { msg.style.color='var(--red)'; msg.textContent=fail||'فرستاده نشد' }
+  };
+  M.classList.add('open');
+}
+
+/* اگر با لینکِ نظر آمده، نشانی را تمیز می‌کنیم تا توکن در تاریخچهٔ
+   مرورگر و در لینکی که شاید بعداً کپی کند نماند. */
+(function(){
+  try{
+    const q = new URLSearchParams(location.search);
+    const t = q.get('r');
+    if(!t) return;
+    q.delete('r');
+    const rest = q.toString();
+    history.replaceState(null,'',location.pathname + (rest?'?'+rest:'') + location.hash);
+    setTimeout(()=>openReviewInvite(t), 900);
+  }catch(_){}
+})();
 
 async function paintQA(pid){
   const box=$('qaBox'); if(!box) return;

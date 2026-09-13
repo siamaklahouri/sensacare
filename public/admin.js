@@ -147,6 +147,25 @@ function repTexts(){
 }
 
 /* --- داشبورد و گزارش --- */
+/* ---------- سلامت ربات ----------
+   ورود مشتری و پرداخت هر دو از ربات می‌گذرند. اگر وب‌هوک بخورد،
+   سفارش‌ها بی‌سروصدا می‌خوابند — پس وقتی مشکلی هست، اول چیزی که در
+   پنل می‌بینید همین باشد. */
+function botHealthBox(){
+  const h = settings.botHealth;
+  if(!h || !h.pf) return '';
+  const NAME = {telegram:'تلگرام', bale:'بله'};
+  const bad = Object.entries(h.pf).filter(([,v])=>!v.ok);
+  if(!bad.length) return '';
+  const when = new Date(h.at).toLocaleString('fa-IR');
+  return `<div class="box" style="border:1px solid var(--red);background:#FFF1F4">
+    <h3 style="color:var(--red)">ربات مشکل دارد</h3>
+    ${bad.map(([k,v])=>`<p style="font-size:13.5px;margin:6px 0">
+       <b>${NAME[k]||k}</b> — ${esc(v.why||'جواب نداد')}</p>`).join('')}
+    <p class="hint">تا وقتی درست نشده، ورود و پرداختِ مشتری از آن سمت کار نمی‌کند.
+      آخرین بررسی: ${esc(when)}</p></div>`;
+}
+
 function repDash(){
   const n=orders.length, rev=orders.reduce((s,o)=>s+o.total,0);
   const items=orders.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.q,0),0);
@@ -164,6 +183,7 @@ function repDash(){
   const avgFb=feedback.length?(feedback.reduce((s,f)=>s+f.rating,0)/feedback.length):0;
   const mx=o=>Math.max(1,...Object.values(o));
   C.innerHTML=`
+  ${botHealthBox()}
   <div class="stats">
     <div class="stat"><b>${fa(n)}</b>سفارش ثبت‌شده</div>
     <div class="stat"><b>${money(rev)}</b>فروش کل</div>
@@ -910,6 +930,49 @@ function statBar(rows, label, val){
       </div>
       <b style="font-size:13px">${fa(val(r))}</b></div>`).join('')}</div>`;
 }
+/* ---------- قیف فروش ----------
+   عددِ «چند نفر آمدند» و «چند نفر خریدند» را داشتیم، ولی بینشان خالی بود.
+   این چهار پله نشان می‌دهد ریزش کجاست: کسی که وارد شده ولی چیزی به سبد
+   نگذاشته، با کسی که سبد پر کرده و سرِ ثبت سفارش بی‌خیال شده، دو مشکل
+   کاملاً متفاوت‌اند و راه‌حلشان هم یکی نیست. */
+function funnelBox(f){
+  if(!f) return '';
+  const steps = [
+    ['وارد صفحهٔ اول شدند', f.seen,     'سراغ سایت آمدند'],
+    ['چیزی به سبد گذاشتند', f.cart,     'یعنی کالا به دردشان خورد'],
+    ['ثبت سفارش را شروع کردند', f.checkout, 'یعنی قیمت و کرایه قانعشان کرد'],
+    ['سفارش دادند',        f.ordered,  'تا آخر رفتند']
+  ];
+  const top = Math.max(1, f.seen || 0);
+  const rows = steps.map(([label, v, note], i) => {
+    v = v || 0;
+    const prev = i ? (steps[i-1][1] || 0) : v;
+    const drop = i && prev > v ? prev - v : 0;
+    const pct  = Math.round(v / top * 100);
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>${label} <span style="color:var(--body)">· ${note}</span></span>
+        <b>${fa(v)}</b></div>
+      <div style="background:var(--soft);border-radius:7px;height:11px;overflow:hidden">
+        <div style="width:${Math.max(pct,1)}%;height:100%;background:var(--red);border-radius:7px"></div></div>
+      ${drop ? `<p class="hint" style="margin-top:4px">${fa(drop)} نفر اینجا بی‌خیال شدند</p>` : ''}
+    </div>`;
+  }).join('');
+  const none = !(f.seen || f.cart || f.checkout || f.ordered);
+  /* سفارش‌ها از خودِ جدول سفارش‌ها شمرده می‌شوند، پس روزهای اول ممکن است
+     از «شروع ثبت سفارش» بیشتر باشند — آن‌ها از قبلِ شروعِ این شمارش‌اند. */
+  const odd = (f.ordered || 0) > (f.checkout || 0);
+  return `<div class="box"><h3>مسیر خرید — کجا بی‌خیال می‌شوند</h3>
+    ${none
+      ? '<p class="empty">هنوز داده‌ای جمع نشده. از امروز به بعد پر می‌شود.</p>'
+      : rows + (odd ? `<p class="hint" style="color:var(--red)">سه پلهٔ اول از امروز به بعد
+          شمرده می‌شوند، ولی «سفارش دادند» از خودِ سفارش‌ها می‌آید و سفارش‌های قبلی را هم
+          دارد. چند روز که بگذرد، هم‌تراز می‌شوند.</p>` : '') +
+        `<p class="hint">شمارش از هر بازدید فقط یک‌بار است و هیچ‌چیزی دربارهٔ اینکه
+          چه کسی چه کالایی دیده ذخیره نمی‌شود — فقط خودِ مرحله.</p>`}
+  </div>`;
+}
+
 function repStats(){
   C.innerHTML='<div class="box"><p class="empty">در حال خواندن آمار…</p></div>';
   if(!ONLINE){ C.innerHTML='<div class="box"><p class="empty">آمار فقط وقتی به سرور وصل باشید کار می‌کند.</p></div>'; return }
@@ -926,6 +989,7 @@ function repStats(){
         <div class="stat"><span>فروش ۳۰ روز</span><b>${money(rev)}</b></div>
         <div class="stat"><span>از هر ۱۰۰ بازدید</span><b>${fa(rate.toFixed(1))} سفارش</b></div>
       </div>
+      ${funnelBox(d.funnel)}
       <div class="box"><h3>بازدید روزانه</h3>
         ${statBar((d.byDay||[]).slice(-14), r=>new Date(r.day).toLocaleDateString('fa-IR'), r=>r.v)}</div>
       <div class="box"><h3>کدام صفحه‌ها</h3>
