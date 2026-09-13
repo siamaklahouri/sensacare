@@ -44,6 +44,16 @@ async function hmac(secret, msg) {
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return b64u(await crypto.subtle.sign('HMAC', key, enc.encode(msg)));
 }
+/* دو رشته را طوری مقایسه می‌کند که زمانِ کار به محتوایشان بستگی نداشته
+   باشد؛ وگرنه مهاجم می‌توانست از تفاوتِ چند میکروثانیه‌ای، امضای توکن را
+   حرف‌به‌حرف حدس بزند. */
+function safeEqual(a, b) {
+  a = String(a); b = String(b);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 async function sign(env, payload, hours = 72) {
   const body = b64u(enc.encode(JSON.stringify({ ...payload, exp: Date.now() + hours * 36e5 })));
   return body + '.' + await hmac(env.JWT_SECRET || 'dev-secret-change-me', body);
@@ -51,7 +61,7 @@ async function sign(env, payload, hours = 72) {
 async function verify(env, token) {
   if (!token || !token.includes('.')) return null;
   const [body, sig] = token.split('.');
-  if (sig !== await hmac(env.JWT_SECRET || 'dev-secret-change-me', body)) return null;
+  if (!safeEqual(sig, await hmac(env.JWT_SECRET || 'dev-secret-change-me', body))) return null;
   try {
     const pad = body.replace(/-/g, '+').replace(/_/g, '/');
     const p = JSON.parse(new TextDecoder().decode(
@@ -907,7 +917,7 @@ const SEC_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
   'Permissions-Policy': 'geolocation=(self), camera=(), microphone=(), payment=()',
-  'Strict-Transport-Security': 'max-age=15552000; includeSubDomains',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Content-Security-Policy': [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
@@ -1876,8 +1886,11 @@ export default {
         const rl = await rateLimit(env, 'login:' + clientIp(req), 8, 600);
         if (!rl.ok) return tooMany(rl);
         const u = await getSetting(env, 'adminUser', env.ADMIN_USER || 'admin');
-        const pw = await getSetting(env, 'adminPass', env.ADMIN_PASS || 'sana1405');
-        if (body.user !== u || body.pass !== pw) return bad('نام کاربری یا رمز درست نیست', 401);
+        const pw = await getSetting(env, 'adminPass', env.ADMIN_PASS || '');
+        /* رمزِ پیش‌فرضِ ثابت در کد نیست. اگر روی سرور رمزی تنظیم نشده،
+           ورود اصلاً باز نمی‌شود تا کسی با رمز حدس‌زدنی وارد نشود. */
+        if (!pw) return bad('رمز مدیر روی سرور تنظیم نشده است. با دستور wrangler secret put ADMIN_PASS آن را بگذارید.', 503);
+        if (body.user !== u || !safeEqual(body.pass || '', pw)) return bad('نام کاربری یا رمز درست نیست', 401);
         return json({ ok: true, token: await sign(env, { role: 'admin' }, 12) });
       }
 
