@@ -184,6 +184,9 @@ nav::-webkit-scrollbar{display:none}
 .btn-dark{background:var(--dark);color:#fff;padding:15px 30px;border-radius:14px;font-weight:700;font-size:15px}
 
 /* ===== journey ===== */
+/* نوار دسته‌بندی روی صفحهٔ اول — فقط در گوشی.
+   نقطهٔ رنگی هر دسته همان رنگِ خودِ آن دسته است. */
+.hchips{display:none}
 .journey{position:relative;width:100%;max-width:430px;margin-inline-start:auto}
 .journey>svg{width:100%;height:auto;display:block}
 .jp{stroke-dasharray:1180;stroke-dashoffset:1180;animation:draw 5.5s ease-in-out infinite}
@@ -371,13 +374,15 @@ html.quiet .sres a, html.quiet #dBody h4,
 html.quiet #finderBody .fgo b, html.quiet #docBody [data-relp] b,
 html.quiet #docTitle, html.quiet #chatBody, html.quiet #doneSum,
 html.quiet .qa .qitem,
-html.quiet .nav-item>a, html.quiet .sub a{filter:blur(4.5px);transition:filter .15s}
+html.quiet .nav-item>a, html.quiet .sub a,
+html.quiet .hchips a{filter:blur(4.5px);transition:filter .15s}
 
 /* با بردن نشانگر روی همان مورد، خودش موقتاً پیدا می‌شود. */
 html.quiet .card:hover h3, html.quiet .card:hover .desc, html.quiet .card:hover .brand,
 html.quiet .art:hover h3, html.quiet .art:hover p,
 html.quiet .hero p:hover, html.quiet .trust>div:hover .tx p,
 html.quiet .cat-head:hover h2, html.quiet .cat-head:hover p, html.quiet .cat-head:hover .badge,
+html.quiet .hchips a:hover,
 html.quiet .sres a:hover, html.quiet #dBody .line:hover h4,
 html.quiet #finderBody .fgo:hover b, html.quiet #docBody [data-relp]:hover b,
 html.quiet #docTitle:hover, html.quiet #chatBody:hover, html.quiet #doneSum:hover,
@@ -823,6 +828,37 @@ footer #fContact ul{margin-top:4px}
 }
 @media(max-width:640px){
   html{scroll-padding-top:118px}
+
+  /* ---- صفحهٔ اول در گوشی ----
+     تنها تیتر و نمودار مسیر سفارش ۱۰۲۱ پیکسل بود و اولین کالا در ۱۶۹۶
+     پیکسل می‌آمد — یعنی بازدیدکننده باید دو صفحهٔ کامل پایین می‌رفت تا
+     چیزی برای خریدن ببیند. پیام همان است، فقط جمع‌وجورتر. */
+  .hero{padding:20px 0 46px}
+  /* min-width:0 لازم است: بدون آن، نوارِ دسته‌بندی که از عرض صفحه
+     پهن‌تر است ستون را کِش می‌دهد و کلِ صفحه از لبه بیرون می‌زند. */
+  .hero-grid{gap:0}
+  .hero-grid>div{min-width:0}
+  .hero h1{font-size:27px;line-height:1.3;letter-spacing:-.7px;margin-top:13px}
+  .hero p{margin-top:10px;font-size:14.5px;line-height:1.8;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .pill{padding:6px 13px;font-size:12px}
+  /* دو دکمه با دو عرض مختلف زیر هم می‌شکستند و ناجور بود */
+  .hero-actions{margin-top:18px;gap:9px;flex-direction:column;align-items:stretch}
+  .hero-actions>*{width:100%;text-align:center;padding:14px 18px;font-size:14.5px}
+  /* نمودار مسیر سفارش ۴۷۰ پیکسل از صفحهٔ اول را می‌گرفت و همان چهار قولی
+     را می‌داد که کارت‌های بلافاصله زیرش می‌دهند. در گوشی برداشته شد. */
+  .hero-grid>div:last-child{display:none}
+
+  /* نوار دسته‌بندی، همان‌جا زیر دکمه‌ها */
+  .hchips{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding-bottom:5px;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .hchips::-webkit-scrollbar{display:none}
+  .hchips a{flex:none;white-space:nowrap;font-size:12.5px;font-weight:700;color:#fff;
+    padding:9px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.18);
+    background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.05))}
+  .hchips a::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--cc,#E0164B);margin-inline-end:7px;vertical-align:middle;
+    box-shadow:0 0 9px var(--cc,#E0164B)}
   /* جلوگیری از زوم خودکار iOS هنگام تایپ */
   input,select,textarea{font-size:16px}
   .modal{padding:16px;align-items:flex-start}
@@ -838,7 +874,8 @@ footer #fContact ul{margin-top:4px}
   .card{flex:0 0 calc(50% - 18px);border-radius:15px}
   .body{padding:10px 11px 12px}
   .brand{font-size:10.5px}
-  .card h3{font-size:13px;line-height:1.55;margin-top:1px;
+  /* نام یک‌خطی و دوخطی کنار هم، دکمه‌ها را ناهم‌تراز می‌کرد. */
+  .card h3{font-size:13px;line-height:1.55;margin-top:1px;min-height:calc(2 * 1.55em);
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   /* توضیح کالا روی گوشی جا نمی‌شود و بلندترین بخش کارت بود؛ متن کاملش در
      صفحهٔ خود کالاست. */
@@ -856,10 +893,24 @@ footer #fContact ul{margin-top:4px}
   .rank{width:23px;height:23px;font-size:11px;border-radius:8px;top:7px;inset-inline-start:7px}
   .cat{margin-bottom:36px}
   .cat-head h2{font-size:21px}
-  .trust{grid-template-columns:1fr;gap:9px}
-  .trust>div{padding:14px 15px;border-radius:15px;align-items:center}
-  .trust .ic{width:38px;height:38px}
-  .cat-head{gap:10px} .rail-nav{display:none}
+  /* چهار کارتِ تمام‌عرض زیر هم، ۳۳۴ پیکسل می‌گرفت و صفحه را کِش می‌داد.
+     دو در دو، با نشان بالای متن، هم کوتاه‌تر است هم مرتب‌تر. */
+  .trust{grid-template-columns:1fr 1fr;gap:9px;margin-top:-26px}
+  .trust>div{padding:13px 12px;border-radius:16px;
+    flex-direction:column;align-items:flex-start;gap:9px}
+  .trust .ic{width:34px;height:34px;border-radius:11px}
+  .trust .ic svg{width:17px;height:17px}
+  .trust h4{font-size:13px;margin-bottom:2px}
+  .trust p{font-size:11.5px;line-height:1.65}
+  /* شمارنده با margin-inline-start:auto کنارِ تیتر می‌ایستاد و در گوشی
+     وسطِ هوا شناور به نظر می‌رسید. می‌رود سطر خودش، زیر تیتر. */
+  .cat-head{gap:9px} .rail-nav{display:none}
+  .cat-head .timer{margin-inline-start:0;order:9;flex:1 0 100%;
+    justify-content:center;padding:8px 13px;font-size:13.5px}
+  /* دکمهٔ خرید صورتیِ کم‌رنگ روی سفید بود و اصلاً به چشم نمی‌آمد؛
+     روی گوشی مهم‌ترین دکمهٔ صفحه همین است. */
+  .add{background:var(--acc);color:#fff;font-weight:800}
+  .add.on{background:#166534;color:#fff}
   .arts{grid-template-columns:1fr;gap:12px}
   .art{padding:16px;border-radius:16px}
   .band{padding:20px 15px 14px;border-radius:22px}
@@ -956,6 +1007,9 @@ footer #fContact ul{margin-top:4px}
         <a class="btn-main" href="#deals" data-tx="heroBtn1">بزن بریم خرید</a>
         <button class="btn-ghost" id="askBtn2" data-tx="heroBtn2">نمی‌دونم کدوم به دردم می‌خوره</button>
       </div>
+      <!-- در گوشی، همان اول معلوم باشد اینجا چه می‌فروشیم. در دسکتاپ
+           منوی بالای صفحه همین کار را می‌کند، پس آنجا نشان داده نمی‌شود. -->
+      <nav class="hchips" id="heroChips" aria-label="دسته‌بندی‌ها"></nav>
     </div>
     <div>
       <div class="journey" dir="ltr">
@@ -1473,6 +1527,11 @@ function renderMenu(){
     </div>`).join('');
   document.getElementById('fCats').innerHTML=cats.map(c=>
     `<li><a href="/c/${encodeURIComponent(c.id)}">${esc(c.name)}</a></li>`).join('');
+  /* نوار دسته‌بندی روی صفحهٔ اول (گوشی). رنگ نقطه از خودِ دسته می‌آید.
+     کلیک را همان شنوندهٔ /c/ که پایین‌تر هست می‌گیرد. */
+  const hc=document.getElementById('heroChips');
+  if(hc) hc.innerHTML=cats.map(c=>
+    `<a href="/c/${encodeURIComponent(c.id)}" style="--cc:${esc(c.acc||'#E0164B')}">${esc(c.name)}</a>`).join('');
 }
 
 /* ============ products ============ */
