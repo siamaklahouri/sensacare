@@ -19,6 +19,14 @@ on:
       - claude/health-products-cloudflare-worker-5z2moc
   workflow_dispatch:
 
+# یک استقرار در هر لحظه، و اگر اجرایی در صف مانده بود لغو شود.
+# بدون این، اجرای قدیمی‌ای که ساعت‌ها در صفِ گیت‌هاب مانده می‌تواند بعد از
+# اجرای تازه تمام شود و نسخهٔ قدیمی را روی نسخهٔ جدید بنویسد — دقیقاً همین
+# یک‌بار اتفاق افتاد. اجرای در حالِ استقرار لغو نمی‌شود تا وسط کار نماند.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
