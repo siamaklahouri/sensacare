@@ -1039,7 +1039,7 @@ footer #fContact ul{margin-top:4px}
 <section class="faq" id="faq">
   <div class="wrap faq-grid">
     <div><h2 data-tx="faqTitle">هر چی بخوای بپرسی، جواب داریم</h2>
-      <p class="lead" data-tx="faqSub">اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۲۱ جواب می‌دیم.</p></div>
+      <p class="lead" data-tx="faqSub">اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۱۸ جواب می‌دیم.</p></div>
     <div>
       <details open><summary data-tx="faq1q">روی بسته چی نوشته می‌شه؟</summary><p data-tx="faq1a">فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه.</p></details>
       <details><summary data-tx="faq2q">از کجا بدونم جنس اصله؟</summary><p data-tx="faq2a">روی هر جعبه کد رهگیری وارداتی هست. کد رو توی سامانهٔ اصالت کالا وارد کن تا خودت مطمئن بشی.</p></details>
@@ -1086,7 +1086,7 @@ footer #fContact ul{margin-top:4px}
     </div>
     <div class="badges" id="badges">
       <div class="badge2"><span style="font-size:19px">🔒</span><span><b>بسته‌بندی بی‌نشان</b>روی جعبه هیچ نامی نیست</span></div>
-      <div class="badge2"><span style="font-size:19px">💬</span><span><b>پشتیبانی هر روز</b>تلگرام و بله، ۹ تا ۲۱</span></div>
+      <div class="badge2"><span style="font-size:19px">💬</span><span><b>پشتیبانی هر روز</b>تلگرام و بله، ۹ تا ۱۸</span></div>
       <div class="badge2"><span style="font-size:19px">✅</span><span><b>ضمانت اصالت</b>کد رهگیری روی هر جعبه</span></div>
       <div class="badge2"><span style="font-size:19px">↩️</span><span><b>مرجوعی ۷ روزه</b>بستهٔ باز نشده</span></div>
     </div>
@@ -1540,7 +1540,7 @@ const TX = {
   blogTitle:  ['بخش مجله', 'عنوان', 'چیزایی که خوبه بدونی'],
   blogSub:    ['بخش مجله', 'زیرعنوان', 'ساده و بی‌تعارف، بدون تبلیغ'],
   faqTitle:   ['بخش پرسش‌ها', 'عنوان', 'هر چی بخوای بپرسی، جواب داریم'],
-  faqSub:     ['بخش پرسش‌ها', 'زیرعنوان', 'اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۲۱ جواب می‌دیم.'],
+  faqSub:     ['بخش پرسش‌ها', 'زیرعنوان', 'اگه جوابت اینجا نبود، از دستیار بپرس یا توی تلگرام و بله برامون بنویس — هر روز ۹ تا ۱۸ جواب می‌دیم.'],
   faq1q:     ['پرسش‌های پرتکرار', 'پرسش 1', 'روی بسته چی نوشته می‌شه؟'],
   faq1a:     ['پرسش‌های پرتکرار', 'پاسخ 1', 'فقط اسم و آدرس خودت. نه اسمی از سِنسا روش هست، نه از محتویاتش. کارتن ساده و بی‌نشونه.'],
   faq2q:     ['پرسش‌های پرتکرار', 'پرسش 2', 'از کجا بدونم جنس اصله؟'],
@@ -1599,7 +1599,9 @@ const TX = {
   footTag:    ['پاورقی', 'جملهٔ زیر لوگو', 'خرید راحت، بدون خجالت و بدون واسطه.']
 };
 let texts = store.get('sensa_texts', {});
-const T = k => { const v = texts[k]; return (v!=null && String(v).trim()!=='') ? v : ((TX[k]||[])[2] || '') };
+/* آنچه در پنل می‌نویسید ممکن است با کیبورد انگلیسی تایپ شود؛ روی سایت
+   همیشه با رقم فارسی نشان داده می‌شود. */
+const T = k => { const v = texts[k]; return faN((v!=null && String(v).trim()!=='') ? v : ((TX[k]||[])[2] || '')) };
 const saveTexts = () => store.set('sensa_texts', texts);
 function applyTexts(){
   document.querySelectorAll('[data-tx]').forEach(el=>{ el.textContent = T(el.dataset.tx) });
@@ -1753,21 +1755,15 @@ const LOCAL_PAGES = [
 هر زمان بخواهید می‌توانید حذف کامل حساب و اطلاعاتتان را درخواست کنید. حداکثر ظرف ۴۸ ساعت انجام می‌شود.` },
 
   { slug:'contact', title:'راه‌های ارتباط', body:`## پشتیبانی
-تلفن: ۰۲۱–۹۱۰۰۰۰۰۰
-هر روز از ساعت ۹ تا ۲۱
+سؤالتان را در تلگرام یا بله برای ربات فروشگاه بفرستید: @sensacare_bot
+هر پیامی که بنویسید به پشتیبانی می‌رسد و همان‌جا جوابتان را می‌دهیم.
+هر روز از ساعت ۹ تا ۱۸
 
-## نشانی
-[نشانی دقیق محل کسب خود را اینجا بنویسید]
-کد پستی: [کد پستی]
+## پیگیری سفارش
+شمارهٔ فاکتورتان را برای همان ربات بفرستید تا وضعیت سفارش را بگوید.
 
 ## ایمیل
-hi@sensa.example
-
-## شمارهٔ ثبت و مجوز
-شمارهٔ ثبت: [شمارهٔ ثبت شرکت یا پروانهٔ کسب]
-شناسهٔ ملی: [شناسهٔ ملی]
-
-> این اطلاعات را قبل از راه‌اندازی نهایی با اطلاعات واقعی کسب‌وکار خود جایگزین کنید. برای دریافت نماد اعتماد الکترونیکی، درج نشانی و تلفن ثابت واقعی الزامی است.` }
+sensacareinfo@gmail.com` }
 ];
 
 /* ============ لایهٔ اتصال به سرور ============
@@ -3409,14 +3405,14 @@ const HERO_DEFAULT = {
 function paintHero(){
   const h=settings.hero||{};
   if(h.pill!=null&&h.pill!==''){
-    const el=$('heroPill'); if(el) el.innerHTML='<i></i> '+esc(h.pill);
+    const el=$('heroPill'); if(el) el.innerHTML='<i></i> '+faN(esc(h.pill));
   }
   if(h.title!=null&&h.title!==''){
     const el=$('heroTitle');
-    if(el) el.innerHTML=esc(h.title).replace(/\*([^*]+)\*/g,'<u>$1</u>');
+    if(el) el.innerHTML=faN(esc(h.title)).replace(/\*([^*]+)\*/g,'<u>$1</u>');
   }
   if(h.sub!=null&&h.sub!==''){
-    const el=$('heroSub'); if(el) el.textContent=h.sub;
+    const el=$('heroSub'); if(el) el.textContent=faN(h.sub);
   }
 }
 
@@ -3431,7 +3427,7 @@ function paintContact(){
   const rows=[];
   if(c.phone) rows.push(`<li><a href="tel:${esc(enN(c.phone))}" dir="ltr" style="display:inline-block">${faN(c.phone)}</a></li>`);
   if(c.email) rows.push(`<li><a href="mailto:${esc(c.email)}" dir="ltr" style="display:inline-block">${esc(c.email)}</a></li>`);
-  if(c.hours) rows.push(`<li>${esc(c.hours)}</li>`);
+  if(c.hours) rows.push(`<li>${faN(esc(c.hours))}</li>`);
   if(rows.length) h+='<ul>'+rows.join('')+'</ul>';
   if(!h) h='<ul><li>به‌زودی راه‌های تماس اینجا می‌آید.</li></ul>';
   el.innerHTML=h;

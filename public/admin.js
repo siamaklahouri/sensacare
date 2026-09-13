@@ -984,7 +984,7 @@ function repSet(){
       <div><label>ایمیل (اختیاری)</label>
         <input id="s_email" value="${esc((settings.contact||{}).email||'')}" dir="ltr" placeholder="info@sensacare.ir"></div>
       <div><label>ساعت پاسخ‌گویی (اختیاری)</label>
-        <input id="s_hours" value="${esc((settings.contact||{}).hours||'')}" placeholder="هر روز ۹ تا ۲۱"></div>
+        <input id="s_hours" value="${esc((settings.contact||{}).hours||'')}" placeholder="هر روز ۹ تا ۱۸"></div>
       <div><label>آی‌دی تلگرام برای کارت به کارت</label>
         <input id="s_tg" value="${esc(settings.telegram||'siamak_la')}" dir="ltr" placeholder="siamak_la">
         <p class="hint">بدون @ بنویسید. مشتری بعد از ثبت سفارش به این آی‌دی هدایت می‌شود.</p></div>
