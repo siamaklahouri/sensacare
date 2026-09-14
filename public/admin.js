@@ -1006,6 +1006,37 @@ function repStats(){
   }).catch(e=>{ C.innerHTML=`<div class="box"><p class="empty">آمار خوانده نشد: ${esc(e.message)}</p></div>` });
 }
 
+/* ---------- گفتگوهای مدیر ----------
+   هر پیامی که برای مدیر می‌رود — پشتیبان شبانه، فاکتور هر سفارش، خلاصهٔ
+   روز — یک‌بار به ازای هر گفتگوی این فهرست فرستاده می‌شود. اگر چیزی دو
+   بار به دستتان می‌رسد، جوابش همین‌جاست. */
+function adminChatsBox(){
+  const list = settings.adminChats || [];
+  const NAME = {telegram:'تلگرام', bale:'بله'};
+  const FROM = {bot:'خودتان در ربات ثبت کرده‌اید', setting:'دستی در تنظیمات',
+                env:'در متغیرهای سرور'};
+  const many = list.length > 1;
+  return `<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:16px">
+    <h3 style="font-size:15px">گفتگوهایی که پیام مدیر به آن‌ها می‌رود</h3>
+    ${list.length ? `
+      <p class="sub">هر پیام — پشتیبان شبانه، فاکتور، خلاصهٔ روز — یک‌بار به هرکدام
+        می‌رود. ${many ? `<b style="color:var(--red)">الان ${fa(list.length)} تاست، پس هر چیزی
+        ${fa(list.length)} بار می‌رسد.</b> اگر اضافی است، برش دارید.` : ''}</p>
+      <table style="margin-top:10px"><thead><tr><th>پیام‌رسان</th><th>شناسهٔ گفتگو</th>
+        <th>از کجا</th><th></th></tr></thead><tbody>
+        ${list.map(c=>`<tr>
+          <td>${NAME[c.pf]||c.pf}</td>
+          <td dir="ltr" style="font-variant-numeric:tabular-nums">${esc(c.id)}</td>
+          <td style="font-size:12.5px;color:var(--body)">${FROM[c.from]||c.from}</td>
+          <td>${c.from==='env'
+            ? '<span class="hint">باید در کلادفلر برداشته شود</span>'
+            : `<button class="mini del" data-rmchat="${esc(c.id)}" data-pf="${esc(c.pf)}"
+                 style="padding:7px 14px">بردار</button>`}</td></tr>`).join('')}
+      </tbody></table>`
+    : '<p class="empty">هنوز هیچ گفتگویی به‌عنوان مدیر ثبت نشده.</p>'}
+  </div>`;
+}
+
 /* --- تنظیمات --- */
 function repSet(){
   C.innerHTML=`<div class="box"><h3>تنظیمات فروشگاه</h3>
@@ -1078,6 +1109,7 @@ function repSet(){
       <button class="btn-main" id="s_bots" style="padding:12px 24px">ذخیرهٔ توکن‌ها</button>
       <button class="mini" id="s_bottest" style="padding:12px 20px">ارسال پیام آزمایشی</button>
     </div>
+    ${adminChatsBox()}
   </div>
   <div class="box"><h3>نرخ ارسال</h3><p class="sub">نرخ‌های پایه برای محاسبهٔ هزینه. برای اتصال واقعی به الوپیک یا اسنپ‌موتور باید از سمت سرور به API آن‌ها وصل شوید.</p>
     <table><thead><tr><th>مقصد</th><th>روش</th><th>هزینه</th><th>زمان</th></tr></thead><tbody>
@@ -1103,6 +1135,23 @@ function repSet(){
       catch(e){ toast('ذخیره روی سرور انجام نشد.') } }
     else toast('برای فعال شدن ربات، سایت باید روی سرور باشد.');
   };
+  /* برداشتن گفتگوی اضافی — همان که باعث می‌شد هر پیام دوبار برسد */
+  C.addEventListener('click', async e=>{
+    const b=e.target.closest('[data-rmchat]'); if(!b) return;
+    const id=b.dataset.rmchat, pf=b.dataset.pf;
+    if(!confirm(`دیگر هیچ پیامی به این گفتگو (${id}) فرستاده نشود؟`)) return;
+    b.disabled=true;
+    try{
+      const r=await req('/api/admin/botchat/remove',{method:'POST',asAdmin:true,
+        body:{platform:pf, chat:id}});
+      settings.adminChats=r.list||[]; saveSet();
+      toast(r.stillInEnv
+        ? 'از دیتابیس برداشته شد، ولی هنوز در متغیرهای سرور هست.'
+        : 'برداشته شد.');
+      repSet();
+    }catch(err){ b.disabled=false; toast('برداشته نشد: '+err.message) }
+  });
+
   $('s_bottest').onclick=async()=>{
     if(!ONLINE){toast('فقط روی سرور کار می‌کند.');return}
     try{

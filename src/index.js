@@ -200,14 +200,55 @@ async function botCall(env, pf, method, payload) {
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
+/* هر پیامی که برای مدیر می‌رود، یک‌بار به ازای هر گفتگوی ثبت‌شده فرستاده
+   می‌شود. اگر یک شناسه دوبار در فهرست بیاید — مثلاً هم در ربات ثبت شده
+   باشد هم دستی در تنظیمات، با یک فاصلهٔ اضافه یا به شکل عدد — همان پیام
+   دوبار می‌رفت. اینجا مرتب و یکتا می‌شود. */
 async function adminChats(env, pf) {
   const rows = await all(env, 'SELECT chat_id FROM bot_chats WHERE platform=? AND role=?', pf, 'admin');
   const fixed = pf === 'telegram'
     ? (env.TELEGRAM_CHAT_ID || await getSetting(env, 'tgChat', ''))
     : (env.BALE_CHAT_ID || await getSetting(env, 'baleChat', ''));
-  const ids = rows.map(r => r.chat_id);
-  if (fixed && !ids.includes(String(fixed))) ids.push(String(fixed));
-  return ids;
+  const clean = x => String(x == null ? '' : x).trim();
+  const ids = rows.map(r => clean(r.chat_id)).filter(Boolean);
+  if (clean(fixed)) ids.push(clean(fixed));
+  return [...new Set(ids)];
+}
+
+/* برای پنل: هر گفتگوی مدیر با اینکه از کجا آمده — خودش در ربات ثبت
+   کرده، یا دستی در تنظیمات نوشته شده، یا در متغیر سرور است. */
+async function adminChatList(env) {
+  const out = [];
+  for (const pf of ['telegram', 'bale']) {
+    const clean = x => String(x == null ? '' : x).trim();
+    const rows = await all(env,
+      'SELECT chat_id, created FROM bot_chats WHERE platform=? AND role=?', pf, 'admin');
+    const envId = clean(pf === 'telegram' ? env.TELEGRAM_CHAT_ID : env.BALE_CHAT_ID);
+    const setId = clean(await getSetting(env, pf === 'telegram' ? 'tgChat' : 'baleChat', ''));
+    const seen = new Set();
+    for (const r of rows) {
+      const id = clean(r.chat_id);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      out.push({ pf, id, from: 'bot', created: r.created || 0 });
+    }
+    for (const [id, from] of [[envId, 'env'], [setId, 'setting']]) {
+      if (id && !seen.has(id)) { seen.add(id); out.push({ pf, id, from, created: 0 }); }
+    }
+  }
+  return out;
+}
+
+/* ---------- کارهای شبانه فقط یک‌بار در روز ----------
+   کلادفلر در موارد نادر یک رویداد زمان‌بندی را دوبار می‌رساند، و اگر
+   روزی دو نسخه از ورکر روی یک دیتابیس باشند هم همین می‌شود. این قفل
+   اتمی است: هرکس زودتر ردیف را ساخت، کار مال اوست و بقیه رد می‌شوند. */
+async function claimOnce(env, key) {
+  try {
+    const r = await env.DB.prepare('INSERT OR IGNORE INTO job_runs(k,at) VALUES(?,?)')
+      .bind(key, Date.now()).run();
+    return (r?.meta?.changes ?? r?.changes ?? 1) > 0;
+  } catch (e) { return true; }   /* اگر جدول نبود، جلوی کار شبانه را نگیر */
 }
 
 /* فیش پرداخت را به‌صورت عکس برای مدیرها می‌فرستد.
@@ -1238,13 +1279,23 @@ async function reorderReminders(env) {
 export default {
   /* هر شب یک بار: پشتیبان کامل را در تلگرام و بله می‌فرستد */
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runBackup(env).catch(e => console.log('backup', e.message)));
-    ctx.waitUntil(reorderReminders(env).catch(e => console.log('reorder', e.message)));
-    ctx.waitUntil(cartNudges(env).catch(e => console.log('cart', e.message)));
-    ctx.waitUntil(payNudges(env).catch(e => console.log('pay', e.message)));
-    ctx.waitUntil(stockAlert(env).catch(e => console.log('stock', e.message)));
-    ctx.waitUntil(dailyDigest(env).catch(e => console.log('digest', e.message)));
-    ctx.waitUntil(botHealth(env).catch(e => console.log('bothealth', e.message)));
+    /* هرکدام جدا قفل می‌شود تا اگر یکی نشد، بقیه سرِ وقت انجام شوند. */
+    const day = today();
+    const once = (name, fn) => ctx.waitUntil((async () => {
+      if (!(await claimOnce(env, `${name}:${day}`))) return;
+      await fn(env);
+    })().catch(e => console.log(name, e.message)));
+
+    once('backup', runBackup);
+    once('reorder', reorderReminders);
+    once('cart', cartNudges);
+    once('pay', payNudges);
+    once('stock', stockAlert);
+    once('digest', dailyDigest);
+    once('bothealth', botHealth);
+    /* ردیف‌های کهنه لازم نیستند */
+    ctx.waitUntil(run(env, 'DELETE FROM job_runs WHERE at < ?', Date.now() - 30 * 86400000)
+      .catch(() => {}));
   },
 
   async fetch(req, env, ctx) {
@@ -2030,7 +2081,10 @@ export default {
               botLogin: await botLoginOptions(env),
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {}),
-              botHealth: await getSetting(env, 'botHealth', null)
+              botHealth: await getSetting(env, 'botHealth', null),
+              /* هر پیام مدیر به همهٔ این گفتگوها می‌رود. اگر دو تا باشد،
+                 هر چیزی دو بار می‌رسد — پس باید دیده شود. */
+              adminChats: await adminChatList(env)
             }
           });
         }
@@ -2265,6 +2319,21 @@ export default {
             couponUse: await all(env, `SELECT code, COUNT(*) n, COALESCE(SUM(amount),0) sum
               FROM order_discounts GROUP BY code ORDER BY n DESC LIMIT 12`)
           });
+        }
+
+        /* اگر یک گفتگو اضافی ثبت شده باشد، هر پیام مدیر دوبار می‌رسد.
+           این همان را برمی‌دارد — چه در ربات ثبت شده باشد چه در تنظیمات. */
+        if (p === '/api/admin/botchat/remove' && m === 'POST') {
+          const pf = body.platform === 'bale' ? 'bale' : 'telegram';
+          const id = String(body.chat || '').trim();
+          if (!id) return bad('شناسهٔ گفتگو نیامده');
+          await run(env, 'DELETE FROM bot_chats WHERE platform=? AND chat_id=? AND role=?',
+            pf, id, 'admin');
+          const key = pf === 'telegram' ? 'tgChat' : 'baleChat';
+          if (String(await getSetting(env, key, '')).trim() === id) await setSetting(env, key, '');
+          const envId = String((pf === 'telegram' ? env.TELEGRAM_CHAT_ID : env.BALE_CHAT_ID) || '').trim();
+          /* متغیر سرور از اینجا پاک نمی‌شود؛ باید در کلادفلر برداشته شود. */
+          return json({ ok: true, stillInEnv: envId === id, list: await adminChatList(env) });
         }
 
         if (p === '/api/admin/settings' && m === 'POST') {

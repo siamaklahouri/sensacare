@@ -314,3 +314,9 @@ CREATE TABLE IF NOT EXISTS review_done(
   product_id TEXT,
   created    INTEGER,
   PRIMARY KEY(order_id, product_id));
+
+/* ۲۰ قفلِ کارهای شبانه، تا اگر رویداد زمان‌بندی دوبار برسد پشتیبان و
+   یادآورها هم دوبار نروند. هر ردیف یعنی «این کار در این روز انجام شد». */
+CREATE TABLE IF NOT EXISTS job_runs(
+  k  TEXT PRIMARY KEY,
+  at INTEGER);
