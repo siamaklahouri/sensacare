@@ -1317,18 +1317,27 @@ let gateReady = null;   /* وعده‌ای که وقتی وارد شدیم با�
   function openGate(){
     screenEl.hidden = false;
     setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 60);
+    /* حتی وقتی وارد نشده‌ایم، بقیهٔ صفحه باید راه بیفتد. یک بار همین‌جا
+       معلق ماند و صفحه پشتِ قفل برای همیشه روی «در حال بارگذاری» ماند. */
+    letMeIn(false);
   }
   function closeGate(){ screenEl.hidden = true; }
 
-  /* آیا کوکی نشست هنوز معتبر است؟ */
-  apiCall("/me").then(r=>{
-    if(r.ok && r.data.in){ closeGate(); letMeIn(true); }
-    else openGate();
-  }).catch(()=>{
-    /* سرور در دسترس نیست — با همان نسخهٔ محلی ادامه می‌دهیم، وگرنه
-       کارتابل در قطعی اینترنت اصلاً باز نمی‌شود. */
+  if(window.KARTABL_OFFLINE){
+    /* نسخهٔ داخل فایل پشتیبان: سروری در کار نیست، پس نه قفل معنا دارد
+       نه همگام‌سازی. باز می‌شود و با «⬆ بازیابی» پر می‌شود. */
     closeGate(); letMeIn(false);
-  });
+  } else {
+    /* آیا کوکی نشست هنوز معتبر است؟ */
+    apiCall("/me").then(r=>{
+      if(r.ok && r.data.in){ closeGate(); letMeIn(true); }
+      else openGate();
+    }).catch(()=>{
+      /* سرور در دسترس نیست — با همان نسخهٔ محلی ادامه می‌دهیم، وگرنه
+         کارتابل در قطعی اینترنت اصلاً باز نمی‌شود. */
+      closeGate(); letMeIn(false);
+    });
+  }
 
   form.addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1355,6 +1364,7 @@ let gateReady = null;   /* وعده‌ای که وقتی وارد شدیم با�
   document.addEventListener("DOMContentLoaded", ()=>{
     const lock = document.getElementById("lockBtn");
     if(!lock) return;
+    if(window.KARTABL_OFFLINE){ lock.style.display = "none"; return; }
     lock.addEventListener("click", async ()=>{
       try{ await apiCall("/logout", { method: "POST" }); }catch(e){}
       /* نسخهٔ محلی هم پاک می‌شود، وگرنه روی یک دستگاه مشترک داده‌ها
@@ -4822,6 +4832,7 @@ const Cloud = (function(){
   }
 
   async function pull(){
+    if(window.KARTABL_OFFLINE){ setCloudStatus("نسخهٔ پشتیبان — روی سرور نیست."); return false; }
     try{
       const r = await apiCall("/state");
       if(r.status === 401){ online = false; setCloudStatus("وارد نشده‌اید."); return false; }
@@ -4854,6 +4865,7 @@ const Cloud = (function(){
   }
 
   async function push(force){
+    if(window.KARTABL_OFFLINE) return;
     if(!online && !force) return;
     if(inFlight){ again = true; return; }
     inFlight = true;
@@ -4902,7 +4914,12 @@ function faTime(ms){
 }
 
 async function refreshBackupSettings(){
-  const r = await apiCall("/backup/settings");
+  /* روی نسخهٔ پشتیبان یا بدون اینترنت، این درخواست می‌افتد. بدون این
+     try، همان افتادن یک unhandled rejection می‌شد. */
+  if(window.KARTABL_OFFLINE) return;
+  let r;
+  try{ r = await apiCall("/backup/settings"); }
+  catch(e){ setState("botState", "به سرور نرسیدم.", "err"); return; }
   if(!r.ok) return;
   const d = r.data;
   setState("botState", d.hasToken
@@ -4921,6 +4938,12 @@ async function refreshBackupSettings(){
 }
 
 function setupSettings(){
+  if(window.KARTABL_OFFLINE){
+    /* در نسخهٔ پشتیبان نه رمزی هست که عوض شود نه رباتی که تنظیم شود */
+    const nav = document.querySelector('.navbtn[data-view="settings"]');
+    if(nav) nav.style.display = "none";
+    return;
+  }
   /* --- عوض کردن رمز --- */
   const form = document.getElementById("passForm");
   if(form) form.addEventListener("submit", async (e)=>{

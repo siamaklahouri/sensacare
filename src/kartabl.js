@@ -201,17 +201,53 @@ export async function buildKartablBackup(env, req) {
 
      آدرس‌های نسبیِ کتابخانه‌ها هم مطلق می‌شوند، وگرنه فایلِ بازشده روی
      سیستم نمودارها را بالا نمی‌آورد. */
+  /* پشتیبان باید بدون هیچ اینترنتی کامل باز شود، پس کتابخانه‌ها و فونت
+     هم داخلش می‌روند و صفحه به‌جای آدرس‌های مطلق، کنار خودش را نگاه
+     می‌کند. بار اول که این را نگذاشتم، فایلِ آفلاین باز می‌شد ولی
+     نمودارها روی «در حال بارگذاری» می‌ماندند. */
+  const grab = async path => {
+    try {
+      const r = await env.ASSETS.fetch(new Request(new URL(path, req.url), req));
+      return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+    } catch (e) { return null; }
+  };
+
+  const extras = [];
+  for (const [from, to] of [
+    ['/siamak/v/chart.umd.min.js', 'It/v/chart.umd.min.js'],
+    ['/siamak/v/xlsx.full.min.js', 'It/v/xlsx.full.min.js'],
+    ['/f/Vazirmatn-Regular.2.woff2',   'It/f/Vazirmatn-Regular.2.woff2'],
+    ['/f/Vazirmatn-Medium.2.woff2',    'It/f/Vazirmatn-Medium.2.woff2'],
+    ['/f/Vazirmatn-SemiBold.2.woff2',  'It/f/Vazirmatn-SemiBold.2.woff2'],
+    ['/f/Vazirmatn-Bold.2.woff2',      'It/f/Vazirmatn-Bold.2.woff2'],
+    ['/f/Vazirmatn-ExtraBold.2.woff2', 'It/f/Vazirmatn-ExtraBold.2.woff2']
+  ]) {
+    const data = await grab(from);
+    /* woff2 خودش فشرده است؛ دوباره فشردنش فقط وقت می‌برد */
+    if (data) extras.push({ name: to, data, store: to.endsWith('.woff2') });
+  }
+
   let html = '';
   try {
     const res = await env.ASSETS.fetch(new Request(new URL('/siamak/', req.url), req));
-    if (res.ok) html = (await res.text()).replace(/"\/siamak\/v\//g, '"https://sensacare.ir/siamak/v/');
+    if (res.ok) {
+      html = (await res.text())
+        /* نسخهٔ داخل پشتیبان نباید سراغ سرور برود: نه ورود می‌خواهد و نه
+           همگام‌سازی. بدون این پرچم، فایلِ بازشده روی سیستم منتظر جوابی
+           می‌ماند که هیچ‌وقت نمی‌آید. */
+        .replace('<head>', '<head>\n<script>window.KARTABL_OFFLINE = true;<\/script>')
+        /* آدرس‌های مطلق روی file:// به جایی نمی‌رسند */
+        .replace(/"\/siamak\/v\//g, '"v/')
+        .replace(/\(\/f\//g, '(f/')
+        .replace(/"\/f\//g, '"f/');
+    }
   } catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
 
   const entries = [
     { name: 'It/' + JSON_NAME, data: stateJson },
     { name: 'It/' + XLSX_NAME, data: xlsx, store: true }  /* خودش زیپ است */
   ];
-  if (html) entries.push({ name: 'It/' + HTML_NAME, data: html });
+  if (html) { entries.push({ name: 'It/' + HTML_NAME, data: html }); entries.push(...extras); }
 
   const zip = await makeZip(entries);
   const counts = {
