@@ -1111,6 +1111,22 @@ function repSet(){
     </div>
     ${adminChatsBox()}
   </div>
+  <div class="box"><h3>سرچ کنسول گوگل</h3>
+    <p class="sub">برای اینکه ببینید گوگل سایت را چطور می‌بیند و مردم با چه کلماتی پیدایتان
+      می‌کنند، باید مالکیت سایت را تأیید کنید. در
+      <a href="https://search.google.com/search-console" target="_blank" rel="noopener"
+         style="color:var(--red)">سرچ کنسول</a> روش <b>HTML file</b> را بزنید، اسم فایلی که
+      می‌دهد (مثل <code>google1a2b3c.html</code>) را اینجا بگذارید و ذخیره کنید — بعد در گوگل
+      دکمهٔ Verify را بزنید. نیازی به استقرار دوباره نیست.</p>
+    <div class="f2">
+      <div class="full"><label>نام فایل تأیید</label>
+        <input id="s_gsc" value="${esc(settings.gscToken||'')}" dir="ltr"
+               placeholder="google1a2b3c4d5e.html"></div>
+    </div>
+    ${settings.gscToken?`<p class="hint">آدرس فایل:
+      <code dir="ltr">/${esc(String(settings.gscToken).replace(/^\//,''))}</code></p>`:''}
+    <button class="btn-main" id="s_gscSave" style="padding:12px 24px;margin-top:12px">ذخیره</button>
+  </div>
   <div class="box"><h3>نرخ ارسال</h3><p class="sub">نرخ‌های پایه برای محاسبهٔ هزینه. برای اتصال واقعی به الوپیک یا اسنپ‌موتور باید از سمت سرور به API آن‌ها وصل شوید.</p>
     <table><thead><tr><th>مقصد</th><th>روش</th><th>هزینه</th><th>زمان</th></tr></thead><tbody>
       <tr><td>تهران و کرج</td><td>🛵 پیک، الوپیک، اسنپ</td>
@@ -1151,6 +1167,16 @@ function repSet(){
       repSet();
     }catch(err){ b.disabled=false; toast('برداشته نشد: '+err.message) }
   });
+
+  $('s_gscSave').onclick=async()=>{
+    settings.gscToken=$('s_gsc').value.trim(); saveSet();
+    if(!ONLINE){ toast('فقط روی سرور کار می‌کند.'); return }
+    try{
+      await req('/api/admin/settings',{method:'POST',asAdmin:true,body:{gscToken:settings.gscToken}});
+      toast(settings.gscToken?'ذخیره شد. حالا در گوگل Verify را بزنید.':'برداشته شد.');
+      repSet();
+    }catch(e){ toast('ذخیره نشد: '+e.message) }
+  };
 
   $('s_bottest').onclick=async()=>{
     if(!ONLINE){toast('فقط روی سرور کار می‌کند.');return}
@@ -1302,11 +1328,40 @@ $('importBtn').onclick=()=>$('jsonFile').click();
 $('jsonFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{try{const d=JSON.parse(r.result);
-    if(Array.isArray(d)){products=d}
-    else{products=d.products||products;cats=d.cats||cats;menu=d.menu||menu;orders=d.orders||orders;users=d.users||users;feedback=d.feedback||feedback;settings=Object.assign(settings,d.settings||{})}
-    save();saveCats();saveMenu();saveOrders();saveUsers();saveFb();saveSet();render();updateCart();paintAcctBtn();drawPanel();toast('بازیابی انجام شد.')}
-    catch(err){toast('فایل معتبر نیست.')}};
+  r.onload=async()=>{
+    let d; try{ d=JSON.parse(r.result) }catch(err){ toast('فایل معتبر نیست.'); return }
+
+    /* اگر فایل دامپ کامل است و به سرور وصلیم، واقعاً روی سرور برگردانش —
+       تا امروز این دکمه فقط نسخهٔ داخل مرورگر را عوض می‌کرد و دیتابیس
+       دست‌نخورده می‌ماند، یعنی پشتیبان عملاً راه بازگشتی نداشت. */
+    if(ONLINE && d && d._tables){
+      const n=Object.values(d._tables).reduce((a,x)=>a+(Array.isArray(x)?x.length:0),0);
+      const when=d._meta&&d._meta.at ? new Date(d._meta.at).toLocaleString('fa-IR') : 'نامعلوم';
+      if(!confirm(`این کار همهٔ داده‌های فعلی فروشگاه را با این فایل جایگزین می‌کند.\n\n`+
+                  `تاریخ فایل: ${when}\nتعداد ردیف: ${fa(n)}\n\n`+
+                  `پیش از شروع، یک پشتیبان از وضعیت فعلی گرفته و در ربات فرستاده می‌شود.\n`+
+                  `ادامه بدهم؟`)) { e.target.value=''; return }
+      const typed=prompt('برای تأیید نهایی، کلمهٔ «بازگردانی» را بنویسید:');
+      if((typed||'').trim()!=='بازگردانی'){ toast('لغو شد.'); e.target.value=''; return }
+      toast('در حال بازگرداندن…');
+      try{
+        const res=await req('/api/admin/restore',{method:'POST',asAdmin:true,
+          body:{confirm:'بازگردانی', backup:d}});
+        const rows=res.restored.reduce((a,x)=>a+x.rows,0);
+        toast(`بازگردانده شد — ${fa(res.restored.length)} جدول، ${fa(rows)} ردیف.`);
+        setTimeout(()=>location.reload(),1400);
+      }catch(err){ toast('بازگردانده نشد: '+err.message) }
+      e.target.value=''; return;
+    }
+
+    /* فایل قدیمی یا حالت آفلاین: همان رفتار قبلی، فقط در مرورگر */
+    try{
+      if(Array.isArray(d)){products=d}
+      else{products=d.products||products;cats=d.cats||cats;menu=d.menu||menu;orders=d.orders||orders;users=d.users||users;feedback=d.feedback||feedback;settings=Object.assign(settings,d.settings||{})}
+      save();saveCats();saveMenu();saveOrders();saveUsers();saveFb();saveSet();render();updateCart();paintAcctBtn();drawPanel();
+      toast(ONLINE?'در مرورگر بازیابی شد (این فایل دامپ کامل نیست).':'بازیابی انجام شد.');
+    }catch(err){ toast('فایل معتبر نیست.') }
+  };
   r.readAsText(f);e.target.value=''};
 $('passBtn').onclick=async()=>{
   const u=prompt('نام کاربری جدید:',AUTH().u);if(u===null)return;
