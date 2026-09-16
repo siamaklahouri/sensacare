@@ -1516,8 +1516,11 @@ export default {
        روش «تگ متا» از اینجا شدنی نیست. روش «فایل HTML» شدنی است: کد را در
        پنل می‌گذارید و همین‌جا فایلش ساخته می‌شود — بدون استقرار تازه. */
     if (/^\/google[A-Za-z0-9_-]+\.html$/.test(p)) {
-      const tok = String(await getSetting(env, 'gscToken', '')).trim()
-        .replace(/^\//, '').replace(/\.html$/, '').replace(/^google/, '');
+      /* هرچه در پنل گذاشته شده باشد را می‌فهمیم: نام فایل، بدون پسوند،
+         با یا بدون google، حتی کل نشانی که از مرورگر کپی شده باشد. */
+      const raw = String(await getSetting(env, 'gscToken', '')).trim();
+      const tok = ((raw.match(/google([A-Za-z0-9_-]+)/) || [, ''])[1] ||
+                   (/^[A-Za-z0-9_-]+$/.test(raw) ? raw : ''));
       if (tok && p === `/google${tok}.html`)
         return new Response(`google-site-verification: google${tok}.html`,
           { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
