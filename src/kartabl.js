@@ -63,13 +63,21 @@ function constantEqual(a, b) {
   return diff === 0;
 }
 
+/* { ok } یا { error } برمی‌گرداند. اگر خودِ محاسبه شکست بخورد، «رمز اشتباه
+   است» جواب نمی‌دهیم: یک بار همین قورت دادنِ خطا باعث شد ساعت‌ها دنبال
+   رمزِ درست بگردیم، درحالی‌که ایراد از جای دیگری بود. */
 async function checkPassword(password, stored) {
-  if (!stored || typeof stored !== 'string') return false;
+  if (!stored || typeof stored !== 'string') return { error: 'رمز کارتابل روی سرور تنظیم نشده است.', status: 503 };
   const [kind, rounds, salt, want] = stored.split('$');
-  if (kind !== 'pbkdf2' || !salt || !want) return false;
+  if (kind !== 'pbkdf2' || !salt || !want)
+    return { error: 'رمزِ ذخیره‌شده روی سرور خوانا نیست.', status: 500 };
+  let got;
   try {
-    return constantEqual(await derive(password, unb64(salt), parseInt(rounds, 10) || PBKDF2_ROUNDS), want);
-  } catch (e) { return false; }
+    got = await derive(password, unb64(salt), parseInt(rounds, 10) || PBKDF2_ROUNDS);
+  } catch (e) {
+    return { error: 'بررسی رمز روی سرور انجام نشد: ' + (e.name || '') + ' ' + (e.message || ''), status: 500 };
+  }
+  return constantEqual(got, want) ? { ok: true } : { error: 'رمز عبور اشتباه است.', status: 401 };
 }
 
 /* ---------- نشست ----------
@@ -275,9 +283,8 @@ export async function handleKartabl(env, req, p, m, body, helpers) {
     const rl = await rateLimit(env, 'kartabl-login:' + clientIp(req), 10, 900);
     if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
     const stored = await getSetting(env, 'kartablPassHash', '');
-    if (!stored) return bad('رمز کارتابل هنوز روی سرور تنظیم نشده است.', 503);
-    if (!await checkPassword(String(body.password || ''), stored))
-      return bad('رمز عبور اشتباه است.', 401);
+    const check = await checkPassword(String(body.password || ''), stored);
+    if (!check.ok) return bad(check.error, check.status);
     const days = body.remember ? 30 : 1;
     return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader(await makeSession(env, days), days) });
   }
@@ -306,8 +313,8 @@ export async function handleKartabl(env, req, p, m, body, helpers) {
   /* عوض کردن رمز — رمز فعلی لازم است، و همهٔ نشست‌های دیگر بسته می‌شوند */
   if (p === '/api/kartabl/password' && m === 'POST') {
     const stored = await getSetting(env, 'kartablPassHash', '');
-    if (!await checkPassword(String(body.current || ''), stored))
-      return bad('رمز فعلی درست نیست.', 401);
+    const check = await checkPassword(String(body.current || ''), stored);
+    if (!check.ok) return bad(check.status === 401 ? 'رمز فعلی درست نیست.' : check.error, check.status);
     const next = String(body.next || '');
     if (next.length < 8) return bad('رمز تازه باید دست‌کم ۸ کاراکتر باشد.');
     await setSetting(env, 'kartablPassHash', await hashPassword(next));
