@@ -320,3 +320,26 @@ CREATE TABLE IF NOT EXISTS review_done(
 CREATE TABLE IF NOT EXISTS job_runs(
   k  TEXT PRIMARY KEY,
   at INTEGER);
+
+/* ۲۱ کارتابل مدیر IT. داده‌اش تا حالا فقط در حافظهٔ مرورگر بود و با عوض
+   کردن دستگاه از دست می‌رفت؛ حالا اینجا می‌نشیند تا همه‌جا یکی باشد و
+   پشتیبان شبانه هم چیزی برای فرستادن داشته باشد.
+
+   دو ردیف بیشتر ندارد: 'state' (وظایف، برنامهٔ روزانه، ماه‌ها، بخش شخصیِ
+   رمزشده) و 'db' (سرورها، شرکت‌ها، MVPN، لاگ بکاپ، فهرست ریموت). هر کدام
+   یک JSON است، نه ستون‌بندی‌شده — ساختار کارتابل مدام عوض می‌شود و این‌طور
+   هر تغییر یک مهاجرت تازه نمی‌خواهد. rev شمارهٔ نسخه است تا اگر دو دستگاه
+   هم‌زمان ذخیره کنند، دومی بی‌صدا روی اولی ننویسد. */
+CREATE TABLE IF NOT EXISTS kartabl(
+  k       TEXT PRIMARY KEY,
+  v       TEXT,
+  rev     INTEGER DEFAULT 0,
+  updated INTEGER);
+
+/* رمز ورود کارتابل. PBKDF2 با ۳۱۰٬۰۰۰ دور — خودِ رمز اینجا نیست و از روی
+   این رشته هم درنمی‌آید. DO NOTHING یعنی اگر بعداً از داخل پنل عوضش کرد،
+   استقرار بعدی رمزش را به حالت اول برنمی‌گرداند. */
+INSERT INTO settings(k,v) VALUES
+  ('kartablPassHash', '"pbkdf2$310000$4+bBvtXypoT7wrOX0S9iTA==$OSqLKk/gfOS9h5Rcs3AZiBaTRCUFLvfur+1vc6AKSjg="')
+  ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('kartablPassGen', '1') ON CONFLICT(k) DO NOTHING;
