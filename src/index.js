@@ -1501,20 +1501,13 @@ export default {
                    'Cache-Control': 'no-store' } }));
     }
 
-    /* کارتابل ماهانهٔ مدیر IT — صفحه‌ای جدا از فروشگاه که فقط با
-       زدن همین آدرس باز می‌شود. دادهٔ کارتابل روی سرور نیست و در حافظهٔ
-       مرورگر خودِ مدیر می‌ماند؛ خودِ صفحه هم یک قفل ورود دارد.
-       بدون این مسیر، آدرس بدون اسلش (/siamak) به صفحهٔ فروشگاه می‌رسید. */
-    if (/^\/siamak\/?$/.test(p)) {
-      const res = await env.ASSETS.fetch(new Request(new URL('/siamak/index.html', req.url), req));
-      if (!res.ok) return withSecurity(new Response(
-        'فایل کارتابل (public/siamak/index.html) پیدا نشد.',
-        { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
-      return withSecurity(new Response(await res.text(), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8',
-                   'X-Robots-Tag': 'noindex, nofollow',
-                   'Cache-Control': 'no-store' } }));
-    }
+    /* کارتابل ماهانهٔ مدیر IT روی /siamak — صفحه‌ای جدا از فروشگاه، با قفل
+       ورود خودش. اینجا کدی لازم ندارد: فایل‌های public پیش از رسیدن به این
+       کد از لبهٔ کلادفلر سرو می‌شوند، پس /siamak خودش به /siamak/ می‌رود و
+       public/siamak/index.html را می‌دهد. (مسیری مثل /admin کد می‌خواهد چون
+       فایلی به آن اسم وجود ندارد و باید index.html فروشگاه را برگرداند.)
+       هدر noindex آن در public/_headers است و خط Disallow پایین‌تر در
+       robots.txt. دادهٔ کارتابل هیچ‌وقت به سرور نمی‌رسد. */
 
     /* تأیید مالکیت در سرچ کنسول گوگل.
        صفحهٔ اول مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد، پس

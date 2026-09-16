@@ -1284,14 +1284,17 @@ const CATEGORIES = ["بکاپ‌گیری","سرورها و زیرساخت","ام
 
 /* ---------- Resilient Chart.js loader (tries several mirrors in case one is blocked) ---------- */
 const CHART_CDN_URLS = [
-  /* نسخهٔ محلی روی خودِ sensacare.ir — از داخل ایران همیشه باز می‌شود و
-     با سیاست امنیتی سایت (script-src 'self') هم جور است. */
+  /* نسخهٔ محلی روی خودِ sensacare.ir — از داخل ایران همیشه باز می‌شود.
+     سیاست امنیتی سایت script-src 'self' و cdnjs است، پس jsdelivr و
+     unpkg و fastly روی این دامنه هرگز بالا نمی‌آیند و فقط خطای کنسول
+     می‌سازند؛ تنها پشتیبانی که واقعاً می‌تواند کار کند cdnjs است. */
   "/siamak/v/chart.umd.min.js",
-  "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js",
-  "https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js",
-  "https://fastly.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+  "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"
 ];
+/* فایل ۲۰۰ کیلوبایتی روی اینترنت کند — یا بار اولی که هنوز روی لبهٔ
+   کلادفلر کش نشده — راحت از شش ثانیه رد می‌شود. یک‌بار همین‌طور شد و
+   صفحه بی‌دلیل سراغ CDN رفت. برای فایل خودی مهلت بلندتری می‌دهیم. */
+function timeoutFor(url){ return url.charAt(0) === "/" ? 25000 : 8000; }
 function loadScriptOnce(src, timeoutMs){
   return new Promise((resolve,reject)=>{
     let settled = false;
@@ -1309,7 +1312,7 @@ async function ensureChartLib(){
   if(typeof Chart !== "undefined") return true;
   for(const url of CHART_CDN_URLS){
     try{
-      await loadScriptOnce(url, 6000);
+      await loadScriptOnce(url, timeoutFor(url));
       if(typeof Chart !== "undefined") return true;
     }catch(e){ /* try the next mirror */ }
   }
@@ -1321,9 +1324,7 @@ const chartLibPromise = ensureChartLib();
 const XLSX_CDN_URLS = [
   /* همان منطق نسخهٔ محلی برای کتابخانهٔ اکسل */
   "/siamak/v/xlsx.full.min.js",
-  "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
-  "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
+  "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
 ];
 let xlsxLibPromise = null;
 function xlsxReady(){ return typeof XLSX !== "undefined"; }
@@ -1333,7 +1334,7 @@ async function ensureXlsxLib(){
     xlsxLibPromise = (async ()=>{
       for(const url of XLSX_CDN_URLS){
         try{
-          await loadScriptOnce(url, 8000);
+          await loadScriptOnce(url, timeoutFor(url));
           if(xlsxReady()) return true;
         }catch(e){ /* try next mirror */ }
       }
