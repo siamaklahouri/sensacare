@@ -31,11 +31,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # نسخهٔ v4 روی Node 20 اجرا می‌شد که گیت‌هاب بازنشسته‌اش کرده و هر اجرا
+      # یک هشدار می‌داد. v7 روی Node 24 است.
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          # از v5 به بعد کشِ وابستگی‌ها خودبه‌خود روشن است. خودِ اکشن توصیه
+          # می‌کند در workflowهایی که به رازها دسترسی دارند خاموشش کنید —
+          # اینجا دوازده راز رد می‌شود، از توکن کلادفلر تا رمز مدیر.
+          package-manager-cache: false
 
       - name: نصب ابزارها
         run: npm install --no-audit --no-fund
