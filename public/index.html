@@ -70,18 +70,18 @@
      می‌انداخت. فقط پنج وزنی که واقعاً به کار می‌رود آمده، نه هر نُه وزن. -->
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
-  src:url(/f/Vazirmatn-Regular.woff2) format("woff2")}
+  src:url(/f/Vazirmatn-Regular.2.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:500;font-display:swap;
-  src:url(/f/Vazirmatn-Medium.woff2) format("woff2")}
+  src:url(/f/Vazirmatn-Medium.2.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:600;font-display:swap;
-  src:url(/f/Vazirmatn-SemiBold.woff2) format("woff2")}
+  src:url(/f/Vazirmatn-SemiBold.2.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:700;font-display:swap;
-  src:url(/f/Vazirmatn-Bold.woff2) format("woff2")}
+  src:url(/f/Vazirmatn-Bold.2.woff2) format("woff2")}
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:800;font-display:swap;
-  src:url(/f/Vazirmatn-ExtraBold.woff2) format("woff2")}
+  src:url(/f/Vazirmatn-ExtraBold.2.woff2) format("woff2")}
 </style>
-<link rel="preload" as="font" type="font/woff2" href="/f/Vazirmatn-Regular.woff2" crossorigin>
-<link rel="preload" as="font" type="font/woff2" href="/f/Vazirmatn-ExtraBold.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/f/Vazirmatn-Regular.2.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/f/Vazirmatn-ExtraBold.2.woff2" crossorigin>
 <style>
 /* رنگ‌ها از خودِ لوگو گرفته شده‌اند: قرمز تا سرخابی، بدون نارنجی. */
 :root{
@@ -499,7 +499,10 @@ details p{color:var(--body);font-size:14px;margin-top:10px;max-width:66ch}
 footer{background:var(--dark);color:#D8C3CD;padding:54px 0 24px}
 .f-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:32px}
 footer h5{font-size:14px;font-weight:700;color:#fff;margin-bottom:14px}
-footer li{list-style:none;font-size:13.5px;margin-bottom:9px;color:#B79EAB}
+/* ارتفاع هر لینک ۲۱ پیکسل بود. فاصلهٔ داخلی به خودِ لینک داده شد،
+   نه به li، تا کلِ سطح قابل زدن بزرگ شود نه فقط فاصله‌اش. */
+footer li{list-style:none;font-size:13.5px;margin-bottom:2px;color:#B79EAB}
+footer li a{display:inline-block;padding-block:7px;min-height:34px}
 footer .logo b{color:#fff}
 .f-bottom{border-top:1px solid rgba(255,255,255,.12);margin-top:36px;padding-top:18px;font-size:12.5px;color:#9C8492;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .f-bottom button,.f-bottom a{color:#9C8492;font-size:12.5px;text-decoration:underline}
@@ -522,7 +525,12 @@ footer .logo b{color:#fff}
 .total{display:flex;justify-content:space-between;font-weight:800;margin-bottom:12px}
 .checkout{width:100%;background:var(--red);color:#fff;padding:15px;border-radius:14px;font-weight:700;box-shadow:var(--glow)}
 .note{font-size:11.5px;color:var(--body);text-align:center;margin-top:9px}
-.close-x{font-size:24px;color:var(--body);line-height:1}
+/* ۱۲ در ۲۴ پیکسل بود؛ روی گوشی زدنش شانسی می‌شد. حالا ۴۰ در ۴۰ است
+   ولی چون خودِ علامت همان اندازه مانده، ظاهرش عوض نشده. */
+.close-x{font-size:24px;color:var(--body);line-height:1;
+  width:40px;height:40px;display:inline-grid;place-items:center;
+  border-radius:11px;margin:-8px;flex:none}
+.close-x:hover{background:var(--soft)}
 
 .sheet{position:fixed;inset:0;background:rgba(26,7,19,.55);z-index:110;display:none;justify-content:center;align-items:flex-start;padding:22px;overflow-y:auto}
 .sheet.open{display:flex}
