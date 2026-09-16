@@ -1435,13 +1435,29 @@ export default {
                    'Cache-Control': 'no-store' } }));
     }
 
+    /* کارتابل ماهانهٔ مدیر IT — صفحه‌ای جدا از فروشگاه که فقط با
+       زدن همین آدرس باز می‌شود. دادهٔ کارتابل روی سرور نیست و در حافظهٔ
+       مرورگر خودِ مدیر می‌ماند؛ خودِ صفحه هم یک قفل ورود دارد.
+       بدون این مسیر، آدرس بدون اسلش (/siamak) به صفحهٔ فروشگاه می‌رسید. */
+    if (/^\/siamak\/?$/.test(p)) {
+      const res = await env.ASSETS.fetch(new Request(new URL('/siamak/index.html', req.url), req));
+      if (!res.ok) return withSecurity(new Response(
+        'فایل کارتابل (public/siamak/index.html) پیدا نشد.',
+        { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }));
+      return withSecurity(new Response(await res.text(), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8',
+                   'X-Robots-Tag': 'noindex, nofollow',
+                   'Cache-Control': 'no-store' } }));
+    }
+
     if (p === '/robots.txt') {
       /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
          گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
          www — و اعتبار صفحه بین دوتا نصف می‌شود. */
       const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: ${base}/sitemap.xml\n`,
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\n\n` +
+        `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 

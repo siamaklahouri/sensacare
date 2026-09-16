@@ -13,3 +13,9 @@
 /f/*
   Cache-Control: public, max-age=31536000, immutable
   Access-Control-Allow-Origin: *
+
+# کارتابل مدیر IT صفحه‌ای خصوصی است و نباید در نتایج گوگل بیاید. مسیر
+# /siamak را خودِ ورکر می‌سازد و همین هدر را از کد می‌گیرد؛ این بخش برای
+# وقتی است که کسی مستقیم /siamak/index.html را صدا بزند.
+/siamak/*
+  X-Robots-Tag: noindex, nofollow
