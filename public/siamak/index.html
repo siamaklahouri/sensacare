@@ -184,6 +184,7 @@
     padding:22px 14px;
     position:sticky; top:70px;
     height:calc(100vh - 70px);
+    overflow:hidden;
     border-left:1px solid rgba(11,37,69,.07);
     background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.15));
     backdrop-filter:blur(4px);
@@ -219,10 +220,25 @@
   .navbtn-lock.active{ background:linear-gradient(120deg,#5B3E8C,#3E2A63); }
   .navbtn-lock.active .ic{ background:#8163C0; box-shadow:0 2px 6px rgba(91,62,140,.45); }
   .navbtn-lock.active::before{ background:#8163C0; }
-  .sidebar-foot{
-    margin-top:auto; padding-top:16px; border-top:1px solid rgba(11,37,69,.08);
-    font-size:11px; color:var(--ink-faint); line-height:1.7;
+  /* فهرست بخش‌ها هرقدر بلند شود خودش اسکرول می‌شود و پاورقی — پشتیبان،
+     بازیابی و خروج — همیشه دمِ دست می‌ماند. قبلاً روی نمایشگر کوتاه
+     همین دکمه‌ها از ته ستون می‌زدند بیرون. */
+  .nav-list{
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column;
   }
+  .sidebar-foot{
+    flex:0 0 auto; padding-top:14px; border-top:1px solid rgba(11,37,69,.08);
+    font-size:11px; color:var(--ink-faint); line-height:1.7;
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .sidebar-foot .save-hint{ min-height:15px; }
+  .foot-actions{ display:flex; gap:6px; }
+  .sidebar-foot .btn{ padding:7px 6px; font-size:11px; }
+  .foot-actions .btn{ flex:1; }
+  .foot-lock{ width:100%; }
+
+
 
   .content{ flex:1; padding:26px 30px 60px; min-width:0; }
   .view{ display:none; }
@@ -660,6 +676,17 @@
   .visit-add-bar input, .visit-add-bar select{ background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
   .visit-add-bar input:focus, .visit-add-bar select:focus{ outline:none; border-color:var(--brass); }
   .company-visits-table th, .company-visits-table td{ text-align:center; }
+  /* چهار ستون روی تمام عرض صفحه کشیده می‌شدند: ستون تاریخ ۳۹۴ پیکسل
+     می‌گرفت برای متنی مثل «05.06.25». حالا جدول به اندازهٔ ستون‌هایش
+     است، نه به اندازهٔ صفحه. */
+  .company-visits-table{ width:auto; min-width:min(100%, 590px); }
+  /* کادر دور جدول هم باید با خودش جمع شود، وگرنه یک مستطیل سفیدِ خالی
+     کنار جدول می‌ماند. */
+  .visits-wrap{ width:fit-content; max-width:100%; }
+  /* ستون نام سرور موقع اسکرول افقی سرِ جا می‌ماند، پس باید پس‌زمینه
+     داشته باشد وگرنه تیک‌ها از زیرش رد می‌شوند. */
+  .remote-grid td.server-name{ position:sticky; right:0; background:#fff; z-index:1; }
+  .remote-grid tbody tr:nth-child(even) td.server-name{ background:#FAFBFC; }
   .save-hint{ font-size:11px; color:var(--ink-faint); }
 
   /* Guide */
@@ -782,6 +809,86 @@
   }
   .cred-import-bar p{ margin:0; font-size:11px; color:var(--ink-soft); line-height:1.8; flex:1; min-width:200px; }
   .cred-import-status{ font-size:11.5px; font-weight:600; color:#2E7D32; }
+
+  /* ---------- گوشی و تبلت ----------
+     تا حالا هیچ چیدمانی برای صفحهٔ باریک نبود: ستون کناریِ ۲۱۶ پیکسلی
+     سر جایش می‌ماند و برای خودِ کارتابل چیزی حدود ۱۷۰ پیکسل باقی
+     می‌گذاشت. حالا روی صفحهٔ باریک، ستون کناری می‌رود بالا و دکمه‌هایش
+     مثل تب کنار هم می‌نشینند. */
+  @media (max-width:860px){
+    .topbar{
+      height:auto; min-height:56px; flex-wrap:wrap; gap:8px;
+      padding:10px 14px; position:static;
+    }
+    .brand .mark{ height:32px; }
+    .brand h1{ font-size:15px; }
+    .brand small{ display:none; }
+    .period{ flex-wrap:wrap; gap:6px; }
+    .period input{ width:70px; }
+
+    /* در حالت عمودی باید کشیده شوند؛ با align-items:flex-start که برای
+       چیدمان افقی لازم است، بخش محتوا به اندازهٔ پهن‌ترین جدولش باز
+       می‌شد و کل صفحه را از عرض گوشی پهن‌تر می‌کرد. */
+    .shell{ flex-direction:column; align-items:stretch; }
+    .sidebar{
+      width:auto; flex:none; height:auto; max-height:none;
+      position:static; overflow:visible;
+      padding:10px 12px;
+      border-left:none; border-bottom:1px solid rgba(11,37,69,.10);
+      flex-direction:column; gap:6px;
+    }
+    .nav-list{
+      flex:none; min-height:0; overflow:visible;
+      flex-direction:row; flex-wrap:wrap; gap:6px;
+    }
+    .nav-label{ display:none; }
+    .navbtn{
+      width:auto; margin-bottom:0; padding:8px 12px;
+      font-size:12.5px; gap:7px; border-radius:9px;
+      background:rgba(255,255,255,.75); border:1px solid var(--line);
+    }
+    .navbtn .ic{ font-size:13px; }
+    .sidebar-foot{
+      margin-top:2px; padding-top:10px;
+      flex-direction:row; align-items:center; flex-wrap:wrap; gap:6px;
+    }
+    .sidebar-foot .save-hint{ flex:1 1 100%; min-height:0; }
+    .foot-actions{ flex:1 1 auto; }
+    .foot-lock{ width:auto; flex:0 0 auto; }
+
+    .content{ padding:16px 14px 48px; width:100%; max-width:100%; }
+    .section-title{ font-size:16px; }
+    /* جدول‌ها از قبل ظرفِ اسکرول‌دار داشتند؛ پنل‌های دیگر هم نباید
+       صفحه را پهن کنند. */
+    .panel{ padding:14px 13px; }
+    .panel:hover{ transform:none; }
+    .grid2, .grid3{ grid-template-columns:1fr; }
+    /* خانه‌های گرید به‌طور پیش‌فرض کوچک‌تر از محتوایشان نمی‌شوند و روی
+       صفحهٔ خیلی باریک (۳۲۰ پیکسل) کل صفحه را پهن می‌کردند. */
+    .grid2 > *, .grid3 > *, .cards > *{ min-width:0; }
+    .set-grid{ grid-template-columns:1fr; }
+    .gate-card{ max-width:none; }
+
+    /* نوارهایی که چند ورودی را کنار هم می‌گذارند روی عرض گوشی جا
+       نمی‌شوند و کل صفحه را پهن می‌کنند. اجازه می‌دهیم بشکنند و
+       ورودی‌ها تمام عرض را بگیرند. */
+    .visit-add-bar, .dt-row, .inst-date-row, .cred-import-bar, .clv-row{
+      flex-wrap:wrap;
+    }
+    .visit-add-bar input, .visit-add-bar select,
+    .dt-row select, .dt-row input[type="date"]{
+      flex:1 1 130px; min-width:0;
+    }
+    .visit-add-bar .btn{ flex:1 1 100%; justify-content:center; }
+    .toolbar{ gap:8px; }
+    .toolbar .btn{ flex:1 1 auto; justify-content:center; }
+  }
+
+  @media (max-width:420px){
+    .brand h1{ font-size:13.5px; }
+    .navbtn{ padding:7px 10px; font-size:12px; }
+    .content{ padding:14px 11px 44px; }
+  }
 </style>
 </head>
 <body>
@@ -826,26 +933,26 @@
 <div class="shell">
   <div class="sidebar">
     <div class="nav-label">بخش‌ها</div>
-    <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
-    <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
-    <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
-    <button class="navbtn" data-view="servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
-    <button class="navbtn" data-view="companies"><span class="ic">🏢</span> شرکت‌ها</button>
-    <button class="navbtn" data-view="mvpn"><span class="ic">📱</span> سرویس MVPN</button>
-    <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
-    <button class="navbtn" data-view="datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
-    <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
-    <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
+    <nav class="nav-list">
+      <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
+      <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
+      <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
+      <button class="navbtn" data-view="servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
+      <button class="navbtn" data-view="companies"><span class="ic">🏢</span> شرکت‌ها</button>
+      <button class="navbtn" data-view="mvpn"><span class="ic">📱</span> سرویس MVPN</button>
+      <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
+      <button class="navbtn" data-view="datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+      <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
+      <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
+    </nav>
     <div class="sidebar-foot">
-      <div id="folderStatus">داده‌ها روی سرور ذخیره می‌شوند و از هر دستگاهی در دسترس‌اند.</div>
-      <div class="save-hint" id="saveHint" style="margin-top:6px;"></div>
-      <button class="btn btn-brass" id="connectFolderBtn" style="width:100%; margin-top:10px; padding:8px 6px; font-size:11.5px;">🗂️ اتصال به پوشه روی سیستم</button>
-      <div style="display:flex; gap:6px; margin-top:8px;">
-        <button class="btn btn-ghost" id="exportBtn" style="flex:1; padding:7px 6px; font-size:11px;">⬇ پشتیبان</button>
-        <button class="btn btn-ghost" id="importBtn" style="flex:1; padding:7px 6px; font-size:11px;">⬆ بازیابی</button>
+      <div class="save-hint" id="saveHint"></div>
+      <div class="foot-actions">
+        <button class="btn btn-ghost" id="exportBtn">⬇ پشتیبان</button>
+        <button class="btn btn-ghost" id="importBtn">⬆ بازیابی</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none;">
-      <button class="btn btn-ghost" id="lockBtn" style="width:100%; margin-top:8px; padding:7px 6px; font-size:11px;">🔓 خروج از کارتابل</button>
+      <button class="btn btn-ghost foot-lock" id="lockBtn">🔓 خروج از کارتابل</button>
     </div>
   </div>
 
@@ -928,7 +1035,7 @@
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th>مسئول</th>
+            <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th style="width:120px;">مسئول</th>
             <th style="width:70px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
             <th>یادداشت</th><th style="width:30px;"></th>
           </tr></thead>
@@ -944,7 +1051,7 @@
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:22%;">📌 وظایف اصلی</th><th style="width:40%;">🤝 توضیحات</th><th style="width:120px;">🏢 شرکت</th><th style="width:104px;">وضعیت</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:24%;">📌 وظایف اصلی</th><th style="width:42%;">🤝 توضیحات</th><th style="width:104px;">🏢 شرکت</th><th style="width:104px;">وضعیت</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
           <tr class="filter-row">
             <th></th><th></th><th></th><th></th>
             <th><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
@@ -991,7 +1098,7 @@
           <table>
             <thead>
             <tr>
-              <th style="width:26px;">#</th><th>سرور</th><th>IP / محل</th><th style="width:90px;">حجم (GB)</th>
+              <th style="width:26px;">#</th><th>سرور</th><th style="width:135px;">IP / محل</th><th style="width:90px;">حجم (GB)</th>
               <th style="width:130px;">زمان‌بندی بکاپ</th><th style="width:110px;">آخرین ریستور</th><th style="width:110px;">آخرین فول بک‌آپ</th><th style="width:100px;">Storage</th>
               <th style="width:70px;">
                 <label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">
@@ -1069,7 +1176,7 @@
           <table>
             <thead>
             <tr>
-              <th style="width:26px;">#</th><th>شماره تماس</th><th>مالکیت سیم‌کارت</th><th>مرحله</th>
+              <th style="width:26px;">#</th><th style="width:135px;">شماره تماس</th><th>مالکیت سیم‌کارت</th><th>مرحله</th>
               <th style="width:90px;">داخلی</th><th>طرح انتخابی</th>
               <th style="width:70px;">
                 <label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">
@@ -1212,6 +1319,16 @@
         </div>
         <div class="set-row">
           <span class="set-state" id="lastBackup"></span>
+        </div>
+      </div>
+
+      <!-- فقط در مرورگرهایی که File System Access دارند دیده می‌شود -->
+      <div class="panel" id="folderPanel" hidden>
+        <h3 class="set-h">🗂️ آینهٔ اکسل روی سیستم (اختیاری)</h3>
+        <p class="set-p">اگر بخواهید، کارتابل می‌تواند هم‌زمان یک فایل اکسل را در پوشه‌ای روی سیستم شما به‌روز نگه دارد. برای کار کردن با کارتابل لازم نیست — داده‌ها روی سرور هستند و پشتیبان شبانه هم می‌رود. این فقط برای وقتی است که بخواهید همان فایل اکسل همیشه روی دیسک خودتان تازه باشد. (فقط Chrome و Edge این امکان را دارند.)</p>
+        <div class="set-row">
+          <button type="button" class="btn btn-brass" id="connectFolderBtn">اتصال به پوشه روی سیستم</button>
+          <span class="set-state" id="folderStatus"></span>
         </div>
       </div>
     </section>
@@ -1522,15 +1639,15 @@ function updateFolderStatus(text){
 function fsaSupported(){ return typeof window.showDirectoryPicker === "function"; }
 
 async function tryReconnectFolder(){
-  if(!fsaSupported()){
-    updateFolderStatus("💡 اتصال به پوشه فقط در Chrome/Edge پشتیبانی می‌شود.");
-    const btn = document.getElementById("connectFolderBtn");
-    if(btn){ btn.disabled = true; btn.style.opacity = .5; btn.textContent = "🗂️ نامعتبر در این مرورگر"; }
-    return;
-  }
+  /* در سافاری و مرورگر گوشی این امکان نیست. قبلاً یک دکمهٔ خاکستریِ
+     «نامعتبر در این مرورگر» ته ستون کناری می‌ماند که فقط جا می‌گرفت؛
+     حالا کل بخش نشان داده نمی‌شود. */
+  const panel = document.getElementById("folderPanel");
+  if(!fsaSupported()) return;
+  if(panel) panel.hidden = false;
   const handle = await idbGet("dir");
   if(!handle){
-    updateFolderStatus("داده‌ها روی سرور ذخیره می‌شوند و از هر دستگاهی در دسترس‌اند.");
+    updateFolderStatus("به هیچ پوشه‌ای وصل نیست.");
     return;
   }
   try{
@@ -3744,10 +3861,10 @@ function renderCompanies(){
           <span>آخرین بازدید: <b>${last? escapeHtml(last.dateStr) : "-"}</b></span>
           <span>${typeChips}</span>
         </div>
-        <div class="tbl-wrap" style="max-height:280px; overflow-y:auto;">
+        <div class="tbl-wrap visits-wrap" style="max-height:280px; overflow-y:auto;">
           <table class="company-visits-table">
             <colgroup>
-              <col style="width:160px;"><col style="width:130px;"><col style="width:70px;"><col style="width:60px;">
+              <col style="width:150px;"><col style="width:130px;"><col style="width:190px;"><col style="width:120px;">
             </colgroup>
             <thead><tr>
               <th>تاریخ</th><th>مدت زمان</th><th>نوع</th>
@@ -4004,7 +4121,7 @@ function renderRemoteChecklist(){
     <div class="remote-grid-wrap tbl-wrap">
       <table class="remote-grid">
         <thead><tr>
-          <th style="position:sticky; right:0;">سرور</th>${dayHeaders}<th>تعداد</th>
+          <th style="position:sticky; right:0; min-width:180px;">سرور</th>${dayHeaders}<th>تعداد</th>
           <th style="width:70px;">
             <label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">
               <span class="edit-switch"><input type="checkbox" id="editToggleRemote"><span class="track"></span></span>
