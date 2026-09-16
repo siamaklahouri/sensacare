@@ -316,6 +316,14 @@ nav::-webkit-scrollbar{display:none}
 .cat-head h2{font-size:26px;font-weight:800;letter-spacing:-.6px}
 .cat-head p{font-size:13.5px;color:var(--body)}
 .cat-head .timer{margin-inline-start:auto}
+/* دکمهٔ رفتن به صفحهٔ کاملِ یک دسته. رنگش از خودِ دسته می‌آید، پس هر
+   دستهٔ تازه‌ای که بسازید دکمه‌اش هم با رنگ خودش می‌آید. */
+.cat-all{margin-inline-start:auto;display:inline-flex;align-items:center;gap:7px;
+  white-space:nowrap;font-size:13px;font-weight:700;color:var(--acc);
+  background:var(--tint);border-radius:12px;padding:10px 16px;
+  transition:filter .15s}
+.cat-all span{font-size:15px;line-height:1}
+.cat-all:hover{filter:brightness(.95)}
 /* دکمه‌های جابه‌جایی، دو طرف خودِ ردیف — نه گوشهٔ بالای صفحه. */
 .rail-wrap{position:relative}
 .rail-nav{position:absolute;top:calc(50% - 7px);transform:translateY(-50%);z-index:5;
@@ -913,6 +921,8 @@ footer #fContact ul{margin-top:4px}
   /* شمارنده با margin-inline-start:auto کنارِ تیتر می‌ایستاد و در گوشی
      وسطِ هوا شناور به نظر می‌رسید. می‌رود سطر خودش، زیر تیتر. */
   .cat-head{gap:9px} .rail-nav{display:none}
+  /* کنار تیتر جا نمی‌شود؛ می‌رود سطر خودش و تمام عرض را می‌گیرد */
+  .cat-all{margin-inline-start:0;flex:1 0 100%;justify-content:center;padding:11px}
   .cat-head .timer{margin-inline-start:0;order:9;flex:1 0 100%;
     justify-content:center;padding:8px 13px;font-size:13.5px}
   /* دکمهٔ خرید صورتیِ کم‌رنگ روی سفید بود و اصلاً به چشم نمی‌آمد؛
@@ -1994,9 +2004,15 @@ function tick(){
     el.textContent=faN(`${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`)};
   run(); tickT=setInterval(run,1000);
 }
+/* کالای تمام‌شده نباید وسط قفسه باشد. هرجا فهرستی از کالا نشان می‌دهیم،
+   ناموجودها می‌روند ته — ترتیب خودشان و ترتیب موجودها هر دو حفظ می‌شود،
+   فقط دو دسته از هم جدا می‌شوند. */
+const stockLast = list => [...list].sort((a,b)=>
+  (stockState(a).out?1:0) - (stockState(b).out?1:0));
+
 function renderPromo(){
-  const deals=products.filter(p=>p.old&&p.old>p.pr).sort((a,b)=>(b.old-b.pr)/b.old-(a.old-a.pr)/a.old);
-  const best=products.filter(p=>(p.tag||'').includes('پرفروش')).concat(products.filter(p=>!(p.tag||'').includes('پرفروش'))).slice(0,8);
+  const deals=stockLast(products.filter(p=>p.old&&p.old>p.pr).sort((a,b)=>(b.old-b.pr)/b.old-(a.old-a.pr)/a.old));
+  const best=stockLast(products.filter(p=>(p.tag||'').includes('پرفروش')).concat(products.filter(p=>!(p.tag||'').includes('پرفروش')))).slice(0,8);
   let html='';
   if(deals.length) html+=`<div class="band deals">${section('deals','var(--red)','#FFE6EC',
     `${fa(deals.length)} کالای تخفیف‌دار`,'پیشنهاد ویژه','تا آخر امروز فرصت داری',
@@ -2009,9 +2025,15 @@ function renderPromo(){
 function render(){
   timers.forEach(clearInterval); timers.length=0;
   catsEl.innerHTML=cats.map(c=>{
-    const list=products.filter(p=>p.c===c.id);
+    const list=stockLast(products.filter(p=>p.c===c.id));
+    /* ردیف افقی فقط چند کالا نشان می‌دهد؛ این دکمه راه رفتن به صفحهٔ
+       کاملِ همان دسته است، با فیلتر و ترتیب خودش. */
+    const more=`<a class="cat-all" href="/c/${encodeURIComponent(c.id)}"
+        style="--acc:${c.acc};--tint:${c.tint}">همهٔ ${esc(c.name)}
+        <span aria-hidden="true">←</span></a>`;
     return section('c-'+c.id,c.acc,c.tint,`${fa(list.length)} محصول`,c.name,c.sub,
-      list.map(p=>cardHTML(p)).join('')||'<p class="empty">فعلاً چیزی توی این دسته نداریم.</p>')}).join('');
+      list.map(p=>cardHTML(p)).join('')||'<p class="empty">فعلاً چیزی توی این دسته نداریم.</p>',
+      more)}).join('');
   cats.forEach(c=>initRail('c-'+c.id));
   renderPromo(); renderMenu();
 }
@@ -3504,6 +3526,8 @@ function paintCatPage(){
   if(cpF.sort==='cheap') list.sort((a,b)=>a.pr-b.pr);
   else if(cpF.sort==='rich') list.sort((a,b)=>b.pr-a.pr);
   else if(cpF.sort==='top') list.sort((a,b)=>((ratingOf(b.id)||{}).avg||0)-((ratingOf(a.id)||{}).avg||0));
+  /* بعد از هر ترتیبی، ناموجودها ته می‌روند */
+  list=stockLast(list);
 
   const grp=(key,label,opts)=>`<div class="fgrp"><b>${esc(label)}</b>${
     opts.map(([v,lbl])=>`<button class="chip${cpF[key]===v?' on':''}" data-f="${key}" data-v="${esc(v)}">${esc(lbl)}</button>`).join('')}</div>`;
