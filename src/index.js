@@ -328,6 +328,70 @@ async function buildBackup(env) {
   };
 }
 
+/* ---------- بازگرداندن پشتیبان ----------
+   تا امروز پشتیبان یک‌طرفه بود: هر شب می‌رفت، ولی هیچ دری برای برگرداندنش
+   نبود. پشتیبانی که نشود برگرداندش فقط حس امنیت می‌دهد.
+
+   سه محافظ دارد، چون این کار کلِ فروشگاه را بازمی‌نویسد:
+   ۱ — پیش از دست زدن به چیزی، یک پشتیبان تازه گرفته و فرستاده می‌شود.
+        اگر نتواند برساندش، کار اصلاً شروع نمی‌شود.
+   ۲ — نام جدول‌ها و ستون‌ها از خودِ دیتابیس خوانده می‌شود، نه از فایل.
+        وگرنه یک فایل دستکاری‌شده می‌توانست هر چیزی را اجرا کند.
+   ۳ — همه‌چیز در یک batch می‌رود، پس یا کامل می‌نشیند یا هیچ. */
+const RESTORE_TABLES = ['products', 'product_images', 'categories', 'menu', 'users',
+  'orders', 'order_items', 'feedback', 'articles', 'pages', 'settings', 'counters',
+  'bot_chats', 'order_extras'];
+
+async function restoreBackup(env, data, opts = {}) {
+  const tables = data && data._tables;
+  if (!tables || typeof tables !== 'object')
+    throw new Error('این فایل پشتیبان سِنسا نیست — بخش _tables ندارد.');
+
+  /* محافظ ۱: تور ایمنی، پیش از هر تغییری */
+  let safety = null;
+  if (!opts.skipSafety) {
+    safety = await runBackup(env).catch(e => ({ sent: [], error: e.message }));
+    if (!safety.sent.filter(x => x.ok).length)
+      throw new Error('پیش از بازگرداندن، یک پشتیبان از وضعیت فعلی گرفته می‌شود و ' +
+        'این یکی فرستاده نشد. اول ربات را درست کنید، یا اگر عمداً می‌خواهید بدون ' +
+        'تور ایمنی جلو بروید، گزینهٔ اجبار را بزنید.');
+  }
+
+  const stmts = [], report = [];
+  for (const t of RESTORE_TABLES) {
+    const rows = tables[t];
+    if (!Array.isArray(rows)) continue;
+
+    /* محافظ ۲: ستون‌ها از خودِ دیتابیس، نه از فایل */
+    const cols = (await all(env, `PRAGMA table_info(${t})`)).map(c => c.name);
+    if (!cols.length) continue;
+
+    stmts.push(env.DB.prepare(`DELETE FROM ${t}`));
+    for (const row of rows) {
+      const use = cols.filter(c => row[c] !== undefined);
+      if (!use.length) continue;
+      stmts.push(env.DB.prepare(
+        `INSERT OR REPLACE INTO ${t} (${use.join(',')}) VALUES (${use.map(() => '?').join(',')})`
+      ).bind(...use.map(c => row[c] ?? null)));
+    }
+    report.push({ table: t, rows: rows.length });
+  }
+  if (!report.length) throw new Error('هیچ جدول شناخته‌شده‌ای در این فایل نبود.');
+
+  /* محافظ ۳: یا همه با هم، یا هیچ. D1 کلِ batch را در یک تراکنش می‌برد،
+     پس اگر یک ردیف با ساختار جدول نخواند، هیچ‌چیز نوشته نمی‌شود و
+     فروشگاه همان‌طور که بود می‌ماند. */
+  try {
+    await env.DB.batch(stmts);
+  } catch (e) {
+    throw new Error('این فایل با ساختار فعلی دیتابیس نمی‌خواند، پس هیچ‌چیز تغییر نکرد ' +
+      'و فروشگاه دست‌نخورده است. شاید فایل از نسخهٔ خیلی قدیمی‌تری باشد. ' +
+      `(${e.message})`);
+  }
+  return { restored: report, safetySent: safety ? safety.sent.filter(x => x.ok).length : 0,
+           at: data._meta?.at || null };
+}
+
 async function runBackup(env) {
   const data = await buildBackup(env);
   const bytes = new TextEncoder().encode(JSON.stringify(data, null, 1));
@@ -402,7 +466,9 @@ async function askAI(env, q, history = []) {
 - دربارهٔ ارسال و پرداخت جواب بده.
 - برای سؤال‌های آموزشی (سایز، ضخامت، ژل، اصالت، نگهداری، طرز استفاده) جوابت را از
   «راهنماهای مجله» در پایین بردار، نه از حافظهٔ خودت. اگر راهنمای مربوطه‌ای هست،
-  آخر جواب یک جمله اضافه کن: «توی مجله یه مطلب کامل‌تر هم داریم: [اسم مطلب]».
+  آخر جواب یک جمله اضافه کن و حتماً نشانی مقاله را هم بنویس تا بشود رویش زد:
+  «توی مجله یه مطلب کامل‌تر هم داریم: [اسم مطلب] — [نشانی]». نشانیِ هر مقاله
+  بالای خودش نوشته شده. بدون نشانی ننویس.
 
 چه کار نکن:
 - تشخیص پزشکی نده و دارو تجویز نکن. اگر نشانهٔ بیماری، درد، زخم یا عفونت مطرح شد،
@@ -1450,6 +1516,19 @@ export default {
                    'Cache-Control': 'no-store' } }));
     }
 
+    /* تأیید مالکیت در سرچ کنسول گوگل.
+       صفحهٔ اول مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد، پس
+       روش «تگ متا» از اینجا شدنی نیست. روش «فایل HTML» شدنی است: کد را در
+       پنل می‌گذارید و همین‌جا فایلش ساخته می‌شود — بدون استقرار تازه. */
+    if (/^\/google[A-Za-z0-9_-]+\.html$/.test(p)) {
+      const tok = String(await getSetting(env, 'gscToken', '')).trim()
+        .replace(/^\//, '').replace(/\.html$/, '').replace(/^google/, '');
+      if (tok && p === `/google${tok}.html`)
+        return new Response(`google-site-verification: google${tok}.html`,
+          { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      return new Response('not found', { status: 404 });
+    }
+
     if (p === '/robots.txt') {
       /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
          گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
@@ -2098,6 +2177,7 @@ export default {
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {}),
               botHealth: await getSetting(env, 'botHealth', null),
+              gscToken: await getSetting(env, 'gscToken', ''),
               /* هر پیام مدیر به همهٔ این گفتگوها می‌رود. اگر دو تا باشد،
                  هر چیزی دو بار می‌رسد — پس باید دیده شود. */
               adminChats: await adminChatList(env)
@@ -2360,6 +2440,23 @@ export default {
         if (p.startsWith('/api/admin/users/') && m === 'DELETE') {
           await run(env, 'DELETE FROM users WHERE phone=?', decodeURIComponent(p.split('/')[4]));
           return json({ ok: true });
+        }
+
+        if (p === '/api/admin/restore' && m === 'POST') {
+          /* عبارت تأیید را خودِ مدیر باید تایپ کند، تا کلیک اشتباهی
+             کلِ فروشگاه را بازننویسد. */
+          if (String(body.confirm || '').trim() !== 'بازگردانی')
+            return bad('برای بازگرداندن باید عبارت تأیید را دقیق بنویسید.', 400);
+          const rl = await rateLimit(env, 'restore:' + clientIp(req), 3, 3600);
+          if (!rl.ok) return tooMany(rl);
+          try {
+            const r = await restoreBackup(env, body.backup, { skipSafety: !!body.force });
+            ctx.waitUntil(notifyAdmins(env,
+              '♻️ <b>پشتیبان بازگردانده شد</b>\n' +
+              r.restored.map(x => `• ${esc(x.table)}: ${faNum(x.rows)} ردیف`).join('\n') +
+              (r.at ? `\n\nاز نسخهٔ ${esc(r.at)}` : '')).catch(() => {}));
+            return json({ ok: true, ...r });
+          } catch (e) { return bad(e.message, 400); }
         }
 
         if (p === '/api/admin/backup' && m === 'POST') {

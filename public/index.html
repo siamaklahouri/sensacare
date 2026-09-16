@@ -2609,6 +2609,23 @@ const norm = t => String(t||'')
   .replace(/[\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)-0x06F0))
   .replace(/\s+/g,' ').trim().toLowerCase();
 
+/* جست‌وجوی بی‌نتیجه تا حالا بن‌بست بود: فقط می‌گفت «چیزی پیدا نکردم» و
+   تمام. کسی که تا جست‌وجو پیش آمده مشتری جدی است و همان‌جا از دست می‌رفت.
+   حالا دو راه جلویش می‌گذاریم: پرسیدن از دستیار، و چند تا از پرفروش‌ها. */
+function noHitsHTML(){
+  const top = products.filter(p=>!stockState(p).out).slice(0,3);
+  return `<div style="padding:18px 12px 12px">
+    <p class="empty" style="padding:0 0 12px">چیزی با این نام پیدا نکردم.</p>
+    <button class="btn-main" id="sresAsk" style="width:100%;padding:12px;font-size:13.5px">
+      از دستیار بپرس چی به دردت می‌خوره</button>
+  </div>
+  ${top.length?`<p class="hint" style="padding:0 14px 6px">یا از این‌ها ببین:</p>
+  ${top.map(p=>`<a href="#" data-pid="${p.id}">
+      ${p.img?`<img src="${esc(p.img)}" alt="">`:`<span class="sq2" style="background:${catOf(p.c).tint}"></span>`}
+      <span style="flex:1"><b>${esc(p.n)}</b><small>${esc(p.b)} · ${money(p.pr)}</small></span>
+    </a>`).join('')}`:''}`;
+}
+
 const qEl=$('q'), sres=$('sres');
 function runSearch(){
   const v=norm(qEl.value);
@@ -2623,12 +2640,21 @@ function runSearch(){
     <a href="#" data-pid="${p.id}">
       ${p.img?`<img src="${esc(p.img)}" alt="">`:`<span class="sq2" style="background:${catOf(p.c).tint}"></span>`}
       <span style="flex:1"><b>${esc(p.n)}</b><small>${esc(p.b)} · ${stockState(p).out?T('outBtn'):money(p.pr)}</small></span>
-    </a>`).join('') : '<p class="empty" style="padding:22px 8px">چیزی پیدا نکردم.</p>';
+    </a>`).join('') : noHitsHTML();
   sres.classList.add('open');
 }
 qEl.addEventListener('input',()=>{clearTimeout(qEl._t);qEl._t=setTimeout(runSearch,180)});
 qEl.addEventListener('focus',runSearch);
-sres.addEventListener('click',e=>{const a=e.target.closest('[data-pid]');if(!a)return;
+sres.addEventListener('click',e=>{
+  /* دکمهٔ «از دستیار بپرس» — همان چیزی که تایپ کرده را با خودش می‌برد */
+  if(e.target.closest('#sresAsk')){
+    e.preventDefault();
+    const typed=qEl.value.trim();
+    sres.classList.remove('open'); qEl.value='';
+    openChat(); if(typed) ask(typed);
+    return;
+  }
+  const a=e.target.closest('[data-pid]');if(!a)return;
   e.preventDefault(); sres.classList.remove('open'); qEl.value=''; openProduct(a.dataset.pid)});
 document.addEventListener('click',e=>{ if(!e.target.closest('.search')) sres.classList.remove('open') });
 
