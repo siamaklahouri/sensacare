@@ -340,6 +340,13 @@ CREATE TABLE IF NOT EXISTS kartabl(
    این رشته هم درنمی‌آید. DO NOTHING یعنی اگر بعداً از داخل پنل عوضش کرد،
    استقرار بعدی رمزش را به حالت اول برنمی‌گرداند. */
 INSERT INTO settings(k,v) VALUES
-  ('kartablPassHash', '"pbkdf2$310000$4+bBvtXypoT7wrOX0S9iTA==$OSqLKk/gfOS9h5Rcs3AZiBaTRCUFLvfur+1vc6AKSjg="')
+  ('kartablPassHash', '"pbkdf2$100000$4+bBvtXypoT7wrOX0S9iTA==$58+9ZNsDOrtkKgH3hWv/RtlNDYP4LRfx+n9a/6D+IYE="')
   ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('kartablPassGen', '1') ON CONFLICT(k) DO NOTHING;
+
+/* ۲۲ رمز کارتابل با ۳۱۰٬۰۰۰ دور ذخیره شده بود و کلادفلر بیشتر از ۱۰۰٬۰۰۰
+   را رد می‌کند، پس ورود روی سایت زنده اصلاً انجام نمی‌شد. همان رمز با
+   عدد مجاز دوباره حساب شد. فقط ردیفی عوض می‌شود که هنوز همان مقدار
+   خراب را دارد — اگر رمز از داخل پنل عوض شده باشد، دست نمی‌خورد. */
+UPDATE settings SET v='"pbkdf2$100000$4+bBvtXypoT7wrOX0S9iTA==$58+9ZNsDOrtkKgH3hWv/RtlNDYP4LRfx+n9a/6D+IYE="'
+  WHERE k='kartablPassHash' AND v='"pbkdf2$310000$4+bBvtXypoT7wrOX0S9iTA==$OSqLKk/gfOS9h5Rcs3AZiBaTRCUFLvfur+1vc6AKSjg="';
