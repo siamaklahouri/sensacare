@@ -1301,7 +1301,8 @@ async function apiCall(path, opts){
   return { ok: res.ok, status: res.status, data: data || {} };
 }
 
-let gateReady = null;   /* وعده‌ای که وقتی وارد شدیم باز می‌شود */
+let gateReady = null;   /* وعده‌ای که وقتی تکلیف ورود روشن شد باز می‌شود */
+let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه */
 
 (function(){
   const screenEl = document.getElementById("gateScreen");
@@ -1330,7 +1331,7 @@ let gateReady = null;   /* وعده‌ای که وقتی وارد شدیم با�
   } else {
     /* آیا کوکی نشست هنوز معتبر است؟ */
     apiCall("/me").then(r=>{
-      if(r.ok && r.data.in){ closeGate(); letMeIn(true); }
+      if(r.ok && r.data.in){ signedIn = true; closeGate(); letMeIn(true); }
       else openGate();
     }).catch(()=>{
       /* سرور در دسترس نیست — با همان نسخهٔ محلی ادامه می‌دهیم، وگرنه
@@ -4916,7 +4917,7 @@ function faTime(ms){
 async function refreshBackupSettings(){
   /* روی نسخهٔ پشتیبان یا بدون اینترنت، این درخواست می‌افتد. بدون این
      try، همان افتادن یک unhandled rejection می‌شد. */
-  if(window.KARTABL_OFFLINE) return;
+  if(window.KARTABL_OFFLINE || !signedIn) return;
   let r;
   try{ r = await apiCall("/backup/settings"); }
   catch(e){ setState("botState", "به سرور نرسیدم.", "err"); return; }
@@ -5023,7 +5024,11 @@ async function init(){
     /* نسخهٔ محلی فقط برای این است که صفحه فوری بالا بیاید؛ مرجع سرور
        است. منتظر می‌مانیم تا ورود قطعی شود، بعد داده را می‌گیریم. */
     try{ if(gateReady) await gateReady; }catch(e){}
-    try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
+    /* وقتی وارد نشده‌ایم، درخواست داده فقط یک ۴۰۱ بی‌فایده می‌سازد؛
+       بعد از ورود، صفحه تازه می‌شود و همه‌چیز از سرور می‌آید. */
+    if(signedIn){
+      try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
+    }
     renderMeta();
     setupNav();
     setupMeta();
