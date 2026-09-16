@@ -104,6 +104,35 @@
   }
   ::selection{ background:var(--brass); color:#fff; }
 
+
+  /* ---------- بخش تنظیمات و نوار تداخل نسخه ---------- */
+  .set-h{ font-family:var(--font-display); font-size:15px; margin:0 0 6px; color:var(--ink); }
+  .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
+  .set-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; }
+  .set-grid label{ display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--ink-soft); }
+  .set-grid input{
+    font-family:var(--font-body); font-size:13px; padding:9px 11px;
+    border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink);
+  }
+  .set-grid input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .set-state{ font-size:12px; color:var(--ink-faint); }
+  .set-state.ok{ color:var(--green); font-weight:600; }
+  .set-state.err{ color:var(--red); font-weight:600; }
+  .set-hr{ border:0; border-top:1px solid var(--line); margin:16px 0; }
+
+  #syncConflict{
+    position:fixed; inset-inline:0; bottom:0; z-index:9000;
+    background:var(--amber-bg); border-top:1px solid var(--amber);
+    padding:12px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    font-size:12.5px; color:var(--ink); box-shadow:0 -4px 18px rgba(11,37,69,.10);
+  }
+  #syncConflict button{
+    font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;
+    padding:7px 14px; border:1px solid var(--amber); border-radius:8px;
+    background:#fff; color:var(--ink);
+  }
+
   /* ---------- Top bar ---------- */
   .topbar{
     height:70px;
@@ -806,8 +835,9 @@
     <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
     <button class="navbtn" data-view="datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
     <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
+    <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
     <div class="sidebar-foot">
-      <div id="folderStatus">داده‌ها فقط روی حافظه‌ی این مرورگر ذخیره می‌شود.</div>
+      <div id="folderStatus">داده‌ها روی سرور ذخیره می‌شوند و از هر دستگاهی در دسترس‌اند.</div>
       <div class="save-hint" id="saveHint" style="margin-top:6px;"></div>
       <button class="btn btn-brass" id="connectFolderBtn" style="width:100%; margin-top:10px; padding:8px 6px; font-size:11.5px;">🗂️ اتصال به پوشه روی سیستم</button>
       <div style="display:flex; gap:6px; margin-top:8px;">
@@ -1121,6 +1151,71 @@
     </section>
 
     <!-- GUIDE -->
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="section-title">تنظیمات کارتابل</div>
+      <div class="section-sub">رمز ورود، ربات پشتیبان، و وضعیت همگام‌سازی</div>
+
+      <div class="panel">
+        <h3 class="set-h">☁️ همگام‌سازی</h3>
+        <p class="set-p">داده‌های کارتابل روی سرور می‌مانند، پس با هر مرورگر و هر دستگاهی که وارد شوید همین‌ها را می‌بینید. اگر اینترنت قطع شود کارتابل با نسخهٔ همین مرورگر کار می‌کند و به‌محض وصل شدن، تغییرها بالا می‌روند.</p>
+        <div class="set-row">
+          <span class="set-state" id="cloudStatus">در حال بررسی…</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 class="set-h">🔑 رمز ورود</h3>
+        <p class="set-p">رمز روی سرور و به شکل PBKDF2 با ۳۱۰٬۰۰۰ دور نگه داشته می‌شود؛ نه در این صفحه هست و نه از روی چیزی که ذخیره شده درمی‌آید. با عوض کردنش، همهٔ دستگاه‌های دیگر که وارد مانده‌اند بیرون می‌افتند.</p>
+        <form id="passForm" autocomplete="off">
+          <div class="set-grid">
+            <label>رمز فعلی
+              <input type="password" id="passCurrent" autocomplete="current-password" required>
+            </label>
+            <label>رمز تازه (دست‌کم ۸ کاراکتر)
+              <input type="password" id="passNext" autocomplete="new-password" minlength="8" required>
+            </label>
+            <label>تکرار رمز تازه
+              <input type="password" id="passRepeat" autocomplete="new-password" minlength="8" required>
+            </label>
+          </div>
+          <div class="set-row">
+            <button type="submit" class="btn btn-brass" id="passBtn">ثبت رمز تازه</button>
+            <span class="set-state" id="passState"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3 class="set-h">🤖 پشتیبان شبانه در تلگرام</h3>
+        <p class="set-p">هر شب یک زیپ کامل — فایل داده، فایل اکسل، و خودِ صفحهٔ کارتابل — برای ربات شما فرستاده می‌شود. با همان زیپ، کارتابل بدون سرور و بدون اینترنت هم باز می‌شود.</p>
+        <div class="set-grid">
+          <label>توکن ربات تلگرام
+            <input type="text" id="botToken" placeholder="مثل: 8926574603:AAE..." autocomplete="off" dir="ltr">
+          </label>
+        </div>
+        <div class="set-row">
+          <button type="button" class="btn btn-brass" id="botSaveBtn">ثبت توکن</button>
+          <span class="set-state" id="botState"></span>
+        </div>
+        <hr class="set-hr">
+        <p class="set-p">بعد از ثبت توکن، در تلگرام ربات را باز کنید و <code>/start</code> بزنید، بعد دکمهٔ زیر را بزنید تا معلوم شود پشتیبان برای چه کسی برود.</p>
+        <div class="set-row">
+          <button type="button" class="btn btn-ghost" id="botConnectBtn">اتصال به گفتگوی من</button>
+          <span class="set-state" id="connectState"></span>
+        </div>
+        <hr class="set-hr">
+        <div class="set-row">
+          <button type="button" class="btn btn-ghost" id="backupNowBtn">📤 همین حالا یک پشتیبان بفرست</button>
+          <button type="button" class="btn btn-ghost" id="backupDownloadBtn">⬇ دانلود زیپ پشتیبان</button>
+          <span class="set-state" id="backupState"></span>
+        </div>
+        <div class="set-row">
+          <span class="set-state" id="lastBackup"></span>
+        </div>
+      </div>
+    </section>
+
     <section class="view" id="view-guide">
       <div class="section-title">راهنمای استفاده</div>
       <div class="section-sub">این کارتابل جایگزین دیجیتال پلنر اکسل شماست</div>
@@ -1187,13 +1282,26 @@
 
 <script>
 /* ---------- قفل ورودی کارتابل ----------
-   رمز در هیچ جای این فایل نیست. فقط نمک و حاصل PBKDF2 ذخیره
-   شده؛ برای عوض کردن رمز، صفحهٔ /siamak/set-password.html را باز کنید
-   و دو رشتهٔ خروجی را جای همین دو خط بگذارید. */
-const GATE_SALT  = "4+bBvtXypoT7wrOX0S9iTA==";
-const GATE_HASH  = "OSqLKk/gfOS9h5Rcs3AZiBaTRCUFLvfur+1vc6AKSjg=";
-const GATE_ITERS = 310000;
-const GATE_KEY   = "it-manager-gate-v1";
+   تا وقتی داده فقط در حافظهٔ همین مرورگر بود، بررسی رمز در خودِ صفحه کافی
+   بود: کسی که از قفل رد می‌شد هم چیزی جز کارتابل خالی نمی‌دید.
+
+   حالا داده روی سرور است، پس رمز هم همان‌جا بررسی می‌شود. این صفحه فقط
+   رمز را می‌فرستد؛ نه خودش رمز را دارد و نه حاصلش را، و تا کوکی نشست
+   نگیرد هیچ مسیری داده نمی‌دهد. کوکی HttpOnly است، یعنی حتی کد همین
+   صفحه هم نمی‌تواند بخواندش. */
+const KARTABL_API = "/api/kartabl";
+
+async function apiCall(path, opts){
+  const res = await fetch(KARTABL_API + path, Object.assign({
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" }
+  }, opts || {}));
+  let data = null;
+  try{ data = await res.json(); }catch(e){ /* پاسخ بدون بدنه */ }
+  return { ok: res.ok, status: res.status, data: data || {} };
+}
+
+let gateReady = null;   /* وعده‌ای که وقتی وارد شدیم باز می‌شود */
 
 (function(){
   const screenEl = document.getElementById("gateScreen");
@@ -1203,44 +1311,24 @@ const GATE_KEY   = "it-manager-gate-v1";
   const errEl    = document.getElementById("gateErr");
   const remember = document.getElementById("gateRemember");
 
-  function b64ToBuf(b64){
-    const bin = atob(b64); const out = new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  function bufToB64(buf){
-    let bin = ""; const bytes = new Uint8Array(buf);
-    for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-    return btoa(bin);
-  }
-  async function hashPass(pass){
-    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass),
-      "PBKDF2", false, ["deriveBits"]);
-    const bits = await crypto.subtle.deriveBits(
-      { name:"PBKDF2", salt:b64ToBuf(GATE_SALT), iterations:GATE_ITERS, hash:"SHA-256" },
-      base, 256);
-    return bufToB64(bits);
-  }
+  let letMeIn;
+  gateReady = new Promise(r => { letMeIn = r; });
 
-  function unlocked(){
-    for(const store of [sessionStorage, localStorage]){
-      try{
-        const raw = store.getItem(GATE_KEY);
-        if(!raw) continue;
-        const rec = JSON.parse(raw);
-        if(rec && rec.h === GATE_HASH && (!rec.exp || rec.exp > Date.now())) return true;
-        store.removeItem(GATE_KEY);
-      }catch(e){ /* حافظهٔ مرورگر بسته است — قفل بسته می‌ماند */ }
-    }
-    return false;
-  }
   function openGate(){
     screenEl.hidden = false;
     setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 60);
   }
   function closeGate(){ screenEl.hidden = true; }
 
-  if(unlocked()) closeGate(); else openGate();
+  /* آیا کوکی نشست هنوز معتبر است؟ */
+  apiCall("/me").then(r=>{
+    if(r.ok && r.data.in){ closeGate(); letMeIn(true); }
+    else openGate();
+  }).catch(()=>{
+    /* سرور در دسترس نیست — با همان نسخهٔ محلی ادامه می‌دهیم، وگرنه
+       کارتابل در قطعی اینترنت اصلاً باز نمی‌شود. */
+    closeGate(); letMeIn(false);
+  });
 
   form.addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1248,19 +1336,18 @@ const GATE_KEY   = "it-manager-gate-v1";
     if(!pass) return;
     btn.disabled = true; btn.textContent = "در حال بررسی..."; errEl.textContent = "";
     try{
-      const got = await hashPass(pass);
-      if(got === GATE_HASH){
-        const rec = { h: GATE_HASH, exp: remember.checked ? Date.now() + 30*86400000 : 0 };
-        try{ (remember.checked ? localStorage : sessionStorage).setItem(GATE_KEY, JSON.stringify(rec)); }catch(e2){}
+      const r = await apiCall("/login", { method: "POST",
+        body: JSON.stringify({ password: pass, remember: remember.checked }) });
+      if(r.ok){
         input.value = "";
-        closeGate();
-      } else {
-        errEl.textContent = "❌ رمز عبور اشتباه است.";
-        input.select();
+        /* تازه‌سازی ساده‌ترین راه است تا همهٔ داده‌ها از سرور بیایند */
+        location.reload();
+        return;
       }
+      errEl.textContent = r.data.error || "رمز عبور اشتباه است.";
+      input.select();
     }catch(err){
-      /* crypto.subtle فقط روی https یا localhost کار می‌کند */
-      errEl.textContent = "بررسی رمز ممکن نشد (آدرس باید https باشد).";
+      errEl.textContent = "به سرور نرسیدم. اینترنت را بررسی کنید.";
     }
     btn.disabled = false; btn.textContent = "ورود";
   });
@@ -1268,10 +1355,13 @@ const GATE_KEY   = "it-manager-gate-v1";
   document.addEventListener("DOMContentLoaded", ()=>{
     const lock = document.getElementById("lockBtn");
     if(!lock) return;
-    lock.addEventListener("click", ()=>{
-      try{ localStorage.removeItem(GATE_KEY); }catch(e){}
-      try{ sessionStorage.removeItem(GATE_KEY); }catch(e){}
-      openGate();
+    lock.addEventListener("click", async ()=>{
+      try{ await apiCall("/logout", { method: "POST" }); }catch(e){}
+      /* نسخهٔ محلی هم پاک می‌شود، وگرنه روی یک دستگاه مشترک داده‌ها
+         بعد از «خروج» هنوز روی صفحه می‌ماند. */
+      try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+      try{ localStorage.removeItem(DB_CACHE_KEY); }catch(e){}
+      location.reload();
     });
   });
 })();
@@ -1429,7 +1519,7 @@ async function tryReconnectFolder(){
   }
   const handle = await idbGet("dir");
   if(!handle){
-    updateFolderStatus("داده‌ها فقط روی حافظه‌ی این مرورگر ذخیره می‌شود.");
+    updateFolderStatus("داده‌ها روی سرور ذخیره می‌شوند و از هر دستگاهی در دسترس‌اند.");
     return;
   }
   try{
@@ -1443,7 +1533,7 @@ async function tryReconnectFolder(){
       updateFolderStatus("🗂️ قبلاً به پوشه «"+handle.name+"» وصل بودید — برای ادامه، دوباره روی «اتصال به پوشه» بزنید.");
     }
   }catch(e){
-    updateFolderStatus("داده‌ها فقط روی حافظه‌ی این مرورگر ذخیره می‌شود.");
+    updateFolderStatus("داده‌ها روی سرور ذخیره می‌شوند و از هر دستگاهی در دسترس‌اند.");
   }
 }
 
@@ -1593,6 +1683,8 @@ function scheduleSave(){
       if(dirHandle) await writeToFolder();
       if(dirHandle){ saveTasksSheet(); saveDaysSheet(); }
       if(hint) hint.textContent = "✓ ذخیره شد";
+      /* نسخهٔ محلی نوشته شد؛ حالا همان را روی سرور هم بگذار */
+      try{ Cloud.push(); }catch(e){ /* هنوز بالا نیامده */ }
     }catch(e){
       if(hint) hint.textContent = "ذخیره ناموفق بود";
     }
@@ -2852,7 +2944,7 @@ function buildEmptyDatabaseWorkbook(){
   return wb;
 }
 
-function persistDbCache(){
+function persistDbCacheLocal(){
   try{
     localStorage.setItem(DB_CACHE_KEY, JSON.stringify({
       vm: backupData && backupData.vm || [],
@@ -2862,6 +2954,13 @@ function persistDbCache(){
       fileName: dbFileName, syncedAt: dbSyncedAt
     }));
   }catch(e){ /* storage full or unavailable — non-fatal */ }
+}
+
+/* هر تغییرِ دیتابیس هم روی همین مرورگر می‌نشیند هم بالا می‌رود. نسخهٔ
+   محلی اول نوشته می‌شود تا اگر اینترنت قطع بود چیزی گم نشود. */
+function persistDbCache(){
+  persistDbCacheLocal();
+  try{ Cloud.push(); }catch(e){ /* هنوز بالا نیامده */ }
 }
 
 function loadCachedDatabase(){
@@ -4660,11 +4759,248 @@ function setupDateTools(){
   });
 }
 
+/* ---------- همگام‌سازی با سرور ----------
+   کارتابل تا دیروز فقط در حافظهٔ همین مرورگر زندگی می‌کرد: با عوض کردن
+   دستگاه یا پاک شدن حافظهٔ مرورگر همه‌چیز می‌رفت. حالا سرور مرجع است و
+   حافظهٔ مرورگر فقط نسخهٔ آفلاین می‌ماند — اگر اینترنت نبود کارتابل باز
+   می‌شود و کار می‌کند، و به‌محض وصل شدن، تغییرها بالا می‌روند.
+
+   دو تکه بالا و پایین می‌رود: «state» (وظایف، برنامهٔ روزانه، ماه‌ها،
+   بخش شخصیِ رمزشده) و «db» (سرورها، شرکت‌ها، MVPN، لاگ بکاپ، ریموت). */
+
+function dbSnapshot(){
+  return {
+    vm: backupData && backupData.vm || [],
+    dailyLog: dailyLog,
+    companies: companiesData && companiesData.companies || {},
+    lines: mvpnData && mvpnData.lines || [],
+    roster: remoteBackupData && remoteBackupData.roster || []
+  };
+}
+
+function applyDbSnapshot(c){
+  if(!c) return;
+  backupData = { vm: c.vm || [] };
+  dailyLog = c.dailyLog || { "روزانه یک‌بار": [], "روزانه دوبار": [] };
+  companiesData = { companies: c.companies || {} };
+  mvpnData = { lines: c.lines || [] };
+  remoteBackupData = { roster: c.roster || [] };
+}
+
+const Cloud = (function(){
+  let rev = null;          /* نسخه‌ای که این مرورگر از آن شروع کرده */
+  let online = false;      /* آخرین بار توانستیم با سرور حرف بزنیم؟ */
+  let timer = null;
+  let inFlight = false;
+  let again = false;       /* وسط ارسال، تغییر تازه‌ای رسید */
+
+  function setHint(text){
+    const h = document.getElementById("saveHint");
+    if(h) h.textContent = text;
+  }
+  function setCloudStatus(text){
+    const el = document.getElementById("cloudStatus");
+    if(el) el.textContent = text;
+  }
+
+  /* وقتی دو دستگاه هم‌زمان کار کرده‌اند، بی‌صدا روی کار دیگری نمی‌نویسیم */
+  function showConflict(){
+    if(document.getElementById("syncConflict")) return;
+    const bar = document.createElement("div");
+    bar.id = "syncConflict";
+    bar.innerHTML =
+      '<span>این کارتابل از دستگاه دیگری هم تغییر کرده است. کدام نسخه بماند؟</span>' +
+      '<button type="button" id="conflictTake">نسخهٔ سرور را بیاور</button>' +
+      '<button type="button" id="conflictKeep">نسخهٔ من را بنویس</button>';
+    document.body.appendChild(bar);
+    document.getElementById("conflictTake").addEventListener("click", ()=> location.reload());
+    document.getElementById("conflictKeep").addEventListener("click", async ()=>{
+      bar.remove();
+      rev = null;                 /* بدون baseRev یعنی «همین را بنویس» */
+      await push(true);
+    });
+  }
+
+  async function pull(){
+    try{
+      const r = await apiCall("/state");
+      if(r.status === 401){ online = false; setCloudStatus("وارد نشده‌اید."); return false; }
+      if(!r.ok) throw new Error(r.data.error || "خطای سرور");
+      online = true;
+      rev = r.data.rev || 0;
+      if(r.data.state){
+        state = Object.assign(deepClone(DEFAULT_STATE), r.data.state);
+        if(!state.tasks || !state.tasks.length) state.tasks = deepClone(DEFAULT_STATE.tasks);
+        if(!state.days || !Array.isArray(state.days) || !state.days.length) state.days = deepClone(DEFAULT_STATE.days);
+        if(!state.remoteChecks || typeof state.remoteChecks !== "object") state.remoteChecks = {};
+        if(!state.remoteCheckDates || !Array.isArray(state.remoteCheckDates) || !state.remoteCheckDates.length)
+          state.remoteCheckDates = deepClone(DEFAULT_STATE.remoteCheckDates);
+        ensureMonthsMigration();
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+      }
+      if(r.data.db){
+        applyDbSnapshot(r.data.db);
+        try{ persistDbCacheLocal(); }catch(e){}
+      }
+      setCloudStatus(r.data.updated
+        ? "آخرین همگام‌سازی: " + new Date(r.data.updated).toLocaleString("fa-IR")
+        : "روی سرور هنوز چیزی ذخیره نشده.");
+      return true;
+    }catch(e){
+      online = false;
+      setCloudStatus("آفلاین — فعلاً روی همین مرورگر کار می‌کنید.");
+      return false;
+    }
+  }
+
+  async function push(force){
+    if(!online && !force) return;
+    if(inFlight){ again = true; return; }
+    inFlight = true;
+    setHint("در حال ذخیره روی سرور...");
+    try{
+      const payload = { state: state, db: dbSnapshot() };
+      if(rev !== null) payload.baseRev = rev;
+      const r = await apiCall("/state", { method: "PUT", body: JSON.stringify(payload) });
+      if(r.status === 409){ inFlight = false; showConflict(); setHint("ذخیره نشد — تداخل نسخه"); return; }
+      if(r.status === 401){ inFlight = false; online = false; setHint("وارد نشده‌اید"); return; }
+      if(!r.ok) throw new Error(r.data.error || "خطای سرور");
+      rev = r.data.rev;
+      online = true;
+      setHint("✓ ذخیره شد");
+      setCloudStatus("آخرین همگام‌سازی: " + new Date(r.data.updated).toLocaleString("fa-IR"));
+    }catch(e){
+      /* نسخهٔ محلی از قبل نوشته شده، پس چیزی گم نمی‌شود */
+      setHint("✓ ذخیره شد (فقط روی این مرورگر)");
+      setCloudStatus("آفلاین — تغییرها با وصل شدن بالا می‌روند.");
+    }
+    inFlight = false;
+    if(again){ again = false; schedule(); }
+  }
+
+  function schedule(){
+    clearTimeout(timer);
+    timer = setTimeout(()=> push(false), 900);
+  }
+
+  return { pull, push: schedule, pushNow: push, isOnline: ()=> online };
+})();
+
+/* ---------- بخش تنظیمات ----------
+   رمز ورود و ربات پشتیبان، هر دو از داخل خودِ کارتابل. هیچ‌کدام از این‌ها
+   در فایل صفحه ننشسته‌اند؛ همه روی سرور تنظیم می‌شوند. */
+
+function setState(id, text, kind){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = text;
+  el.className = "set-state" + (kind ? " " + kind : "");
+}
+
+function faTime(ms){
+  try{ return new Date(ms).toLocaleString("fa-IR"); }catch(e){ return ""; }
+}
+
+async function refreshBackupSettings(){
+  const r = await apiCall("/backup/settings");
+  if(!r.ok) return;
+  const d = r.data;
+  setState("botState", d.hasToken
+    ? ("ربات ثبت شده" + (d.botName ? ": @" + d.botName : ""))
+    : "هنوز توکنی ثبت نشده.", d.hasToken ? "ok" : "");
+  setState("connectState", d.chat ? "وصل است (گفتگوی " + d.chat + ")" : "هنوز وصل نشده.",
+    d.chat ? "ok" : "");
+  if(d.last){
+    setState("lastBackup", d.last.ok
+      ? "آخرین پشتیبان: " + faTime(d.last.at) + " — " + Math.round((d.last.size||0)/1024) + " کیلوبایت"
+      : "آخرین تلاش ناموفق بود (" + faTime(d.last.at) + "): " + (d.last.error||""),
+      d.last.ok ? "ok" : "err");
+  } else {
+    setState("lastBackup", "هنوز پشتیبانی فرستاده نشده.");
+  }
+}
+
+function setupSettings(){
+  /* --- عوض کردن رمز --- */
+  const form = document.getElementById("passForm");
+  if(form) form.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const cur = document.getElementById("passCurrent").value;
+    const next = document.getElementById("passNext").value;
+    const rep = document.getElementById("passRepeat").value;
+    if(next !== rep){ setState("passState", "دو رمز تازه یکی نیستند.", "err"); return; }
+    if(next.length < 8){ setState("passState", "رمز تازه باید دست‌کم ۸ کاراکتر باشد.", "err"); return; }
+    const btn = document.getElementById("passBtn");
+    btn.disabled = true; setState("passState", "در حال ثبت…");
+    const r = await apiCall("/password", { method:"POST", body: JSON.stringify({ current: cur, next: next }) });
+    btn.disabled = false;
+    if(r.ok){
+      form.reset();
+      setState("passState", "✓ رمز عوض شد. دستگاه‌های دیگر باید دوباره وارد شوند.", "ok");
+    } else {
+      setState("passState", r.data.error || "ثبت نشد.", "err");
+    }
+  });
+
+  /* --- ثبت توکن ربات --- */
+  const saveBtn = document.getElementById("botSaveBtn");
+  if(saveBtn) saveBtn.addEventListener("click", async ()=>{
+    const token = document.getElementById("botToken").value.trim();
+    if(!token){ setState("botState", "توکن را بنویسید.", "err"); return; }
+    saveBtn.disabled = true; setState("botState", "در حال بررسی توکن…");
+    const r = await apiCall("/backup/settings", { method:"POST", body: JSON.stringify({ token }) });
+    saveBtn.disabled = false;
+    if(r.ok){
+      document.getElementById("botToken").value = "";
+      setState("botState", "✓ ثبت شد: @" + r.data.botName, "ok");
+    } else {
+      setState("botState", r.data.error || "ثبت نشد.", "err");
+    }
+  });
+
+  /* --- پیدا کردن گفتگو --- */
+  const connectBtn = document.getElementById("botConnectBtn");
+  if(connectBtn) connectBtn.addEventListener("click", async ()=>{
+    connectBtn.disabled = true; setState("connectState", "دنبال پیام شما در ربات می‌گردم…");
+    const r = await apiCall("/backup/connect", { method:"POST", body: "{}" });
+    connectBtn.disabled = false;
+    if(r.ok) setState("connectState", "✓ وصل شد به «" + (r.data.name||r.data.chat) + "»", "ok");
+    else setState("connectState", r.data.error || "وصل نشد.", "err");
+  });
+
+  /* --- پشتیبان دستی --- */
+  const nowBtn = document.getElementById("backupNowBtn");
+  if(nowBtn) nowBtn.addEventListener("click", async ()=>{
+    nowBtn.disabled = true; setState("backupState", "در حال ساختن و فرستادن پشتیبان…");
+    const r = await apiCall("/backup/now", { method:"POST", body: "{}" });
+    nowBtn.disabled = false;
+    if(r.ok){
+      setState("backupState", "✓ فرستاده شد — " + Math.round(r.data.size/1024) + " کیلوبایت", "ok");
+      refreshBackupSettings();
+    } else {
+      setState("backupState", r.data.error || "فرستاده نشد.", "err");
+    }
+  });
+
+  const dlBtn = document.getElementById("backupDownloadBtn");
+  if(dlBtn) dlBtn.addEventListener("click", ()=>{
+    setState("backupState", "در حال آماده کردن فایل…");
+    location.href = KARTABL_API + "/backup/download";
+    setTimeout(()=> setState("backupState", ""), 3000);
+  });
+
+  refreshBackupSettings();
+}
+
 async function init(){
 
   try{
     await loadState();
     loadCachedDatabase();
+    /* نسخهٔ محلی فقط برای این است که صفحه فوری بالا بیاید؛ مرجع سرور
+       است. منتظر می‌مانیم تا ورود قطعی شود، بعد داده را می‌گیریم. */
+    try{ if(gateReady) await gateReady; }catch(e){}
+    try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     renderMeta();
     setupNav();
     setupMeta();
@@ -4676,6 +5012,7 @@ async function init(){
     setupRemote();
     setupChartModal();
     setupDateTools();
+    setupSettings();
     renderAll();
     renderServers();
     renderCompanies();

@@ -1,3 +1,4 @@
+import { handleKartabl, nightlyKartablBackup } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1353,6 +1354,7 @@ export default {
     })().catch(e => console.log(name, e.message)));
 
     once('backup', runBackup);
+    once('kartablBackup', nightlyKartablBackup);
     once('reorder', reorderReminders);
     once('cart', cartNudges);
     once('pay', payNudges);
@@ -1590,6 +1592,11 @@ export default {
 
     try {
       /* ---------------- عمومی ---------------- */
+      /* کارتابل مدیر IT. بررسی ورودش جداست و از کوکی خودش می‌آید، نه از
+         توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها جواب می‌گیرد. */
+      if (p.startsWith('/api/kartabl/'))
+        return handleKartabl(env, req, p, m, body, { rateLimit, clientIp });
+
       if (p === '/api/bootstrap') {
         /* صفحهٔ اصلی مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد،
            پس بازدید را از همین درخواست می‌شماریم که هر بار باز شدن سایت
