@@ -679,10 +679,7 @@
   /* چهار ستون روی تمام عرض صفحه کشیده می‌شدند: ستون تاریخ ۳۹۴ پیکسل
      می‌گرفت برای متنی مثل «05.06.25». حالا جدول به اندازهٔ ستون‌هایش
      است، نه به اندازهٔ صفحه. */
-  .company-visits-table{ width:auto; min-width:min(100%, 590px); }
-  /* کادر دور جدول هم باید با خودش جمع شود، وگرنه یک مستطیل سفیدِ خالی
-     کنار جدول می‌ماند. */
-  .visits-wrap{ width:fit-content; max-width:100%; }
+  .company-visits-table{ table-layout:fixed; }
   /* ستون نام سرور موقع اسکرول افقی سرِ جا می‌ماند، پس باید پس‌زمینه
      داشته باشد وگرنه تیک‌ها از زیرش رد می‌شوند. */
   .remote-grid td.server-name{ position:sticky; right:0; background:#fff; z-index:1; }
@@ -1051,7 +1048,7 @@
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:24%;">📌 وظایف اصلی</th><th style="width:42%;">🤝 توضیحات</th><th style="width:104px;">🏢 شرکت</th><th style="width:104px;">وضعیت</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:180px;">🏢 شرکت</th><th style="width:120px;">وضعیت</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
           <tr class="filter-row">
             <th></th><th></th><th></th><th></th>
             <th><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
@@ -3864,7 +3861,7 @@ function renderCompanies(){
         <div class="tbl-wrap visits-wrap" style="max-height:280px; overflow-y:auto;">
           <table class="company-visits-table">
             <colgroup>
-              <col style="width:150px;"><col style="width:130px;"><col style="width:190px;"><col style="width:120px;">
+              <col style="width:22%;"><col style="width:20%;"><col style="width:38%;"><col style="width:20%;">
             </colgroup>
             <thead><tr>
               <th>تاریخ</th><th>مدت زمان</th><th>نوع</th>
@@ -4450,8 +4447,8 @@ function renderPersonalCreds(){
     <div class="tbl-wrap">
       <table class="cred-table">
         <colgroup>
-          <col style="width:16%;"><col style="width:16%;"><col style="width:18%;">
-          <col style="width:16%;"><col style="width:27%;"><col style="width:36px;">
+          <col style="width:14%;"><col style="width:15%;"><col style="width:30%;">
+          <col style="width:18%;"><col style="width:23%;"><col style="width:36px;">
         </colgroup>
         <thead><tr><th>شرکت</th><th>یوزرنیم</th><th>پسورد</th><th>IP / آدرس</th><th>توضیحات</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" style="color:var(--ink-faint);">${sel ? "موردی برای این شرکت پیدا نشد." : "هنوز موردی اضافه نشده."}</td></tr>`}</tbody>
