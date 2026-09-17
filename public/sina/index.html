@@ -127,20 +127,19 @@
   .period label{ font-size:12px; color:#C9D2DC; }
 
   /* ---------- Live clock (stable width, no layout shift) ---------- */
+  /* تاریخ از نوار بالا برداشته شد: همان تاریخ و همان ساعت یک بار دیگر
+     در داشبورد هم بود. اینجا فقط ساعت می‌ماند، جمع‌وجور و کنار انتخاب ماه. */
   .live-clock{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    display:flex; align-items:center; justify-content:center; margin-inline-start:auto;
     background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18);
-    border-radius:10px; padding:6px 18px; min-width:150px; user-select:none;
+    border-radius:999px; padding:6px 14px; user-select:none;
   }
   .lc-time{
-    font-family:'Vazirmatn', monospace; font-variant-numeric:tabular-nums;
-    font-size:18px; font-weight:700; color:#fff; letter-spacing:1px;
+    font-family:var(--font-display); font-variant-numeric:tabular-nums;
+    font-size:15px; font-weight:700; color:#fff; letter-spacing:.8px;
     line-height:1.3; white-space:nowrap;
   }
-  .lc-date{
-    font-size:11px; color:#C9D2DC; margin-top:2px; white-space:nowrap;
-    line-height:1.3;
-  }
+  .lc-date{ display:none; }
   .period select{
     font-family:var(--font-body); font-size:13px;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.22);
@@ -326,12 +325,21 @@
 
   /* ---------- Stat cards ---------- */
   .cards{
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(158px,1fr)); gap:12px; margin-bottom:22px;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(186px,1fr)); gap:12px; margin-bottom:22px;
   }
+  /* کارت‌ها قبلاً بلوک‌های تمام‌رنگِ اشباع بودند با یک ایموجی بزرگِ کم‌رنگ
+     پشتشان. رنگِ پُر در سطح بزرگ، عدد را کم‌جان می‌کند و صفحه را شلوغ.
+     حالا زمینه سفید است و رنگ فقط در دو جای کوچک می‌نشیند: نوار کناری و
+     قاب آیکن. عدد — که حرف اصلی کارت است — پررنگ‌ترین چیز کارت شد. */
   .stat{
-    border-radius:12px; padding:16px 14px; color:#fff; box-shadow:0 2px 8px rgba(11,37,69,.12);
-    position:relative; overflow:hidden; transition:transform .18s, box-shadow .18s;
+    background:var(--white); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:14px 16px 13px; position:relative; overflow:hidden; box-shadow:var(--shadow);
+    transition:transform .18s, box-shadow .18s;
     animation:statIn .4s ease backwards;
+  }
+  .stat::before{
+    content:""; position:absolute; inset-inline-start:0; top:0; bottom:0;
+    width:3px; background:var(--accent, var(--brass));
   }
   .stat:nth-child(1){ animation-delay:.02s; }
   .stat:nth-child(2){ animation-delay:.07s; }
@@ -340,42 +348,62 @@
   .stat:nth-child(5){ animation-delay:.22s; }
   .stat:nth-child(6){ animation-delay:.27s; }
   @keyframes statIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
-  .stat::after{
-    content:attr(data-ic); position:absolute; left:-6px; bottom:-14px; font-size:56px; opacity:.16;
-    line-height:1; pointer-events:none; transform:rotate(-8deg);
+  .stat:hover{ transform:translateY(-2px); box-shadow:0 6px 18px rgba(11,37,69,.13); }
+
+  .stat-head{ display:flex; align-items:center; gap:8px; }
+  .stat-ic{
+    width:27px; height:27px; flex:none; border-radius:8px;
+    display:grid; place-items:center; font-size:14px; line-height:1;
+    background:var(--tint, var(--brass-bg));
   }
-  .stat:hover{ transform:translateY(-2px); box-shadow:0 8px 18px rgba(11,37,69,.2); }
-  .stat .lbl{ font-size:11.5px; font-weight:600; opacity:.92; display:flex; align-items:center; gap:6px; position:relative; z-index:1; }
-  .stat .val{ font-family:var(--font-display); font-size:27px; font-weight:700; margin-top:9px; position:relative; z-index:1; }
-  .stat .sub{ font-size:11px; font-weight:600; opacity:.82; margin-top:2px; position:relative; z-index:1; }
-  .stat.blue{ background:linear-gradient(155deg,#2A5C8A,#173B5C); }
-  .stat.green{ background:linear-gradient(155deg,#458A47,#2A5A2C); }
-  .stat.teal{ background:linear-gradient(155deg,#128075,#0B534A); }
-  .stat.amber{ background:linear-gradient(155deg,#D69A2B,#93690F); }
-  .stat.red{ background:linear-gradient(155deg,#C42E37,#821B21); }
-  .stat.purple{ background:linear-gradient(155deg,#6E4FA0,#43306B); }
+  .stat-lbl{ font-size:11.5px; font-weight:600; color:var(--ink-soft); line-height:1.45; }
+  /* عددِ بزرگ با ارقام متناسب، نه tabular — در اندازهٔ درشت، ارقامِ
+     هم‌عرض عدد را شل و بازنشان می‌دهند. */
+  .stat-val{
+    font-family:var(--font-display); font-size:25px; font-weight:700; color:var(--ink);
+    margin-top:11px; line-height:1.15; letter-spacing:-.2px; word-break:break-word;
+  }
+  .stat-sub{ font-size:11px; color:var(--ink-faint); margin-top:3px; font-weight:500; }
+
+  /* کارت‌های «معوق» وضعیت‌اند، نه اندازه: وقتی صفر است خبرِ خوب است و
+     نباید قرمز باشد. رنگ به‌تنهایی هم حرف نمی‌زند — آیکن و متن هم هست. */
+  .stat.is-clear{ --accent:#1E7A4A; --tint:#E3EFE7; }
+  .stat.is-alert{ --accent:#A6222B; --tint:#F6E1E2; }
+  .stat.is-alert .stat-val{ color:#8E1D25; }
 
   .dash-hero{
-    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 55%,var(--brass-deep) 130%);
+    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 60%,#0F5E58 130%);
     border-radius:14px; padding:18px 22px; margin-bottom:18px; color:#fff;
-    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
     box-shadow:0 6px 20px rgba(11,37,69,.18); position:relative; overflow:hidden;
   }
   .dash-hero::before{
-    content:"💰"; position:absolute; font-size:110px; opacity:.08; left:-10px; bottom:-30px; transform:rotate(-12deg);
+    content:"💰"; position:absolute; font-size:118px; opacity:.07;
+    inset-inline-start:-14px; bottom:-34px; transform:rotate(-12deg); pointer-events:none;
   }
   .dash-hero .dh-greet{ font-family:var(--font-display); font-size:16px; font-weight:700; position:relative; z-index:1; }
   .dash-hero .dh-sub{ font-size:11.5px; opacity:.85; margin-top:4px; position:relative; z-index:1; }
-  .dh-clock-block{
-    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25); border-radius:12px;
-    padding:10px 22px; text-align:center; position:relative; z-index:1;
-    backdrop-filter:blur(2px); min-width:190px;
+
+  /* ساعت و تاریخ هر کدام کارت خودش — قبلاً یک بلوکِ بزرگ بودند و همان
+     ساعت یک بار دیگر هم در نوار بالا تکرار می‌شد. */
+  .dh-side{ display:flex; gap:10px; position:relative; z-index:1; flex-wrap:wrap; }
+  .dh-box{
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.22);
+    border-radius:12px; padding:9px 16px; text-align:center; min-width:124px;
+    backdrop-filter:blur(2px);
   }
+  .dh-box .dh-cap{
+    font-size:10px; font-weight:600; color:#B9C6D6; letter-spacing:.3px;
+    text-transform:none; margin-bottom:3px;
+  }
+  /* ساعت هر ثانیه عوض می‌شود؛ اینجا ارقامِ هم‌عرض لازم است وگرنه عدد
+     مدام کمی جابه‌جا می‌شود. */
   .dh-time{
-    font-family:'Vazirmatn', monospace; font-variant-numeric:tabular-nums;
-    font-size:26px; font-weight:800; color:#fff; letter-spacing:1.5px; line-height:1.3; white-space:nowrap;
+    font-family:var(--font-display); font-variant-numeric:tabular-nums;
+    font-size:23px; font-weight:800; color:#fff; letter-spacing:1px;
+    line-height:1.2; white-space:nowrap;
   }
-  .dh-datestr{ font-size:12px; color:#E4EAF0; margin-top:3px; white-space:nowrap; }
+  .dh-datestr{ font-family:var(--font-display); font-size:15px; font-weight:700; color:#fff; line-height:1.3; white-space:nowrap; }
 
   .dash-group-label{
     display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--ink-soft);
@@ -630,6 +658,13 @@
     .navbtn{ padding:7px 10px; font-size:12px; }
     .content{ padding:14px 11px 44px; }
   }
+
+  /* شش کارتِ داشبورد با auto-fit به ۵+۱ می‌شکست و یک ردیفِ تک‌کارته با
+     جای خالی کنارش می‌ماند. تعداد ستون را صریح می‌گذاریم تا همیشه
+     ردیف‌های پر باشد: ۶ روی نمایشگر پهن، ۳ روی متوسط، ۲ روی گوشی. */
+  #statCards{ grid-template-columns:repeat(2,1fr); }
+  @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
+  @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
 </style>
 </head>
 <body>
@@ -2292,10 +2327,10 @@ function renderInvoices(){
   const outstanding = invoicesData.filter(i=>i.status!=="پرداخت‌شده").reduce((s,i)=>s+ Math.max(0,(i.amount||0)-(i.paid||0)), 0);
   const overdueCount = invoicesData.filter(i=>i.status==="معوق").length;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat blue" data-ic="🧾"><div class="lbl">🧾 تعداد فاکتورها</div><div class="val">${fa(invoicesData.length)}</div></div>
-    <div class="stat teal" data-ic="💰"><div class="lbl">💰 جمع کل فاکتورها</div><div class="val">${formatMoney(total)}</div></div>
-    <div class="stat amber" data-ic="⏳"><div class="lbl">⏳ مانده‌ی وصول‌نشده</div><div class="val">${formatMoney(outstanding)}</div></div>
-    <div class="stat red" data-ic="🔴"><div class="lbl">🔴 فاکتورهای معوق</div><div class="val">${fa(overdueCount)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">🧾</span><span class="stat-lbl">تعداد فاکتورها</span></div><div class="stat-val">${fa(invoicesData.length)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل فاکتورها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:#6A45A8; --tint:#EDE7F5"><div class="stat-head"><span class="stat-ic">⏳</span><span class="stat-lbl">مانده‌ی وصول‌نشده</span></div><div class="stat-val">${formatMoney(outstanding)}</div></div>
+    <div class="stat ${(overdueCount) > 0 ? "is-alert" : "is-clear"}"><div class="stat-head"><span class="stat-ic">${(overdueCount) > 0 ? "⚠️" : "✅"}</span><span class="stat-lbl">فاکتورهای معوق</span></div><div class="stat-val">${fa(overdueCount)}</div><div class="stat-sub">${(overdueCount) > 0 ? "نیاز به پیگیری" : "چیزی عقب نیفتاده"}</div></div>
   `;
 
   const statusSel = document.getElementById("msfInvoiceStatus");
@@ -2443,9 +2478,9 @@ function renderPayables(){
   const today = getTodayJalaliStr();
   const overdueCount = payablesData.filter(p=> p.dueDate && p.dueDate < today).length;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat blue" data-ic="💳"><div class="lbl">💳 تعداد ردیف‌ها</div><div class="val">${fa(payablesData.length)}</div></div>
-    <div class="stat teal" data-ic="💰"><div class="lbl">💰 جمع کل بدهی‌ها</div><div class="val">${formatMoney(total)}</div></div>
-    <div class="stat red" data-ic="🔴"><div class="lbl">🔴 سررسیدگذشته</div><div class="val">${fa(overdueCount)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">💳</span><span class="stat-lbl">تعداد ردیف‌ها</span></div><div class="stat-val">${fa(payablesData.length)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل بدهی‌ها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat ${(overdueCount) > 0 ? "is-alert" : "is-clear"}"><div class="stat-head"><span class="stat-ic">${(overdueCount) > 0 ? "⚠️" : "✅"}</span><span class="stat-lbl">سررسیدگذشته</span></div><div class="stat-val">${fa(overdueCount)}</div><div class="stat-sub">${(overdueCount) > 0 ? "نیاز به پیگیری" : "چیزی عقب نیفتاده"}</div></div>
   `;
 
   const list = applyPayableFilters(payablesData);
@@ -2568,8 +2603,8 @@ function renderPayableNotes(){
   const cardsWrap = document.getElementById("payableNotesCards");
   const total = payableNotesData.reduce((s,n)=>s+(n.amount||0),0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat red" data-ic="📄"><div class="lbl">📄 تعداد اسناد پرداختنی</div><div class="val">${fa(payableNotesData.length)}</div></div>
-    <div class="stat blue" data-ic="💰"><div class="lbl">💰 جمع کل مبلغ</div><div class="val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📄</span><span class="stat-lbl">تعداد اسناد پرداختنی</span></div><div class="stat-val">${fa(payableNotesData.length)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const list = applyPayableNoteFilters(payableNotesData);
   const editableTd = (value, idx, field)=>
@@ -2690,8 +2725,8 @@ function renderReceivableNotes(){
   const cardsWrap = document.getElementById("receivableNotesCards");
   const total = receivableNotesData.reduce((s,n)=>s+(n.amount||0),0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat green" data-ic="📃"><div class="lbl">📃 تعداد اسناد دریافتنی</div><div class="val">${fa(receivableNotesData.length)}</div></div>
-    <div class="stat blue" data-ic="💰"><div class="lbl">💰 جمع کل مبلغ</div><div class="val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📃</span><span class="stat-lbl">تعداد اسناد دریافتنی</span></div><div class="stat-val">${fa(receivableNotesData.length)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const list = applyReceivableNoteFilters(receivableNotesData);
   const editableTd = (value, idx, field)=>
@@ -2818,9 +2853,13 @@ function renderExpenses(){
   const totalUses = expensesData.filter(e=>e.type===SOURCE_USE_TYPES[1]).reduce((s,e)=>s+(e.amount||0),0);
   const net = totalSources - totalUses;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat green" data-ic="📥"><div class="lbl">📥 جمع منابع</div><div class="val">${formatMoney(totalSources)}</div></div>
-    <div class="stat red" data-ic="📤"><div class="lbl">📤 جمع مصارف</div><div class="val">${formatMoney(totalUses)}</div></div>
-    <div class="stat ${net>=0?'teal':'amber'}" data-ic="⚖️"><div class="lbl">⚖️ تراز (منابع − مصارف)</div><div class="val">${formatMoney(net)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📥</span><span class="stat-lbl">جمع منابع</span></div><div class="stat-val">${formatMoney(totalSources)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">📤</span><span class="stat-lbl">جمع مصارف</span></div><div class="stat-val">${formatMoney(totalUses)}</div></div>
+    <div class="stat" style="--accent:${net>=0?'#1E7A4A':'#A6222B'}; --tint:${net>=0?'#E3EFE7':'#F6E1E2'}">
+      <div class="stat-head"><span class="stat-ic">⚖️</span><span class="stat-lbl">تراز (منابع − مصارف)</span></div>
+      <div class="stat-val" style="color:${net>=0?'var(--ink)':'#8E1D25'}">${formatMoney(net)}</div>
+      <div class="stat-sub">${net>=0?'مثبت — منابع بیشتر از مصارف':'منفی — مصارف بیشتر از منابع'}</div>
+    </div>
   `;
 
   const typeSel = document.getElementById("msfExpenseType");
@@ -2967,8 +3006,8 @@ function renderBank(){
   const cardsWrap = document.getElementById("bankCards");
   const total = bankData.reduce((s,b)=>s+ (b.balance||0), 0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat blue" data-ic="🏦"><div class="lbl">🏦 تعداد حساب‌ها</div><div class="val">${fa(bankData.length)}</div></div>
-    <div class="stat green" data-ic="💰"><div class="lbl">💰 جمع نقدینگی</div><div class="val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">🏦</span><span class="stat-lbl">تعداد حساب‌ها</span></div><div class="stat-val">${fa(bankData.length)}</div></div>
+    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع نقدینگی</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const editableTd = (value, idx, field)=>
     `<td class="editable-cell" contenteditable="${editMode.bank?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.bank?'1':'0.85'}; cursor:${editMode.bank?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
@@ -3537,9 +3576,15 @@ function renderDashHero(){
       <div class="dh-greet">👋 ${greet}، مدیر مالی</div>
       <div class="dh-sub">خلاصه‌ی وضعیت مالی امروز و این ماه، همه‌جا یک نگاه</div>
     </div>
-    <div class="dh-clock-block">
-      <div class="dh-time" id="dhTime">--:--:--</div>
-      <div class="dh-datestr" id="dhDateStr">${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</div>
+    <div class="dh-side">
+      <div class="dh-box">
+        <div class="dh-cap">ساعت اکنون</div>
+        <div class="dh-time" id="dhTime">--:--:--</div>
+      </div>
+      <div class="dh-box">
+        <div class="dh-cap">امروز</div>
+        <div class="dh-datestr" id="dhDateStr">${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</div>
+      </div>
     </div>
   `;
   updateLiveClock();
@@ -3549,14 +3594,34 @@ function renderCards(){
   const s = computeFinanceStats();
   const wrap = document.getElementById("statCards");
   if(!wrap) return;
-  wrap.innerHTML = `
-    <div class="stat amber" data-ic="🧾"><div class="lbl">🧾 کل مطالبات باز</div><div class="val">${formatMoney(s.totalReceivable)}</div></div>
-    <div class="stat red" data-ic="💳"><div class="lbl">💳 کل بدهی باز</div><div class="val">${formatMoney(s.totalPayable)}</div></div>
-    <div class="stat green" data-ic="🏦"><div class="lbl">🏦 موجودی نقدی کل</div><div class="val">${formatMoney(s.totalCash)}</div></div>
-    <div class="stat teal" data-ic="🧮"><div class="lbl">🧮 جمع هزینه‌های ثبت‌شده</div><div class="val">${formatMoney(s.totalExpenses)}</div></div>
-    <div class="stat blue" data-ic="🔴"><div class="lbl">🔴 فاکتورهای معوق</div><div class="val">${fa(s.overdueInvoices)}</div></div>
-    <div class="stat purple" data-ic="🔴"><div class="lbl">🔴 بدهی‌های معوق</div><div class="val">${fa(s.overduePayables)}</div></div>
-  `;
+  /* ترتیب رنگ‌ها ثابت است و با اعتبارسنجِ راهنما سنجیده شده: بدترین جفتِ
+     کنار هم زیر کوررنگی ΔE ۱۴.۸ فاصله دارد. هر کارت برچسب متنی و آیکن
+     خودش را هم دارد، پس هویتش هیچ‌وقت فقط به رنگ بند نیست. */
+  const money = (ic, label, val, accent, tint) =>
+    `<div class="stat" style="--accent:${accent}; --tint:${tint}">
+       <div class="stat-head"><span class="stat-ic">${ic}</span><span class="stat-lbl">${label}</span></div>
+       <div class="stat-val">${formatMoney(val)}</div>
+       <div class="stat-sub">تومان</div>
+     </div>`;
+
+  /* «معوق» اندازه نیست، وضعیت است: صفرِ آن خبر خوب است و نباید قرمز
+     نشان داده شود. رنگ هم تنها نشانه نیست — آیکن و متن هم هست. */
+  const overdue = (label, count, clearText) => {
+    const alert = count > 0;
+    return `<div class="stat ${alert ? "is-alert" : "is-clear"}">
+       <div class="stat-head"><span class="stat-ic">${alert ? "⚠️" : "✅"}</span><span class="stat-lbl">${label}</span></div>
+       <div class="stat-val">${fa(count)}</div>
+       <div class="stat-sub">${alert ? "نیاز به پیگیری" : clearText}</div>
+     </div>`;
+  };
+
+  wrap.innerHTML =
+    money("🧾", "کل مطالبات باز",        s.totalReceivable, "#0B9B95", "#E2F3F2") +
+    money("💳", "کل بدهی باز",            s.totalPayable,    "#B07813", "#F8F0DC") +
+    money("🧮", "جمع هزینه‌های ثبت‌شده", s.totalExpenses,   "#6A45A8", "#EDE7F5") +
+    money("🏦", "موجودی نقدی کل",         s.totalCash,       "#1E7A4A", "#E3EFE7") +
+    overdue("فاکتورهای معوق", s.overdueInvoices, "همه به‌موقع") +
+    overdue("بدهی‌های معوق",  s.overduePayables, "چیزی عقب نیفتاده");
 }
 
 async function renderCharts(){
