@@ -1,4 +1,4 @@
-import { handleKartabl, nightlyKartablBackup } from './kartabl.js';
+import { handleKartabl, nightlyKartablBackup, PANELS } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1533,7 +1533,7 @@ export default {
          www — و اعتبار صفحه بین دوتا نصف می‌شود. */
       const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\n\n` +
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\n\n` +
         `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
@@ -1595,10 +1595,12 @@ export default {
 
     try {
       /* ---------------- عمومی ---------------- */
-      /* کارتابل مدیر IT. بررسی ورودش جداست و از کوکی خودش می‌آید، نه از
-         توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها جواب می‌گیرد. */
-      if (p.startsWith('/api/kartabl/'))
-        return handleKartabl(env, req, p, m, body, { rateLimit, clientIp });
+      /* کارتابل‌ها — مدیر IT و مدیر مالی. بررسی ورودشان جداست و از کوکی
+         خودشان می‌آید، نه از توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها
+         جواب می‌گیرند. هر کدام کوکی و رمز خودش را دارد. */
+      for (const [prefix, panel] of [['/api/kartabl', PANELS.it], ['/api/sina', PANELS.sina]])
+        if (p.startsWith(prefix + '/'))
+          return handleKartabl(env, req, panel, p.slice(prefix.length), m, body, { rateLimit, clientIp });
 
       if (p === '/api/bootstrap') {
         /* صفحهٔ اصلی مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد،

@@ -19,3 +19,6 @@
 # وقتی است که کسی مستقیم /siamak/index.html را صدا بزند.
 /siamak/*
   X-Robots-Tag: noindex, nofollow
+
+/sina/*
+  X-Robots-Tag: noindex, nofollow

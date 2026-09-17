@@ -14,8 +14,43 @@
    سرور فقط متن رمزشده را نگه می‌دارد. این عمدی است: اگر سرور هم روزی لو
    برود، آن بخش باز نمی‌شود. */
 
-import { buildKartablWorkbook } from './kartabl-xlsx.js';
+import { buildKartablWorkbook, buildSinaWorkbook } from './kartabl-xlsx.js';
 import { makeZip } from './kartabl-zip.js';
+
+/* ---------- کارتابل‌ها ----------
+   دو کارتابل داریم و هر دو از همین کد استفاده می‌کنند: مدیر IT روی
+   /siamak و مدیر مالی روی /sina. هر کدام رمز، نشست و دادهٔ جداگانه دارد
+   — ورود به یکی به آن یکی دسترسی نمی‌دهد — ولی پشتیبان شبانه‌شان به
+   همان یک ربات تلگرام می‌رود.
+
+   کلیدهای کارتابل IT عمداً همان‌های قبلی ماندند («state»، «db»،
+   «kartablPassHash»)، وگرنه دادهٔ زنده‌اش باید جابه‌جا می‌شد. */
+export const PANELS = {
+  it: {
+    id: 'it', title: 'کارتابل مدیر IT', page: '/siamak/', cookie: 'kartabl_s',
+    keys: { state: 'state', db: 'db', pass: 'kartablPassHash', gen: 'kartablPassGen', last: 'kartablLastBackup' },
+    folder: 'It',
+    files: { json: 'کارتابل-IT-داده.json', xlsx: 'کارتابل-IT-دیتابیس.xlsx', html: 'کارتابل مدیر IT.html' },
+    zip: stamp => `کارتابل-IT-پشتیبان-${stamp}.zip`,
+    workbook: buildKartablWorkbook,
+    counts: (st, db) => ({
+      سرور: (db.vm || []).length, شرکت: Object.keys(db.companies || {}).length,
+      'خط MVPN': (db.lines || []).length
+    })
+  },
+  sina: {
+    id: 'sina', title: 'کارتابل مدیر مالی', page: '/sina/', cookie: 'sina_s',
+    keys: { state: 'sina:state', db: 'sina:db', pass: 'sinaPassHash', gen: 'sinaPassGen', last: 'sinaLastBackup' },
+    folder: 'Mali',
+    files: { json: 'کارتابل-مالی-داده.json', xlsx: 'کارتابل-مالی-دیتابیس.xlsx', html: 'کارتابل مدیر مالی.html' },
+    zip: stamp => `کارتابل-مالی-پشتیبان-${stamp}.zip`,
+    workbook: buildSinaWorkbook,
+    counts: (st, db) => ({
+      'طرف‌حساب': (db.parties || []).length, فاکتور: (db.invoices || []).length,
+      'حساب بانکی': (db.bank || []).length
+    })
+  }
+};
 
 const enc = new TextEncoder();
 
@@ -88,8 +123,6 @@ async function checkPassword(password, stored) {
    کوکی HttpOnly است، پس کد صفحه (و هر اسکریپت تزریق‌شده‌ای) نمی‌تواند
    بخواندش. امضا با همان کلیدی است که فروشگاه استفاده می‌کند. */
 
-const COOKIE = 'kartabl_s';
-
 async function hmac(env, body) {
   const key = await crypto.subtle.importKey('raw', enc.encode(env.JWT_SECRET || 'dev-secret-change-me'),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -97,20 +130,20 @@ async function hmac(env, body) {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function makeSession(env, days = 30) {
+async function makeSession(env, panel, days = 30) {
   /* شمارهٔ نسل رمز داخل توکن است: با هر بار عوض شدن رمز بالا می‌رود و
      همهٔ نشست‌های قبلی — روی هر دستگاهی — از کار می‌افتند. */
-  const gen = await getSetting(env, 'kartablPassGen', 1);
-  const body = b64(enc.encode(JSON.stringify({ k: 1, gen, exp: Date.now() + days * 864e5 })))
+  const gen = await getSetting(env, panel.keys.gen, 1);
+  const body = b64(enc.encode(JSON.stringify({ k: panel.id, gen, exp: Date.now() + days * 864e5 })))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return body + '.' + await hmac(env, body);
 }
 
-async function readSession(env, req) {
+async function readSession(env, panel, req) {
   const raw = (req.headers.get('Cookie') || '').split(';')
-    .map(c => c.trim()).find(c => c.startsWith(COOKIE + '='));
+    .map(c => c.trim()).find(c => c.startsWith(panel.cookie + '='));
   if (!raw) return null;
-  const token = raw.slice(COOKIE.length + 1);
+  const token = raw.slice(panel.cookie.length + 1);
   if (!token.includes('.')) return null;
   const [body, sig] = token.split('.');
   if (!constantEqual(sig, await hmac(env, body))) return null;
@@ -119,13 +152,15 @@ async function readSession(env, req) {
     const p = JSON.parse(new TextDecoder().decode(
       Uint8Array.from(atob(pad + '==='.slice((pad.length + 3) % 4)), c => c.charCodeAt(0))));
     if (!(p.exp > Date.now())) return null;
-    if (p.gen !== await getSetting(env, 'kartablPassGen', 1)) return null;
+    if (p.gen !== await getSetting(env, panel.keys.gen, 1)) return null;
+    /* کوکیِ یک کارتابل نباید درِ آن یکی را باز کند */
+    if (p.k !== panel.id) return null;
     return p;
   } catch (e) { return null; }
 }
 
-const cookieHeader = (value, days) =>
-  `${COOKIE}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${days * 86400}`;
+const cookieHeader = (panel, value, days) =>
+  `${panel.cookie}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${days * 86400}`;
 
 /* ---------- داده ----------
    دو تکه نگه داشته می‌شود، دقیقاً همان دو تکه‌ای که خودِ کارتابل دارد:
@@ -138,20 +173,21 @@ const cookieHeader = (value, days) =>
 
 const REV_CONFLICT = 409;
 
-export async function loadKartabl(env) {
-  const rows = await all(env, 'SELECT k, v, rev, updated FROM kartabl');
+export async function loadKartabl(env, panel) {
+  const rows = await all(env, 'SELECT k, v, rev, updated FROM kartabl WHERE k IN (?,?)',
+    panel.keys.state, panel.keys.db);
   const out = { state: null, db: null, rev: 0, updated: 0 };
   for (const r of rows) {
-    if (r.k !== 'state' && r.k !== 'db') continue;
-    try { out[r.k] = JSON.parse(r.v); } catch (e) { out[r.k] = null; }
+    const which = r.k === panel.keys.state ? 'state' : 'db';
+    try { out[which] = JSON.parse(r.v); } catch (e) { out[which] = null; }
     out.rev = Math.max(out.rev, r.rev || 0);
     out.updated = Math.max(out.updated, r.updated || 0);
   }
   return out;
 }
 
-async function saveKartabl(env, { state, db, baseRev }) {
-  const current = await loadKartabl(env);
+async function saveKartabl(env, panel, { state, db, baseRev }) {
+  const current = await loadKartabl(env, panel);
   /* اگر از دستگاه دیگری چیزی ذخیره شده که این مرورگر ندیده، بی‌صدا
      رویش نمی‌نویسیم — صفحه خبردار می‌شود و تازه‌اش را می‌گیرد. */
   if (baseRev != null && current.rev && Number(baseRev) !== current.rev)
@@ -160,7 +196,7 @@ async function saveKartabl(env, { state, db, baseRev }) {
   const rev = current.rev + 1;
   const now = Date.now();
   const stmts = [];
-  for (const [k, v] of [['state', state], ['db', db]]) {
+  for (const [k, v] of [[panel.keys.state, state], [panel.keys.db, db]]) {
     if (v === undefined) continue;
     stmts.push(env.DB.prepare(
       `INSERT INTO kartabl(k,v,rev,updated) VALUES(?,?,?,?)
@@ -176,22 +212,18 @@ async function saveKartabl(env, { state, db, baseRev }) {
    خودِ صفحهٔ کارتابل. با همین سه تا، پشتیبان بدون هیچ سرور و اینترنتی
    باز می‌شود — فایل HTML را باز می‌کنی و JSON را «بازیابی» می‌زنی. */
 
-const JSON_NAME = 'کارتابل-IT-داده.json';
-const XLSX_NAME = 'کارتابل-IT-دیتابیس.xlsx';
-const HTML_NAME = 'کارتابل مدیر IT.html';
-
 function faDigits(n) {
   return String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
 }
 
-export async function buildKartablBackup(env, req) {
-  const { state, db, updated } = await loadKartabl(env);
+export async function buildKartablBackup(env, req, panel) {
+  const { state, db, updated } = await loadKartabl(env, panel);
   const st = state || {};
   const database = db || {};
 
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const stateJson = JSON.stringify(st, null, 1);
-  const xlsx = await buildKartablWorkbook(st, database);
+  const xlsx = await panel.workbook(st, database);
 
   /* خودِ صفحهٔ کارتابل هم داخل زیپ می‌رود تا پشتیبان کامل باشد.
 
@@ -212,15 +244,18 @@ export async function buildKartablBackup(env, req) {
     } catch (e) { return null; }
   };
 
+  /* هر دو کارتابل کتابخانه‌ها را از /siamak/v/ می‌گیرند — یک نسخه برای
+     هر دو، نه دو کپی روی سرور. */
+  const F = panel.folder;
   const extras = [];
   for (const [from, to] of [
-    ['/siamak/v/chart.umd.min.js', 'It/v/chart.umd.min.js'],
-    ['/siamak/v/xlsx.full.min.js', 'It/v/xlsx.full.min.js'],
-    ['/f/Vazirmatn-Regular.2.woff2',   'It/f/Vazirmatn-Regular.2.woff2'],
-    ['/f/Vazirmatn-Medium.2.woff2',    'It/f/Vazirmatn-Medium.2.woff2'],
-    ['/f/Vazirmatn-SemiBold.2.woff2',  'It/f/Vazirmatn-SemiBold.2.woff2'],
-    ['/f/Vazirmatn-Bold.2.woff2',      'It/f/Vazirmatn-Bold.2.woff2'],
-    ['/f/Vazirmatn-ExtraBold.2.woff2', 'It/f/Vazirmatn-ExtraBold.2.woff2']
+    ['/siamak/v/chart.umd.min.js', F + '/v/chart.umd.min.js'],
+    ['/siamak/v/xlsx.full.min.js', F + '/v/xlsx.full.min.js'],
+    ['/f/Vazirmatn-Regular.2.woff2',   F + '/f/Vazirmatn-Regular.2.woff2'],
+    ['/f/Vazirmatn-Medium.2.woff2',    F + '/f/Vazirmatn-Medium.2.woff2'],
+    ['/f/Vazirmatn-SemiBold.2.woff2',  F + '/f/Vazirmatn-SemiBold.2.woff2'],
+    ['/f/Vazirmatn-Bold.2.woff2',      F + '/f/Vazirmatn-Bold.2.woff2'],
+    ['/f/Vazirmatn-ExtraBold.2.woff2', F + '/f/Vazirmatn-ExtraBold.2.woff2']
   ]) {
     const data = await grab(from);
     /* woff2 خودش فشرده است؛ دوباره فشردنش فقط وقت می‌برد */
@@ -229,7 +264,7 @@ export async function buildKartablBackup(env, req) {
 
   let html = '';
   try {
-    const res = await env.ASSETS.fetch(new Request(new URL('/siamak/', req.url), req));
+    const res = await env.ASSETS.fetch(new Request(new URL(panel.page, req.url), req));
     if (res.ok) {
       html = (await res.text())
         /* نسخهٔ داخل پشتیبان نباید سراغ سرور برود: نه ورود می‌خواهد و نه
@@ -244,21 +279,18 @@ export async function buildKartablBackup(env, req) {
   } catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
 
   const entries = [
-    { name: 'It/' + JSON_NAME, data: stateJson },
-    { name: 'It/' + XLSX_NAME, data: xlsx, store: true }  /* خودش زیپ است */
+    { name: F + '/' + panel.files.json, data: stateJson },
+    { name: F + '/' + panel.files.xlsx, data: xlsx, store: true }  /* خودش زیپ است */
   ];
-  if (html) { entries.push({ name: 'It/' + HTML_NAME, data: html }); entries.push(...extras); }
+  if (html) { entries.push({ name: F + '/' + panel.files.html, data: html }); entries.push(...extras); }
 
   const zip = await makeZip(entries);
   const counts = {
-    tasks: (st.tasks || []).length,
     months: Object.keys(st.monthsData || {}).length + (st.currentMonthKey ? 1 : 0),
-    servers: (database.vm || []).length,
-    companies: Object.keys(database.companies || {}).length,
-    mvpn: (database.lines || []).length,
-    vault: !!(st.personalVault && st.personalVault.cipher)
+    vault: !!(st.personalVault && st.personalVault.cipher),
+    own: panel.counts(st, database)
   };
-  return { zip, name: `کارتابل-IT-پشتیبان-${stamp}.zip`, counts, html: !!html, updated };
+  return { zip, name: panel.zip(stamp), counts, html: !!html, updated };
 }
 
 /* ---------- فرستادن به ربات ----------
@@ -272,16 +304,16 @@ async function kartablBot(env) {
            chat: await getSetting(env, 'kartablChatId', '') };
 }
 
-export async function sendKartablBackup(env, req, note = '') {
+export async function sendKartablBackup(env, req, panel, note = '') {
   const { token, chat } = await kartablBot(env);
   if (!token) return { ok: false, error: 'توکن ربات کارتابل تنظیم نشده است.' };
   if (!chat) return { ok: false, error: 'هنوز در ربات /start نزده‌اید، پس معلوم نیست پشتیبان برای چه کسی برود.' };
 
-  const { zip, name, counts, html } = await buildKartablBackup(env, req);
+  const { zip, name, counts, html } = await buildKartablBackup(env, req, panel);
+  const own = Object.entries(counts.own).map(([k, v]) => `${faDigits(v)} ${k}`).join(' · ');
   const caption =
-    `🗂 <b>پشتیبان کارتابل مدیر IT</b>${note ? ' — ' + note : ''}\n` +
-    `${faDigits(counts.servers)} سرور · ${faDigits(counts.companies)} شرکت · ` +
-    `${faDigits(counts.mvpn)} خط MVPN · ${faDigits(counts.months)} ماه\n` +
+    `🗂 <b>پشتیبان ${panel.title}</b>${note ? ' — ' + note : ''}\n` +
+    `${own} · ${faDigits(counts.months)} ماه\n` +
     `حجم: ${faDigits(Math.round(zip.length / 1024))} کیلوبایت\n\n` +
     `داخل زیپ: فایل داده، فایل اکسل${html ? '، و خودِ صفحهٔ کارتابل' : ''}.\n` +
     (counts.vault ? 'بخش شخصی رمزنگاری‌شده داخلش هست — با رمز خودش باز می‌شود.\n' : '') +
@@ -296,76 +328,85 @@ export async function sendKartablBackup(env, req, note = '') {
     const r = await fetch(`${TG(token)}/sendDocument`, { method: 'POST', body: fd });
     const d = await r.json().catch(() => ({}));
     if (!d.ok) return { ok: false, error: d.description || 'تلگرام فایل را نپذیرفت.' };
-    await setSetting(env, 'kartablLastBackup', { at: Date.now(), size: zip.length, ok: true });
+    await setSetting(env, panel.keys.last, { at: Date.now(), size: zip.length, ok: true });
     return { ok: true, size: zip.length, name, counts };
   } catch (e) {
     return { ok: false, error: e.message };
   }
 }
 
-/* هر شب همراه پشتیبان فروشگاه صدا زده می‌شود */
+/* هر شب همراه پشتیبان فروشگاه صدا زده می‌شود — برای هر دو کارتابل */
 export async function nightlyKartablBackup(env) {
   /* ورکر در cron درخواستی ندارد، ولی برای گرفتن فایل HTML از ASSETS یک
      Request لازم است. یکی می‌سازیم. */
-  const req = new Request('https://sensacare.ir/siamak/');
-  const r = await sendKartablBackup(env, req, 'خودکار');
-  if (!r.ok) await setSetting(env, 'kartablLastBackup', { at: Date.now(), ok: false, error: r.error });
-  return r;
+  const out = {};
+  for (const panel of Object.values(PANELS)) {
+    const req = new Request('https://sensacare.ir' + panel.page);
+    /* اگر یکی نرفت، آن یکی نباید قربانی شود */
+    const r = await sendKartablBackup(env, req, panel, 'خودکار')
+      .catch(e => ({ ok: false, error: e.message }));
+    if (!r.ok) await setSetting(env, panel.keys.last, { at: Date.now(), ok: false, error: r.error });
+    out[panel.id] = r;
+  }
+  return out;
 }
 
 /* ---------- مسیرها ---------- */
 
-export async function handleKartabl(env, req, p, m, body, helpers) {
+export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   const { rateLimit, clientIp } = helpers;
 
   /* ورود */
-  if (p === '/api/kartabl/login' && m === 'POST') {
-    const rl = await rateLimit(env, 'kartabl-login:' + clientIp(req), 10, 900);
+  if (p === '/login' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-login:` + clientIp(req), 10, 900);
     if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
-    const stored = await getSetting(env, 'kartablPassHash', '');
+    const stored = await getSetting(env, panel.keys.pass, '');
     const check = await checkPassword(String(body.password || ''), stored);
     if (!check.ok) return bad(check.error, check.status);
     const days = body.remember ? 30 : 1;
-    return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader(await makeSession(env, days), days) });
+    return json({ ok: true }, 200,
+      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, days), days) });
   }
 
-  if (p === '/api/kartabl/logout' && m === 'POST')
-    return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
+  if (p === '/logout' && m === 'POST')
+    return json({ ok: true }, 200,
+      { 'Set-Cookie': `${panel.cookie}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
 
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */
-  const session = await readSession(env, req);
-  if (p === '/api/kartabl/me')
+  const session = await readSession(env, panel, req);
+  if (p === '/me')
     return json({ in: !!session });
   if (!session) return bad('وارد نشده‌اید.', 401);
 
-  if (p === '/api/kartabl/state' && m === 'GET') {
-    const d = await loadKartabl(env);
+  if (p === '/state' && m === 'GET') {
+    const d = await loadKartabl(env, panel);
     return json({ state: d.state, db: d.db, rev: d.rev, updated: d.updated });
   }
 
-  if (p === '/api/kartabl/state' && (m === 'PUT' || m === 'POST')) {
+  if (p === '/state' && (m === 'PUT' || m === 'POST')) {
     if (body.state === undefined && body.db === undefined) return bad('داده‌ای نیامد.');
-    const r = await saveKartabl(env, { state: body.state, db: body.db, baseRev: body.baseRev });
+    const r = await saveKartabl(env, panel, { state: body.state, db: body.db, baseRev: body.baseRev });
     if (r.conflict) return json({ conflict: true, rev: r.rev, updated: r.updated }, REV_CONFLICT);
     return json({ ok: true, rev: r.rev, updated: r.updated });
   }
 
   /* عوض کردن رمز — رمز فعلی لازم است، و همهٔ نشست‌های دیگر بسته می‌شوند */
-  if (p === '/api/kartabl/password' && m === 'POST') {
-    const stored = await getSetting(env, 'kartablPassHash', '');
+  if (p === '/password' && m === 'POST') {
+    const stored = await getSetting(env, panel.keys.pass, '');
     const check = await checkPassword(String(body.current || ''), stored);
     if (!check.ok) return bad(check.status === 401 ? 'رمز فعلی درست نیست.' : check.error, check.status);
     const next = String(body.next || '');
     if (next.length < 8) return bad('رمز تازه باید دست‌کم ۸ کاراکتر باشد.');
-    await setSetting(env, 'kartablPassHash', await hashPassword(next));
-    await setSetting(env, 'kartablPassGen', (await getSetting(env, 'kartablPassGen', 1)) + 1);
+    await setSetting(env, panel.keys.pass, await hashPassword(next));
+    await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
     /* نشست خودِ این مرورگر با نسل تازه دوباره ساخته می‌شود تا کاربر
        وسط کار بیرون نیفتد؛ بقیه باید دوباره وارد شوند. */
-    return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader(await makeSession(env, 30), 30) });
+    return json({ ok: true }, 200,
+      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 30), 30) });
   }
 
   /* تنظیمات ربات و پشتیبان */
-  if (p === '/api/kartabl/backup/settings' && m === 'GET') {
+  if (p === '/backup/settings' && m === 'GET') {
     const { token, chat } = await kartablBot(env);
     let botName = '';
     if (token) {
@@ -375,10 +416,10 @@ export async function handleKartabl(env, req, p, m, body, helpers) {
       } catch (e) { /* اینترنت نبود — فقط اسم ربات را نشان نمی‌دهیم */ }
     }
     return json({ hasToken: !!token, botName, chat: chat || '',
-                  last: await getSetting(env, 'kartablLastBackup', null) });
+                  last: await getSetting(env, panel.keys.last, null) });
   }
 
-  if (p === '/api/kartabl/backup/settings' && m === 'POST') {
+  if (p === '/backup/settings' && m === 'POST') {
     const token = String(body.token || '').trim();
     if (!token) return bad('توکن خالی است.');
     if (!/^\d+:[\w-]{20,}$/.test(token)) return bad('این شکلِ توکن ربات تلگرام نیست.');
@@ -391,7 +432,7 @@ export async function handleKartabl(env, req, p, m, body, helpers) {
   }
 
   /* پیدا کردن شناسهٔ گفتگو: بعد از اینکه در ربات /start زد */
-  if (p === '/api/kartabl/backup/connect' && m === 'POST') {
+  if (p === '/backup/connect' && m === 'POST') {
     const { token } = await kartablBot(env);
     if (!token) return bad('اول توکن ربات را بگذارید.');
     let d;
@@ -417,16 +458,16 @@ export async function handleKartabl(env, req, p, m, body, helpers) {
     return json({ ok: true, chat: String(pick.id), name: pick.name, found: chats.length });
   }
 
-  if (p === '/api/kartabl/backup/now' && m === 'POST') {
-    const rl = await rateLimit(env, 'kartabl-backup:' + clientIp(req), 6, 3600);
+  if (p === '/backup/now' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-backup:` + clientIp(req), 6, 3600);
     if (!rl.ok) return bad('فعلاً بس است. یک ساعت دیگر.', 429);
-    const r = await sendKartablBackup(env, req, 'دستی');
+    const r = await sendKartablBackup(env, req, panel, 'دستی');
     return r.ok ? json(r) : bad(r.error, 502);
   }
 
   /* گرفتن همان زیپ مستقیم از مرورگر */
-  if (p === '/api/kartabl/backup/download' && m === 'GET') {
-    const { zip, name } = await buildKartablBackup(env, req);
+  if (p === '/backup/download' && m === 'GET') {
+    const { zip, name } = await buildKartablBackup(env, req, panel);
     return new Response(zip, { headers: {
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,

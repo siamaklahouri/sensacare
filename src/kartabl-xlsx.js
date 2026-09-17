@@ -172,3 +172,71 @@ export function buildKartablWorkbook(state, db) {
     { name: 'PersonalVault',  aoa: personalVaultToAOA(state) }
   ]);
 }
+
+/* ---------- کارتابل مدیر مالی ----------
+   ده برگه، آینهٔ همان تابع‌های ...ToAOA در public/sina/index.html.
+   سرستون‌ها باید دقیقاً یکی بمانند، وگرنه فایل پشتیبان با کارتابل
+   نمی‌خواند. */
+
+const asRows = (arr, fields) => (arr || []).map(o => fields.map(f => o[f] ?? (typeof o[f] === 'number' ? 0 : '')));
+
+export function partiesToAOA(db) {
+  return [['نام', 'نوع', 'تلفن', 'مسئول تماس', 'یادداشت', 'واردکننده'],
+    ...asRows(db.parties, ['name', 'type', 'phone', 'contact', 'note', 'enteredBy'])];
+}
+export function invoicesToAOA(db) {
+  return [['شماره فاکتور', 'مشتری', 'تاریخ', 'سررسید', 'مبلغ کل', 'پرداخت‌شده', 'وضعیت', 'واردکننده'],
+    ...asRows(db.invoices, ['invoiceNo', 'customer', 'date', 'dueDate', 'amount', 'paid', 'status', 'enteredBy'])];
+}
+export function payablesToAOA(db) {
+  return [['ذینفع/تامین‌کننده', 'پروژه', 'تاریخ سررسید', 'موضوع', 'مبلغ', 'واردکننده'],
+    ...asRows(db.payables, ['beneficiary', 'project', 'dueDate', 'subject', 'amount', 'enteredBy'])];
+}
+export function payableNotesToAOA(db) {
+  return [['شماره چک', 'تاریخ سررسید چک', 'مبلغ', 'ذینفع', 'موضوع', 'واردکننده'],
+    ...asRows(db.payableNotes, ['checkNo', 'dueDate', 'amount', 'beneficiary', 'subject', 'enteredBy'])];
+}
+export function receivableNotesToAOA(db) {
+  return [['شماره چک', 'تاریخ سررسید چک', 'مبلغ', 'خریدار', 'موضوع', 'واردکننده'],
+    ...asRows(db.receivableNotes, ['checkNo', 'dueDate', 'amount', 'buyer', 'subject', 'enteredBy'])];
+}
+export function expensesToAOA(db) {
+  return [['تاریخ', 'نوع', 'دسته‌بندی', 'شرح', 'مبلغ', 'روش پرداخت', 'واردکننده'],
+    ...asRows(db.expenses, ['date', 'type', 'category', 'description', 'amount', 'paymentMethod', 'enteredBy'])];
+}
+export function bankToAOA(db) {
+  return [['نام حساب', 'بانک', 'شماره حساب', 'موجودی', 'یادداشت', 'واردکننده'],
+    ...asRows(db.bank, ['accountName', 'bank', 'accountNumber', 'balance', 'note', 'enteredBy'])];
+}
+export function budgetToAOA(db) {
+  return [['دوره', 'دسته‌بندی', 'بودجه', 'هزینه‌ی واقعی', 'واردکننده'],
+    ...asRows(db.budget, ['period', 'category', 'budgetAmount', 'actualAmount', 'enteredBy'])];
+}
+
+/* چک‌لیست و برنامهٔ روزانه همان ساختار کارتابل IT را دارند، فقط
+   سرستون‌هایشان فارسی است و ستون «شرکت» اینجا «طرف‌حساب» شده. */
+export function sinaTasksToAOA(state) {
+  const rows = tasksToAOA(state).slice(1);
+  return [['ماه', 'دسته‌بندی', 'وظیفه', 'مسئول', 'مهلت', 'وضعیت', 'اولویت', 'یادداشت'], ...rows];
+}
+export function sinaDaysToAOA(state) {
+  const rows = daysToAOA(state).slice(1);
+  return [['ماه', 'روز', 'تاریخ ثبت', 'وظایف اصلی', 'توضیحات', 'طرف‌حساب', 'وضعیت'], ...rows];
+}
+
+export function buildSinaWorkbook(state, db) {
+  return buildXlsx([
+    { name: 'طرف‌حساب‌ها',              aoa: partiesToAOA(db) },
+    { name: 'اسناد دریافتنی از مشتری', aoa: invoicesToAOA(db) },
+    { name: 'بدهی و پرداخت',            aoa: payablesToAOA(db) },
+    { name: 'اسناد پرداختنی نزد دیگران', aoa: payableNotesToAOA(db) },
+    { name: 'اسناد دریافتنی شرکت',      aoa: receivableNotesToAOA(db) },
+    { name: 'منابع و مصارف',            aoa: expensesToAOA(db) },
+    { name: 'حساب‌های بانکی',           aoa: bankToAOA(db) },
+    { name: 'بودجه‌بندی',               aoa: budgetToAOA(db) },
+    { name: 'چک‌لیست ماهانه',           aoa: sinaTasksToAOA(state) },
+    { name: 'برنامه روزانه',            aoa: sinaDaysToAOA(state) },
+    /* بخش شخصی در کارتابل IT هم همین‌طور است: فقط متن رمزشده. */
+    { name: 'PersonalVault',            aoa: personalVaultToAOA(state) }
+  ]);
+}

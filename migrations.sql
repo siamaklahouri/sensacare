@@ -350,3 +350,11 @@ INSERT INTO settings(k,v) VALUES ('kartablPassGen', '1') ON CONFLICT(k) DO NOTHI
    خراب را دارد — اگر رمز از داخل پنل عوض شده باشد، دست نمی‌خورد. */
 UPDATE settings SET v='"pbkdf2$100000$4+bBvtXypoT7wrOX0S9iTA==$58+9ZNsDOrtkKgH3hWv/RtlNDYP4LRfx+n9a/6D+IYE="'
   WHERE k='kartablPassHash' AND v='"pbkdf2$310000$4+bBvtXypoT7wrOX0S9iTA==$OSqLKk/gfOS9h5Rcs3AZiBaTRCUFLvfur+1vc6AKSjg="';
+
+/* ۲۳ کارتابل مدیر مالی روی /sina. رمز و نشستش از کارتابل IT جداست —
+   ورود به یکی به آن یکی دسترسی نمی‌دهد. دادهٔ هر دو در همان جدول
+   kartabl می‌نشیند، با کلیدهای «sina:state» و «sina:db». */
+INSERT INTO settings(k,v) VALUES
+  ('sinaPassHash', '"pbkdf2$100000$YRhjRzwkPz0O0wmtdRSAqQ==$cXItsnHMEObIVc80W4jLyJi1LZpYTq/GXhBtSJz2wL8="')
+  ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('sinaPassGen', '1') ON CONFLICT(k) DO NOTHING;
