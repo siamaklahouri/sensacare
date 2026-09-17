@@ -152,7 +152,15 @@
   .shell{ display:flex; align-items:flex-start; min-height:calc(100vh - 68px); }
   .sidebar{
     width:230px; flex:none; background:var(--white); border-left:1px solid var(--card-border);
-    min-height:calc(100vh - 68px); padding:18px 12px; position:sticky; top:68px;
+    height:calc(100vh - 68px); padding:18px 12px; position:sticky; top:68px;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  /* چهارده بخش با نام‌های بلند از ارتفاع صفحه می‌زد بیرون. حالا فهرست
+     خودش اسکرول می‌شود و دکمه‌های پشتیبان و بازیابی و خروج همیشه
+     دمِ دست می‌مانند. */
+  .nav-list{
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    display:flex; flex-direction:column;
   }
   .nav-label{ font-size:11px; color:var(--ink-faint); font-weight:700; padding:0 8px 8px; }
   .navbtn{
@@ -290,7 +298,16 @@
   .cred-import-bar p{ margin:0; font-size:11px; color:var(--ink-soft); line-height:1.8; flex:1; min-width:200px; }
   .cred-import-status{ font-size:11.5px; font-weight:600; color:#2E7D32; }
 
-  .sidebar-foot{ margin-top:18px; padding-top:14px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); line-height:1.7; }
+  .sidebar-foot{
+    flex:0 0 auto; margin-top:12px; padding-top:14px;
+    border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); line-height:1.7;
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .sidebar-foot .save-hint{ min-height:15px; }
+  .foot-actions{ display:flex; gap:6px; }
+  .sidebar-foot .btn{ padding:7px 6px; font-size:11px; }
+  .foot-actions .btn{ flex:1; }
+  .foot-lock{ width:100%; }
 
   .content{ flex:1; min-width:0; padding:26px 32px; }
   .view{ display:none; }
