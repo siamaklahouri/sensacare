@@ -441,7 +441,10 @@ async function askAI(env, q, history = []) {
   let guides = '';
   try {
     const arts = await all(env,
-      'SELECT title, excerpt, body, slug FROM articles WHERE published=1 ORDER BY created DESC LIMIT 12');
+      /* سقف باید از تعداد مقاله‌ها بیشتر بماند، وگرنه هر مقالهٔ تازه یک
+         راهنمای قدیمی را از دید دستیار بیرون می‌اندازد. با ۱۲، افزودن
+         چهار مقالهٔ تازه «اصالت» و «نازک» را می‌انداخت بیرون. */
+      'SELECT title, excerpt, body, slug FROM articles WHERE published=1 ORDER BY created DESC LIMIT 16');
     guides = arts.map(a =>
       `### ${a.title}  (نشانی: /a/${a.slug})\n` +
       String(a.body || a.excerpt || '').replace(/\*\*/g, '').replace(/\n{2,}/g, '\n').slice(0, 1100)

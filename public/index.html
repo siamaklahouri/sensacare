@@ -2728,11 +2728,16 @@ function relatedHTML(kind,slug){
   const map=(settings.articleProducts||{}), ids=(map[slug]||'').split(',').filter(Boolean);
   let list=ids.map(id=>products.find(p=>p.id===id)).filter(Boolean);
   if(!list.length){
-    /* اگر مدیر چیزی انتخاب نکرده، از روی دستهٔ مقاله حدس می‌زنیم. */
+    /* اگر مدیر چیزی انتخاب نکرده، از روی دستهٔ مقاله حدس می‌زنیم.
+       شناسه‌ها باید دقیقاً همان id دسته باشند: اینجا 'lube' نوشته شده
+       بود و چنین دسته‌ای وجود ندارد، پس فهرست خالی درمی‌آمد و راهنمای
+       ژل — که بیشترین ارجاع را از بقیهٔ مقاله‌ها می‌گیرد — هیچ محصولی
+       زیرش نشان نمی‌داد. */
     const art=articles.find(a=>a.slug===slug)||{};
     const t=(art.title||'')+' '+(art.excerpt||'');
-    const cat=/سایز|اندازه/.test(t)?'thin':/تأخیر/.test(t)?'delay':/ژل|روان/.test(t)?'lube':
-              /لاتکس|حساسیت/.test(t)?'thin':'';
+    const cat=/سایز|اندازه/.test(t)?'thin':/تأخیر/.test(t)?'delay':
+              /ژل|روان|پاره|سُر خورد/.test(t)?'gel':
+              /لاتکس|حساسیت/.test(t)?'thin':/خاردار|شیاردار|بافت/.test(t)?'dot':'';
     list=products.filter(p=>(p.stock??40)>0&&(!cat||p.c===cat)).slice(0,3);
   }
   list=list.slice(0,3);
