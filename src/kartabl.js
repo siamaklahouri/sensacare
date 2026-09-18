@@ -28,7 +28,8 @@ import { makeZip } from './kartabl-zip.js';
 export const PANELS = {
   it: {
     id: 'it', title: 'کارتابل ماهانه سیامک', page: '/siamak/', cookie: 'kartabl_s',
-    keys: { state: 'state', db: 'db', pass: 'kartablPassHash', gen: 'kartablPassGen', last: 'kartablLastBackup' },
+    keys: { state: 'state', db: 'db', pass: 'kartablPassHash', gen: 'kartablPassGen', last: 'kartablLastBackup',
+            reset: 'kartablPassReset' },
     folder: 'It',
     files: { json: 'کارتابل-IT-داده.json', xlsx: 'کارتابل-IT-دیتابیس.xlsx', html: 'کارتابل مدیر IT.html' },
     zip: stamp => `کارتابل-IT-پشتیبان-${stamp}.zip`,
@@ -40,7 +41,8 @@ export const PANELS = {
   },
   sina: {
     id: 'sina', title: 'کارتابل ماهانه سینا', page: '/sina/', cookie: 'sina_s',
-    keys: { state: 'sina:state', db: 'sina:db', pass: 'sinaPassHash', gen: 'sinaPassGen', last: 'sinaLastBackup' },
+    keys: { state: 'sina:state', db: 'sina:db', pass: 'sinaPassHash', gen: 'sinaPassGen', last: 'sinaLastBackup',
+            reset: 'sinaPassReset' },
     folder: 'Mali',
     files: { json: 'کارتابل-مالی-داده.json', xlsx: 'کارتابل-مالی-دیتابیس.xlsx', html: 'کارتابل مدیر مالی.html' },
     zip: stamp => `کارتابل-مالی-پشتیبان-${stamp}.zip`,
@@ -52,7 +54,8 @@ export const PANELS = {
   },
   reza: {
     id: 'reza', title: 'کارتابل ماهانه رضا', page: '/reza/', cookie: 'reza_s',
-    keys: { state: 'reza:state', db: 'reza:db', pass: 'rezaPassHash', gen: 'rezaPassGen', last: 'rezaLastBackup' },
+    keys: { state: 'reza:state', db: 'reza:db', pass: 'rezaPassHash', gen: 'rezaPassGen', last: 'rezaLastBackup',
+            reset: 'rezaPassReset' },
     folder: 'Reza',
     files: { json: 'کارتابل-رضا-داده.json', xlsx: 'کارتابل-رضا-دیتابیس.xlsx', html: 'کارتابل ماهانه رضا.html' },
     zip: stamp => `کارتابل-رضا-پشتیبان-${stamp}.zip`,
@@ -106,6 +109,29 @@ async function derive(password, salt, rounds) {
 export async function hashPassword(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return `pbkdf2$${PBKDF2_ROUNDS}$${b64(salt)}$${await derive(password, salt, PBKDF2_ROUNDS)}`;
+}
+
+/* رمزِ تازه را باید از روی صفحهٔ تلگرام دستی تایپ کرد، پس حرف‌هایی که
+   به هم می‌آیند (O و 0، I و l و 1) داخلش نیست. بیست حرف از این الفبا
+   حدود ۱۱۶ بیت است — برای چیزی که چند دقیقه بعد عوضش می‌کنید بیش از کافی. */
+const PW_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+function newPassword(groups = 4, per = 5) {
+  const need = groups * per;
+  /* باقی‌ماندهٔ ساده (b % 56) شانسِ حرف‌های اول را کمی بیشتر می‌کند؛
+     بایت‌های بالای این حد را دور می‌ریزیم تا همه برابر باشند. */
+  const limit = 256 - (256 % PW_ALPHABET.length);
+  const out = [];
+  while (out.length < need) {
+    for (const b of crypto.getRandomValues(new Uint8Array(need))) {
+      if (b >= limit) continue;
+      out.push(PW_ALPHABET[b % PW_ALPHABET.length]);
+      if (out.length === need) break;
+    }
+  }
+  const parts = [];
+  for (let i = 0; i < groups; i++) parts.push(out.slice(i * per, (i + 1) * per).join(''));
+  return parts.join('-');
 }
 
 function constantEqual(a, b) {
@@ -317,6 +343,19 @@ async function kartablBot(env) {
            chat: await getSetting(env, 'kartablChatId', '') };
 }
 
+async function tgMessage(token, chat, text) {
+  try {
+    const r = await fetch(`${TG(token)}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: String(chat), text, parse_mode: 'HTML' })
+    });
+    const d = await r.json().catch(() => ({}));
+    return d.ok ? { ok: true } : { ok: false, error: d.description || 'تلگرام پیام را نپذیرفت.' };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 export async function sendKartablBackup(env, req, panel, note = '') {
   const { token, chat } = await kartablBot(env);
   if (!token) return { ok: false, error: 'توکن ربات کارتابل تنظیم نشده است.' };
@@ -384,6 +423,47 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   if (p === '/logout' && m === 'POST')
     return json({ ok: true }, 200,
       { 'Set-Cookie': `${panel.cookie}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
+
+  /* ---------- فراموشی رمز ----------
+     تنها مسیری است که بدون ورود رمز را عوض می‌کند، پس چند چیز نگهش می‌دارد:
+
+     • رمزِ تازه در پاسخِ HTTP نمی‌آید. فقط به همان گفتگوی تلگرامی می‌رود که
+       پشتیبان‌ها می‌روند. یعنی زدنِ این دکمه به‌تنهایی به کسی رمز نمی‌دهد؛
+       باید به آن گفتگو هم دسترسی داشته باشد.
+     • اول به تلگرام فرستاده می‌شود، بعد رمز عوض می‌شود. اگر تلگرام جواب
+       ندهد هیچ‌چیز دست نمی‌خورد — وگرنه یک قطعیِ تلگرام می‌توانست شما را
+       بیرونِ کارتابلِ خودتان جا بگذارد.
+     • بین دو ریست پانزده دقیقه فاصله است و هر IP در ساعت پنج بار. بدون
+       این، هر کسی که آدرس را می‌داند می‌توانست با زدنِ پیاپیِ دکمه رمز را
+       مدام عوض کند و عملاً قفلتان کند. */
+  if (p === '/forgot' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-forgot:` + clientIp(req), 5, 3600);
+    if (!rl.ok) return bad('درخواست‌ها زیاد شد. یک ساعت دیگر.', 429);
+
+    const gap = 15 * 60 * 1000;
+    const wait = (await getSetting(env, panel.keys.reset, 0)) + gap - Date.now();
+    if (wait > 0)
+      return bad(`همین چند دقیقه پیش رمز تازه فرستاده شد. پیام ربات را ببینید، یا ${faDigits(Math.ceil(wait / 60000))} دقیقهٔ دیگر دوباره بزنید.`, 429);
+
+    const { token, chat } = await kartablBot(env);
+    if (!token || !chat)
+      return bad('ربات تلگرام به کارتابل وصل نیست، پس جایی برای فرستادن رمز تازه نیست.', 503);
+
+    const next = newPassword();
+    const sent = await tgMessage(token, chat,
+      `🔑 <b>رمز تازهٔ ${panel.title}</b>\n\n` +
+      `<code>${next}</code>\n\n` +
+      `از همین حالا رمز قبلی کار نمی‌کند و هر دستگاهی که وارد مانده بود بیرون افتاد.\n` +
+      `بعد از ورود، از «تنظیمات ← رمز ورود» به چیزی که خودتان می‌پسندید عوضش کنید.\n\n` +
+      `اگر این را شما نخواسته‌اید: کسی رمز را ندارد، فقط دکمهٔ «رمز را فراموش کرده‌ام» را زده. ` +
+      `همین رمز تازه را وارد کنید و عوضش کنید.`);
+    if (!sent.ok) return bad('به تلگرام نرسید، پس رمز هم عوض نشد: ' + sent.error, 502);
+
+    await setSetting(env, panel.keys.pass, await hashPassword(next));
+    await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
+    await setSetting(env, panel.keys.reset, Date.now());
+    return json({ ok: true });
+  }
 
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */
   const session = await readSession(env, panel, req);
