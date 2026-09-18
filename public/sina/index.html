@@ -465,7 +465,25 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
     font-family:var(--font-display); font-size:14.5px; margin:0 0 14px; color:var(--ink);
     display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--paper-deep);
   }
-  .panel canvas{ max-height:230px; margin-top:4px; }
+  /* ---------- قابِ نمودارها ----------
+     قبلاً بوم مستقیم توی کارت بود و فقط یک max-height داشت. Chart.js بوم را
+     به اندازهٔ عرضِ کارت مربع می‌کرد، بعد CSS ارتفاعش را می‌بُرید و کتابخانه
+     دوباره از روی ارتفاعِ بریده حساب می‌کرد؛ نتیجه این می‌شد که نمودار کوچک
+     می‌ماند، می‌چسبید بالای کارت و زیرش جای خالی می‌افتاد — و چون این
+     رفت‌وبرگشت در هر کارت به عددِ دیگری می‌رسید، سه نمودارِ کنار هم سه
+     اندازهٔ مختلف داشتند.
+
+     حالا بوم داخل قابی با ارتفاعِ مشخص می‌نشیند و کاملاً پُرش می‌کند، و
+     Chart.js با maintainAspectRatio:false همان قاب را مبنا می‌گیرد. پس
+     نمودار همیشه وسطِ قاب است و هر سه یک اندازه. */
+  .chart-box{ position:relative; width:100%; height:250px; margin-top:4px; }
+  .chart-box > canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; }
+  /* وقتی داده‌ای نیست یا کتابخانه نیامده، جای بوم یک پیام می‌نشیند؛
+     آن هم باید وسطِ همین قاب بایستد. */
+  .chart-box > div{
+    position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; box-sizing:border-box;
+  }
 
   .tbl-wrap{ overflow-x:auto; border-radius:10px; }
   /* ---------- Tables ---------- */
@@ -861,11 +879,11 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel accent-green">
           <h3>🥧 وضعیت وظایف چک‌لیست ماهانه</h3>
-          <canvas id="chartChecklistStatus"></canvas>
+          <div class="chart-box"><canvas id="chartChecklistStatus"></canvas></div>
         </div>
         <div class="panel accent-green">
           <h3>🗓️ وضعیت برنامه روزانه</h3>
-          <canvas id="chartDailyStatus"></canvas>
+          <div class="chart-box"><canvas id="chartDailyStatus"></canvas></div>
         </div>
       </div>
 
@@ -873,11 +891,11 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel accent-blue">
           <h3>🥧 وضعیت فاکتورها (مطالبات از مشتری)</h3>
-          <canvas id="chartInvoiceStatus"></canvas>
+          <div class="chart-box"><canvas id="chartInvoiceStatus"></canvas></div>
         </div>
         <div class="panel accent-blue">
           <h3>🥧 وضعیت بدهی به تامین‌کنندگان</h3>
-          <canvas id="chartPayableStatus"></canvas>
+          <div class="chart-box"><canvas id="chartPayableStatus"></canvas></div>
         </div>
       </div>
 
@@ -885,11 +903,11 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel accent-amber">
           <h3>📊 هزینه‌ها بر اساس دسته‌بندی</h3>
-          <canvas id="chartExpenseCategory"></canvas>
+          <div class="chart-box"><canvas id="chartExpenseCategory"></canvas></div>
         </div>
         <div class="panel accent-amber">
           <h3>📐 بودجه در مقابل هزینه‌ی واقعی</h3>
-          <canvas id="chartBudgetVsActual"></canvas>
+          <div class="chart-box"><canvas id="chartBudgetVsActual"></canvas></div>
         </div>
       </div>
 
@@ -897,11 +915,11 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel accent-teal">
           <h3>🏦 موجودی حساب‌های بانکی</h3>
-          <canvas id="chartBankBalances"></canvas>
+          <div class="chart-box"><canvas id="chartBankBalances"></canvas></div>
         </div>
         <div class="panel accent-teal">
           <h3>👥 بیشترین مطالبات باز به تفکیک مشتری</h3>
-          <canvas id="chartTopDebtors"></canvas>
+          <div class="chart-box"><canvas id="chartTopDebtors"></canvas></div>
         </div>
       </div>
     </section>
@@ -1547,12 +1565,20 @@ function loadScriptOnce(src, timeoutMs){
     document.head.appendChild(tag);
   });
 }
+/* بوم داخل قابی با ارتفاعِ ثابت نشسته (به .chart-box نگاه کن)، پس
+   Chart.js نباید خودش نسبتِ ابعاد را نگه دارد؛ اگر نگه دارد بوم را مربع
+   می‌کند و نمودار از وسطِ قاب می‌افتد بالا. */
+function tuneChartDefaults(){
+  if(typeof Chart === "undefined") return false;
+  Chart.defaults.maintainAspectRatio = false;
+  return true;
+}
 async function ensureChartLib(){
-  if(typeof Chart !== "undefined") return true;
+  if(typeof Chart !== "undefined") return tuneChartDefaults();
   for(const url of CHART_CDN_URLS){
     try{
       await loadScriptOnce(url, timeoutFor(url));
-      if(typeof Chart !== "undefined") return true;
+      if(typeof Chart !== "undefined") return tuneChartDefaults();
     }catch(e){ /* try the next mirror */ }
   }
   return false;

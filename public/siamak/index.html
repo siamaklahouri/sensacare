@@ -483,7 +483,25 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
     font-family:var(--font-display); font-size:14.5px; margin:0 0 14px; color:var(--ink); font-weight:700;
     display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--paper-deep);
   }
-  .panel canvas{ max-height:230px; margin-top:4px; }
+  /* ---------- قابِ نمودارها ----------
+     قبلاً بوم مستقیم توی کارت بود و فقط یک max-height داشت. Chart.js بوم را
+     به اندازهٔ عرضِ کارت مربع می‌کرد، بعد CSS ارتفاعش را می‌بُرید و کتابخانه
+     دوباره از روی ارتفاعِ بریده حساب می‌کرد؛ نتیجه این می‌شد که نمودار کوچک
+     می‌ماند، می‌چسبید بالای کارت و زیرش جای خالی می‌افتاد — و چون این
+     رفت‌وبرگشت در هر کارت به عددِ دیگری می‌رسید، سه نمودارِ کنار هم سه
+     اندازهٔ مختلف داشتند.
+
+     حالا بوم داخل قابی با ارتفاعِ مشخص می‌نشیند و کاملاً پُرش می‌کند، و
+     Chart.js با maintainAspectRatio:false همان قاب را مبنا می‌گیرد. پس
+     نمودار همیشه وسطِ قاب است و هر سه یک اندازه. */
+  .chart-box{ position:relative; width:100%; height:250px; margin-top:4px; }
+  .chart-box > canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; }
+  /* وقتی داده‌ای نیست یا کتابخانه نیامده، جای بوم یک پیام می‌نشیند؛
+     آن هم باید وسطِ همین قاب بایستد. */
+  .chart-box > div{
+    position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; box-sizing:border-box;
+  }
 
   /* signature stamp */
   .stamp-wrap{ display:flex; align-items:center; justify-content:center; padding:10px 0 4px; }
@@ -1096,15 +1114,15 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
       <div class="grid3">
         <div class="panel accent-blue">
           <h3>🥧 وضعیت وظایف ماه</h3>
-          <canvas id="chartStatus"></canvas>
+          <div class="chart-box"><canvas id="chartStatus"></canvas></div>
         </div>
         <div class="panel accent-blue">
           <h3>🗓️ وضعیت برنامه روزانه</h3>
-          <canvas id="chartDaily"></canvas>
+          <div class="chart-box"><canvas id="chartDaily"></canvas></div>
         </div>
         <div class="panel accent-blue">
           <h3>✅ نرخ کلی موفقیت بکاپ روزانه</h3>
-          <canvas id="chartBackupSuccessRate"></canvas>
+          <div class="chart-box"><canvas id="chartBackupSuccessRate"></canvas></div>
         </div>
       </div>
 
@@ -1116,11 +1134,11 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
         </div>
         <div class="panel accent-amber">
           <h3>🏢 پربازدیدترین شرکت‌ها</h3>
-          <canvas id="chartTopCompanies"></canvas>
+          <div class="chart-box"><canvas id="chartTopCompanies"></canvas></div>
         </div>
         <div class="panel accent-amber">
           <h3>🔧 نسبت نوع بازدید شرکت‌ها</h3>
-          <canvas id="chartVisitType"></canvas>
+          <div class="chart-box"><canvas id="chartVisitType"></canvas></div>
         </div>
       </div>
 
@@ -1128,11 +1146,11 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel accent-teal">
           <h3>📱 وضعیت خطوط MVPN</h3>
-          <canvas id="chartMvpnStage"></canvas>
+          <div class="chart-box"><canvas id="chartMvpnStage"></canvas></div>
         </div>
         <div class="panel accent-teal">
           <h3>📡 وضعیت چک‌لیست ریموت</h3>
-          <canvas id="chartRemoteStatus"></canvas>
+          <div class="chart-box"><canvas id="chartRemoteStatus"></canvas></div>
         </div>
       </div>
 
@@ -1207,11 +1225,11 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
       <div class="grid2">
         <div class="panel">
           <h3>🗂️ تعداد سرورها بر اساس زمان‌بندی بکاپ</h3>
-          <canvas id="chartSchedule"></canvas>
+          <div class="chart-box"><canvas id="chartSchedule"></canvas></div>
         </div>
         <div class="panel">
           <h3>💽 حجم بکاپ به تفکیک محل ذخیره‌سازی (GB)</h3>
-          <canvas id="chartStorage"></canvas>
+          <div class="chart-box"><canvas id="chartStorage"></canvas></div>
         </div>
       </div>
 
@@ -1649,12 +1667,20 @@ function loadScriptOnce(src, timeoutMs){
     document.head.appendChild(tag);
   });
 }
+/* بوم داخل قابی با ارتفاعِ ثابت نشسته (به .chart-box نگاه کن)، پس
+   Chart.js نباید خودش نسبتِ ابعاد را نگه دارد؛ اگر نگه دارد بوم را مربع
+   می‌کند و نمودار از وسطِ قاب می‌افتد بالا. */
+function tuneChartDefaults(){
+  if(typeof Chart === "undefined") return false;
+  Chart.defaults.maintainAspectRatio = false;
+  return true;
+}
 async function ensureChartLib(){
-  if(typeof Chart !== "undefined") return true;
+  if(typeof Chart !== "undefined") return tuneChartDefaults();
   for(const url of CHART_CDN_URLS){
     try{
       await loadScriptOnce(url, timeoutFor(url));
-      if(typeof Chart !== "undefined") return true;
+      if(typeof Chart !== "undefined") return tuneChartDefaults();
     }catch(e){ /* try the next mirror */ }
   }
   return false;
