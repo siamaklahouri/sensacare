@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* تم ذخیره‌شده را پیش از رسم شدن صفحه می‌گذاریم؛ وگرنه صفحهٔ ورود
+   روشن می‌ماند و بعد از ورود یک دفعه تاریک می‌شود. */
+try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
+  document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
+</script>
 <title>کارتابل ماهانه سیامک</title>
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
@@ -34,7 +40,7 @@
 }
 #gateScreen[hidden]{ display:none; }
 .gate-card{
-  width:100%; max-width:360px; background:#fff; border-radius:16px;
+  width:100%; max-width:360px; background:var(--white); border-radius:16px;
   padding:26px 24px 22px; box-shadow:0 20px 50px rgba(6,20,40,.35);
   text-align:center;
 }
@@ -46,7 +52,7 @@
   padding:11px 12px; border:1px solid var(--line); border-radius:10px;
   background:var(--paper); color:var(--ink); letter-spacing:.5px;
 }
-.gate-card input[type="password"]:focus{ outline:none; border-color:var(--brass); background:#fff; }
+.gate-card input[type="password"]:focus{ outline:none; border-color:var(--brass); background:var(--white); }
 .gate-card button[type="submit"]{
   font-family:var(--font-body); font-size:14px; font-weight:600; cursor:pointer;
   width:100%; margin-top:12px; padding:11px 12px; border:0; border-radius:10px;
@@ -57,7 +63,7 @@
   display:flex; align-items:center; justify-content:center; gap:7px;
   margin-top:12px; font-size:12px; color:var(--ink-soft); cursor:pointer;
 }
-.gate-err{ margin-top:12px; min-height:17px; font-size:12px; font-weight:600; color:var(--red); }
+.gate-err{ margin-top:12px; min-height:17px; font-size:12px; font-weight:600; color:var(--red-ink); }
 </style>
 <style>
   :root{
@@ -82,6 +88,22 @@
     --line:#DCE3E9;
     --card-border:#E1E7EC;
     --white:#FFFFFF;
+    /* رنگ لهجهٔ کارت‌ها — در تم شب مقدار دیگری می‌گیرند (پایین شیوه‌نامه) */
+    --c1:#0B9B95; --t1:#E2F3F2;
+    --c2:#B07813; --t2:#F8F0DC;
+    --c3:#6A45A8; --t3:#EDE7F5;
+    --c4:#1E7A4A; --t4:#E3EFE7;
+    --bad:#A6222B; --bad-bg:#F6E1E2; --bad-ink:#8E1D25;
+    /* «جوهر» رنگ‌ها از خودِ رنگ جداست: همین رنگ وقتی متن می‌شود در شب باید
+       روشن شود، ولی وقتی پس‌زمینهٔ دکمه است باید تیره بماند تا متنِ سفیدش
+       خوانا بماند. --deep هم همان سرمه‌ایِ سطح‌هاست که نباید با متن قاطی شود. */
+    --deep:#0B2545;
+    --brass-ink:#0B6E6E;
+    --red-ink:#A6222B;
+    --green-ink:#2F6B4F;
+    --amber-ink:#C98A2C;
+    --teal-ink:#0F6E63;
+    --purple-ink:#5B3E8C;
     --font-display:'Vazirmatn', Tahoma, 'Segoe UI', 'Arial', sans-serif;
     --font-body:'Vazirmatn', Tahoma, 'Segoe UI', 'Arial', sans-serif;
     --radius:14px;
@@ -114,11 +136,11 @@
     font-family:var(--font-body); font-size:13px; padding:9px 11px;
     border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink);
   }
-  .set-grid input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .set-grid input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .set-state{ font-size:12px; color:var(--ink-faint); }
-  .set-state.ok{ color:var(--green); font-weight:600; }
-  .set-state.err{ color:var(--red); font-weight:600; }
+  .set-state.ok{ color:var(--green-ink); font-weight:600; }
+  .set-state.err{ color:var(--red-ink); font-weight:600; }
   .set-hr{ border:0; border-top:1px solid var(--line); margin:16px 0; }
 
   #syncConflict{
@@ -130,7 +152,7 @@
   #syncConflict button{
     font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;
     padding:7px 14px; border:1px solid var(--amber); border-radius:8px;
-    background:#fff; color:var(--ink);
+    background:var(--white); color:var(--ink);
   }
 
   /* ---------- Top bar ---------- */
@@ -173,7 +195,7 @@
     padding:10px 32px; background:rgba(11,37,69,.94); border-bottom:1px solid rgba(255,255,255,.15);
   }
   .new-month-panel input{
-    font-family:var(--font-body); font-size:12.5px; background:#fff; border:1px solid var(--card-border);
+    font-family:var(--font-body); font-size:12.5px; background:var(--white); border:1px solid var(--card-border);
     color:var(--ink); border-radius:7px; padding:6px 10px; width:130px; text-align:center;
   }
 
@@ -210,7 +232,7 @@
   .navbtn:hover{ background:rgba(11,37,69,.055); transform:translateX(-2px); }
   .navbtn:hover .ic{ transform:scale(1.05); }
   .navbtn.active{
-    background:linear-gradient(120deg,var(--ink),#173B5C); color:#fff; box-shadow:0 6px 16px rgba(11,37,69,.26);
+    background:linear-gradient(120deg,var(--deep),#173B5C); color:#fff; box-shadow:0 6px 16px rgba(11,37,69,.26);
   }
   .navbtn.active .ic{ background:var(--brass); box-shadow:0 2px 6px rgba(14,139,139,.4); }
   .navbtn.active::before{
@@ -333,7 +355,7 @@
   .reminder-item .rdismiss{
     border:none; background:transparent; color:var(--ink-faint); cursor:pointer; font-size:13px; padding:2px 6px;
   }
-  .reminder-item .rdismiss:hover{ color:var(--red); }
+  .reminder-item .rdismiss:hover{ color:var(--red-ink); }
 
   /* ---------- Important star toggle (daily plan) ---------- */
   .star-btn{
@@ -343,13 +365,13 @@
   .star-btn:hover{ transform:scale(1.18); }
   .star-btn.is-important{ color:var(--brass); }
   .reminder-popup{
-    position:fixed; z-index:210; background:#fff; border:1px solid var(--card-border); border-radius:14px;
+    position:fixed; z-index:210; background:var(--white); border:1px solid var(--card-border); border-radius:14px;
     box-shadow:0 14px 36px rgba(11,37,69,.28); padding:0; display:none; width:252px; overflow:hidden;
   }
   .reminder-popup.open{ display:block; }
   .reminder-popup label{
     font-size:11.5px; color:#fff; display:block; padding:10px 14px; margin:0;
-    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 100%); font-weight:600;
+    background:linear-gradient(120deg,var(--deep) 0%,#173B5C 100%); font-weight:600;
   }
   .reminder-popup .rp-dategrid{
     display:grid; grid-template-columns:0.8fr 1.3fr 1fr; gap:6px; margin:14px 14px 10px;
@@ -371,7 +393,7 @@
   }
   .reminder-popup .rp-row button:hover{ opacity:.85; }
   .reminder-popup .rp-save{ border:none; background:var(--brass); color:#fff; font-weight:700; }
-  .reminder-popup .rp-clear{ border:1px solid var(--card-border); background:transparent; color:var(--red); }
+  .reminder-popup .rp-clear{ border:1px solid var(--card-border); background:transparent; color:var(--red-ink); }
   .reminder-popup .rp-close{ border:1px solid var(--card-border); background:transparent; color:var(--ink-soft); }
 
   /* ---------- On-screen reminder alert modal ---------- */
@@ -382,7 +404,7 @@
   }
   .reminder-modal-overlay.open{ display:flex; }
   .reminder-modal{
-    background:#fff; border-radius:16px; padding:26px 24px; max-width:340px; width:100%;
+    background:var(--white); border-radius:16px; padding:26px 24px; max-width:340px; width:100%;
     text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.35);
     animation:rmPop .22s cubic-bezier(.2,.9,.3,1.2);
   }
@@ -426,7 +448,7 @@
   .dt-row{ display:flex; gap:8px; }
   .dt-row select, .dt-row input[type="date"]{
     flex:1; box-sizing:border-box; border:1px solid var(--card-border); border-radius:8px;
-    padding:9px 10px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); background:#fff;
+    padding:9px 10px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); background:var(--white);
   }
   .dt-row select:focus, .dt-row input:focus{ outline:none; border-color:var(--brass); }
   .dt-result{
@@ -437,7 +459,7 @@
   @media (max-width:700px){ .dt-diff-grid{ grid-template-columns:1fr; } }
   .dt-diff-grid label{ font-size:11.5px; color:var(--ink-soft); display:block; margin-bottom:6px; }
   .dt-diff-result{ font-size:13px; line-height:2; }
-  .dt-diff-result b{ color:var(--brass-deep); font-family:var(--font-display); font-size:16px; }
+  .dt-diff-result b{ color:var(--brass-ink); font-family:var(--font-display); font-size:16px; }
   .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
   @media (max-width:1100px){ .grid3{ grid-template-columns:1fr 1fr; } }
   @media (max-width:700px){ .grid3{ grid-template-columns:1fr; } }
@@ -458,7 +480,7 @@
     width:168px; height:168px; border-radius:50%;
     border:3px solid var(--brass); position:relative;
     display:flex; align-items:center; justify-content:center;
-    color:var(--brass-deep);
+    color:var(--brass-ink);
     opacity:.95;
   }
   .stamp::before{
@@ -472,7 +494,7 @@
   /* ---------- Tables ---------- */
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   thead th{
-    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 100%); color:#fff; font-weight:600; padding:9px 6px; text-align:center;
+    background:linear-gradient(120deg,var(--deep) 0%,#173B5C 100%); color:#fff; font-weight:600; padding:9px 6px; text-align:center;
     position:sticky; top:0; font-size:11.5px; letter-spacing:.2px;
   }
   .tbl-wrap table thead tr:first-child th:first-child{ border-top-right-radius:var(--radius); }
@@ -483,7 +505,7 @@
   .filter-row th{ background:var(--paper-deep); padding:4px 5px; position:sticky; top:34px; }
   .filter-row input, .filter-row select{
     width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:#fff;
+    padding:4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
   }
   .filter-row input:focus, .filter-row select:focus{ outline:none; border-color:var(--brass); }
 
@@ -491,7 +513,7 @@
   .msf{ position:relative; width:100%; }
   .msf-btn{
     width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 8px 4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:#fff;
+    padding:4px 8px 4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
     cursor:pointer; text-align:right; display:flex; align-items:center; justify-content:space-between; gap:4px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
@@ -500,7 +522,7 @@
   .msf-btn.open .arrow{ transform:rotate(180deg); }
   .msf-count{ background:var(--brass); color:#fff; border-radius:999px; font-size:9.5px; padding:0px 5px; flex:none; }
   .msf-panel{
-    position:fixed; z-index:250; background:#fff; border:1px solid var(--card-border); border-radius:8px;
+    position:fixed; z-index:250; background:var(--white); border:1px solid var(--card-border); border-radius:8px;
     box-shadow:0 10px 30px rgba(11,37,69,.25); padding:6px; display:none; max-height:220px; overflow-y:auto;
     min-width:150px;
   }
@@ -508,7 +530,7 @@
   .msf-opt{ display:flex; align-items:center; gap:7px; padding:5px 6px; border-radius:5px; cursor:pointer; font-size:12px; white-space:nowrap; }
   .msf-opt:hover{ background:var(--brass-bg); }
   .msf-opt input{ margin:0; flex:none; accent-color:var(--brass); width:14px; height:14px; }
-  .msf-clear{ font-size:10.5px; color:var(--brass-deep); text-align:center; padding:4px; cursor:pointer; border-top:1px solid var(--line); margin-top:3px; }
+  .msf-clear{ font-size:10.5px; color:var(--brass-ink); text-align:center; padding:4px; cursor:pointer; border-top:1px solid var(--line); margin-top:3px; }
   .msf-clear:hover{ text-decoration:underline; }
 
   /* ---------- Chart drill-down modal ---------- */
@@ -519,7 +541,7 @@
   .cm-overlay.open{ display:flex; animation:cmFade .15s ease; }
   @keyframes cmFade{ from{opacity:0;} to{opacity:1;} }
   .cm-box{
-    background:#fff; border-radius:14px; width:100%; max-width:480px; max-height:80vh;
+    background:var(--white); border-radius:14px; width:100%; max-width:480px; max-height:80vh;
     display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(11,37,69,.35);
     animation:cmPop .18s ease;
   }
@@ -529,9 +551,9 @@
     padding:16px 18px; border-bottom:1px solid var(--line);
   }
   .cm-title{ font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
-  .cm-count{ background:var(--brass-bg); color:var(--brass-deep); border-radius:999px; padding:2px 10px; font-size:11.5px; font-weight:700; }
+  .cm-count{ background:var(--brass-bg); color:var(--brass-ink); border-radius:999px; padding:2px 10px; font-size:11.5px; font-weight:700; }
   .cm-close{ background:none; border:none; font-size:18px; color:var(--ink-faint); cursor:pointer; line-height:1; padding:4px; }
-  .cm-close:hover{ color:var(--red); }
+  .cm-close:hover{ color:var(--red-ink); }
   .cm-body{ padding:8px 10px; overflow-y:auto; }
   .cm-empty{ padding:30px 10px; text-align:center; color:var(--ink-faint); font-size:12.5px; }
   .cm-item{ padding:10px 10px; border-radius:8px; }
@@ -542,13 +564,13 @@
   .cm-item-meta span{ display:inline-flex; align-items:center; gap:3px; }
   .date-box{
     display:flex; align-items:center; gap:5px; border:1px solid var(--card-border); border-radius:6px;
-    padding:5px 7px; cursor:pointer; background:#fff; transition:border-color .15s;
+    padding:5px 7px; cursor:pointer; background:var(--white); transition:border-color .15s;
   }
   .date-box:hover{ border-color:var(--brass); }
   .date-box .cal-ic{ font-size:12px; flex:0 0 auto; }
   .date-box input{ border:none; background:transparent; width:100%; font-size:12.6px; text-align:center; cursor:pointer; color:var(--ink); }
   .day-picker-popup{
-    position:fixed; z-index:200; background:#fff; border:1px solid var(--card-border); border-radius:10px;
+    position:fixed; z-index:200; background:var(--white); border:1px solid var(--card-border); border-radius:10px;
     box-shadow:0 10px 30px rgba(11,37,69,.25); padding:10px; display:none;
   }
   .day-picker-popup.open{ display:block; }
@@ -558,16 +580,16 @@
     font-family:var(--font-body); font-size:11.5px; cursor:pointer;
   }
   .day-picker-popup button:hover{ background:var(--brass); color:#fff; }
-  .day-picker-popup button.selected{ background:var(--ink); color:#fff; }
+  .day-picker-popup button.selected{ background:var(--deep); color:#fff; }
   .day-picker-popup .dp-clear{
-    width:100%; margin-top:8px; height:26px; border-radius:6px; background:transparent; color:var(--red);
+    width:100%; margin-top:8px; height:26px; border-radius:6px; background:transparent; color:var(--red-ink);
     border:1px solid var(--card-border); font-size:11px;
   }
   .remote-grid-wrap{ overflow-x:auto; border-radius:14px; }
   .remote-grid{ border-collapse:separate; border-spacing:0; font-size:12px; width:100%; }
   .remote-grid th, .remote-grid td{ border-bottom:1px solid var(--line); border-inline-start:1px solid var(--line); padding:10px 8px; text-align:center; }
   .remote-grid thead th{
-    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 100%); color:#fff; position:sticky; top:0; font-weight:700; border-inline-start:1px solid rgba(255,255,255,.15); z-index:2;
+    background:linear-gradient(120deg,var(--deep) 0%,#173B5C 100%); color:#fff; position:sticky; top:0; font-weight:700; border-inline-start:1px solid rgba(255,255,255,.15); z-index:2;
   }
   .remote-grid thead th:first-child{ border-top-right-radius:12px; }
   .remote-grid thead th:last-child{ border-top-left-radius:12px; }
@@ -575,13 +597,13 @@
   .remote-grid tbody tr:hover td{ background:#F4EEDD; }
   .remote-grid tbody tr:nth-child(even) td.server-name{ background:#FAF8F2; }
   .remote-grid tbody tr:hover td.server-name{ background:#F4EEDD; }
-  .remote-grid td.server-name{ text-align:right; font-weight:600; white-space:normal; background:#fff; position:sticky; right:0; padding:10px 12px; z-index:1; box-shadow:2px 0 4px rgba(0,0,0,.04); }
+  .remote-grid td.server-name{ text-align:right; font-weight:600; white-space:normal; background:var(--white); position:sticky; right:0; padding:10px 12px; z-index:1; box-shadow:2px 0 4px rgba(0,0,0,.04); }
   .day-toggle{
-    width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:#fff;
+    width:36px; height:36px; border-radius:50%; border:1.5px solid var(--line); background:var(--white);
     cursor:pointer; font-size:15px; font-weight:700; color:var(--ink-faint); transition:background .12s, color .12s, transform .1s, box-shadow .12s;
   }
   .day-toggle:hover{ border-color:var(--brass); background:#fbf9f3; transform:scale(1.12); }
-  .day-toggle.checked{ background:var(--green); color:#fff; border-color:var(--green); box-shadow:0 2px 8px rgba(46,125,50,.35); }
+  .day-toggle.checked{ background:var(--green); color:#fff; border-color:var(--green-ink); box-shadow:0 2px 8px rgba(46,125,50,.35); }
   .remote-day-head{ display:flex; align-items:center; justify-content:center; gap:4px; }
   .remote-date-header{
     width:52px; text-align:center; font-size:11px; font-family:var(--font-body);
@@ -589,31 +611,31 @@
     border-radius:6px; padding:4px 2px;
   }
   .remote-date-header::placeholder{ color:rgba(255,255,255,.6); }
-  .remote-date-header:focus{ outline:none; background:#fff; color:var(--ink); border-color:var(--brass); }
+  .remote-date-header:focus{ outline:none; background:var(--white); color:var(--ink); border-color:var(--brass); }
   .remote-day-del{
     border:none; background:rgba(255,255,255,.16); color:#fff; width:18px; height:18px; border-radius:50%;
     font-size:10px; line-height:1; cursor:pointer; flex:0 0 auto; padding:0; transition:background .12s;
   }
   .remote-day-del:hover{ background:var(--red); }
   .remote-day-del:disabled{ opacity:.35; cursor:default; }
-  .remote-grid-wrap .remote-count-cell{ font-weight:700; color:var(--brass-deep); }
-  .tbl-wrap{ overflow-x:auto; border-radius:var(--radius); border:1px solid var(--card-border); box-shadow:var(--shadow); background:#fff;}
+  .remote-grid-wrap .remote-count-cell{ font-weight:700; color:var(--brass-ink); }
+  .tbl-wrap{ overflow-x:auto; border-radius:var(--radius); border:1px solid var(--card-border); box-shadow:var(--shadow); background:var(--white);}
   td input[type=text], td input[type=number], td select, textarea.cell{
     width:100%; border:1px solid transparent; background:transparent; font-family:var(--font-body);
     font-size:12.6px; padding:5px 4px; border-radius:5px; color:var(--ink); text-align:center;
   }
   td input[type=text]:focus, td input[type=number]:focus, td select:focus{
-    border-color:var(--brass); background:#fff; outline:none;
+    border-color:var(--brass); background:var(--white); outline:none;
   }
   td.editable-text input{ text-align:right; }
   .badge{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:700; }
-  .badge.done{ background:var(--green-bg); color:var(--green); }
-  .badge.doing{ background:var(--amber-bg); color:var(--amber); }
-  .badge.todo{ background:var(--red-bg); color:var(--red); }
+  .badge.done{ background:var(--green-bg); color:var(--green-ink); }
+  .badge.doing{ background:var(--amber-bg); color:var(--amber-ink); }
+  .badge.todo{ background:var(--red-bg); color:var(--red-ink); }
   select.st-select{ font-weight:700; border-radius:20px; }
-  .pr-high{ color:var(--red); font-weight:800; }
-  .pr-mid{ color:var(--amber); font-weight:800; }
-  .pr-low{ color:var(--green); font-weight:800; }
+  .pr-high{ color:var(--red-ink); font-weight:800; }
+  .pr-mid{ color:var(--amber-ink); font-weight:800; }
+  .pr-low{ color:var(--green-ink); font-weight:800; }
 
   .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap; }
   .btn{
@@ -625,33 +647,33 @@
   .btn-brass{ background:linear-gradient(135deg,var(--brass),var(--brass-deep)); color:#fff; box-shadow:0 3px 10px rgba(14,139,139,.30); }
   .btn-brass:hover{ box-shadow:0 6px 16px rgba(14,139,139,.42); transform:translateY(-1px); }
   .btn-ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--card-border); }
-  .btn-ghost:hover{ border-color:var(--brass); color:var(--brass-deep); background:var(--brass-bg); }
-  .btn-del{ background:transparent; color:var(--red); border:1px solid transparent; cursor:pointer; font-size:15px; padding:5px 8px; border-radius:6px; transition:all .12s; }
+  .btn-ghost:hover{ border-color:var(--brass); color:var(--brass-ink); background:var(--brass-bg); }
+  .btn-del{ background:transparent; color:var(--red-ink); border:1px solid transparent; cursor:pointer; font-size:15px; padding:5px 8px; border-radius:6px; transition:all .12s; }
   .btn-del:hover{ background:rgba(166,34,43,0.1); border-color:var(--red); transform:scale(1.05); }
   .btn-del[disabled]{ display:none; }
   .del-toggle-wrap, .edit-toggle-wrap{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); user-select:none; white-space:nowrap; }
   .del-switch, .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
   .del-switch input, .edit-switch input{ opacity:0; width:0; height:0; }
   .del-switch .track, .edit-switch .track{ position:absolute; inset:0; background:#c9c2b3; border-radius:999px; transition:.18s; cursor:pointer; }
-  .del-switch .track::before, .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
+  .del-switch .track::before, .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:var(--white); border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
   .del-switch input:checked + .track, .edit-switch input:checked + .track{ background:var(--red); }
   .del-switch input:checked + .track::before, .edit-switch input:checked + .track::before{ transform:translateX(-12px); }
   .add-row input, .add-row select{ background:#fbf9f3; border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
   .add-row input:focus, .add-row select:focus{ outline:2px solid var(--brass); }
   .compound-field{ display:flex; align-items:stretch; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fbf9f3; }
   .compound-field input{ border:none; background:transparent; padding:7px 9px; font-size:12.5px; font-family:inherit; flex:1; min-width:0; }
-  .compound-field input:focus{ outline:none; background:#fff; }
+  .compound-field input:focus{ outline:none; background:var(--white); }
   .compound-field .divider{ width:1px; background:var(--line); }
   .compound-field:focus-within{ border-color:var(--brass); }
   .new-company-card{ display:flex; align-items:center; justify-content:center; gap:10px; padding:22px; border:1.5px dashed var(--line); border-radius:12px; background:#fbf9f3; flex-wrap:wrap; }
-  .new-company-card input{ border:1px solid var(--line); border-radius:8px; padding:9px 14px; font-size:13px; font-family:inherit; min-width:220px; text-align:center; background:#fff; }
+  .new-company-card input{ border:1px solid var(--line); border-radius:8px; padding:9px 14px; font-size:13px; font-family:inherit; min-width:220px; text-align:center; background:var(--white); }
   .new-company-card input:focus{ outline:2px solid var(--brass); border-color:var(--brass); }
   .company-last-visits{ display:flex; flex-direction:column; max-height:260px; overflow-y:auto; }
   .clv-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 4px; border-bottom:1px solid var(--line); font-size:12.5px; }
   .clv-row:last-child{ border-bottom:none; }
   .clv-name{ font-weight:700; color:var(--ink); white-space:nowrap; }
   .clv-date{ display:flex; align-items:center; gap:6px; color:var(--ink-soft); font-size:12px; white-space:nowrap; }
-  .clv-type{ background:var(--brass-bg); color:var(--brass-deep); border-radius:999px; padding:1px 8px; font-size:10.5px; font-weight:600; }
+  .clv-type{ background:var(--brass-bg); color:var(--brass-ink); border-radius:999px; padding:1px 8px; font-size:10.5px; font-weight:600; }
   .clv-empty{ color:var(--ink-faint); font-style:italic; }
   .daily-plan-table{ min-width:920px; }
   .daily-plan-table td, .daily-plan-table th{ padding-left:10px; padding-right:10px; }
@@ -663,17 +685,17 @@
   .cal-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
   .cal-head h4{ font-family:var(--font-display); font-size:13.5px; margin:0; color:var(--ink); }
   .cal-nav{ display:flex; align-items:center; gap:8px; background:#fbf9f3; border:1px solid var(--line); border-radius:8px; padding:3px 10px; }
-  .cal-nav-btn{ background:none; border:none; cursor:pointer; font-size:15px; color:var(--brass-deep); font-weight:700; padding:0 4px; line-height:1; }
+  .cal-nav-btn{ background:none; border:none; cursor:pointer; font-size:15px; color:var(--brass-ink); font-weight:700; padding:0 4px; line-height:1; }
   .cal-nav-btn:hover{ color:var(--brass); }
   .cal-label{ font-size:12.5px; font-weight:700; min-width:100px; text-align:center; }
   .cal-count{ font-size:11.5px; color:var(--ink-faint); margin-inline-start:auto; }
   .cal-grid{ display:flex; flex-wrap:wrap; gap:6px; }
-  .cal-day{ width:34px; height:34px; border-radius:8px; border:1.5px solid var(--line); background:#fff; cursor:pointer; font-size:12px; font-weight:600; color:var(--ink-soft); transition:.12s; }
+  .cal-day{ width:34px; height:34px; border-radius:8px; border:1.5px solid var(--line); background:var(--white); cursor:pointer; font-size:12px; font-weight:600; color:var(--ink-soft); transition:.12s; }
   .cal-day:hover{ border-color:var(--brass); }
-  .cal-day.done{ background:var(--brass); border-color:var(--brass-deep); color:#fff; }
+  .cal-day.done{ background:var(--brass); border-color:var(--brass-ink); color:#fff; }
   .btn-sm{ padding:5px 12px !important; font-size:12px !important; }
   .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:#fbf9f3; border:1px solid var(--line); border-radius:8px; }
-  .visit-add-bar input, .visit-add-bar select{ background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
+  .visit-add-bar input, .visit-add-bar select{ background:var(--white); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
   .visit-add-bar input:focus, .visit-add-bar select:focus{ outline:none; border-color:var(--brass); }
   .company-visits-table th, .company-visits-table td{ text-align:center; }
   /* چهار ستون روی تمام عرض صفحه کشیده می‌شدند: ستون تاریخ ۳۹۴ پیکسل
@@ -682,7 +704,7 @@
   .company-visits-table{ table-layout:fixed; }
   /* ستون نام سرور موقع اسکرول افقی سرِ جا می‌ماند، پس باید پس‌زمینه
      داشته باشد وگرنه تیک‌ها از زیرش رد می‌شوند. */
-  .remote-grid td.server-name{ position:sticky; right:0; background:#fff; z-index:1; }
+  .remote-grid td.server-name{ position:sticky; right:0; background:var(--white); z-index:1; }
   .remote-grid tbody tr:nth-child(even) td.server-name{ background:#FAFBFC; }
   .save-hint{ font-size:11px; color:var(--ink-faint); }
 
@@ -712,7 +734,7 @@
   /* ---------- Personal vault (password protected) ---------- */
   .navbtn-lock{ border-top:1px dashed var(--line); margin-top:6px; padding-top:14px; }
   .lock-screen{
-    max-width:400px; margin:36px auto; background:linear-gradient(160deg,var(--ink) 0%,#173B5C 100%);
+    max-width:400px; margin:36px auto; background:linear-gradient(160deg,var(--deep) 0%,#173B5C 100%);
     border-radius:18px; padding:34px 28px; text-align:center; color:#fff;
     box-shadow:0 20px 45px rgba(11,37,69,.28);
   }
@@ -738,12 +760,12 @@
   .personal-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
   .personal-tabs{ display:flex; gap:6px; }
   .personal-tabs button{
-    border:1px solid var(--card-border); background:#fff; border-radius:9px; padding:8px 16px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:9px; padding:8px 16px;
     font-size:12.5px; font-family:var(--font-body); cursor:pointer; color:var(--ink-soft);
   }
-  .personal-tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .personal-tabs button.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .btn-lock-now{
-    border:1px solid #E9A5A5; background:#FDEAEA; color:var(--red); border-radius:9px; padding:8px 14px;
+    border:1px solid #E9A5A5; background:#FDEAEA; color:var(--red-ink); border-radius:9px; padding:8px 14px;
     font-size:12px; cursor:pointer; font-family:var(--font-body); font-weight:600;
   }
 
@@ -752,7 +774,7 @@
     width:100%; box-sizing:border-box; border:1px solid transparent; border-radius:6px; padding:6px 8px;
     font-family:var(--font-body); font-size:12.5px; background:transparent; color:var(--ink);
   }
-  .cred-table input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .cred-table input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .cred-table td{ position:relative; }
   .pw-toggle-btn{
     border:none; background:transparent; cursor:pointer; font-size:13px; color:var(--ink-faint); padding:2px 4px;
@@ -771,7 +793,7 @@
   .inst-date-row label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
   .inst-date-row select{
     border:1px solid var(--card-border); border-radius:8px; padding:8px 6px; font-family:var(--font-body);
-    font-size:12.5px; background:#fff;
+    font-size:12.5px; background:var(--white);
   }
   .inst-note{ font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; line-height:1.8; }
   .inst-card{
@@ -786,7 +808,7 @@
   table.inst-schedule td{ text-align:center; padding:6px 4px; border-bottom:1px solid #F0EDE4; }
   table.inst-schedule tr.paid td{ color:var(--ink-faint); text-decoration:line-through; }
   .inst-pay-toggle{
-    border:1px solid var(--card-border); background:#fff; border-radius:6px; padding:3px 10px; font-size:11px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:6px; padding:3px 10px; font-size:11px;
     cursor:pointer; font-family:var(--font-body);
   }
   .inst-pay-toggle.paid{ background:#E4F3E4; border-color:#9FCF9F; color:#2E7D32; }
@@ -794,11 +816,11 @@
   .cred-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .company-tabs{ display:flex; flex-wrap:wrap; gap:8px; }
   .company-tab-btn{
-    border:1px solid var(--card-border); background:#fff; border-radius:9px; padding:8px 16px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:9px; padding:8px 16px;
     font-size:12.5px; font-family:var(--font-body); cursor:pointer; color:var(--ink-soft);
   }
   .company-tab-btn:hover{ border-color:var(--brass); color:var(--ink); }
-  .company-tab-btn.active{ background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .company-tab-btn.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .company-tab-btn .cnt{ opacity:.7; font-size:11px; }
   .cred-import-bar{
     display:flex; align-items:center; gap:8px; padding:10px 12px; background:#F4F0E4; border:1px solid var(--card-border);
@@ -886,6 +908,98 @@
     .navbtn{ padding:7px 10px; font-size:12px; }
     .content{ padding:14px 11px 44px; }
   }
+
+  /* ---------- تم شب ----------
+     رنگ‌های تم شب «برعکسِ» تم روز نیستند؛ جداگانه انتخاب و روی سطحِ تیره
+     سنجیده شده‌اند. هر جوهر روی تینتِ خودش بالای ۵:۱ کنتراست دارد. */
+  [data-theme="dark"]{
+    --paper:#0D1620;
+    --paper-deep:#111C28;
+    --white:#16212E;
+    --ink:#E9EFF5;
+    --ink-soft:#AFBDCB;
+    --ink-faint:#7E8D9C;
+    --line:#27323F;
+    --card-border:#27323F;
+    --brass-bg:#10312F;
+    --green-bg:#122A1F;
+    --amber-bg:#2E2515;
+    --red-bg:#331A1C;
+    --teal-bg:#0F2B28;
+    --purple-bg:#241C33;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.35);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,.5), 0 18px 40px rgba(0,0,0,.45);
+    --c1:#12A29A; --t1:#0F2E2C;
+    --c2:#BF881F; --t2:#2E2616;
+    --c3:#8561C7; --t3:#231B33;
+    --c4:#2B8C59; --t4:#13291E;
+    --bad:#D4646C; --bad-bg:#331E20; --bad-ink:#E48E94;
+    --deep:#203042;
+    --brass-ink:#58CFC6;
+    --red-ink:#E4757C;
+    --green-ink:#56B97E;
+    --amber-ink:#E0A63A;
+    --teal-ink:#3FBDB0;
+    --purple-ink:#A585DC;
+    color-scheme: dark;
+  }
+  /* پس‌زمینهٔ صفحه گرادیانی دارد که برای زمینهٔ روشن ساخته شده */
+  [data-theme="dark"] body{ background:var(--paper); }
+  [data-theme="dark"] .tbl-wrap,
+  [data-theme="dark"] thead th{ background-color:transparent; }
+  [data-theme="dark"] tbody tr:nth-child(even){ background:rgba(255,255,255,.03); }
+  [data-theme="dark"] tbody tr:hover{ background:rgba(255,255,255,.06); }
+  /* قاب آیکن کارت‌ها: رنگِ روشنِ inline در شب کور می‌زند */
+  [data-theme="dark"] .stat-ic{ background:rgba(255,255,255,.08); }
+  [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea{
+    background:var(--paper-deep); color:var(--ink); border-color:var(--line);
+  }
+  [data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder{ color:var(--ink-faint); }
+  [data-theme="dark"] option{ background:var(--paper-deep); color:var(--ink); }
+
+  /* سطح‌هایی که هگزِ روشنِ ثابت داشتند و توکن نبودند */
+  [data-theme="dark"] .btn-lock-now{ background:var(--red-bg); border-color:#5A2A2E; color:var(--red-ink); }
+  [data-theme="dark"] .inst-card{ background:var(--paper-deep); }
+  [data-theme="dark"] .inst-pay-toggle.paid{ background:var(--green-bg); border-color:#2E5C42; color:var(--green-ink); }
+  [data-theme="dark"] .cred-import-bar,
+  [data-theme="dark"] .visit-add-bar{ background:var(--paper-deep); }
+  [data-theme="dark"] .add-row input, [data-theme="dark"] .add-row select{ background:var(--paper-deep); }
+
+  /* در موبایل نوار کناری ردیفی از دکمه می‌شود و پس‌زمینهٔ سفیدِ
+     نیمه‌شفاف می‌گیرد؛ در شب متنِ روشن رویش گم می‌شد. */
+  @media (max-width:860px){
+    [data-theme="dark"] .navbtn{ background:rgba(255,255,255,.06); border-color:var(--line); }
+  }
+
+  /* ---------- دکمهٔ تم ---------- */
+  .theme-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; flex:none; cursor:pointer; user-select:none;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+    border-radius:999px; font-size:15px; line-height:1; color:#fff;
+    transition:background .15s, transform .12s;
+  }
+  .theme-btn:hover{ background:rgba(255,255,255,.16); }
+  .theme-btn:active{ transform:scale(.94); }
+  /* نوار کناریِ این پلنر پردهٔ سفیدِ نیمه‌شفاف روی صفحه است، نه توکن؛
+     در شب باید پرده خیلی رقیق‌تر شود وگرنه یک تختهٔ خاکستری می‌شود. */
+  [data-theme="dark"] .sidebar{
+    background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+    border-left-color:var(--line);
+  }
+  [data-theme="dark"] .reminder-item{ background:var(--amber-bg); border-color:#4A3D1F; }
+  [data-theme="dark"] .reminder-item.overdue{ background:var(--red-bg); border-color:#5A2A2E; }
+  [data-theme="dark"] .dt-result{ background:var(--paper-deep); }
+  [data-theme="dark"] .day-picker-popup button{ background:var(--paper-deep); color:var(--ink); }
+  [data-theme="dark"] .day-toggle:hover{ background:var(--paper-deep); }
+  [data-theme="dark"] .compound-field,
+  [data-theme="dark"] .new-company-card,
+  [data-theme="dark"] .cal-nav{ background:var(--paper-deep); }
+  [data-theme="dark"] .remote-grid tbody tr:nth-child(even) td,
+  [data-theme="dark"] .remote-grid tbody tr:nth-child(even) td.server-name{ background:#18232F; }
+  [data-theme="dark"] .remote-grid tbody tr:hover td,
+  [data-theme="dark"] .remote-grid tbody tr:hover td.server-name{ background:#1E2B39; }
+  [data-theme="dark"] .remote-grid td.server-name{ background:var(--white); }
 </style>
 </head>
 <body>
@@ -912,6 +1026,7 @@
       <small>بکاپ، سرورها، امنیت و برنامه‌ی ماه</small>
     </div>
   </div>
+  <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   <div class="period">
     <label>ماه</label>
     <select id="monthSelector"></select>
@@ -5130,6 +5245,49 @@ function setupSettings(){
   refreshBackupSettings();
 }
 
+
+/* ---------- تم روز و شب ----------
+   انتخاب هر پلنر جداست و در حافظهٔ همان مرورگر می‌ماند. پیش‌فرض روز است
+   تا چیزی بی‌خبر عوض نشود؛ تا وقتی دکمه را نزنید همان شکل قبلی می‌ماند. */
+const THEME_KEY = STORE_KEY + ":theme";
+
+function currentTheme(){
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+function redrawAfterTheme(){ renderAll(); }
+
+function applyTheme(mode){
+  const dark = mode === "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  const btn = document.getElementById("themeBtn");
+  if(btn){
+    btn.textContent = dark ? "\u2600\ufe0f" : "\ud83c\udf19";
+    btn.title = dark ? "تم روز" : "تم شب";
+    btn.setAttribute("aria-label", btn.title);
+  }
+  /* نمودارها رنگ متن و خطوطشان را موقع ساخته شدن می‌گیرند، پس باید
+     دوباره کشیده شوند وگرنه در شب سیاه روی سیاه می‌مانند. */
+  try{
+    if(typeof Chart !== "undefined"){
+      Chart.defaults.color = dark ? "#AFBDCB" : "#3E5164";
+      Chart.defaults.borderColor = dark ? "rgba(255,255,255,.10)" : "rgba(11,37,69,.10)";
+    }
+  }catch(e){}
+  try{ localStorage.setItem(THEME_KEY, mode); }catch(e){}
+}
+
+function setupTheme(){
+  let saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  applyTheme(saved === "dark" ? "dark" : "light");
+  const btn = document.getElementById("themeBtn");
+  if(btn) btn.addEventListener("click", ()=>{
+    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    try{ redrawAfterTheme(); }catch(e){}
+  });
+}
+
 async function init(){
 
   try{
@@ -5147,6 +5305,7 @@ async function init(){
     setupNav();
     setupMeta();
     setupToolbar();
+    setupTheme();
     setupBackup();
     setupServers();
     setupCompanies();

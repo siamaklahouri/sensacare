@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* تم ذخیره‌شده را پیش از رسم شدن صفحه می‌گذاریم؛ وگرنه صفحهٔ ورود
+   روشن می‌ماند و بعد از ورود یک دفعه تاریک می‌شود. */
+try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
+  document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
+</script>
 <title>کارتابل ماهانه سینا</title>
 <style>
 /* ---------- صفحهٔ ورود کارتابل ----------
@@ -21,7 +27,7 @@
 }
 #gateScreen[hidden]{ display:none; }
 .gate-card{
-  width:100%; max-width:360px; background:#fff; border-radius:16px;
+  width:100%; max-width:360px; background:var(--white); border-radius:16px;
   padding:26px 24px 22px; box-shadow:0 20px 50px rgba(6,20,40,.35);
   text-align:center;
 }
@@ -33,7 +39,7 @@
   padding:11px 12px; border:1px solid var(--line); border-radius:10px;
   background:var(--paper); color:var(--ink); letter-spacing:.5px;
 }
-.gate-card input[type="password"]:focus{ outline:none; border-color:var(--brass); background:#fff; }
+.gate-card input[type="password"]:focus{ outline:none; border-color:var(--brass); background:var(--white); }
 .gate-card button[type="submit"]{
   font-family:var(--font-body); font-size:14px; font-weight:600; cursor:pointer;
   width:100%; margin-top:12px; padding:11px 12px; border:0; border-radius:10px;
@@ -44,7 +50,7 @@
   display:flex; align-items:center; justify-content:center; gap:7px;
   margin-top:12px; font-size:12px; color:var(--ink-soft); cursor:pointer;
 }
-.gate-err{ margin-top:12px; min-height:17px; font-size:12px; font-weight:600; color:var(--red); }
+.gate-err{ margin-top:12px; min-height:17px; font-size:12px; font-weight:600; color:var(--red-ink); }
 </style>
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
@@ -82,6 +88,22 @@
     --line:#D8DFE4;
     --card-border:#DBE2E7;
     --white:#FFFFFF;
+    /* رنگ لهجهٔ کارت‌ها — در تم شب مقدار دیگری می‌گیرند (پایین شیوه‌نامه) */
+    --c1:#0B9B95; --t1:#E2F3F2;
+    --c2:#B07813; --t2:#F8F0DC;
+    --c3:#6A45A8; --t3:#EDE7F5;
+    --c4:#1E7A4A; --t4:#E3EFE7;
+    --bad:#A6222B; --bad-bg:#F6E1E2; --bad-ink:#8E1D25;
+    /* «جوهر» رنگ‌ها از خودِ رنگ جداست: همین رنگ وقتی متن می‌شود در شب باید
+       روشن شود، ولی وقتی پس‌زمینهٔ دکمه است باید تیره بماند تا متنِ سفیدش
+       خوانا بماند. --deep هم همان سرمه‌ایِ سطح‌هاست که نباید با متن قاطی شود. */
+    --deep:#0B2545;
+    --brass-ink:#0B6E6E;
+    --red-ink:#A6222B;
+    --green-ink:#2F6B4F;
+    --amber-ink:#C98A2C;
+    --teal-ink:#0F6E63;
+    --purple-ink:#5B3E8C;
     --font-display:'Vazirmatn', Tahoma, 'Segoe UI', 'Arial', sans-serif;
     --font-body:'Vazirmatn', Tahoma, 'Segoe UI', 'Arial', sans-serif;
     --radius:12px;
@@ -100,7 +122,7 @@
   /* ---------- Top bar ---------- */
   .topbar{
     height:68px;
-    background:linear-gradient(135deg, var(--ink) 0%, #123258 100%);
+    background:linear-gradient(135deg, var(--deep) 0%, #123258 100%);
     color:#fff;
     display:flex;
     align-items:center;
@@ -170,7 +192,7 @@
   }
   .navbtn .ic{ font-size:15px; width:20px; text-align:center; }
   .navbtn:hover{ background:var(--paper-deep); }
-  .navbtn.active{ background:var(--brass-bg); color:var(--brass-deep); font-weight:700; }
+  .navbtn.active{ background:var(--brass-bg); color:var(--brass-ink); font-weight:700; }
   /* ---------- بخش تنظیمات و نوار تداخل نسخه ---------- */
   .set-h{ font-family:var(--font-display); font-size:15px; margin:0 0 6px; color:var(--ink); }
   .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
@@ -180,11 +202,11 @@
     font-family:var(--font-body); font-size:13px; padding:9px 11px;
     border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink);
   }
-  .set-grid input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .set-grid input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .set-state{ font-size:12px; color:var(--ink-faint); }
-  .set-state.ok{ color:var(--green); font-weight:600; }
-  .set-state.err{ color:var(--red); font-weight:600; }
+  .set-state.ok{ color:var(--green-ink); font-weight:600; }
+  .set-state.err{ color:var(--red-ink); font-weight:600; }
   .set-hr{ border:0; border-top:1px solid var(--line); margin:16px 0; }
 
   #syncConflict{
@@ -196,13 +218,13 @@
   #syncConflict button{
     font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;
     padding:7px 14px; border:1px solid var(--amber); border-radius:8px;
-    background:#fff; color:var(--ink);
+    background:var(--white); color:var(--ink);
   }
 
   /* ---------- Personal vault (password protected) ---------- */
   .navbtn-lock{ border-top:1px dashed var(--line); margin-top:6px; padding-top:14px; }
   .lock-screen{
-    max-width:400px; margin:36px auto; background:linear-gradient(160deg,var(--ink) 0%,#173B5C 100%);
+    max-width:400px; margin:36px auto; background:linear-gradient(160deg,var(--deep) 0%,#173B5C 100%);
     border-radius:18px; padding:34px 28px; text-align:center; color:#fff;
     box-shadow:0 20px 45px rgba(11,37,69,.28);
   }
@@ -228,12 +250,12 @@
   .personal-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
   .personal-tabs{ display:flex; gap:6px; }
   .personal-tabs button{
-    border:1px solid var(--card-border); background:#fff; border-radius:9px; padding:8px 16px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:9px; padding:8px 16px;
     font-size:12.5px; font-family:var(--font-body); cursor:pointer; color:var(--ink-soft);
   }
-  .personal-tabs button.active{ background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .personal-tabs button.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .btn-lock-now{
-    border:1px solid #E9A5A5; background:#FDEAEA; color:var(--red); border-radius:9px; padding:8px 14px;
+    border:1px solid #E9A5A5; background:#FDEAEA; color:var(--red-ink); border-radius:9px; padding:8px 14px;
     font-size:12px; cursor:pointer; font-family:var(--font-body); font-weight:600;
   }
 
@@ -242,7 +264,7 @@
     width:100%; box-sizing:border-box; border:1px solid transparent; border-radius:6px; padding:6px 8px;
     font-family:var(--font-body); font-size:12.5px; background:transparent; color:var(--ink);
   }
-  .cred-table input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .cred-table input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .cred-table td{ position:relative; }
   .pw-toggle-btn{
     border:none; background:transparent; cursor:pointer; font-size:13px; color:var(--ink-faint); padding:2px 4px;
@@ -261,7 +283,7 @@
   .inst-date-row label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
   .inst-date-row select{
     border:1px solid var(--card-border); border-radius:8px; padding:8px 6px; font-family:var(--font-body);
-    font-size:12.5px; background:#fff;
+    font-size:12.5px; background:var(--white);
   }
   .inst-note{ font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; line-height:1.8; }
   .inst-card{
@@ -276,7 +298,7 @@
   table.inst-schedule td{ text-align:center; padding:6px 4px; border-bottom:1px solid #F0EDE4; }
   table.inst-schedule tr.paid td{ color:var(--ink-faint); text-decoration:line-through; }
   .inst-pay-toggle{
-    border:1px solid var(--card-border); background:#fff; border-radius:6px; padding:3px 10px; font-size:11px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:6px; padding:3px 10px; font-size:11px;
     cursor:pointer; font-family:var(--font-body);
   }
   .inst-pay-toggle.paid{ background:#E4F3E4; border-color:#9FCF9F; color:#2E7D32; }
@@ -284,11 +306,11 @@
   .cred-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .company-tabs{ display:flex; flex-wrap:wrap; gap:8px; }
   .company-tab-btn{
-    border:1px solid var(--card-border); background:#fff; border-radius:9px; padding:8px 16px;
+    border:1px solid var(--card-border); background:var(--white); border-radius:9px; padding:8px 16px;
     font-size:12.5px; font-family:var(--font-body); cursor:pointer; color:var(--ink-soft);
   }
   .company-tab-btn:hover{ border-color:var(--brass); color:var(--ink); }
-  .company-tab-btn.active{ background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600; }
+  .company-tab-btn.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .company-tab-btn .cnt{ opacity:.7; font-size:11px; }
   .cred-import-bar{
     display:flex; align-items:center; gap:8px; padding:10px 12px; background:#F4F0E4; border:1px solid var(--card-border);
@@ -367,12 +389,12 @@
 
   /* کارت‌های «معوق» وضعیت‌اند، نه اندازه: وقتی صفر است خبرِ خوب است و
      نباید قرمز باشد. رنگ به‌تنهایی هم حرف نمی‌زند — آیکن و متن هم هست. */
-  .stat.is-clear{ --accent:#1E7A4A; --tint:#E3EFE7; }
-  .stat.is-alert{ --accent:#A6222B; --tint:#F6E1E2; }
-  .stat.is-alert .stat-val{ color:#8E1D25; }
+  .stat.is-clear{ --accent:var(--c4); --tint:var(--t4); }
+  .stat.is-alert{ --accent:var(--bad); --tint:var(--bad-bg); }
+  .stat.is-alert .stat-val{ color:var(--bad-ink); }
 
   .dash-hero{
-    background:linear-gradient(120deg,var(--ink) 0%,#173B5C 60%,#0F5E58 130%);
+    background:linear-gradient(120deg,var(--deep) 0%,#173B5C 60%,#0F5E58 130%);
     border-radius:14px; padding:18px 22px; margin-bottom:18px; color:#fff;
     display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
     box-shadow:0 6px 20px rgba(11,37,69,.18); position:relative; overflow:hidden;
@@ -438,7 +460,7 @@
   /* ---------- Tables ---------- */
   table{ width:100%; border-collapse:collapse; font-size:12px; }
   thead th{
-    background:var(--ink); color:#fff; font-weight:600; padding:7px 6px; text-align:center;
+    background:var(--deep); color:#fff; font-weight:600; padding:7px 6px; text-align:center;
     position:sticky; top:0; font-size:11.5px;
   }
   tbody td{ padding:5px 6px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle; font-size:12px; }
@@ -447,7 +469,7 @@
   .filter-row th{ background:var(--paper-deep); padding:4px 5px; position:sticky; top:32px; }
   .filter-row input, .filter-row select{
     width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:#fff;
+    padding:4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
   }
   .filter-row input:focus, .filter-row select:focus{ outline:none; border-color:var(--brass); }
 
@@ -455,7 +477,7 @@
   .msf{ position:relative; width:100%; }
   .msf-btn{
     width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 8px 4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:#fff;
+    padding:4px 8px 4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
     cursor:pointer; text-align:right; display:flex; align-items:center; justify-content:space-between; gap:4px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
@@ -464,7 +486,7 @@
   .msf-btn.open .arrow{ transform:rotate(180deg); }
   .msf-count{ background:var(--brass); color:#fff; border-radius:999px; font-size:9.5px; padding:0px 5px; flex:none; }
   .msf-panel{
-    position:fixed; z-index:250; background:#fff; border:1px solid var(--card-border); border-radius:8px;
+    position:fixed; z-index:250; background:var(--white); border:1px solid var(--card-border); border-radius:8px;
     box-shadow:0 10px 30px rgba(11,37,69,.25); padding:6px; display:none; max-height:220px; overflow-y:auto;
     min-width:150px;
   }
@@ -472,7 +494,7 @@
   .msf-opt{ display:flex; align-items:center; gap:7px; padding:5px 6px; border-radius:5px; cursor:pointer; font-size:12px; white-space:nowrap; }
   .msf-opt:hover{ background:var(--brass-bg); }
   .msf-opt input{ margin:0; flex:none; accent-color:var(--brass); width:14px; height:14px; }
-  .msf-clear{ font-size:10.5px; color:var(--brass-deep); text-align:center; padding:4px; cursor:pointer; border-top:1px solid var(--line); margin-top:3px; }
+  .msf-clear{ font-size:10.5px; color:var(--brass-ink); text-align:center; padding:4px; cursor:pointer; border-top:1px solid var(--line); margin-top:3px; }
   .msf-clear:hover{ text-decoration:underline; }
 
   /* ---------- toggle switches ---------- */
@@ -480,7 +502,7 @@
   .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
   .edit-switch input{ opacity:0; width:0; height:0; }
   .edit-switch .track{ position:absolute; inset:0; background:#c9c2b3; border-radius:999px; transition:.18s; cursor:pointer; }
-  .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
+  .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:var(--white); border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
   .edit-switch input:checked + .track{ background:var(--red); }
   .edit-switch input:checked + .track::before{ transform:translateX(-12px); }
 
@@ -490,7 +512,7 @@
   .btn-ghost{ background:var(--paper-deep); color:var(--ink-soft); }
   .btn-ghost:hover{ background:var(--line); }
   .btn-sm{ padding:5px 12px !important; font-size:12px !important; }
-  .btn-del{ background:transparent; color:var(--red); border:1px solid transparent; cursor:pointer; font-size:15px; padding:5px 8px; border-radius:6px; transition:all .12s; }
+  .btn-del{ background:transparent; color:var(--red-ink); border:1px solid transparent; cursor:pointer; font-size:15px; padding:5px 8px; border-radius:6px; transition:all .12s; }
   .btn-del:hover{ background:rgba(166,34,43,0.1); border-color:var(--red); transform:scale(1.05); }
   .btn-del[disabled]{ display:none; }
   .star-btn{
@@ -515,22 +537,22 @@
   .save-hint{ color:var(--ink-faint); }
 
   .badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-  .badge.done{ background:var(--green-bg); color:var(--green); }
-  .badge.doing{ background:var(--teal-bg); color:var(--teal); }
-  .badge.todo{ background:var(--red-bg); color:var(--red); }
+  .badge.done{ background:var(--green-bg); color:var(--green-ink); }
+  .badge.doing{ background:var(--teal-bg); color:var(--teal-ink); }
+  .badge.todo{ background:var(--red-bg); color:var(--red-ink); }
 
   .editable-cell{ cursor:text; }
   .editable-cell[data-field="enteredBy"]:not(:empty){
-    font-size:11px; color:var(--brass-deep); font-weight:600;
+    font-size:11px; color:var(--brass-ink); font-weight:600;
   }
   .add-row input, .add-row select{ background:#fbf9f3; border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
   .add-row input:focus, .add-row select:focus{ outline:2px solid var(--brass); }
   .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:#fbf9f3; border:1px solid var(--line); border-radius:8px; flex-wrap:wrap; }
-  .visit-add-bar input, .visit-add-bar select{ background:#fff; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
+  .visit-add-bar input, .visit-add-bar select{ background:var(--white); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
   .visit-add-bar input:focus, .visit-add-bar select:focus{ outline:none; border-color:var(--brass); }
   .editable-text input{ width:100%; box-sizing:border-box; border:1px solid transparent; background:transparent; font-family:inherit; font-size:12px; padding:4px 5px; border-radius:5px; }
   .editable-text input:hover{ border-color:var(--card-border); }
-  .editable-text input:focus{ outline:none; border-color:var(--brass); background:#fff; }
+  .editable-text input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .daily-plan-table td, .daily-plan-table th{ padding-left:10px; padding-right:10px; }
   .daily-plan-table td:nth-child(5), .daily-plan-table th:nth-child(5){ border-right:1px solid var(--line); padding-right:14px; }
   .daily-plan-table td:nth-child(6), .daily-plan-table th:nth-child(6){ padding-right:14px; padding-left:14px; }
@@ -545,7 +567,7 @@
   .cm-overlay.open{ display:flex; animation:cmFade .15s ease; }
   @keyframes cmFade{ from{opacity:0;} to{opacity:1;} }
   .cm-box{
-    background:#fff; border-radius:14px; width:100%; max-width:480px; max-height:80vh;
+    background:var(--white); border-radius:14px; width:100%; max-width:480px; max-height:80vh;
     display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(11,37,69,.35);
     animation:cmPop .18s ease;
   }
@@ -555,9 +577,9 @@
     padding:16px 18px; border-bottom:1px solid var(--line);
   }
   .cm-title{ font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; }
-  .cm-count{ background:var(--brass-bg); color:var(--brass-deep); border-radius:999px; padding:2px 10px; font-size:11.5px; font-weight:700; }
+  .cm-count{ background:var(--brass-bg); color:var(--brass-ink); border-radius:999px; padding:2px 10px; font-size:11.5px; font-weight:700; }
   .cm-close{ background:none; border:none; font-size:18px; color:var(--ink-faint); cursor:pointer; line-height:1; padding:4px; }
-  .cm-close:hover{ color:var(--red); }
+  .cm-close:hover{ color:var(--red-ink); }
   .cm-body{ padding:8px 10px; overflow-y:auto; }
   .cm-empty{ padding:30px 10px; text-align:center; color:var(--ink-faint); font-size:12.5px; }
   .cm-item{ padding:10px 10px; border-radius:8px; }
@@ -665,6 +687,79 @@
   #statCards{ grid-template-columns:repeat(2,1fr); }
   @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
   @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
+
+  /* ---------- تم شب ----------
+     رنگ‌های تم شب «برعکسِ» تم روز نیستند؛ جداگانه انتخاب و روی سطحِ تیره
+     سنجیده شده‌اند. هر جوهر روی تینتِ خودش بالای ۵:۱ کنتراست دارد. */
+  [data-theme="dark"]{
+    --paper:#0D1620;
+    --paper-deep:#111C28;
+    --white:#16212E;
+    --ink:#E9EFF5;
+    --ink-soft:#AFBDCB;
+    --ink-faint:#7E8D9C;
+    --line:#27323F;
+    --card-border:#27323F;
+    --brass-bg:#10312F;
+    --green-bg:#122A1F;
+    --amber-bg:#2E2515;
+    --red-bg:#331A1C;
+    --teal-bg:#0F2B28;
+    --purple-bg:#241C33;
+    --shadow: 0 1px 2px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.35);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,.5), 0 18px 40px rgba(0,0,0,.45);
+    --c1:#12A29A; --t1:#0F2E2C;
+    --c2:#BF881F; --t2:#2E2616;
+    --c3:#8561C7; --t3:#231B33;
+    --c4:#2B8C59; --t4:#13291E;
+    --bad:#D4646C; --bad-bg:#331E20; --bad-ink:#E48E94;
+    --deep:#203042;
+    --brass-ink:#58CFC6;
+    --red-ink:#E4757C;
+    --green-ink:#56B97E;
+    --amber-ink:#E0A63A;
+    --teal-ink:#3FBDB0;
+    --purple-ink:#A585DC;
+    color-scheme: dark;
+  }
+  /* پس‌زمینهٔ صفحه گرادیانی دارد که برای زمینهٔ روشن ساخته شده */
+  [data-theme="dark"] body{ background:var(--paper); }
+  [data-theme="dark"] .tbl-wrap,
+  [data-theme="dark"] thead th{ background-color:transparent; }
+  [data-theme="dark"] tbody tr:nth-child(even){ background:rgba(255,255,255,.03); }
+  [data-theme="dark"] tbody tr:hover{ background:rgba(255,255,255,.06); }
+  /* قاب آیکن کارت‌ها: رنگِ روشنِ inline در شب کور می‌زند */
+  [data-theme="dark"] .stat-ic{ background:rgba(255,255,255,.08); }
+  [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea{
+    background:var(--paper-deep); color:var(--ink); border-color:var(--line);
+  }
+  [data-theme="dark"] input::placeholder, [data-theme="dark"] textarea::placeholder{ color:var(--ink-faint); }
+  [data-theme="dark"] option{ background:var(--paper-deep); color:var(--ink); }
+
+  /* سطح‌هایی که هگزِ روشنِ ثابت داشتند و توکن نبودند */
+  [data-theme="dark"] .btn-lock-now{ background:var(--red-bg); border-color:#5A2A2E; color:var(--red-ink); }
+  [data-theme="dark"] .inst-card{ background:var(--paper-deep); }
+  [data-theme="dark"] .inst-pay-toggle.paid{ background:var(--green-bg); border-color:#2E5C42; color:var(--green-ink); }
+  [data-theme="dark"] .cred-import-bar,
+  [data-theme="dark"] .visit-add-bar{ background:var(--paper-deep); }
+  [data-theme="dark"] .add-row input, [data-theme="dark"] .add-row select{ background:var(--paper-deep); }
+
+  /* در موبایل نوار کناری ردیفی از دکمه می‌شود و پس‌زمینهٔ سفیدِ
+     نیمه‌شفاف می‌گیرد؛ در شب متنِ روشن رویش گم می‌شد. */
+  @media (max-width:860px){
+    [data-theme="dark"] .navbtn{ background:rgba(255,255,255,.06); border-color:var(--line); }
+  }
+
+  /* ---------- دکمهٔ تم ---------- */
+  .theme-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; flex:none; cursor:pointer; user-select:none;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+    border-radius:999px; font-size:15px; line-height:1; color:#fff;
+    transition:background .15s, transform .12s;
+  }
+  .theme-btn:hover{ background:rgba(255,255,255,.16); }
+  .theme-btn:active{ transform:scale(.94); }
 </style>
 </head>
 <body>
@@ -695,6 +790,7 @@
     <div class="lc-time" id="lcTime">--:--:--</div>
     <div class="lc-date" id="lcDate">در حال بارگذاری...</div>
   </div>
+  <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   <div class="period">
     <label>ماه</label>
     <select id="monthSelector"></select>
@@ -2327,9 +2423,9 @@ function renderInvoices(){
   const outstanding = invoicesData.filter(i=>i.status!=="پرداخت‌شده").reduce((s,i)=>s+ Math.max(0,(i.amount||0)-(i.paid||0)), 0);
   const overdueCount = invoicesData.filter(i=>i.status==="معوق").length;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">🧾</span><span class="stat-lbl">تعداد فاکتورها</span></div><div class="stat-val">${fa(invoicesData.length)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل فاکتورها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
-    <div class="stat" style="--accent:#6A45A8; --tint:#EDE7F5"><div class="stat-head"><span class="stat-ic">⏳</span><span class="stat-lbl">مانده‌ی وصول‌نشده</span></div><div class="stat-val">${formatMoney(outstanding)}</div></div>
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">🧾</span><span class="stat-lbl">تعداد فاکتورها</span></div><div class="stat-val">${fa(invoicesData.length)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل فاکتورها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:var(--c3); --tint:var(--t3)"><div class="stat-head"><span class="stat-ic">⏳</span><span class="stat-lbl">مانده‌ی وصول‌نشده</span></div><div class="stat-val">${formatMoney(outstanding)}</div></div>
     <div class="stat ${(overdueCount) > 0 ? "is-alert" : "is-clear"}"><div class="stat-head"><span class="stat-ic">${(overdueCount) > 0 ? "⚠️" : "✅"}</span><span class="stat-lbl">فاکتورهای معوق</span></div><div class="stat-val">${fa(overdueCount)}</div><div class="stat-sub">${(overdueCount) > 0 ? "نیاز به پیگیری" : "چیزی عقب نیفتاده"}</div></div>
   `;
 
@@ -2478,8 +2574,8 @@ function renderPayables(){
   const today = getTodayJalaliStr();
   const overdueCount = payablesData.filter(p=> p.dueDate && p.dueDate < today).length;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">💳</span><span class="stat-lbl">تعداد ردیف‌ها</span></div><div class="stat-val">${fa(payablesData.length)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل بدهی‌ها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">💳</span><span class="stat-lbl">تعداد ردیف‌ها</span></div><div class="stat-val">${fa(payablesData.length)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل بدهی‌ها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
     <div class="stat ${(overdueCount) > 0 ? "is-alert" : "is-clear"}"><div class="stat-head"><span class="stat-ic">${(overdueCount) > 0 ? "⚠️" : "✅"}</span><span class="stat-lbl">سررسیدگذشته</span></div><div class="stat-val">${fa(overdueCount)}</div><div class="stat-sub">${(overdueCount) > 0 ? "نیاز به پیگیری" : "چیزی عقب نیفتاده"}</div></div>
   `;
 
@@ -2603,8 +2699,8 @@ function renderPayableNotes(){
   const cardsWrap = document.getElementById("payableNotesCards");
   const total = payableNotesData.reduce((s,n)=>s+(n.amount||0),0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📄</span><span class="stat-lbl">تعداد اسناد پرداختنی</span></div><div class="stat-val">${fa(payableNotesData.length)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">📄</span><span class="stat-lbl">تعداد اسناد پرداختنی</span></div><div class="stat-val">${fa(payableNotesData.length)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const list = applyPayableNoteFilters(payableNotesData);
   const editableTd = (value, idx, field)=>
@@ -2725,8 +2821,8 @@ function renderReceivableNotes(){
   const cardsWrap = document.getElementById("receivableNotesCards");
   const total = receivableNotesData.reduce((s,n)=>s+(n.amount||0),0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📃</span><span class="stat-lbl">تعداد اسناد دریافتنی</span></div><div class="stat-val">${fa(receivableNotesData.length)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">📃</span><span class="stat-lbl">تعداد اسناد دریافتنی</span></div><div class="stat-val">${fa(receivableNotesData.length)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل مبلغ</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const list = applyReceivableNoteFilters(receivableNotesData);
   const editableTd = (value, idx, field)=>
@@ -2853,11 +2949,11 @@ function renderExpenses(){
   const totalUses = expensesData.filter(e=>e.type===SOURCE_USE_TYPES[1]).reduce((s,e)=>s+(e.amount||0),0);
   const net = totalSources - totalUses;
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">📥</span><span class="stat-lbl">جمع منابع</span></div><div class="stat-val">${formatMoney(totalSources)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">📤</span><span class="stat-lbl">جمع مصارف</span></div><div class="stat-val">${formatMoney(totalUses)}</div></div>
-    <div class="stat" style="--accent:${net>=0?'#1E7A4A':'#A6222B'}; --tint:${net>=0?'#E3EFE7':'#F6E1E2'}">
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">📥</span><span class="stat-lbl">جمع منابع</span></div><div class="stat-val">${formatMoney(totalSources)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">📤</span><span class="stat-lbl">جمع مصارف</span></div><div class="stat-val">${formatMoney(totalUses)}</div></div>
+    <div class="stat" style="--accent:${net>=0?'var(--c4)':'var(--bad)'}; --tint:${net>=0?'var(--t4)':'var(--bad-bg)'}">
       <div class="stat-head"><span class="stat-ic">⚖️</span><span class="stat-lbl">تراز (منابع − مصارف)</span></div>
-      <div class="stat-val" style="color:${net>=0?'var(--ink)':'#8E1D25'}">${formatMoney(net)}</div>
+      <div class="stat-val" style="color:${net>=0?'var(--ink)':'var(--bad-ink)'}">${formatMoney(net)}</div>
       <div class="stat-sub">${net>=0?'مثبت — منابع بیشتر از مصارف':'منفی — مصارف بیشتر از منابع'}</div>
     </div>
   `;
@@ -3006,8 +3102,8 @@ function renderBank(){
   const cardsWrap = document.getElementById("bankCards");
   const total = bankData.reduce((s,b)=>s+ (b.balance||0), 0);
   if(cardsWrap) cardsWrap.innerHTML = `
-    <div class="stat" style="--accent:#0B9B95; --tint:#E2F3F2"><div class="stat-head"><span class="stat-ic">🏦</span><span class="stat-lbl">تعداد حساب‌ها</span></div><div class="stat-val">${fa(bankData.length)}</div></div>
-    <div class="stat" style="--accent:#B07813; --tint:#F8F0DC"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع نقدینگی</span></div><div class="stat-val">${formatMoney(total)}</div></div>
+    <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">🏦</span><span class="stat-lbl">تعداد حساب‌ها</span></div><div class="stat-val">${fa(bankData.length)}</div></div>
+    <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع نقدینگی</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const editableTd = (value, idx, field)=>
     `<td class="editable-cell" contenteditable="${editMode.bank?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.bank?'1':'0.85'}; cursor:${editMode.bank?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
@@ -4601,6 +4697,49 @@ function setupToolbar(){
   }
 }
 
+
+/* ---------- تم روز و شب ----------
+   انتخاب هر پلنر جداست و در حافظهٔ همان مرورگر می‌ماند. پیش‌فرض روز است
+   تا چیزی بی‌خبر عوض نشود؛ تا وقتی دکمه را نزنید همان شکل قبلی می‌ماند. */
+const THEME_KEY = STORE_KEY + ":theme";
+
+function currentTheme(){
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+
+function redrawAfterTheme(){ renderEverything(); }
+
+function applyTheme(mode){
+  const dark = mode === "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  const btn = document.getElementById("themeBtn");
+  if(btn){
+    btn.textContent = dark ? "\u2600\ufe0f" : "\ud83c\udf19";
+    btn.title = dark ? "تم روز" : "تم شب";
+    btn.setAttribute("aria-label", btn.title);
+  }
+  /* نمودارها رنگ متن و خطوطشان را موقع ساخته شدن می‌گیرند، پس باید
+     دوباره کشیده شوند وگرنه در شب سیاه روی سیاه می‌مانند. */
+  try{
+    if(typeof Chart !== "undefined"){
+      Chart.defaults.color = dark ? "#AFBDCB" : "#3E5164";
+      Chart.defaults.borderColor = dark ? "rgba(255,255,255,.10)" : "rgba(11,37,69,.10)";
+    }
+  }catch(e){}
+  try{ localStorage.setItem(THEME_KEY, mode); }catch(e){}
+}
+
+function setupTheme(){
+  let saved = null;
+  try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+  applyTheme(saved === "dark" ? "dark" : "light");
+  const btn = document.getElementById("themeBtn");
+  if(btn) btn.addEventListener("click", ()=>{
+    applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    try{ redrawAfterTheme(); }catch(e){}
+  });
+}
+
 async function init(){
   try{
     await loadState();
@@ -4628,6 +4767,7 @@ async function init(){
     setupBudget();
     setupSettings();
     setupToolbar();
+    setupTheme();
     renderPersonalView();
     const cf = document.getElementById("connectFolderBtn");
     if(cf) cf.addEventListener("click", connectFolder);
