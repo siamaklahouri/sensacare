@@ -16,6 +16,7 @@
 
 import { buildKartablWorkbook, buildSinaWorkbook } from './kartabl-xlsx.js';
 import { makeZip } from './kartabl-zip.js';
+import { buildAiContext, askKartablAI } from './kartabl-ai.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -481,6 +482,22 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const r = await saveKartabl(env, panel, { state: body.state, db: body.db, baseRev: body.baseRev });
     if (r.conflict) return json({ conflict: true, rev: r.rev, updated: r.updated }, REV_CONFLICT);
     return json({ ok: true, rev: r.rev, updated: r.updated });
+  }
+
+  /* ---------- دستیار هوشمند ----------
+     پشتِ همان قفلِ ورود است، و متنِ داده‌هایی که به مدل می‌رود را خودِ سرور
+     از روی دادهٔ همین کارتابل می‌سازد — نه از چیزی که مرورگر فرستاده. پس
+     دستیارِ یک کارتابل به دادهٔ آن دو تای دیگر نمی‌رسد، حتی اگر کسی بدنهٔ
+     درخواست را دست‌کاری کند. تنها چیزی که از مرورگر می‌گیریم تاریخِ امروز
+     است (برای تشخیص سررسیدگذشته) و آن هم اول شکلش بررسی می‌شود. */
+  if (p === '/ai' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-ai:` + clientIp(req), 80, 3600);
+    if (!rl.ok) return bad('سؤال‌ها زیاد شد. کمی بعد دوباره بپرسید.', 429);
+    const today = /^\d{4}\/\d{2}\/\d{2}$/.test(String(body.today || '')) ? String(body.today) : '';
+    const d = await loadKartabl(env, panel);
+    const ctx = buildAiContext(panel, d.state, d.db, today);
+    const r = await askKartablAI(env, panel, body.messages, ctx);
+    return r.ok ? json({ reply: r.reply, model: r.model }) : bad(r.error, r.status || 502);
   }
 
   /* عوض کردن رمز — رمز فعلی لازم است، و همهٔ نشست‌های دیگر بسته می‌شوند */

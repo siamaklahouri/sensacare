@@ -725,6 +725,58 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
   @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
   @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
 
+  /* ---------- دستیار هوشمند ----------
+     همه‌چیزش از توکن‌ها می‌خواند، پس در تم شب هم بدون قاعدهٔ جداگانه درست
+     درمی‌آید. ارتفاعِ ثابت دارد تا فهرستِ گفتگو خودش اسکرول شود و نوارِ
+     نوشتن همیشه پایین بماند، نه اینکه صفحه بلند و بلندتر شود. */
+  .ai-wrap{
+    display:flex; flex-direction:column;
+    height:calc(100vh - 235px); min-height:420px;
+    background:var(--white); border:1px solid var(--card-border);
+    border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+  }
+  .ai-log{
+    flex:1 1 auto; min-height:0; overflow-y:auto;
+    padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+  .ai-msg{
+    max-width:78%; padding:10px 14px; border-radius:14px;
+    font-size:13px; line-height:2; white-space:pre-wrap; word-break:break-word;
+  }
+  /* در راست‌به‌چپ، flex-end سمتِ چپ است: پیام خودِ کاربر چپ، جواب راست */
+  .ai-msg.me{ align-self:flex-end; background:var(--brass); color:#fff; border-bottom-left-radius:4px; }
+  .ai-msg.bot{ align-self:flex-start; background:var(--paper-deep); color:var(--ink); border-bottom-right-radius:4px; }
+  .ai-msg.err{ align-self:flex-start; background:var(--red-bg); color:var(--red-ink); }
+  .ai-msg code{ background:rgba(127,127,127,.18); border-radius:4px; padding:1px 5px; font-size:12px; }
+  .ai-empty{ margin:auto; text-align:center; color:var(--ink-faint); font-size:12.5px; line-height:2.2; }
+  .ai-empty .big{ font-size:30px; display:block; margin-bottom:6px; }
+  .ai-tips{ display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px; }
+  .ai-tip{
+    border:1px solid var(--line); border-radius:999px; padding:5px 11px;
+    font-size:11.5px; cursor:pointer; background:transparent; color:var(--ink-soft);
+    font-family:var(--font-body);
+  }
+  .ai-tip:hover{ border-color:var(--brass); color:var(--ink); }
+  .ai-bar{ display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); background:var(--paper); }
+  .ai-bar textarea{
+    flex:1 1 auto; resize:none; min-height:42px; max-height:150px; box-sizing:border-box;
+    font-family:var(--font-body); font-size:13px; line-height:1.9;
+    padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink);
+  }
+  .ai-bar textarea:focus{ outline:none; border-color:var(--brass); }
+  .ai-send{ flex:none; align-self:flex-end; }
+  .ai-foot{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    flex-wrap:wrap; margin-top:10px;
+  }
+  .ai-note{ font-size:11.5px; color:var(--ink-faint); line-height:1.9; flex:1 1 260px; }
+  @media (max-width:860px){
+    .ai-wrap{ height:auto; min-height:0; }
+    .ai-log{ max-height:60vh; }
+    .ai-msg{ max-width:92%; }
+  }
+
   /* ---------- تم شب ----------
      رنگ‌های تم شب «برعکسِ» تم روز نیستند؛ جداگانه انتخاب و روی سطحِ تیره
      سنجیده شده‌اند. هر جوهر روی تینتِ خودش بالای ۵:۱ کنتراست دارد. */
@@ -860,6 +912,7 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
     <button class="navbtn" data-view="budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
     <button class="navbtn" data-view="parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
+      <button class="navbtn" data-view="assistant"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
     </nav>
@@ -1360,6 +1413,24 @@ try{ if(localStorage.getItem("finance-planner-v1" + ":theme") === "dark")
     </section>
 
     <!-- GUIDE -->
+    <!-- ASSISTANT -->
+    <section class="view" id="view-assistant">
+      <div class="section-title">🤖 دستیار هوشمند</div>
+      <div class="section-sub">هر چیزی بپرسید — هم دربارهٔ همین کارتابل، هم هر سؤال دیگری</div>
+      <div class="ai-wrap">
+        <div class="ai-log" id="aiLog"></div>
+        <div class="ai-tips" id="aiTips"></div>
+        <div class="ai-bar">
+          <textarea id="aiInput" rows="1" placeholder="سؤالتان را بنویسید…"></textarea>
+          <button type="button" class="btn btn-brass ai-send" id="aiSend">بفرست</button>
+        </div>
+      </div>
+      <div class="ai-foot">
+        <div class="ai-note">Enter می‌فرستد، Shift+Enter خط تازه می‌آورد. جواب‌ها را هوش مصنوعی می‌سازد و ممکن است اشتباه باشند — عددهای مهم را از خودِ کارتابل هم ببینید. «دیتای شخصی» رمزنگاری‌شده است و به دستیار داده نمی‌شود.</div>
+        <button type="button" class="btn btn-ghost" id="aiClear">🗑 پاک کردن گفتگو</button>
+      </div>
+    </section>
+
     <section class="view" id="view-guide">
       <div class="section-title">راهنمای استفاده</div>
       <div class="section-sub">این کارتابل دستیار دیجیتال مدیر مالی شماست</div>
@@ -4819,6 +4890,131 @@ function setupTheme(){
   });
 }
 
+/* ---------- دستیار هوشمند ----------
+   گفتگو در حافظهٔ همین مرورگر می‌ماند (هر کارتابل کلیدِ خودش را دارد) و
+   هر بار چند پیامِ آخر همراه سؤال بالا می‌رود تا دستیار رشتهٔ حرف را گم
+   نکند. متنِ داده‌های کارتابل را سرور خودش می‌سازد؛ این‌جا فقط تاریخِ
+   امروز را می‌فرستیم تا سررسیدگذشته‌ها را درست تشخیص بدهد. */
+const AI_KEY = STORE_KEY + ":ai";
+const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر است؟",
+  "فاکتورهای وصول‌نشده را فهرست کن",
+  "خلاصه‌ی وضعیت مالی این ماه را بگو",
+  "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
+  "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
+let aiHistory = [];
+let aiBusy = false;
+
+function aiLoadHistory(){
+  try{ const v = JSON.parse(localStorage.getItem(AI_KEY)); aiHistory = Array.isArray(v) ? v : []; }
+  catch(e){ aiHistory = []; }
+}
+function aiSaveHistory(){
+  /* فقط چهل پیامِ آخر می‌ماند، وگرنه حافظهٔ مرورگر بی‌خود پر می‌شود */
+  try{ localStorage.setItem(AI_KEY, JSON.stringify(aiHistory.slice(-40))); }catch(e){}
+}
+
+/* متنِ جواب با textContent نمی‌رود چون می‌خواهیم **پررنگ** و `کد` را
+   نشان بدهیم؛ پس اول کامل escape می‌شود و بعد فقط همین دو تا برمی‌گردند.
+   این‌طوری هیچ HTMLی از جوابِ مدل اجرا نمی‌شود. */
+function aiFormat(text){
+  const safe = String(text)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return safe
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+}
+
+function aiRenderLog(){
+  const log = document.getElementById("aiLog");
+  if(!log) return;
+  if(!aiHistory.length){
+    log.innerHTML = '<div class="ai-empty"><span class="big">🤖</span>' +
+      'سلام! هر چه می‌خواهید بپرسید.<br>هم از کارتابل می‌دانم، هم سؤال‌های دیگرتان را جواب می‌دهم.</div>';
+    return;
+  }
+  log.innerHTML = aiHistory.map(m =>
+    '<div class="ai-msg ' + (m.role === "user" ? "me" : (m.error ? "err" : "bot")) + '">' +
+    aiFormat(m.content) + '</div>').join("");
+  log.scrollTop = log.scrollHeight;
+}
+
+function aiSetBusy(on){
+  aiBusy = on;
+  const b = document.getElementById("aiSend");
+  const t = document.getElementById("aiInput");
+  if(b){ b.disabled = on; b.textContent = on ? "…" : "بفرست"; }
+  if(t) t.disabled = on;
+}
+
+async function aiAsk(text){
+  const q = String(text || "").trim();
+  if(!q || aiBusy) return;
+  if(window.KARTABL_OFFLINE){
+    aiHistory.push({ role:"assistant", content:"این نسخهٔ پشتیبان است و به سرور وصل نیست، پس دستیار کار نمی‌کند.", error:true });
+    aiRenderLog(); return;
+  }
+  aiHistory.push({ role:"user", content:q });
+  aiSaveHistory(); aiRenderLog(); aiSetBusy(true);
+
+  const log = document.getElementById("aiLog");
+  if(log){
+    const wait = document.createElement("div");
+    wait.className = "ai-msg bot"; wait.id = "aiWait"; wait.textContent = "در حال فکر کردن…";
+    log.appendChild(wait); log.scrollTop = log.scrollHeight;
+  }
+
+  try{
+    const r = await apiCall("/ai", { method:"POST", body: JSON.stringify({
+      messages: aiHistory.filter(m => !m.error).slice(-12).map(m => ({ role:m.role, content:m.content })),
+      today: (typeof getTodayJalaliStr === "function") ? getTodayJalaliStr() : ""
+    }) });
+    if(r.ok && r.data.reply) aiHistory.push({ role:"assistant", content:r.data.reply });
+    else aiHistory.push({ role:"assistant", error:true,
+      content: r.data.error || "دستیار جواب نداد. کمی بعد دوباره امتحان کنید." });
+  }catch(e){
+    aiHistory.push({ role:"assistant", error:true, content:"به سرور نرسیدم. اینترنت را بررسی کنید." });
+  }
+  aiSetBusy(false); aiSaveHistory(); aiRenderLog();
+  const t = document.getElementById("aiInput");
+  if(t){ try{ t.focus(); }catch(e){} }
+}
+
+function setupAssistant(){
+  const input = document.getElementById("aiInput");
+  const send  = document.getElementById("aiSend");
+  const clear = document.getElementById("aiClear");
+  const tips  = document.getElementById("aiTips");
+  if(!input || !send) return;
+
+  aiLoadHistory(); aiRenderLog();
+
+  if(tips) AI_TIPS.forEach(q => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "ai-tip"; b.textContent = q;
+    b.addEventListener("click", ()=>{ input.value = q; aiAsk(q); input.value = ""; });
+    tips.appendChild(b);
+  });
+
+  const fire = ()=>{ const v = input.value; input.value = ""; input.style.height = "auto"; aiAsk(v); };
+  send.addEventListener("click", fire);
+  input.addEventListener("keydown", e => {
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); fire(); }
+  });
+  /* نوارِ نوشتن با متن بلند بزرگ می‌شود، تا سقفی که در CSS هست */
+  input.addEventListener("input", ()=>{
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 150) + "px";
+  });
+
+  if(clear) clear.addEventListener("click", ()=>{
+    if(!aiHistory.length || !confirm("کلِ این گفتگو پاک شود؟")) return;
+    aiHistory = []; aiSaveHistory(); aiRenderLog();
+  });
+
+  const nav = document.querySelector('.navbtn[data-view="assistant"]');
+  if(nav) nav.addEventListener("click", ()=> setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 60));
+}
+
 async function init(){
   try{
     await loadState();
@@ -4847,6 +5043,7 @@ async function init(){
     setupSettings();
     setupToolbar();
     setupTheme();
+    setupAssistant();
     renderPersonalView();
     const cf = document.getElementById("connectFolderBtn");
     if(cf) cf.addEventListener("click", connectFolder);
