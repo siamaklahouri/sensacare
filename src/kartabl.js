@@ -39,7 +39,7 @@ export const PANELS = {
     })
   },
   sina: {
-    id: 'sina', title: 'کارتابل مدیر مالی', page: '/sina/', cookie: 'sina_s',
+    id: 'sina', title: 'کارتابل ماهانه سینا', page: '/sina/', cookie: 'sina_s',
     keys: { state: 'sina:state', db: 'sina:db', pass: 'sinaPassHash', gen: 'sinaPassGen', last: 'sinaLastBackup' },
     folder: 'Mali',
     files: { json: 'کارتابل-مالی-داده.json', xlsx: 'کارتابل-مالی-دیتابیس.xlsx', html: 'کارتابل مدیر مالی.html' },
