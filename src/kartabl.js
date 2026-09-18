@@ -1,4 +1,4 @@
-/* ---------- کارتابل مدیر IT: داده روی سرور، پشتیبان شبانه در تلگرام ----------
+/* ---------- کارتابل‌ها: داده روی سرور، پشتیبان شبانه در تلگرام ----------
 
    تا دیروز کارتابل هیچ داده‌ای روی سرور نداشت و همه‌چیز در حافظهٔ مرورگر
    می‌ماند. به همین دلیل قفلِ سمتِ مرورگر کافی بود: هر کسی آدرس را باز
@@ -27,7 +27,7 @@ import { makeZip } from './kartabl-zip.js';
    «kartablPassHash»)، وگرنه دادهٔ زنده‌اش باید جابه‌جا می‌شد. */
 export const PANELS = {
   it: {
-    id: 'it', title: 'کارتابل مدیر IT', page: '/siamak/', cookie: 'kartabl_s',
+    id: 'it', title: 'کارتابل ماهانه سیامک', page: '/siamak/', cookie: 'kartabl_s',
     keys: { state: 'state', db: 'db', pass: 'kartablPassHash', gen: 'kartablPassGen', last: 'kartablLastBackup' },
     folder: 'It',
     files: { json: 'کارتابل-IT-داده.json', xlsx: 'کارتابل-IT-دیتابیس.xlsx', html: 'کارتابل مدیر IT.html' },
@@ -466,7 +466,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       await fetch(`${TG(token)}/sendMessage`, { method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: pick.id,
-          text: '✅ کارتابل مدیر IT به این گفتگو وصل شد. از امشب هر شب پشتیبان کامل همین‌جا می‌آید.' }) });
+          text: `✅ ${panel.title} به این گفتگو وصل شد. از امشب هر شب پشتیبان کامل همین‌جا می‌آید.` }) });
     } catch (e) { /* پیام خوش‌آمد اختیاری است */ }
     return json({ ok: true, chat: String(pick.id), name: pick.name, found: chats.length });
   }
