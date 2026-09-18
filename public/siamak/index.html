@@ -1498,6 +1498,24 @@ try{ if(localStorage.getItem("it-manager-planner-v1" + ":theme") === "dark")
       </div>
 
       <div class="panel">
+        <h3 class="set-h">🤖 موتور دستیار هوشمند</h3>
+        <p class="set-p">دستیار به‌طور پیش‌فرض روی هوش مصنوعیِ رایگانِ کلادفلر کار می‌کند — چیزی لازم ندارد، ولی کیفیتش متوسط است و گاهی در فارسی گیج می‌زند. اگر کلید API کلاد داشته باشید، این‌جا بگذاریدش تا دستیار از همان لحظه با کلاد کار کند. کلید را از <code dir="ltr">console.anthropic.com</code> می‌سازید و هزینه‌اش پای مصرف خودتان است.</p>
+        <div class="set-row">
+          <span class="set-state" id="aiProvider">در حال بررسی…</span>
+        </div>
+        <div class="set-grid">
+          <label>کلید API کلاد (خالی بگذارید تا رایگان بماند)
+            <input type="password" id="aiKey" placeholder="sk-ant-..." autocomplete="off" dir="ltr">
+          </label>
+        </div>
+        <div class="set-row">
+          <button type="button" class="btn btn-brass" id="aiKeySaveBtn">ثبت کلید</button>
+          <button type="button" class="btn btn-ghost" id="aiKeyClearBtn">برگرد به رایگان</button>
+          <span class="set-state" id="aiKeyState"></span>
+        </div>
+      </div>
+
+      <div class="panel">
         <h3 class="set-h">🤖 پشتیبان شبانه در تلگرام</h3>
         <p class="set-p">هر شب یک زیپ کامل — فایل داده، فایل اکسل، و خودِ صفحهٔ کارتابل — برای ربات شما فرستاده می‌شود. با همان زیپ، کارتابل بدون سرور و بدون اینترنت هم باز می‌شود.</p>
         <div class="set-grid">
@@ -5563,6 +5581,54 @@ function setupAssistant(){
   if(nav) nav.addEventListener("click", ()=> setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 60));
 }
 
+/* ---------- موتور دستیار ----------
+   کلید روی سرور می‌ماند و هیچ‌وقت به این صفحه برنمی‌گردد؛ فقط چند حرف
+   اولش می‌آید تا معلوم باشد کدام کلید نشسته. */
+async function refreshAiSettings(){
+  const el = document.getElementById("aiProvider");
+  if(!el || window.KARTABL_OFFLINE || !signedIn) return;
+  try{
+    const r = await apiCall("/ai/settings");
+    if(!r.ok) return;
+    el.textContent = r.data.provider === "claude"
+      ? "الان با کلاد کار می‌کند — " + r.data.model + (r.data.hint ? " (کلید " + r.data.hint + ")" : "")
+      : "الان با هوش مصنوعیِ رایگانِ کلادفلر کار می‌کند.";
+    el.className = "set-state" + (r.data.provider === "claude" ? " ok" : "");
+  }catch(e){ /* اینترنت نبود — همان «در حال بررسی» می‌ماند */ }
+}
+
+function setupAiSettings(){
+  const save  = document.getElementById("aiKeySaveBtn");
+  const clear = document.getElementById("aiKeyClearBtn");
+  const input = document.getElementById("aiKey");
+  if(!save || !input) return;
+
+  const send = async (key, btn, busyText)=>{
+    btn.disabled = true; setState("aiKeyState", busyText);
+    try{
+      const r = await apiCall("/ai/settings", { method:"POST", body: JSON.stringify({ key }) });
+      if(r.ok){
+        input.value = "";
+        setState("aiKeyState", key ? "✓ کلید ثبت شد — دستیار حالا با کلاد کار می‌کند" : "✓ برگشت به رایگان", "ok");
+        refreshAiSettings();
+      }else setState("aiKeyState", r.data.error || "نشد.", "err");
+    }catch(e){ setState("aiKeyState", "به سرور نرسیدم.", "err"); }
+    btn.disabled = false;
+  };
+
+  save.addEventListener("click", ()=>{
+    const k = input.value.trim();
+    if(!k){ setState("aiKeyState", "کلید را بنویسید.", "err"); return; }
+    send(k, save, "در حال امتحان کردن کلید…");
+  });
+  if(clear) clear.addEventListener("click", ()=>{
+    if(!confirm("دستیار برگردد به هوش مصنوعیِ رایگانِ کلادفلر؟")) return;
+    send("", clear, "در حال برداشتن کلید…");
+  });
+
+  refreshAiSettings();
+}
+
 async function init(){
 
   try{
@@ -5582,6 +5648,7 @@ async function init(){
     setupToolbar();
     setupTheme();
     setupAssistant();
+    setupAiSettings();
     setupBackup();
     setupServers();
     setupCompanies();

@@ -13,6 +13,15 @@
    جداگانه رمزنگاری شده و سرور اصلاً بازش نمی‌کند؛ فرستادنش به مدل هم
    یعنی شکستنِ همان قولی که موقع ساختش داده شد. */
 
+import Anthropic from '@anthropic-ai/sdk';
+
+/* ---------- دو سرویس، یک دستیار ----------
+   پیش‌فرض Workers AI رایگانِ کلادفلر است. اگر کلیدِ کلاد در تنظیمات گذاشته
+   شود، همان لحظه جایش را می‌گیرد و دیگر سراغ مدل‌های رایگان نمی‌رویم.
+   دلیلش کیفیت است: مدل‌های رایگان در فارسی متوسط‌اند و روی جدول‌های بلندِ
+   کارتابل گیج می‌زنند. */
+export const CLAUDE_MODEL = 'claude-opus-5';
+
 /* همان مدل‌هایی که دستیارِ فروشگاه روی این اکانت با آن‌ها کار می‌کند، با
    همان ترتیب. دما را پایین گرفته‌ام چون این دستیار بیشتر باید از روی
    داده جواب بدهد تا از روی خیال. */
@@ -33,6 +42,9 @@ const FOREIGN = new RegExp('[\\u0400-\\u052F\\u0530-\\u05FF\\u0900-\\u097F\\u0E0
 const MAX_CONTEXT = 14000;   /* کاراکترِ متنِ داده‌ها */
 const MAX_ROWS = 50;         /* بیشتر از این از هر جدول نمی‌رود */
 const MAX_TURNS = 12;        /* چند پیامِ آخرِ گفتگو */
+/* با ۹۰۰ توکن، جوابِ کمی بلند وسط جمله بریده می‌شد و همان بریدگی به چشمِ
+   «گیج زدن» می‌آمد، در حالی که مدل فقط جا کم آورده بود. */
+const MAX_OUT = 1500;
 
 const n0 = v => {
   const x = Number(v);
@@ -206,15 +218,59 @@ function financeContext(state, db, today) {
   return s;
 }
 
+/* ---------- سؤال به کارتابل ربط دارد یا نه؟ ----------
+   مدل‌های کوچکِ رایگان با چند هزار کلمه جدولِ فارسی جلوی چشمشان، جوابِ
+   سادهٔ یک سؤالِ بی‌ربط را هم خراب می‌کنند: می‌روند سراغ داده و از سؤال
+   دور می‌افتند. پس وقتی سؤال ربطی به کارتابل ندارد فقط سرفصل‌ها را
+   می‌فرستیم، نه جدول‌ها را. برای کلاد این کار را نمی‌کنیم؛ آن با متنِ
+   بلند مشکلی ندارد و نبودنِ داده بیشتر ضرر دارد تا بودنش.
+
+   فهرست عمداً دست‌ودل‌بازانه است و کلمه‌های عمومیِ «چقدر / چند / کدام /
+   فهرست» را هم دارد. جهتِ خطا مهم است: اگر یک سؤالِ عمومی الکی داده
+   بگیرد، نهایتاً کمی حواسِ مدل پرت می‌شود؛ ولی اگر یک سؤالِ کارتابلی
+   داده نگیرد، جوابِ «در کارتابل نیست» می‌گیرد که غلط است. پس در شک،
+   داده را می‌فرستیم. (اولین نسخه‌اش همین را نداشت و «وضعیت چطور است؟»
+   را رد کرد.) */
+const WORDS_COMMON = ['کارتابل','ماه','وظیفه','وظایف','چک‌لیست','چکلیست','برنامه',
+  'روزانه','مهلت','سررسید','اولویت','عقب','معوق','بایگانی','داشبورد','مسئول','خلاصه',
+  'وضعیت','چقدر','چند','تعداد','جمع','فهرست','لیست','کدام','بیشترین','کمترین',
+  'مانده','پیگیری','گزارش','هفته'];
+const WORDS_IT = ['سرور','بکاپ','پشتیبان','ری‌استور','ریستور','استوریج','شرکت','بازدید',
+  'ریموت','حضوری','خط','داخلی','پلن','دیتاسنتر','لاگ','mvpn','vm','srv'];
+const WORDS_FIN = ['فاکتور','مشتری','بدهی','طلب','مطالبات','پرداخت','چک','سند','اسناد',
+  'هزینه','منابع','مصارف','بانک','حساب','موجودی','نقدینگی','بودجه','طرف‌حساب','تامین‌کننده',
+  'تأمین‌کننده','ذی‌نفع','ذینفع','مبلغ','تومان','ریال','وصول','دریافتنی','پرداختنی','پروژه'];
+
+export function looksPlannerRelated(messages, panelId) {
+  const words = WORDS_COMMON.concat(panelId === 'it' ? WORDS_IT : WORDS_FIN);
+  /* سه پیامِ آخرِ کاربر، نه فقط آخری: «آن‌ها را مرتب کن» به‌تنهایی هیچ
+     کلمهٔ کارتابلی ندارد ولی دنبالهٔ سؤالِ قبلی است. */
+  const recent = (Array.isArray(messages) ? messages : [])
+    .filter(m => m && m.role === 'user').slice(-3)
+    .map(m => txt(m.content).toLowerCase()).join(' ');
+  return words.some(w => recent.includes(w));
+}
+
 /* ---------- ساختنِ متنِ داده‌ها ---------- */
-export function buildAiContext(panel, state, db, today) {
+export function buildAiContext(panel, state, db, today, detail = true) {
   const st = state || {};
   const database = db || {};
   let s = `# ${panel.title}\n`;
   if (today) s += `تاریخِ امروز: ${today}\n`;
   s += `ماهِ بازِ کارتابل: ${monthLabel(st.currentMonthKey) || '—'}\n`;
 
-  s += panel.id === 'it' ? itContext(st, database, today) : financeContext(st, database, today);
+  if (detail) {
+    s += panel.id === 'it' ? itContext(st, database, today) : financeContext(st, database, today);
+  } else {
+    /* حالتِ خلاصه: مدل بداند کارتابل چه دارد، بی‌آنکه جدول‌ها حواسش را پرت کنند */
+    const c = panel.counts(st, database);
+    s += '\n(این سؤال به نظر ربطی به کارتابل ندارد، پس فقط سرفصل‌ها آمده. اگر کاربر ' +
+         'جزئیاتِ کارتابل را خواست، بگو با یک کلمهٔ روشن‌تر دوباره بپرسد تا داده‌ها را ببینی.)\n' +
+         section('سرفصل‌های کارتابل',
+           Object.entries(c).map(([k, v]) => k + ': ' + v).join(' · ') +
+           '\nوظایف ماه جاری: ' + (st.tasks || []).length +
+           ' · روزهای ثبت‌شده: ' + (st.days || []).length);
+  }
 
   if (st.personalVault && st.personalVault.cipher)
     s += '\n## دیتای شخصی\nاین بخش با رمزِ جداگانه‌ای سمتِ مرورگر رمزنگاری شده و سرور کلیدش را ندارد، ' +
@@ -257,9 +313,53 @@ function systemPrompt(panel, context) {
   ].join('\n');
 }
 
+/* ---------- کلاد ----------
+   وقتی کلید هست از این‌جا می‌رود. استریم می‌گیریم نه برای اینکه تکه‌تکه
+   نشان بدهیم — مرورگر یک جواب کامل می‌خواهد — بلکه چون با سقفِ توکنِ بالا
+   درخواستِ معمولی ممکن است به مهلتِ HTTP بخورد.
+
+   fallbacks روشن است: اگر طبقه‌بندِ ایمنیِ کلاد درخواستی را رد کند، خودِ
+   سرورِ آنتروپیک همان درخواست را روی مدل دیگری اجرا می‌کند و جوابش را
+   می‌دهد، به‌جای اینکه کاربر یک ردِ خشک ببیند. */
+async function askClaude(key, panel, turns, context) {
+  const client = new Anthropic({ apiKey: key });
+  try {
+    const stream = client.beta.messages.stream({
+      model: CLAUDE_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: 'medium' },
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system: systemPrompt(panel, context),
+      messages: turns
+    });
+    const msg = await stream.finalMessage();
+    /* رد شدن، خطا نیست: پاسخ ۲۰۰ برمی‌گردد با stop_reason: "refusal" و
+       content که می‌تواند خالی باشد. پس اول همین را نگاه می‌کنیم. */
+    if (msg.stop_reason === 'refusal')
+      return { ok: false, status: 502,
+        error: 'کلاد به این درخواست جواب نداد. جور دیگری بپرسید.' };
+    const reply = txt(msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n'));
+    if (!reply) return { ok: false, error: 'کلاد جوابِ خالی داد.', status: 502 };
+    return { ok: true, reply, model: msg.model || CLAUDE_MODEL, via: 'claude' };
+  } catch (e) {
+    const m = (e && e.message) || String(e);
+    /* کلیدِ غلط یا تمام‌شدنِ اعتبار را جدا می‌گوییم، وگرنه کاربر دنبالِ
+       ایرادِ کارتابل می‌گردد در حالی که مشکل از حسابِ آنتروپیک است. */
+    if (e && (e.status === 401 || e.status === 403))
+      return { ok: false, status: 502, error: 'کلیدِ کلاد پذیرفته نشد. در تنظیمات دوباره بگذاریدش.' };
+    if (e && e.status === 429)
+      return { ok: false, status: 502, error: 'کلاد فعلاً شلوغ است یا اعتبار حساب تمام شده. کمی بعد.' };
+    return { ok: false, status: 502, error: 'کلاد جواب نداد — ' + m };
+  }
+}
+
 /* ---------- صدا زدن مدل ---------- */
-export async function askKartablAI(env, panel, messages, context, attempts = AI_ATTEMPTS) {
-  if (!env.AI) return { ok: false, error: 'دستیار فعلاً در دسترس نیست.', status: 503 };
+export async function askKartablAI(env, panel, messages, context, opts = {}) {
+  const claudeKey = txt(opts.claudeKey);
+  const attempts = opts.attempts || AI_ATTEMPTS;
+  if (!claudeKey && !env.AI)
+    return { ok: false, error: 'دستیار فعلاً در دسترس نیست.', status: 503 };
 
   const turns = (Array.isArray(messages) ? messages : [])
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && txt(m.content))
@@ -268,12 +368,14 @@ export async function askKartablAI(env, panel, messages, context, attempts = AI_
   if (!turns.length || turns[turns.length - 1].role !== 'user')
     return { ok: false, error: 'پیامی برای جواب دادن نیامد.', status: 400 };
 
+  if (claudeKey) return askClaude(claudeKey, panel, turns, context);
+
   /* اگر خودِ کاربر به خطِ بیگانه نوشته یا خواسته، جوابِ بیگانه اشکالی ندارد */
   const userForeign = turns.some(t => t.role === 'user' && FOREIGN.test(t.content));
 
   const payload = {
     messages: [{ role: 'system', content: systemPrompt(panel, context) }, ...turns],
-    max_tokens: 900
+    max_tokens: MAX_OUT
   };
 
   let dirty = null, dirtyModel = '';
@@ -283,14 +385,14 @@ export async function askKartablAI(env, panel, messages, context, attempts = AI_
       const r = await env.AI.run(a.model, Object.assign({ temperature: a.temperature }, payload));
       const reply = txt(r && (r.response ?? r.result ?? ''));
       if (!reply) { last = 'مدل جوابِ خالی داد.'; continue; }
-      if (userForeign || !FOREIGN.test(reply)) return { ok: true, reply, model: a.model };
+      if (userForeign || !FOREIGN.test(reply)) return { ok: true, reply, model: a.model, via: 'workers-ai' };
       /* آلوده بود: نگهش می‌داریم و یک بار دیگر می‌پرسیم */
       if (!dirty) { dirty = reply; dirtyModel = a.model; }
     } catch (e) {
       last = (e && e.message) || String(e);
     }
   }
-  if (dirty) return { ok: true, reply: dirty, model: dirtyModel };
+  if (dirty) return { ok: true, reply: dirty, model: dirtyModel, via: 'workers-ai' };
   /* پیامِ فنی را نگه می‌داریم ولی جلویش یک جملهٔ فارسی می‌گذاریم، وگرنه
      کاربر یک خط انگلیسیِ خام می‌بیند که چیزی از آن دستگیرش نمی‌شود. */
   return { ok: false, error: 'دستیار جواب نداد — ' + last, status: 502 };

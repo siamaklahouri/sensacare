@@ -16,7 +16,7 @@
 
 import { buildKartablWorkbook, buildSinaWorkbook } from './kartabl-xlsx.js';
 import { makeZip } from './kartabl-zip.js';
-import { buildAiContext, askKartablAI } from './kartabl-ai.js';
+import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -337,6 +337,9 @@ export async function buildKartablBackup(env, req, panel) {
    ربات کارتابل از ربات فروشگاه جداست، پس توکن و شناسهٔ گفتگویش هم جداست.
    توکن در تنظیمات دیتابیس می‌نشیند، نه در مخزن گیت‌هاب — مخزن عمومی است. */
 
+/* یکی برای هر سه کارتابل، مثل توکنِ ربات — یک کلید بس است */
+const AI_KEY_SETTING = 'kartablAiKey';
+
 const TG = t => `https://api.telegram.org/bot${t}`;
 
 async function kartablBot(env) {
@@ -494,10 +497,14 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const rl = await rateLimit(env, `${panel.id}-ai:` + clientIp(req), 80, 3600);
     if (!rl.ok) return bad('سؤال‌ها زیاد شد. کمی بعد دوباره بپرسید.', 429);
     const today = /^\d{4}\/\d{2}\/\d{2}$/.test(String(body.today || '')) ? String(body.today) : '';
+    const claudeKey = await getSetting(env, AI_KEY_SETTING, '');
     const d = await loadKartabl(env, panel);
-    const ctx = buildAiContext(panel, d.state, d.db, today);
-    const r = await askKartablAI(env, panel, body.messages, ctx);
-    return r.ok ? json({ reply: r.reply, model: r.model }) : bad(r.error, r.status || 502);
+    /* کلاد متنِ کامل را می‌گیرد. مدل‌های رایگان فقط وقتی سؤال به کارتابل
+       می‌خورد، وگرنه جدول‌ها حواسشان را از سؤال پرت می‌کند. */
+    const detail = !!claudeKey || looksPlannerRelated(body.messages, panel.id);
+    const ctx = buildAiContext(panel, d.state, d.db, today, detail);
+    const r = await askKartablAI(env, panel, body.messages, ctx, { claudeKey });
+    return r.ok ? json({ reply: r.reply, model: r.model, via: r.via }) : bad(r.error, r.status || 502);
   }
 
   /* عوض کردن رمز — رمز فعلی لازم است، و همهٔ نشست‌های دیگر بسته می‌شوند */
@@ -513,6 +520,35 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
        وسط کار بیرون نیفتد؛ بقیه باید دوباره وارد شوند. */
     return json({ ok: true }, 200,
       { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 30), 30) });
+  }
+
+  /* ---------- انتخابِ سرویسِ دستیار ----------
+     کلید مثل توکنِ ربات در تنظیماتِ دیتابیس می‌نشیند، نه در مخزن گیت‌هاب.
+     خودِ کلید هیچ‌وقت به مرورگر برنگردانده نمی‌شود؛ فقط چند حرف اولش تا
+     معلوم باشد کدام کلید نشسته. */
+  if (p === '/ai/settings' && m === 'GET') {
+    const key = await getSetting(env, AI_KEY_SETTING, '');
+    return json({
+      provider: key ? 'claude' : 'workers-ai',
+      model: key ? CLAUDE_MODEL : 'Workers AI (رایگان)',
+      hint: key ? key.slice(0, 11) + '…' + key.slice(-4) : ''
+    });
+  }
+
+  if (p === '/ai/settings' && m === 'POST') {
+    const key = String(body.key || '').trim();
+    if (!key) {
+      await setSetting(env, AI_KEY_SETTING, '');
+      return json({ ok: true, provider: 'workers-ai', model: 'Workers AI (رایگان)', hint: '' });
+    }
+    if (!/^sk-ant-\S{20,}$/.test(key)) return bad('این شکلِ کلید آنتروپیک نیست.');
+    /* همان‌جا امتحانش می‌کنیم، وگرنه کلیدِ غلط تا اولین سؤال معلوم نمی‌شود */
+    const t = await askKartablAI(env, panel, [{ role: 'user', content: 'فقط بنویس: باشد' }],
+      'آزمایشِ کلید است؛ داده‌ای لازم نیست.', { claudeKey: key });
+    if (!t.ok) return bad(t.error, 502);
+    await setSetting(env, AI_KEY_SETTING, key);
+    return json({ ok: true, provider: 'claude', model: CLAUDE_MODEL,
+                  hint: key.slice(0, 11) + '…' + key.slice(-4) });
   }
 
   /* تنظیمات ربات و پشتیبان */
