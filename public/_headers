@@ -22,3 +22,6 @@
 
 /sina/*
   X-Robots-Tag: noindex, nofollow
+
+/reza/*
+  X-Robots-Tag: noindex, nofollow

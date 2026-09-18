@@ -18,10 +18,10 @@ import { buildKartablWorkbook, buildSinaWorkbook } from './kartabl-xlsx.js';
 import { makeZip } from './kartabl-zip.js';
 
 /* ---------- کارتابل‌ها ----------
-   دو کارتابل داریم و هر دو از همین کد استفاده می‌کنند: مدیر IT روی
-   /siamak و مدیر مالی روی /sina. هر کدام رمز، نشست و دادهٔ جداگانه دارد
-   — ورود به یکی به آن یکی دسترسی نمی‌دهد — ولی پشتیبان شبانه‌شان به
-   همان یک ربات تلگرام می‌رود.
+   سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
+   /siamak، سینا روی /sina و رضا روی /reza. هر کدام رمز، نشست و دادهٔ
+   کاملاً جداگانه دارد — ورود به یکی به آن یکی دسترسی نمی‌دهد — ولی
+   پشتیبان شبانهٔ هر سه به همان یک ربات تلگرام می‌رود.
 
    کلیدهای کارتابل IT عمداً همان‌های قبلی ماندند («state»، «db»،
    «kartablPassHash»)، وگرنه دادهٔ زنده‌اش باید جابه‌جا می‌شد. */
@@ -44,6 +44,19 @@ export const PANELS = {
     folder: 'Mali',
     files: { json: 'کارتابل-مالی-داده.json', xlsx: 'کارتابل-مالی-دیتابیس.xlsx', html: 'کارتابل مدیر مالی.html' },
     zip: stamp => `کارتابل-مالی-پشتیبان-${stamp}.zip`,
+    workbook: buildSinaWorkbook,
+    counts: (st, db) => ({
+      'طرف‌حساب': (db.parties || []).length, فاکتور: (db.invoices || []).length,
+      'حساب بانکی': (db.bank || []).length
+    })
+  },
+  reza: {
+    id: 'reza', title: 'کارتابل ماهانه رضا', page: '/reza/', cookie: 'reza_s',
+    keys: { state: 'reza:state', db: 'reza:db', pass: 'rezaPassHash', gen: 'rezaPassGen', last: 'rezaLastBackup' },
+    folder: 'Reza',
+    files: { json: 'کارتابل-رضا-داده.json', xlsx: 'کارتابل-رضا-دیتابیس.xlsx', html: 'کارتابل ماهانه رضا.html' },
+    zip: stamp => `کارتابل-رضا-پشتیبان-${stamp}.zip`,
+    /* ساختارش همان کارتابل مالی است، پس همان سازندهٔ برگه‌ها */
     workbook: buildSinaWorkbook,
     counts: (st, db) => ({
       'طرف‌حساب': (db.parties || []).length, فاکتور: (db.invoices || []).length,

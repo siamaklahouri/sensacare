@@ -358,3 +358,10 @@ INSERT INTO settings(k,v) VALUES
   ('sinaPassHash', '"pbkdf2$100000$YRhjRzwkPz0O0wmtdRSAqQ==$cXItsnHMEObIVc80W4jLyJi1LZpYTq/GXhBtSJz2wL8="')
   ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('sinaPassGen', '1') ON CONFLICT(k) DO NOTHING;
+
+/* ۲۴ کارتابل سوم روی /reza — کپی ساختار کارتابل مالی، ولی داده و رمز و
+   نشستش کاملاً جداست (کلیدهای «reza:state» و «reza:db»). */
+INSERT INTO settings(k,v) VALUES
+  ('rezaPassHash', '"pbkdf2$100000$AFgRjojVxT4ePH6p6tAXKw==$3zOiPHVregzu2bvX5A0xc1ypJsLDeFSGA00mUXdEoTU="')
+  ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('rezaPassGen', '1') ON CONFLICT(k) DO NOTHING;

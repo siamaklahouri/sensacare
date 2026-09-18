@@ -1533,7 +1533,7 @@ export default {
          www — و اعتبار صفحه بین دوتا نصف می‌شود. */
       const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\n\n` +
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\n\n` +
         `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
@@ -1598,7 +1598,8 @@ export default {
       /* کارتابل‌ها — مدیر IT و مدیر مالی. بررسی ورودشان جداست و از کوکی
          خودشان می‌آید، نه از توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها
          جواب می‌گیرند. هر کدام کوکی و رمز خودش را دارد. */
-      for (const [prefix, panel] of [['/api/kartabl', PANELS.it], ['/api/sina', PANELS.sina]])
+      for (const [prefix, panel] of [['/api/kartabl', PANELS.it], ['/api/sina', PANELS.sina],
+                                     ['/api/reza', PANELS.reza]])
         if (p.startsWith(prefix + '/'))
           return handleKartabl(env, req, panel, p.slice(prefix.length), m, body, { rateLimit, clientIp });
 
