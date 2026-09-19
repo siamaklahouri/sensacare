@@ -33,7 +33,7 @@ export const PANELS = {
             reset: 'kartablPassReset' },
     folder: 'It',
     files: { json: 'کارتابل-IT-داده.json', xlsx: 'کارتابل-IT-دیتابیس.xlsx', html: 'کارتابل مدیر IT.html' },
-    icon: 'icon-siamak.png',
+    icon: 'icon-siamak.2.png',
     zip: stamp => `کارتابل-IT-پشتیبان-${stamp}.zip`,
     workbook: buildKartablWorkbook,
     counts: (st, db) => ({
@@ -47,7 +47,7 @@ export const PANELS = {
             reset: 'sinaPassReset' },
     folder: 'Mali',
     files: { json: 'کارتابل-مالی-داده.json', xlsx: 'کارتابل-مالی-دیتابیس.xlsx', html: 'کارتابل مدیر مالی.html' },
-    icon: 'icon-sina.png',
+    icon: 'icon-sina.2.png',
     zip: stamp => `کارتابل-مالی-پشتیبان-${stamp}.zip`,
     workbook: buildSinaWorkbook,
     counts: (st, db) => ({
@@ -61,7 +61,7 @@ export const PANELS = {
             reset: 'rezaPassReset' },
     folder: 'Reza',
     files: { json: 'کارتابل-رضا-داده.json', xlsx: 'کارتابل-رضا-دیتابیس.xlsx', html: 'کارتابل ماهانه رضا.html' },
-    icon: 'icon-reza.png',
+    icon: 'icon-reza.2.png',
     zip: stamp => `کارتابل-رضا-پشتیبان-${stamp}.zip`,
     /* ساختارش همان کارتابل مالی است، پس همان سازندهٔ برگه‌ها */
     workbook: buildSinaWorkbook,
@@ -319,7 +319,7 @@ export async function buildKartablBackup(env, req, panel) {
         .replace(/"\/siamak\/v\//g, '"v/')
         .replace(/\(\/f\//g, '(f/')
         .replace(/"\/f\//g, '"f/')
-        .replace(/"\/(icon-[a-z]+\.png)"/g, '"$1"');
+        .replace(/"\/(icon-[a-z]+\.\d+\.png)"/g, '"$1"');
     }
   } catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
 
