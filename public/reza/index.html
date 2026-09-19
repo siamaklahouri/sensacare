@@ -725,6 +725,21 @@ try{ if(localStorage.getItem("reza-planner-v1" + ":theme") === "dark")
   @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
   @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
 
+  /* ---------- فهرستِ کنار ----------
+     overflow-y:auto به‌تنهایی کافی نبود: در CSS وقتی یک محور auto می‌شود،
+     محورِ دیگر از visible به auto می‌افتد، و همان یک نوارِ اسکرولِ افقیِ
+     بی‌مصرف را زیر فهرست می‌آورد. صریح خاموشش می‌کنیم.
+     نوارِ عمودی هم باریک و کم‌رنگ شد تا مثل یک تختهٔ خاکستری وسطِ فهرست
+     ننشیند. */
+  .nav-list{ overflow-x:hidden; scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+  .nav-list::-webkit-scrollbar{ width:6px; height:0; }
+  .nav-list::-webkit-scrollbar-track{ background:transparent; }
+  .nav-list::-webkit-scrollbar-thumb{ background:var(--line); border-radius:3px; }
+  .nav-list::-webkit-scrollbar-thumb:hover{ background:var(--ink-faint); }
+  /* دکمه‌ها با padding از عرضِ فهرست می‌زدند بیرون و خودشان هم به آن
+     نوارِ افقی دامن می‌زدند. */
+  .navbtn{ box-sizing:border-box; max-width:100%; }
+
   /* ---------- دستیار هوشمند ----------
      همه‌چیزش از توکن‌ها می‌خواند، پس در تم شب هم بدون قاعدهٔ جداگانه درست
      درمی‌آید. ارتفاعِ ثابت دارد تا فهرستِ گفتگو خودش اسکرول شود و نوارِ
@@ -842,9 +857,9 @@ try{ if(localStorage.getItem("reza-planner-v1" + ":theme") === "dark")
   /* ---------- دکمهٔ تم ---------- */
   .theme-btn{
     display:inline-flex; align-items:center; justify-content:center;
-    width:34px; height:34px; flex:none; cursor:pointer; user-select:none;
+    width:30px; height:30px; flex:none; cursor:pointer; user-select:none;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
-    border-radius:999px; font-size:15px; line-height:1; color:#fff;
+    border-radius:999px; font-size:14px; line-height:1; color:#fff;
     transition:background .15s, transform .12s;
   }
   .theme-btn:hover{ background:rgba(255,255,255,.16); }
@@ -881,11 +896,11 @@ try{ if(localStorage.getItem("reza-planner-v1" + ":theme") === "dark")
     <div class="lc-time" id="lcTime">--:--:--</div>
     <div class="lc-date" id="lcDate">در حال بارگذاری...</div>
   </div>
-  <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   <div class="period">
     <label>ماه</label>
     <select id="monthSelector"></select>
     <button class="btn btn-brass btn-sm" id="newMonthBtn">＋ ماه جدید</button>
+    <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   </div>
 </div>
 
