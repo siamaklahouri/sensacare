@@ -295,7 +295,8 @@ export async function buildKartablBackup(env, req, panel) {
     ['/f/Vazirmatn-Medium.2.woff2',    F + '/f/Vazirmatn-Medium.2.woff2'],
     ['/f/Vazirmatn-SemiBold.2.woff2',  F + '/f/Vazirmatn-SemiBold.2.woff2'],
     ['/f/Vazirmatn-Bold.2.woff2',      F + '/f/Vazirmatn-Bold.2.woff2'],
-    ['/f/Vazirmatn-ExtraBold.2.woff2', F + '/f/Vazirmatn-ExtraBold.2.woff2']
+    ['/f/Vazirmatn-ExtraBold.2.woff2', F + '/f/Vazirmatn-ExtraBold.2.woff2'],
+    ['/kartabl-icon.png', F + '/kartabl-icon.png']
   ]) {
     const data = await grab(from);
     /* woff2 خودش فشرده است؛ دوباره فشردنش فقط وقت می‌برد */
@@ -314,7 +315,8 @@ export async function buildKartablBackup(env, req, panel) {
         /* آدرس‌های مطلق روی file:// به جایی نمی‌رسند */
         .replace(/"\/siamak\/v\//g, '"v/')
         .replace(/\(\/f\//g, '(f/')
-        .replace(/"\/f\//g, '"f/');
+        .replace(/"\/f\//g, '"f/')
+        .replace(/"\/kartabl-icon\.png"/g, '"kartabl-icon.png"');
     }
   } catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
 
