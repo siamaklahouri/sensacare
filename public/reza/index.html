@@ -751,6 +751,21 @@ try{ if(localStorage.getItem("reza-planner-v1" + ":theme") === "dark")
      نوارِ افقی دامن می‌زدند. */
   .navbtn{ box-sizing:border-box; max-width:100%; }
 
+  /* نوارِ هشدارِ همگام‌سازی — همان شکلِ نوارِ تداخل */
+  .sync-warn{
+    position:fixed; inset-inline:0; bottom:0; z-index:9998;
+    display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;
+    background:var(--bad-bg); color:var(--bad-ink);
+    border-top:1px solid var(--bad); padding:10px 16px;
+    font-family:var(--font-body); font-size:12.5px;
+  }
+  .sync-warn button{
+    font-family:var(--font-body); font-size:12px; cursor:pointer;
+    border:1px solid var(--bad); background:transparent; color:var(--bad-ink);
+    border-radius:8px; padding:5px 12px;
+  }
+  .sync-warn button:hover{ background:var(--bad); color:#fff; }
+
   /* ---------- دستیار هوشمند ----------
      همه‌چیزش از توکن‌ها می‌خواند، پس در تم شب هم بدون قاعدهٔ جداگانه درست
      درمی‌آید. ارتفاعِ ثابت دارد تا فهرستِ گفتگو خودش اسکرول شود و نوارِ
@@ -4164,6 +4179,7 @@ function applyDbSnapshot(c){
 const Cloud = (function(){
   let rev = null;          /* نسخه‌ای که این مرورگر از آن شروع کرده */
   let online = false;      /* آخرین بار توانستیم با سرور حرف بزنیم؟ */
+  let blocked = false;     /* سرور علامت خرابی داده — تا روشن نشدن ننویس */
   let timer = null;
   let inFlight = false;
   let again = false;       /* وسط ارسال، تغییر تازه‌ای رسید */
@@ -4189,9 +4205,28 @@ const Cloud = (function(){
     document.body.appendChild(bar);
     document.getElementById("conflictTake").addEventListener("click", ()=> location.reload());
     document.getElementById("conflictKeep").addEventListener("click", async ()=>{
+      /* این دکمه کارِ دستگاه دیگر را دور می‌ریزد. قبلاً بی‌هشدار بود. */
+      if(!confirm("هر تغییری که از دستگاه دیگر ذخیره شده برای همیشه با نسخهٔ همین صفحه جایگزین می‌شود.\n\nمطمئنید؟")) return;
       bar.remove();
       rev = null;                 /* بدون baseRev یعنی «همین را بنویس» */
-      await push(true);
+      await push(true, true);
+    });
+  }
+
+  /* سرور جلوی نوشتنی را گرفته که بخش بزرگی از داده را می‌برد */
+  function showLoss(why){
+    if(document.getElementById("syncLoss")) return;
+    const bar = document.createElement("div");
+    bar.id = "syncLoss"; bar.className = "sync-warn";
+    bar.innerHTML =
+      '<span>این ذخیره ' + escapeHtml(why) + '. عمدی بود؟</span>' +
+      '<button type="button" id="lossKeep">بله، همین را بنویس</button>' +
+      '<button type="button" id="lossTake">نه، نسخهٔ سرور را بیاور</button>';
+    document.body.appendChild(bar);
+    document.getElementById("lossTake").addEventListener("click", ()=> location.reload());
+    document.getElementById("lossKeep").addEventListener("click", async ()=>{
+      bar.remove();
+      await push(true, true);
     });
   }
 
@@ -4201,12 +4236,28 @@ const Cloud = (function(){
       const r = await apiCall("/state");
       if(r.status === 401){ online = false; setCloudStatus("وارد نشده‌اید."); return false; }
       if(!r.ok) throw new Error(r.data.error || "خطای سرور");
-      online = true;
-      rev = r.data.rev || 0;
+      /* تلهٔ اصلی این‌جا بود: اگر سرور چیزی برنمی‌گرداند، کدِ قبلی نسخهٔ
+         کهنهٔ همین مرورگر را نگه می‌داشت، خودش را «آنلاین» اعلام می‌کرد و
+         با اولین ویرایش همان کهنه را روی سرور می‌نوشت. حالا فرق می‌گذاریم
+         بین «سرور تازه است و هنوز چیزی ندارد» (rev صفر) و «سرور داده دارد
+         ولی نیامد» (rev بزرگ‌تر از صفر) — دومی یعنی یک جای کار خراب است و
+         تا روشن نشده هیچ نوشتنی نباید انجام شود. */
+      const srvRev = r.data.rev || 0;
+      if(!r.data.state && srvRev > 0){
+        online = false; blocked = true; rev = null;
+        setCloudStatus("⚠️ سرور دادهٔ این کارتابل را برنگرداند. تا روشن نشدن، ذخیره متوقف است — چیزی را عوض نکنید.");
+        return false;
+      }
+      online = true; blocked = false;
+      rev = srvRev;
       if(r.data.state){
         state = Object.assign(deepClone(DEFAULT_STATE), r.data.state);
-        if(!state.tasks) state.tasks = [];
-        if(!state.days || !Array.isArray(state.days) || !state.days.length) state.days = deepClone(DEFAULT_STATE.days);
+        /* جای خالی را فقط وقتی با نمونه پر می‌کنیم که سرور اصلاً چیزی
+           نداشته باشد؛ وگرنه ردیف‌های نمونه روی دادهٔ واقعی نوشته می‌شوند. */
+        if(srvRev === 0 && (!state.days || !Array.isArray(state.days) || !state.days.length))
+          state.days = deepClone(DEFAULT_STATE.days);
+        if(!Array.isArray(state.tasks)) state.tasks = [];
+        if(!Array.isArray(state.days)) state.days = [];
         ensureMonthsMigration();
         try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
       }
@@ -4225,17 +4276,32 @@ const Cloud = (function(){
     }
   }
 
-  async function push(force){
+  async function push(force, confirmed){
     if(window.KARTABL_OFFLINE) return;
+    /* وقتی سرور علامت خرابی داده، هیچ چیزی بالا نمی‌رود — حتی با force */
+    if(blocked){ setHint("ذخیره متوقف است"); return; }
     if(!online && !force) return;
+    /* نسخهٔ سرور را نشناخته‌ایم، پس نمی‌دانیم روی چه چیزی می‌نویسیم */
+    if(rev === null && !confirmed){ setHint("هنوز با سرور هماهنگ نشده‌ایم"); return; }
     if(inFlight){ again = true; return; }
     inFlight = true;
     setHint("در حال ذخیره روی سرور...");
     try{
       const payload = { state: state, db: dbSnapshot() };
       if(rev !== null) payload.baseRev = rev;
+      if(confirmed) payload.force = true;
       const r = await apiCall("/state", { method: "PUT", body: JSON.stringify(payload) });
-      if(r.status === 409){ inFlight = false; showConflict(); setHint("ذخیره نشد — تداخل نسخه"); return; }
+      if(r.status === 409){
+        inFlight = false;
+        if(r.data.broken){
+          blocked = true;
+          setHint("ذخیره متوقف شد");
+          setCloudStatus("⚠️ دادهٔ روی سرور خوانا نیست. چیزی را عوض نکنید و خبر بدهید.");
+          return;
+        }
+        if(r.data.loss){ showLoss(r.data.loss); setHint("ذخیره نشد — منتظر تأیید"); return; }
+        showConflict(); setHint("ذخیره نشد — تداخل نسخه"); return;
+      }
       if(r.status === 401){ inFlight = false; online = false; setHint("وارد نشده‌اید"); return; }
       if(!r.ok) throw new Error(r.data.error || "خطای سرور");
       rev = r.data.rev;

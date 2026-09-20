@@ -1501,8 +1501,17 @@ export default {
       await fn(env);
     })().catch(e => console.log(name, e.message)));
 
+    /* پشتیبانِ کارتابل‌ها دو بار در روز می‌رود، پس قفلش نمی‌تواند فقط
+       «امروز» باشد وگرنه نوبت دوم رد می‌شود. نوبت را از ساعتِ گرینویچِ
+       همین اجرا می‌گیریم: ۰۸:۳۰ یعنی ظهرِ تهران و ۲۲:۰۰ یعنی ۱:۳۰ بامداد. */
+    const slot = new Date(event.scheduledTime || Date.now()).getUTCHours() < 15 ? 'noon' : 'night';
+    const twice = (name, fn) => ctx.waitUntil((async () => {
+      if (!(await claimOnce(env, `${name}:${day}:${slot}`))) return;
+      await fn(env, slot);
+    })().catch(e => console.log(name, e.message)));
+
     once('backup', runBackup);
-    once('kartablBackup', nightlyKartablBackup);
+    twice('kartablBackup', nightlyKartablBackup);
     once('reorder', reorderReminders);
     once('cart', cartNudges);
     once('pay', payNudges);

@@ -219,22 +219,117 @@ const REV_CONFLICT = 409;
 export async function loadKartabl(env, panel) {
   const rows = await all(env, 'SELECT k, v, rev, updated FROM kartabl WHERE k IN (?,?)',
     panel.keys.state, panel.keys.db);
-  const out = { state: null, db: null, rev: 0, updated: 0 };
+  const out = { state: null, db: null, rev: 0, updated: 0, broken: null, rows: rows.length };
   for (const r of rows) {
     const which = r.k === panel.keys.state ? 'state' : 'db';
-    try { out[which] = JSON.parse(r.v); } catch (e) { out[which] = null; }
+    /* اگر ردیف هست ولی خوانده نمی‌شود، «خالی» گزارش نمی‌کنیم. این دقیقاً
+       همان تله است: صفحه خیال می‌کند سرور چیزی ندارد، نسخهٔ قدیمیِ خودش
+       را نگه می‌دارد و با اولین ویرایش رویش می‌نویسد. */
+    try { out[which] = JSON.parse(r.v); }
+    catch (e) { out[which] = null; out.broken = (out.broken || []).concat(which); }
     out.rev = Math.max(out.rev, r.rev || 0);
     out.updated = Math.max(out.updated, r.updated || 0);
   }
   return out;
 }
 
-async function saveKartabl(env, panel, { state, db, baseRev }) {
+/* ---------- محافظِ نوشتنِ ویرانگر ----------
+   سرور نباید به کلاینت اعتماد کند. یک بار یک مرورگر نسخهٔ کهنهٔ خودش را
+   روی کارِ یک روز نوشت و چون سرور فقط «هرچه فرستادی می‌نویسم» بود، هیچ‌جا
+   جلویش را نگرفت.
+
+   حالا پیش از نوشتن، اندازهٔ محتوا سنجیده می‌شود: شمارِ ماه‌ها و شمارِ
+   خانه‌های پُرِ جدول‌ها. اگر نوشتنِ تازه بخش بزرگی از محتوا را ببرد، رد
+   می‌شود و صفحه باید صریح بپرسد. حذف‌های واقعی هم ممکن‌اند، پس رد کردن
+   نهایی نیست — فقط بی‌صدا نیست. */
+const LOSS_LIMIT = 0.4;     /* بیش از چهل درصدِ محتوا؟ بپرس */
+
+function countFilled(rows) {
+  let n = 0;
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row || typeof row !== 'object') continue;
+    for (const v of Object.values(row))
+      if (v !== '' && v !== null && v !== undefined && v !== false && v !== 0) n++;
+  }
+  return n;
+}
+
+function monthMap(st) {
+  const s = st && typeof st === 'object' ? st : {};
+  const months = Object.assign({}, s.monthsData || {});
+  if (s.currentMonthKey) months[s.currentMonthKey] = { tasks: s.tasks, days: s.days };
+  return months;
+}
+
+function stateStats(st) {
+  const s = st && typeof st === 'object' ? st : {};
+  const months = monthMap(s);
+  const per = {};
+  let filled = 0;
+  for (const [k, m] of Object.entries(months)) {
+    per[k] = countFilled(m && m.tasks) + countFilled(m && m.days);
+    filled += per[k];
+  }
+  filled += countFilled(s.remoteCheckDates ? [Object.assign({}, s.remoteCheckDates)] : []);
+  return { months: Object.keys(months).length, filled, per,
+           vault: !!(s.personalVault && s.personalVault.cipher) };
+}
+
+const monthLabel = key => String(key || '').split('|').reverse().join(' ');
+
+function dbStats(d) {
+  const c = d && typeof d === 'object' ? d : {};
+  let filled = countFilled(c.vm) + countFilled(c.lines) + countFilled(c.roster) +
+               countFilled(c.parties) + countFilled(c.invoices) + countFilled(c.payables) +
+               countFilled(c.payableNotes) + countFilled(c.receivableNotes) +
+               countFilled(c.expenses) + countFilled(c.bank) + countFilled(c.budget);
+  for (const v of Object.values(c.companies || {})) filled += countFilled(v);
+  for (const v of Object.values(c.dailyLog || {})) filled += countFilled(v);
+  return { filled, groups: Object.keys(c.companies || {}).length };
+}
+
+/* برمی‌گرداند: پیام، اگر این نوشتن ویرانگر باشد */
+function lossReason(before, after, kind) {
+  const b = kind === 'state' ? stateStats(before) : dbStats(before);
+  const a = kind === 'state' ? stateStats(after)  : dbStats(after);
+  if (kind === 'state') {
+    if (b.months && a.months < b.months)
+      return `${b.months - a.months} ماه از کارتابل کم می‌شود`;
+    if (b.vault && !a.vault)
+      return 'بخش «دیتای شخصی» پاک می‌شود';
+    /* مهم‌ترین حالت و همانی که یک بار اتفاق افتاد: ماه‌ها سرِ جایشان
+       می‌مانند ولی محتوای یکی‌شان خالی می‌شود. جمعِ کل آن‌قدر نمی‌افتد که
+       آستانهٔ کلی را رد کند، پس هر ماه را جدا می‌سنجیم. */
+    for (const [key, bf] of Object.entries(b.per || {})) {
+      const af = (a.per || {})[key] || 0;
+      if (bf >= 10 && af < bf * 0.25)
+        return `محتوای ماه «${monthLabel(key)}» تقریباً خالی می‌شود (${bf} خانه به ${af} می‌رسد)`;
+    }
+  }
+  if (b.filled >= 20 && a.filled < b.filled * (1 - LOSS_LIMIT))
+    return `${b.filled - a.filled} خانهٔ پرشده از ${b.filled} تا حذف می‌شود`;
+  return null;
+}
+
+async function saveKartabl(env, panel, { state, db, baseRev, force }) {
   const current = await loadKartabl(env, panel);
+
+  /* ردیفی که خوانده نمی‌شود یعنی یک جای کار خراب است. تا وقتی آدم خبردار
+     نشده، اجازهٔ نوشتن رویش را نمی‌دهیم. */
+  if (current.broken && !force)
+    return { broken: current.broken, rev: current.rev, updated: current.updated };
   /* اگر از دستگاه دیگری چیزی ذخیره شده که این مرورگر ندیده، بی‌صدا
      رویش نمی‌نویسیم — صفحه خبردار می‌شود و تازه‌اش را می‌گیرد. */
   if (baseRev != null && current.rev && Number(baseRev) !== current.rev)
     return { conflict: true, rev: current.rev, updated: current.updated };
+
+  if (!force) {
+    for (const [kind, before, after] of [['state', current.state, state], ['db', current.db, db]]) {
+      if (after === undefined || before == null) continue;
+      const why = lossReason(before, after, kind);
+      if (why) return { loss: why, kind, rev: current.rev, updated: current.updated };
+    }
+  }
 
   const rev = current.rev + 1;
   const now = Date.now();
@@ -246,8 +341,63 @@ async function saveKartabl(env, panel, { state, db, baseRev }) {
        ON CONFLICT(k) DO UPDATE SET v=excluded.v, rev=excluded.rev, updated=excluded.updated`
     ).bind(k, JSON.stringify(v ?? null), rev, now));
   }
-  if (stmts.length) await env.DB.batch(stmts);
+  if (stmts.length) {
+    /* عکسِ نسخهٔ قبلی را پیش از بازنویسی نگه می‌داریم. اگر ذخیره خودش
+       نشد، عکس هم نباید بماند، پس اول عکس و بعد نوشتن در یک batch. */
+    stmts.unshift(...(await histStatements(env, panel, current, now)));
+    await env.DB.batch(stmts);
+  }
   return { rev, updated: now };
+}
+
+/* ---------- تاریخچه ----------
+   یک بار دادهٔ یک کارتابل روی سرور بازنویسی شد و تنها راهِ برگرداندنش
+   پشتیبانِ شبانه بود که تا ۲۴ ساعت عقب است. حالا پیش از هر بازنویسی،
+   نسخهٔ قبلی این‌جا می‌ماند.
+
+   هر ذخیره عکس نمی‌گیرد: تایپ کردن در جدول هر چند ثانیه یک ذخیره
+   می‌سازد و جدول را پر می‌کرد. پس فاصلهٔ حداقلی می‌گذاریم و در عوض
+   عمقِ تاریخچه را بیشتر نگه می‌داریم. */
+const HIST_GAP  = 10 * 60 * 1000;   /* دست‌کم ده دقیقه بین دو عکس */
+const HIST_KEEP = 60;               /* آخرین شصت عکسِ هر کلید */
+
+async function histStatements(env, panel, current, now) {
+  const out = [];
+  for (const [k, v] of [[panel.keys.state, current.state], [panel.keys.db, current.db]]) {
+    if (v == null) continue;            /* چیزی نبوده که عکسش را بگیریم */
+    const last = await one(env, 'SELECT at FROM kartabl_hist WHERE k=? ORDER BY at DESC LIMIT 1', k);
+    if (last && now - last.at < HIST_GAP) continue;
+    out.push(env.DB.prepare('INSERT INTO kartabl_hist(k,v,rev,at) VALUES(?,?,?,?)')
+      .bind(k, JSON.stringify(v), current.rev, now));
+    out.push(env.DB.prepare(
+      `DELETE FROM kartabl_hist WHERE k=? AND id NOT IN
+         (SELECT id FROM kartabl_hist WHERE k=? ORDER BY at DESC LIMIT ?)`
+    ).bind(k, k, HIST_KEEP));
+  }
+  return out;
+}
+
+/* فهرستِ عکس‌ها و برگرداندنِ یکی از آن‌ها */
+export async function listKartablHistory(env, panel) {
+  const rows = await all(env,
+    `SELECT id, k, rev, at, length(v) AS size FROM kartabl_hist
+     WHERE k IN (?,?) ORDER BY at DESC LIMIT 120`, panel.keys.state, panel.keys.db);
+  return rows.map(r => ({ id: r.id, which: r.k === panel.keys.state ? 'state' : 'db',
+                          rev: r.rev, at: r.at, size: r.size }));
+}
+
+export async function restoreKartablSnapshot(env, panel, id) {
+  const row = await one(env, 'SELECT k, v FROM kartabl_hist WHERE id=?', id);
+  if (!row) return { ok: false, error: 'این نسخه پیدا نشد.' };
+  if (row.k !== panel.keys.state && row.k !== panel.keys.db)
+    return { ok: false, error: 'این نسخه مالِ این کارتابل نیست.' };
+  let value;
+  try { value = JSON.parse(row.v); } catch (e) { return { ok: false, error: 'این نسخه خوانا نیست.' }; }
+  /* بدون baseRev می‌نویسیم — خودِ همین نوشتن هم از نسخهٔ فعلی عکس می‌گیرد،
+     پس اگر اشتباهی برگرداندید، برگشتنش هم ممکن است. */
+  const which = row.k === panel.keys.state ? 'state' : 'db';
+  const r = await saveKartabl(env, panel, { [which]: value });
+  return { ok: true, which, rev: r.rev };
 }
 
 /* ---------- پشتیبان کامل ----------
@@ -397,14 +547,14 @@ export async function sendKartablBackup(env, req, panel, note = '') {
 }
 
 /* هر شب همراه پشتیبان فروشگاه صدا زده می‌شود — برای هر دو کارتابل */
-export async function nightlyKartablBackup(env) {
+export async function nightlyKartablBackup(env, slot) {
   /* ورکر در cron درخواستی ندارد، ولی برای گرفتن فایل HTML از ASSETS یک
      Request لازم است. یکی می‌سازیم. */
   const out = {};
   for (const panel of Object.values(PANELS)) {
     const req = new Request('https://sensacare.ir' + panel.page);
     /* اگر یکی نرفت، آن یکی نباید قربانی شود */
-    const r = await sendKartablBackup(env, req, panel, 'خودکار')
+    const r = await sendKartablBackup(env, req, panel, slot === 'noon' ? 'خودکار — ظهر' : 'خودکار — شبانه')
       .catch(e => ({ ok: false, error: e.message }));
     if (!r.ok) await setSetting(env, panel.keys.last, { at: Date.now(), ok: false, error: r.error });
     out[panel.id] = r;
@@ -487,8 +637,13 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
   if (p === '/state' && (m === 'PUT' || m === 'POST')) {
     if (body.state === undefined && body.db === undefined) return bad('داده‌ای نیامد.');
-    const r = await saveKartabl(env, panel, { state: body.state, db: body.db, baseRev: body.baseRev });
+    const r = await saveKartabl(env, panel, { state: body.state, db: body.db,
+                                              baseRev: body.baseRev, force: !!body.force });
     if (r.conflict) return json({ conflict: true, rev: r.rev, updated: r.updated }, REV_CONFLICT);
+    /* ردیفِ ناخوانا روی سرور: نوشتن رویش قفل است تا آدم خبردار شود */
+    if (r.broken) return json({ broken: r.broken, rev: r.rev, updated: r.updated }, REV_CONFLICT);
+    /* نوشتنِ ویرانگر: رد نمی‌شود، ولی بی‌صدا هم انجام نمی‌شود */
+    if (r.loss) return json({ loss: r.loss, kind: r.kind, rev: r.rev, updated: r.updated }, REV_CONFLICT);
     return json({ ok: true, rev: r.rev, updated: r.updated });
   }
 
@@ -510,6 +665,19 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const ctx = buildAiContext(panel, d.state, d.db, today, detail);
     const r = await askKartablAI(env, panel, body.messages, ctx, { claudeKey });
     return r.ok ? json({ reply: r.reply, model: r.model, via: r.via }) : bad(r.error, r.status || 502);
+  }
+
+  /* ---------- نسخه‌های قبلی ----------
+     پیش از هر بازنویسی یک عکس از نسخهٔ قبلی نگه داشته می‌شود؛ این دو
+     مسیر همان‌ها را نشان می‌دهند و برمی‌گردانند. */
+  if (p === '/state/history' && m === 'GET')
+    return json({ items: await listKartablHistory(env, panel) });
+
+  if (p === '/state/restore' && m === 'POST') {
+    const id = parseInt(body.id, 10);
+    if (!id) return bad('کدام نسخه؟');
+    const r = await restoreKartablSnapshot(env, panel, id);
+    return r.ok ? json(r) : bad(r.error, 400);
   }
 
   /* عوض کردن رمز — رمز فعلی لازم است، و همهٔ نشست‌های دیگر بسته می‌شوند */

@@ -628,3 +628,17 @@ CREATE TABLE IF NOT EXISTS credit_use(
 INSERT INTO settings(k,v) VALUES ('refOn', 'true')   ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('refFriend', '50000') ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('refReward', '50000') ON CONFLICT(k) DO NOTHING;
+
+-- ۲۷ | تاریخچهٔ نسخه‌های کارتابل
+-- یک بار دادهٔ یک کارتابل روی سرور بازنویسی شد و هیچ راهی برای برگرداندنش
+-- نبود جز پشتیبانِ شبانه که تا ۲۴ ساعت عقب بود. حالا پیش از هر بازنویسی،
+-- نسخهٔ قبلی این‌جا می‌ماند. فقط هر چند دقیقه یک بار عکس گرفته می‌شود تا
+-- ذخیره‌های پیاپیِ تایپ کردن جدول را پر نکند.
+CREATE TABLE IF NOT EXISTS kartabl_hist(
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  k       TEXT NOT NULL,
+  v       TEXT NOT NULL,
+  rev     INTEGER,
+  at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS kartabl_hist_k_at ON kartabl_hist(k, at DESC);
