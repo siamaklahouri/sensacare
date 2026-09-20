@@ -15,6 +15,8 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
 /* چک‌لیستِ آمادهٔ شغلی که ادمین برای این کارتابل انتخاب کرده.
    فقط دانهٔ اولیه است: بعد از اولین ذخیره، داده مالِ کاربر است. */
 window.KARTABL_JOB = {{JOBSEED}};
+/* بخش‌های «دیتای شخصی» که ادمین برای این کاربر باز گذاشته. */
+window.KARTABL_VAULT = {{VAULTSECS}};
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -4531,7 +4533,7 @@ async function createPersonalPassword(password){
   const key = await derivePersonalKey(password, salt);
   state.personalVault = { salt: b64FromBuf(salt), iv:"", cipher:"" };
   personalCryptoKey = key;
-  personalVaultPlain = { credentials: [], installments: [] };
+  personalVaultPlain = { credentials: [], installments: [], sections: {} };
   personalUnlocked = true;
   await encryptPersonalVault();
   renderPersonalView();
@@ -4547,7 +4549,13 @@ async function tryUnlockPersonal(password){
     const dec = new TextDecoder();
     const parsed = JSON.parse(dec.decode(plainBuf));
     personalCryptoKey = key;
-    personalVaultPlain = { credentials: parsed.credentials||[], installments: parsed.installments||[] };
+    /* هرچه در صندوق بود برمی‌گردد، نه فقط کلیدهایی که این نسخه می‌شناسد:
+       اگر بخشی را ادمین خاموش کرده باشد، محتوایش این‌جا باید سالم بماند
+       وگرنه اولین باز و بسته‌کردنِ صندوق پاکش می‌کند. */
+    personalVaultPlain = Object.assign({}, parsed);
+    if(!Array.isArray(personalVaultPlain.credentials)) personalVaultPlain.credentials = [];
+    if(!Array.isArray(personalVaultPlain.installments)) personalVaultPlain.installments = [];
+    if(!personalVaultPlain.sections || typeof personalVaultPlain.sections !== "object") personalVaultPlain.sections = {};
     personalUnlocked = true;
     renderPersonalView();
   }catch(e){
@@ -4744,11 +4752,13 @@ function renderPersonalView(){
   }
 
   // ---- Unlocked content ----
+  /* اگر ادمین بخشی را خاموش کرده و همان باز بود، می‌رویم سراغ اولی. */
+  const secs = vaultSections();
+  if(!secs.some(s=> s.id === personalActiveTab)) personalActiveTab = secs[0].id;
   wrap.innerHTML = `
     <div class="personal-toolbar">
       <div class="personal-tabs">
-        <button type="button" data-ptab="creds" class="${personalActiveTab==='creds'?'active':''}">🏢 شرکت‌های من</button>
-        <button type="button" data-ptab="inst" class="${personalActiveTab==='inst'?'active':''}">💳 اقساط</button>
+        ${vaultSections().map(s=>`<button type="button" data-ptab="${escapeHtml(s.id)}" class="${personalActiveTab===s.id?'active':''}">${VAULT_TYPE_ICON[s.type]||'📋'} ${escapeHtml(s.title||s.id)}</button>`).join("")}
       </div>
       <div style="display:flex; gap:8px;">
         <button type="button" class="btn-lock-now" id="personalRecoveryBtn">${state.personalRecovery && state.personalRecovery.cipher ? "🔐 کد بازیابی تازه" : "🔐 ساختن کد بازیابی"}</button>
@@ -4765,7 +4775,11 @@ function renderPersonalView(){
   document.getElementById("personalChangePwBtn").addEventListener("click", openChangePersonalPassword);
   document.getElementById("personalRecoveryBtn").addEventListener("click", armVaultRecovery);
 
-  if(personalActiveTab === "creds") renderPersonalCreds(); else renderPersonalInstallments();
+  personalCurrentSection = secs.find(s=> s.id === personalActiveTab) || secs[0];
+  const stype = personalCurrentSection.type;
+  if(stype === "creds") renderPersonalCreds();
+  else if(stype === "inst") renderPersonalInstallments();
+  else renderPersonalGrid(personalCurrentSection);
 }
 
 function openChangePersonalPassword(){
@@ -4802,12 +4816,105 @@ function openChangePersonalPassword(){
   })();
 }
 
+
+/* ---------------- بخش‌های «دیتای شخصی» ----------------
+   کدام بخش‌ها برای این کاربر باز باشد را ادمین تعیین می‌کند و سرور
+   همان فهرست را داخل صفحه می‌گذارد. خاموش‌کردنِ یک بخش فقط آن را از
+   چشم پنهان می‌کند؛ محتوایش دست‌نخورده داخل همان صندوقِ رمزدار می‌ماند
+   و با روشن‌کردنِ دوباره برمی‌گردد. */
+
+const VAULT_DEFAULT_SECTIONS = [
+  { id:"creds", type:"creds", title:"شرکت‌های من" },
+  { id:"inst",  type:"inst",  title:"اقساط" }
+];
+const VAULT_TYPE_ICON = { creds:"🏢", inst:"💳", contacts:"📞", table:"📋" };
+const VAULT_CONTACT_COLS = ["نام", "سمت / نسبت", "تلفن", "تلفن دوم", "ایمیل", "یادداشت"];
+
+let personalCurrentSection = null;
+
+function vaultSections(){
+  const list = Array.isArray(window.KARTABL_VAULT) ? window.KARTABL_VAULT : [];
+  const clean = list.filter(s=> s && s.id && s.type && VAULT_TYPE_ICON[s.type]);
+  return clean.length ? clean : VAULT_DEFAULT_SECTIONS;
+}
+
+/* آرایهٔ همان بخش، داخلِ نسخهٔ رمزگشایی‌شده. دو بخشِ قدیمی کلیدِ قدیمیِ
+   خودشان را نگه می‌دارند تا صندوق‌های موجود بدون دست‌کاری باز شوند. */
+function vaultRows(sec){
+  if(!personalVaultPlain || !sec) return [];
+  if(sec.id === "creds"){ if(!personalVaultPlain.credentials) personalVaultPlain.credentials = []; return personalVaultPlain.credentials; }
+  if(sec.id === "inst"){  if(!personalVaultPlain.installments) personalVaultPlain.installments = []; return personalVaultPlain.installments; }
+  if(!personalVaultPlain.sections) personalVaultPlain.sections = {};
+  return personalVaultPlain.sections[sec.id] || (personalVaultPlain.sections[sec.id] = []);
+}
+function credRows(){ return vaultRows(personalCurrentSection); }
+function instRows(){ return vaultRows(personalCurrentSection); }
+
+function vaultGridCols(sec){
+  if(sec.type === "contacts") return VAULT_CONTACT_COLS;
+  const cols = Array.isArray(sec.cols) ? sec.cols.filter(c=> String(c||"").trim()) : [];
+  return cols.length ? cols : ["عنوان", "توضیح", "یادداشت"];
+}
+
+/* جدولِ ساده و ویرایش‌پذیر — هم برای «دفتر تلفن» و هم برای جدول‌هایی
+   که ادمین ستون‌هایشان را خودش تعیین کرده. ستون‌ها با شماره ذخیره
+   می‌شوند نه با نام، تا عوض‌کردنِ نامِ ستون داده را گم نکند. */
+function renderPersonalGrid(sec){
+  const body = document.getElementById("personalTabBody");
+  if(!body) return;
+  const cols = vaultGridCols(sec);
+  const rows = vaultRows(sec);
+
+  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join("") + `<th style="width:34px;"></th>`;
+  const bodyHtml = rows.map((r, i)=>
+    "<tr>" + cols.map((c, ci)=>
+      `<td><input type="text" class="pg-cell" data-row="${i}" data-col="c${ci}"
+         value="${escapeHtml(r["c"+ci]||"")}" placeholder="${escapeHtml(c)}"></td>`).join("") +
+    `<td><button type="button" class="btn-del" data-pg-del="${i}" title="حذف این ردیف">✕</button></td></tr>`
+  ).join("");
+
+  body.innerHTML = `
+    <div class="panel" style="padding:14px;">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>${head}</tr></thead>
+          <tbody>${bodyHtml || `<tr><td colspan="${cols.length+1}" style="color:var(--ink-faint); font-size:12.5px; text-align:center; padding:14px;">هنوز چیزی ثبت نشده.</td></tr>`}</tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-brass btn-sm" id="pgAddRow" style="margin-top:10px;">＋ افزودن ردیف</button>
+    </div>`;
+
+  body.querySelectorAll(".pg-cell").forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      const r = rows[parseInt(inp.getAttribute("data-row"))];
+      if(!r) return;
+      r[inp.getAttribute("data-col")] = inp.value;
+      encryptPersonalVault();
+    });
+  });
+  body.querySelectorAll("[data-pg-del]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(!confirm("این ردیف حذف شود؟")) return;
+      rows.splice(parseInt(btn.getAttribute("data-pg-del")), 1);
+      encryptPersonalVault();
+      renderPersonalGrid(sec);
+    });
+  });
+  document.getElementById("pgAddRow").addEventListener("click", ()=>{
+    const row = {};
+    cols.forEach((c, ci)=> row["c"+ci] = "");
+    rows.push(row);
+    encryptPersonalVault();
+    renderPersonalGrid(sec);
+  });
+}
+
 /* ---------------- Personal: Companies (credentials) ---------------- */
 let personalCredSelectedCompany = ""; // "" یعنی «همه»
 function renderPersonalCreds(){
   const body = document.getElementById("personalTabBody");
   if(!body) return;
-  const allCompanyNames = [...new Set(personalVaultPlain.credentials.map(c=>String(c.company||"").trim()).filter(Boolean))]
+  const allCompanyNames = [...new Set(credRows().map(c=>String(c.company||"").trim()).filter(Boolean))]
     .sort((a,b)=> a.localeCompare(b,"fa"));
   // اگر شرکت انتخاب‌شده دیگر وجود ندارد (مثلاً حذف شده)، یا هنوز چیزی انتخاب نشده، برو روی اولین شرکت
   if((!personalCredSelectedCompany || !allCompanyNames.includes(personalCredSelectedCompany)) && allCompanyNames.length){
@@ -4815,12 +4922,12 @@ function renderPersonalCreds(){
   }
   if(!allCompanyNames.length) personalCredSelectedCompany = "";
   const sel = personalCredSelectedCompany;
-  const visibleIdx = personalVaultPlain.credentials
+  const visibleIdx = credRows()
     .map((c,idx)=>idx)
-    .filter(idx=> !sel || String(personalVaultPlain.credentials[idx].company||"").trim() === sel);
+    .filter(idx=> !sel || String(credRows()[idx].company||"").trim() === sel);
 
   const rows = visibleIdx.map(idx=>{
-    const c = personalVaultPlain.credentials[idx];
+    const c = credRows()[idx];
     const shown = personalShowPw.has(idx);
     return `<tr>
       <td><input type="text" data-cred-idx="${idx}" data-cred-field="company" value="${escapeHtml(c.company||'')}" placeholder="نام شرکت"></td>
@@ -4848,7 +4955,7 @@ function renderPersonalCreds(){
       <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap; margin-bottom:8px;">🏢 شرکت‌ها:</label>
       <div class="company-tabs" id="companyTabs">
         ${allCompanyNames.map(name=>{
-          const cnt = personalVaultPlain.credentials.filter(c=>String(c.company||"").trim()===name).length;
+          const cnt = credRows().filter(c=>String(c.company||"").trim()===name).length;
           return `<button type="button" class="company-tab-btn ${name===sel?'active':''}" data-company-tab="${escapeHtml(name)}">
             ${escapeHtml(name)} <span class="cnt">${fa(cnt)}</span>
           </button>`;
@@ -4883,7 +4990,7 @@ function renderPersonalCreds(){
   body.querySelectorAll("[data-remove-cred]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       if(!confirm("این مورد حذف شود؟")) return;
-      personalVaultPlain.credentials.splice(parseInt(btn.getAttribute("data-remove-cred")),1);
+      credRows().splice(parseInt(btn.getAttribute("data-remove-cred")),1);
       encryptPersonalVault();
       renderPersonalCreds();
     });
@@ -4891,7 +4998,7 @@ function renderPersonalCreds(){
   document.getElementById("addCredBtn").addEventListener("click", ()=>{
     const name = (prompt("نام شرکت جدید را وارد کنید:") || "").trim();
     if(!name){ return; }
-    personalVaultPlain.credentials.push({ company:name, username:"", password:"", ip:"", note:"" });
+    credRows().push({ company:name, username:"", password:"", ip:"", note:"" });
     personalCredSelectedCompany = name;
     encryptPersonalVault();
     renderPersonalCreds();
@@ -4937,7 +5044,7 @@ function renderPersonalCreds(){
           const noteParts = [];
           if(label) noteParts.push(label);
           if(extra.length) noteParts.push(extra.join(" | "));
-          personalVaultPlain.credentials.push({
+          credRows().push({
             company: sheetName, username, password, ip, note: noteParts.join(" — ")
           });
           added++;
@@ -4956,7 +5063,7 @@ function renderPersonalCreds(){
 function onCredFieldChange(e){
   const idx = parseInt(e.target.getAttribute("data-cred-idx"));
   const field = e.target.getAttribute("data-cred-field");
-  personalVaultPlain.credentials[idx][field] = e.target.value;
+  credRows()[idx][field] = e.target.value;
   encryptPersonalVault();
 }
 
@@ -4997,7 +5104,7 @@ function renderPersonalInstallments(){
   const today = { year: parseInt(todayParts.year)||1405, month: todayParts.monthNum||1, day: todayParts.day||1 };
   const nDaysStart = daysInJalaliMonth(today.year, today.month);
 
-  const cardsHtml = personalVaultPlain.installments.map((plan, pIdx)=>{
+  const cardsHtml = instRows().map((plan, pIdx)=>{
     const { per, total } = calcInstallment(plan.principal, plan.count, plan.percent);
     const paidCount = plan.paid.filter(Boolean).length;
     const remaining = total - (per*paidCount);
@@ -5075,7 +5182,7 @@ function renderPersonalInstallments(){
     if(!principal || principal<=0){ alert("مبلغ اصل وام را درست وارد کنید."); return; }
     if(!count || count<=0){ alert("تعداد اقساط را درست وارد کنید."); return; }
     const startY = parseInt(yearSel.value), startM = parseInt(monthSel.value), startD = parseInt(daySel.value);
-    personalVaultPlain.installments.push({
+    instRows().push({
       title, principal, count, percent, startY, startM, startD, paid: Array.from({length:count}, ()=>false)
     });
     encryptPersonalVault();
@@ -5085,7 +5192,7 @@ function renderPersonalInstallments(){
   body.querySelectorAll("[data-remove-inst]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       if(!confirm("این وام/قسط حذف شود؟")) return;
-      personalVaultPlain.installments.splice(parseInt(btn.getAttribute("data-remove-inst")),1);
+      instRows().splice(parseInt(btn.getAttribute("data-remove-inst")),1);
       encryptPersonalVault();
       renderPersonalInstallments();
     });
@@ -5094,7 +5201,7 @@ function renderPersonalInstallments(){
     btn.addEventListener("click", ()=>{
       const pIdx = parseInt(btn.getAttribute("data-pay-plan"));
       const iIdx = parseInt(btn.getAttribute("data-pay-inst"));
-      const plan = personalVaultPlain.installments[pIdx];
+      const plan = instRows()[pIdx];
       plan.paid[iIdx] = !plan.paid[iIdx];
       encryptPersonalVault();
       renderPersonalInstallments();

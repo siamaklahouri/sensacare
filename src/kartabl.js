@@ -120,6 +120,7 @@ export function panelFromRow(row) {
            filejson: c.filejson, filexlsx: c.filexlsx },
     keys: c.keys,
     job: c.job || '',
+    vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
     files: { json: c.filejson, xlsx: c.filexlsx, html: c.filehtml },
     zip: stamp => `${c.zip}${stamp}.zip`,
@@ -158,6 +159,20 @@ const esc = t => String(t == null ? '' : t)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+/* فهرستِ بخش‌های دیتای شخصی، به شکلی که داخلِ <script> بنشیند.
+   فقط نوع‌های شناخته‌شده رد می‌شوند تا صفحه با یک مقدارِ عجیب نشکند. */
+const VAULT_TYPES = ['creds', 'inst', 'contacts', 'table'];
+const VAULT_FALLBACK = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
+                        { id: 'inst', type: 'inst', title: 'اقساط' }];
+
+export function vaultSeed(list) {
+  const clean = (Array.isArray(list) ? list : [])
+    .filter(s => s && typeof s.id === 'string' && VAULT_TYPES.includes(s.type))
+    .map(s => ({ id: s.id, type: s.type, title: String(s.title || s.id),
+                 ...(Array.isArray(s.cols) ? { cols: s.cols.map(String) } : {}) }));
+  return JSON.stringify(clean.length ? clean : VAULT_FALLBACK).replace(/</g, '\\u003c');
+}
+
 export async function renderPanelPage(env, req, panel) {
   /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
      ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */
@@ -175,6 +190,7 @@ export async function renderPanelPage(env, req, panel) {
   /* دانهٔ چک‌لیست جداگانه جاسازی می‌شود چون JSON است، نه متنِ ساده:
      از esc() رد نمی‌شود وگرنه گیومه‌هایش خراب می‌شود. */
   html = html.replaceAll('{{JOBSEED}}', jobSeed(panel.job));
+  html = html.replaceAll('{{VAULTSECS}}', vaultSeed(panel.vault));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],
