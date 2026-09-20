@@ -552,3 +552,79 @@ INSERT INTO settings(k,v) VALUES
   ('rezaPassHash', '"pbkdf2$100000$AFgRjojVxT4ePH6p6tAXKw==$3zOiPHVregzu2bvX5A0xc1ypJsLDeFSGA00mUXdEoTU="')
   ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('rezaPassGen', '1') ON CONFLICT(k) DO NOTHING;
+
+/* ۲۷ منبعِ هر سفارش — «این خرید از کجا آمد؟»
+
+   تا امروز هیچ‌جا ثبت نمی‌شد. یعنی اگر جایی تبلیغ یا معرفی می‌شد، هیچ
+   راهی نبود که بفهمیم کدامش به فروش رسید و کدام فقط بازدید آورد.
+
+   ستون تازه به orders اضافه نمی‌کنیم چون این فایل هر بار موقع استقرار
+   اجرا می‌شود و ALTER TABLE بار دوم کل استقرار را می‌خواباند؛ مثل
+   order_discounts در جدول خودش می‌نشیند.
+
+   مقدارش یا برچسبی است که خودمان در لینک گذاشته‌ایم (?s=telegram) یا
+   دامنهٔ ارجاع‌دهنده (google) یا direct. هیچ شناسهٔ شخصی‌ای اینجا
+   نمی‌آید — فقط همین یک کلمه. */
+CREATE TABLE IF NOT EXISTS order_source(
+  order_id TEXT PRIMARY KEY,
+  source TEXT,
+  created INTEGER);
+CREATE INDEX IF NOT EXISTS idx_order_source_src ON order_source(source);
+
+/* ۲۸ معرفی به دوست.
+
+   برای این کالا، توصیهٔ خصوصیِ یک نفر به یک نفر بهترین کانال است — و
+   تنها کانالی که نه بسته می‌شود نه هزینه دارد. تا امروز هیچ راهی برایش
+   نبود.
+
+   سه جدول، چون ستون تازه به users و orders اضافه نمی‌کنیم (این فایل هر
+   بار موقع استقرار اجرا می‌شود و ALTER TABLE بار دوم کل استقرار را
+   می‌خواباند):
+
+   referrals        کدِ هرکس. یک کد برای هر شماره، برای همیشه.
+   referral_uses    هر سفارشی که با کد کسی ثبت شده، و اینکه پاداشش
+                    داده شده یا نه. پاداش فقط وقتی داده می‌شود که
+                    پول آن سفارش واقعاً رسیده باشد.
+   referral_credit  اعتبار هرکس، به تومان. سر خرید بعدی‌اش خرج می‌شود.
+
+   credit_use جداست تا اگر سفارشی لغو شد، اعتباری که خرج شده بود
+   برگردد و پول کسی نسوزد. */
+CREATE TABLE IF NOT EXISTS referrals(
+  code TEXT PRIMARY KEY,
+  phone TEXT,
+  created INTEGER);
+CREATE INDEX IF NOT EXISTS idx_referrals_phone ON referrals(phone);
+
+CREATE TABLE IF NOT EXISTS referral_uses(
+  order_id TEXT PRIMARY KEY,
+  code TEXT,
+  referrer_phone TEXT,
+  friend_phone TEXT,
+  friend_off INTEGER DEFAULT 0,
+  reward INTEGER DEFAULT 0,
+  rewarded INTEGER DEFAULT 0,
+  created INTEGER);
+CREATE INDEX IF NOT EXISTS idx_referral_uses_ref ON referral_uses(referrer_phone);
+
+CREATE TABLE IF NOT EXISTS referral_credit(
+  phone TEXT PRIMARY KEY,
+  amount INTEGER DEFAULT 0);
+
+CREATE TABLE IF NOT EXISTS credit_use(
+  order_id TEXT PRIMARY KEY,
+  phone TEXT,
+  amount INTEGER DEFAULT 0,
+  refunded INTEGER DEFAULT 0);
+
+/* ۲۹ روشن کردن «معرفی به دوست» روی سرور.
+
+   DO NOTHING عمدی است و مهم: این فایل هر بار موقع استقرار اجرا می‌شود.
+   اگر UPDATE می‌نوشتیم، هر بار که بعداً از پنل خاموشش می‌کردید،
+   استقرار بعدی دوباره روشنش می‌کرد. با این شکل، فقط همان یک‌بارِ اول
+   که کلید اصلاً وجود ندارد نوشته می‌شود و از آن به بعد هرچه در پنل
+   انتخاب کنید همان می‌ماند.
+
+   مبلغ‌ها هم همین‌طور — پیش‌فرض ۵۰ هزار، و تغییرشان از پنل. */
+INSERT INTO settings(k,v) VALUES ('refOn', 'true')   ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('refFriend', '50000') ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('refReward', '50000') ON CONFLICT(k) DO NOTHING;
