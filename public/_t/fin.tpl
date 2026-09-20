@@ -1389,6 +1389,9 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
         <div class="set-row">
           <span class="set-state" id="cloudStatus">در حال بررسی…</span>
         </div>
+        <div class="set-row">
+          <span class="set-state" id="lastLoginRow"></span>
+        </div>
       </div>
 
       <div class="panel">
@@ -1596,6 +1599,21 @@ async function apiCall(path, opts){
   return { ok: res.ok, status: res.status, data: data || {} };
 }
 
+/* تاریخ و ساعتِ فارسی برای پیامِ «آخرین ورود». این‌جا بالای گیت لازم
+   است، پیش از اینکه بقیهٔ کارتابل بار شود. */
+function faDateTime(ms){
+  try{
+    const d = new Date(ms);
+    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {year:"numeric", month:"long", day:"numeric"}).format(d);
+    const time = new Intl.DateTimeFormat("fa-IR", {hour:"2-digit", minute:"2-digit", hour12:false}).format(d);
+    return day + " — ساعت " + time;
+  }catch(e){ return new Date(ms).toLocaleString("fa-IR"); }
+}
+function escapeGateHtml(t){
+  return String(t == null ? "" : t)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
 let gateReady = null;   /* وعده‌ای که وقتی تکلیف ورود روشن شد باز می‌شود */
 let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه */
 
@@ -1606,6 +1624,7 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
   const btn      = document.getElementById("gateBtn");
   const errEl    = document.getElementById("gateErr");
   const remember = document.getElementById("gateRemember");
+  const noteEl    = document.getElementById("gateNote");
 
   let letMeIn;
   gateReady = new Promise(r => { letMeIn = r; });
@@ -1626,7 +1645,12 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
   } else {
     /* آیا کوکی نشست هنوز معتبر است؟ */
     apiCall("/me").then(r=>{
-      if(r.ok && r.data.in){ signedIn = true; closeGate(); letMeIn(true); }
+      if(r.ok && r.data.in){
+        signedIn = true;
+        /* همان عدد در تنظیمات هم نشان داده می‌شود تا بعداً هم در دسترس باشد */
+        if(r.data.lastLogin) window.__lastLogin = Number(r.data.lastLogin);
+        closeGate(); letMeIn(true);
+      }
       else openGate();
     }).catch(()=>{
       /* سرور در دسترس نیست — با همان نسخهٔ محلی ادامه می‌دهیم، وگرنه
@@ -1645,8 +1669,18 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
         body: JSON.stringify({ password: pass, remember: remember.checked }) });
       if(r.ok){
         input.value = "";
-        /* تازه‌سازی ساده‌ترین راه است تا همهٔ داده‌ها از سرور بیایند */
-        location.reload();
+        /* «آخرین ورود» را همین‌جا نشان می‌دهیم، بعد از ورودِ موفق — نه
+           قبلش. اگر قبل از ورود نشان داده می‌شد، هر کسی که آدرس را دارد
+           می‌فهمید این کارتابل کِی استفاده شده. */
+        const prev = Number(r.data.lastLogin || 0);
+        if(prev > 0 && noteEl){
+          noteEl.innerHTML = "آخرین ورودِ شما به این کارتابل:<br><b>" +
+            escapeGateHtml(faDateTime(prev)) + "</b>";
+          btn.textContent = "در حال باز کردن…";
+          setTimeout(()=> location.reload(), 2200);
+        } else {
+          location.reload();
+        }
         return;
       }
       errEl.textContent = r.data.error || "رمز عبور اشتباه است.";
@@ -1662,7 +1696,6 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
      پشتیبان‌ها می‌روند. اینجا هیچ‌وقت دیده نمی‌شود، حتی در پاسخِ درخواست؛
      یعنی زدنِ این دکمه به‌تنهایی به کسی رمز نمی‌دهد. */
   const forgotBtn = document.getElementById("gateForgot");
-  const noteEl    = document.getElementById("gateNote");
   if(forgotBtn && window.KARTABL_OFFLINE) forgotBtn.style.display = "none";
   if(forgotBtn) forgotBtn.addEventListener("click", async ()=>{
     const go = confirm(
@@ -5285,6 +5318,12 @@ async function refreshAiSettings(){
   }catch(e){ /* اینترنت نبود — همان «در حال بررسی» می‌ماند */ }
 }
 
+function showLastLogin(){
+  const el = document.getElementById("lastLoginRow");
+  if(!el || !window.__lastLogin) return;
+  el.textContent = "آخرین ورود به این کارتابل: " + faDateTime(window.__lastLogin);
+}
+
 function setupAiSettings(){
   const save  = document.getElementById("aiKeySaveBtn");
   const clear = document.getElementById("aiKeyClearBtn");
@@ -5347,6 +5386,7 @@ async function init(){
     setupTheme();
     setupAssistant();
     setupAiSettings();
+    showLastLogin();
     renderPersonalView();
     const cf = document.getElementById("connectFolderBtn");
     if(cf) cf.addEventListener("click", connectFolder);

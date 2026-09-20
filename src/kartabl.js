@@ -682,7 +682,13 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const check = await checkPassword(String(body.password || ''), stored);
     if (!check.ok) return bad(check.error, check.status);
     const days = body.remember ? 30 : 1;
-    return json({ ok: true }, 200,
+    /* ورودِ قبلی را برمی‌گردانیم، نه همین یکی: فایدهٔ این عدد این است که
+       صاحبِ کارتابل ببیند آخرین بار کِی وارد شده و اگر یادش نمی‌آید،
+       بفهمد کسِ دیگری وارد شده. */
+    const loginKey = 'login:' + panel.slug;
+    const prev = await getSetting(env, loginKey, 0);
+    await setSetting(env, loginKey, Date.now());
+    return json({ ok: true, lastLogin: prev || 0 }, 200,
       { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, days), days) });
   }
 
@@ -734,7 +740,11 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */
   const session = await readSession(env, panel, req);
   if (p === '/me')
-    return json({ in: !!session });
+    /* زمانِ آخرین ورود فقط برای کسی که وارد شده. بیرونِ در، این عدد
+       به هر کسی که آدرس را دارد می‌گفت این کارتابل کِی استفاده شده. */
+    return json(session
+      ? { in: true, lastLogin: await getSetting(env, 'login:' + panel.slug, 0) }
+      : { in: false });
   if (!session) return bad('وارد نشده‌اید.', 401);
 
   if (p === '/state' && m === 'GET') {
