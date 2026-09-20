@@ -25,3 +25,10 @@
 
 /reza/*
   X-Robots-Tag: noindex, nofollow
+
+# قالب‌های کارتابل. صفحهٔ واقعی را ورکر از روی این‌ها می‌سازد؛ خودِ فایلِ
+# خام رمزی در خودش ندارد (قفل سمتِ سرور است) ولی جایی هم در فهرستِ گوگل
+# ندارد.
+/_t/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

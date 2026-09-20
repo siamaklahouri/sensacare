@@ -1,3 +1,4 @@
+import { handleAdminPlaner, ADMIN_PAGE } from './admin-planer.js';
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
          renderPanelPage } from './kartabl.js';
 /* ==========================================================
@@ -1698,7 +1699,7 @@ export default {
          www — و اعتبار صفحه بین دوتا نصف می‌شود. */
       const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\n\n` +
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\nDisallow: /admin.planer\n\n` +
         `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
@@ -1729,6 +1730,17 @@ export default {
       return new Response(
         `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`,
         { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
+    }
+
+    /* ---------------- صفحهٔ پنل ادمین ----------------
+       با و بی اسلشِ آخر، هر دو. آدرسش نقطه دارد تا با هیچ کارتابلی
+       اشتباه نشود و هیچ‌وقت هم در فهرستِ گوگل نمی‌رود. */
+    if ((p === ADMIN_PAGE || p === ADMIN_PAGE + '/') && req.method === 'GET') {
+      const res = await env.ASSETS.fetch(new Request(new URL('/_t/admin.tpl', req.url), req));
+      if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex, nofollow' } }));
     }
 
     /* ---------------- صفحهٔ کارتابل ----------------
@@ -1775,7 +1787,9 @@ export default {
     }
     if (!env.DB) return bad('دیتابیس D1 وصل نشده است. wrangler.toml را بررسی کنید.', 500);
 
-    const body = ['POST', 'PATCH', 'PUT'].includes(m)
+    /* DELETE هم بدنه دارد: تأییدِ حذف داخلش می‌آید. بدون این، تأیید
+       هیچ‌وقت به سرور نمی‌رسید و حذف بی‌صدا رد می‌شد. */
+    const body = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(m)
       ? await req.json().catch(() => ({})) : {};
 
     try {
@@ -1783,6 +1797,10 @@ export default {
       /* کارتابل‌ها — مدیر IT و مدیر مالی. بررسی ورودشان جداست و از کوکی
          خودشان می‌آید، نه از توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها
          جواب می‌گیرند. هر کدام کوکی و رمز خودش را دارد. */
+      if (p.startsWith('/api/admin.planer/'))
+        return handleAdminPlaner(env, req, p.slice('/api/admin.planer'.length), m, body,
+          { rateLimit, clientIp });
+
       if (p.startsWith('/api/')) {
         const seg = p.slice(5);
         const cut = seg.indexOf('/');

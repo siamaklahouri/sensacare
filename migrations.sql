@@ -694,3 +694,15 @@ UPDATE planners SET cfg = json_set(cfg, '$.vault', json_array(
   json_object('id','creds','type','creds','title','شرکت‌های من'),
   json_object('id','inst', 'type','inst', 'title','اقساط')
 )) WHERE json_extract(cfg, '$.vault') IS NULL;
+
+-- ۳۰ | سیاههٔ کارهای پنل ادمین
+-- نه برای گزارش به کسی؛ برای اینکه اگر فردا چیزی سرِ جایش نبود بشود
+-- فهمید کِی و چه اتفاقی افتاده.
+CREATE TABLE IF NOT EXISTS admin_log (
+  id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  at   INTEGER NOT NULL,
+  what TEXT NOT NULL,
+  slug TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log(at DESC);

@@ -4528,6 +4528,29 @@ async function encryptPersonalVault(){
   scheduleSave();
   savePersonalSheet();
 }
+
+/* ---------- کلیدِ اضطراریِ ادمین ----------
+   اگر ادمین کلیدی ساخته باشد، رمزِ این صندوق با کلیدِ عمومیِ او پیچیده
+   و همان‌جا روی سرور گذاشته می‌شود. با کلیدِ عمومی فقط می‌شود پیچید؛
+   باز کردنش عبارتِ عبورِ ادمین را می‌خواهد که هیچ‌وقت به سرور نمی‌رسد.
+
+   اگر ادمین کلیدی نساخته باشد یا اینترنت نباشد، بی‌سر و صدا رد می‌شود:
+   این یک تورِ اضافه است، نه شرطِ کار کردنِ صندوق. */
+async function escrowVaultPassword(password){
+  if(window.KARTABL_OFFLINE) return false;
+  try{
+    const r = await apiCall("/escrow-pub");
+    const jwk = r.ok && r.data && r.data.pub;
+    if(!jwk) return false;
+    const pub = await crypto.subtle.importKey("jwk", jwk,
+      { name:"RSA-OAEP", hash:"SHA-256" }, false, ["encrypt"]);
+    const buf = await crypto.subtle.encrypt({ name:"RSA-OAEP" }, pub,
+      new TextEncoder().encode(password));
+    const put = await apiCall("/escrow", { method:"POST",
+      body: JSON.stringify({ bundle: { cipher: b64FromBuf(buf), at: Date.now() } }) });
+    return !!put.ok;
+  }catch(e){ return false; }
+}
 async function createPersonalPassword(password){
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const key = await derivePersonalKey(password, salt);
@@ -4536,6 +4559,7 @@ async function createPersonalPassword(password){
   personalVaultPlain = { credentials: [], installments: [], sections: {} };
   personalUnlocked = true;
   await encryptPersonalVault();
+  escrowVaultPassword(password);
   renderPersonalView();
 }
 async function tryUnlockPersonal(password){
@@ -4793,6 +4817,7 @@ function openChangePersonalPassword(){
     personalCryptoKey = await derivePersonalKey(np, salt);
     state.personalVault.salt = b64FromBuf(salt);
     await encryptPersonalVault();
+    escrowVaultPassword(np);
     /* پاکتِ بازیابی رمزِ قبلی را قفل کرده بود، پس با عوض شدن رمز دیگر به
        درد نمی‌خورد. یا تازه‌اش می‌کنیم یا صریح می‌گوییم که خاموش شد —
        بدترین حالت این بود که کاربر خیال کند هنوز کد دارد. */

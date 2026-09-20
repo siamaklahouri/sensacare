@@ -1,0 +1,373 @@
+/* پنل ادمینِ کارتابل‌ها — sensacare.ir/admin.planer
+   =================================================================
+   از این‌جا کارتابل تازه ساخته می‌شود، هر دو رمزِ هر کاربر عوض می‌شود
+   و فهرستِ بخش‌های «دیتای شخصی»‌اش تعیین می‌گردد.
+
+   دربارهٔ رمزِ دیتای شخصی یک قاعده هست که این فایل هم می‌شکندش و هم
+   نمی‌شکند: کلیدِ رمزگشاییِ آن صندوق هیچ‌وقت به سرور نمی‌رسد. برای
+   اینکه ادمین بتواند بازش کند، مرورگرِ کاربر رمزش را با «کلید عمومیِ
+   ادمین» می‌پیچد و همان بستهٔ پیچیده روی سرور می‌ماند. کلیدِ خصوصیِ
+   ادمین هم روی سرور است، ولی خودش با عبارتِ عبورِ ادمین رمز شده —
+   عبارتی که فقط در مرورگرِ ادمین تایپ می‌شود و هیچ‌وقت فرستاده
+   نمی‌شود. یعنی سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند. */
+
+import {
+  json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
+  getSetting, setSetting, all, one, run, newPassword, panelBySlug,
+  PANELS, kartablBot, tgMessage
+} from './kartabl.js';
+import { JOBS } from './kartabl-jobs.js';
+
+export const ADMIN_PAGE = '/admin.planer';
+
+/* ادمین هم مثل کارتابل‌ها یک «پنل» است، فقط بی‌داده: همان ساز و کارِ
+   کوکی و شمارهٔ نسل بدون نوشتنِ دوبارهٔ آن. */
+const ADMIN = {
+  id: 'admin.planer',
+  cookie: 'kartabl_admin',
+  keys: { pass: 'adminPlanerPassHash', gen: 'adminPlanerPassGen' }
+};
+
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,30}$/;
+/* آدرس‌هایی که قبلاً مالِ خودِ سایت‌اند و نباید کارتابل شوند */
+const RESERVED = new Set(['admin', 'admin.planer', 'api', 'f', 'v', 'assets', 'cart',
+  'checkout', 'shop', 'product', 'products', 'blog', 'about', 'contact', 'login',
+  'logout', 'search', 'sitemap', 'robots', 'favicon', '_t', 'icon']);
+
+const KINDS = new Set(['it', 'fin', 'gen']);
+const VAULT_TYPES = new Set(['creds', 'inst', 'contacts', 'table']);
+
+/* ---------- ساختنِ تنظیماتِ یک کارتابلِ تازه ---------- */
+
+function freshConfig(slug, name, kind, job, vault) {
+  return {
+    title: 'کارتابل ماهانه ' + name,
+    api: slug,
+    cookie: 'kartabl_' + slug,
+    icon: '/icon-' + (kind === 'it' ? 'siamak' : kind === 'fin' ? 'sina' : 'reza') + '.2.png',
+    store: slug + '-planner-v1',
+    idb: slug + '-fs-db',
+    dbcache: slug + '-db-cache-v1',
+    filejson: 'کارتابل-' + name + '-داده.json',
+    filexlsx: 'کارتابل-' + name + '-دیتابیس.xlsx',
+    folder: 'کارتابل ' + name,
+    zip: 'kartabl-' + slug + '-',
+    job: job || '',
+    vault: vault,
+    keys: {
+      state: slug + ':state', db: slug + ':db',
+      pass: slug + 'PassHash', gen: slug + 'PassGen',
+      last: slug + 'LastBackup', reset: slug + 'PassReset'
+    }
+  };
+}
+
+function cleanVault(list) {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : [])
+    .filter(s => s && typeof s.id === 'string' && SLUG_RE.test(s.id) && VAULT_TYPES.has(s.type))
+    .filter(s => !seen.has(s.id) && seen.add(s.id))
+    .slice(0, 12)
+    .map(s => ({
+      id: s.id, type: s.type, title: String(s.title || s.id).slice(0, 60),
+      ...(Array.isArray(s.cols)
+        ? { cols: s.cols.map(c => String(c).slice(0, 40)).filter(Boolean).slice(0, 10) }
+        : {})
+    }));
+}
+
+const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
+                       { id: 'inst', type: 'inst', title: 'اقساط' }];
+
+/* ---------- سیاههٔ کارها ----------
+   هر کاری که ادمین می‌کند این‌جا می‌ماند. نه برای اینکه به کسی
+   گزارش برود، برای اینکه اگر فردا چیزی سرِ جایش نبود بشود فهمید
+   کِی و چه اتفاقی افتاده. */
+async function log(env, what, slug, note) {
+  try {
+    await run(env, 'INSERT INTO admin_log(at, what, slug, note) VALUES(?,?,?,?)',
+      Date.now(), what, slug || '', note || '');
+  } catch (e) { /* جدول نبود؟ کارِ ادمین نباید بخاطرش بخوابد */ }
+}
+
+/* ---------- مسیرها ---------- */
+
+export async function handleAdminPlaner(env, req, p, m, body, helpers) {
+  const { rateLimit, clientIp } = helpers;
+
+  /* ---------- اولین راه‌اندازی ----------
+     تا وقتی رمزی نیست این پنل بی‌صاحب است، و هر کسی که آدرس را حدس بزند
+     می‌تواند صاحبش شود. پس رمزِ اول با کدی گذاشته می‌شود که فقط به همان
+     گفتگوی تلگرامی می‌رود که پشتیبان‌ها می‌روند — یعنی فقط کسی که به آن
+     ربات دسترسی دارد. */
+  if (p === '/setup-code' && m === 'POST') {
+    if (await getSetting(env, ADMIN.keys.pass, ''))
+      return bad('رمز ادمین از قبل تنظیم شده.', 409);
+    const rl = await rateLimit(env, 'adminplaner-code:' + clientIp(req), 5, 3600);
+    if (!rl.ok) return bad('درخواست‌ها زیاد شد. یک ساعت دیگر.', 429);
+    const { token, chat } = await kartablBot(env);
+    if (!token || !chat)
+      return bad('ربات تلگرام وصل نیست، پس جایی برای فرستادن کد نیست.', 503);
+    const code = newPassword(2, 4);
+    await setSetting(env, 'adminPlanerSetupCode',
+      { hash: await hashPassword(code), until: Date.now() + 15 * 60 * 1000 });
+    const sent = await tgMessage(token, chat,
+      '🛠 <b>راه‌اندازی پنل کارتابل‌ها</b>\n\n' +
+      `<code>${code}</code>\n\n` +
+      'این کد تا ۱۵ دقیقه معتبر است و فقط برای گذاشتنِ رمزِ اولِ پنل به کار می‌آید. ' +
+      'اگر شما این درخواست را نداده‌اید، یعنی کسی آدرس پنل را پیدا کرده — ' +
+      'همین حالا خودتان رمز را بگذارید.');
+    if (!sent.ok) return bad('به تلگرام نرسید: ' + sent.error, 502);
+    return json({ ok: true });
+  }
+
+  if (p === '/setup' && m === 'POST') {
+    if (await getSetting(env, ADMIN.keys.pass, ''))
+      return bad('رمز ادمین از قبل تنظیم شده. از همان استفاده کنید.', 409);
+    const rl = await rateLimit(env, 'adminplaner-setup:' + clientIp(req), 10, 3600);
+    if (!rl.ok) return bad('تلاش زیاد بود.', 429);
+    const saved = await getSetting(env, 'adminPlanerSetupCode', null);
+    if (!saved || !saved.hash) return bad('اول کدِ راه‌اندازی را بگیرید.', 403);
+    if (!(saved.until > Date.now())) return bad('کد منقضی شده. یکی تازه بگیرید.', 403);
+    const codeCheck = await checkPassword(String(body.code || '').trim(), saved.hash);
+    if (!codeCheck.ok) return bad('کدِ راه‌اندازی درست نیست.', 403);
+    const pass = String(body.password || '').trim();
+    if (pass.length < 10) return bad('رمزِ ادمین دست‌کم ۱۰ حرف باشد.');
+    await setSetting(env, ADMIN.keys.pass, await hashPassword(pass));
+    await setSetting(env, ADMIN.keys.gen, 1);
+    await setSetting(env, 'login:admin.planer', Date.now());
+    await run(env, 'DELETE FROM settings WHERE k=?', 'adminPlanerSetupCode');
+    await log(env, 'setup', '', '');
+    return json({ ok: true, lastLogin: 0 }, 200,
+      { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, 1), 1) });
+  }
+
+  if (p === '/login' && m === 'POST') {
+    const rl = await rateLimit(env, 'adminplaner-login:' + clientIp(req), 10, 900);
+    if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    const stored = await getSetting(env, ADMIN.keys.pass, '');
+    const check = await checkPassword(String(body.password || ''), stored);
+    if (!check.ok) return bad(check.error, check.status);
+    const days = body.remember ? 7 : 1;
+    const prev = await getSetting(env, 'login:admin.planer', 0);
+    await setSetting(env, 'login:admin.planer', Date.now());
+    await log(env, 'login', '', '');
+    return json({ ok: true, lastLogin: prev || 0 }, 200,
+      { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, days), days) });
+  }
+
+  if (p === '/logout' && m === 'POST')
+    return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader(ADMIN, '', 0) });
+
+  const session = await readSession(env, ADMIN, req);
+  if (p === '/me')
+    return json(session
+      ? { in: true, lastLogin: await getSetting(env, 'login:admin.planer', 0) }
+      : { in: false, needsSetup: !(await getSetting(env, ADMIN.keys.pass, '')) });
+  if (!session) return bad('وارد نشده‌اید.', 401);
+
+  /* ---- فهرستِ کارتابل‌ها ---- */
+  if (p === '/planners' && m === 'GET') {
+    const rows = await all(env, 'SELECT slug, name, kind, cfg, created FROM planners ORDER BY created, slug');
+    const known = new Set(rows.map(r => r.slug));
+    const items = [];
+    for (const r of rows) {
+      let c = {};
+      try { c = JSON.parse(r.cfg); } catch (e) { /* خرابش را هم نشان بده */ }
+      items.push({
+        slug: r.slug, name: r.name, kind: r.kind, job: c.job || '',
+        vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
+        url: '/' + r.slug + '/', created: r.created,
+        hasPassword: !!(await getSetting(env, (c.keys || {}).pass || '', '')),
+        lastLogin: await getSetting(env, 'login:' + r.slug, 0),
+        hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
+        builtin: false
+      });
+    }
+    /* کارتابل‌هایی که هنوز فقط داخل کد هستند هم دیده شوند */
+    for (const b of Object.values(PANELS))
+      if (!known.has(b.slug))
+        items.push({ slug: b.slug, name: b.name, kind: b.kind, job: '', vault: DEFAULT_VAULT,
+                     url: b.page, created: 0, builtin: true,
+                     hasPassword: !!(await getSetting(env, b.keys.pass, '')),
+                     lastLogin: await getSetting(env, 'login:' + b.slug, 0),
+                     hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
+    return json({
+      items,
+      kinds: [{ id: 'it', label: 'مدیر IT' }, { id: 'fin', label: 'مالی' },
+              { id: 'gen', label: 'عمومی' }],
+      jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label })),
+      vaultTypes: [{ id: 'creds', label: 'شرکت‌ها و رمزها' }, { id: 'inst', label: 'اقساط و وام' },
+                   { id: 'contacts', label: 'دفتر تلفن' }, { id: 'table', label: 'جدول دل‌خواه' }],
+      escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null))
+    });
+  }
+
+  /* ---- ساختنِ کارتابل ---- */
+  if (p === '/planners' && m === 'POST') {
+    const name = String(body.name || '').trim().slice(0, 40);
+    const slug = String(body.slug || '').trim().toLowerCase();
+    const kind = String(body.kind || 'gen');
+    const job = String(body.job || '');
+    if (!name) return bad('نام شخص را بنویسید.');
+    if (!SLUG_RE.test(slug))
+      return bad('آدرس فقط حروف انگلیسی کوچک، عدد و خط تیره — بین ۲ تا ۳۱ حرف.');
+    if (RESERVED.has(slug)) return bad('این آدرس مالِ خودِ سایت است. یکی دیگر انتخاب کنید.');
+    if (!KINDS.has(kind)) return bad('نوع کارتابل درست نیست.');
+    if (job && !JOBS[job]) return bad('شغل انتخاب‌شده را نمی‌شناسم.');
+    if (await one(env, 'SELECT slug FROM planners WHERE slug=?', slug))
+      return bad('کارتابلی با این آدرس هست.');
+    if (Object.values(PANELS).some(b => b.slug === slug))
+      return bad('کارتابلی با این آدرس هست.');
+
+    const vault = cleanVault(body.vault);
+    const cfg = freshConfig(slug, name, kind, job, vault.length ? vault : DEFAULT_VAULT);
+    const pass = String(body.password || '').trim() || newPassword();
+    await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
+      slug, name, kind, JSON.stringify(cfg), Date.now());
+    await setSetting(env, cfg.keys.pass, await hashPassword(pass));
+    await setSetting(env, cfg.keys.gen, 1);
+    await log(env, 'create', slug, kind + (job ? '/' + job : ''));
+    /* رمز فقط همین یک‌بار برمی‌گردد — جایی ذخیره نمی‌شود. */
+    return json({ ok: true, slug, url: '/' + slug + '/', password: pass });
+  }
+
+  /* از این‌جا به بعد همه دربارهٔ یک کارتابلِ مشخص‌اند */
+  const mSlug = p.match(/^\/planners\/([a-z0-9-]+)(\/[a-z-]+)?$/);
+  if (mSlug) {
+    const slug = mSlug[1];
+    const sub = mSlug[2] || '';
+    const panel = await panelBySlug(env, slug);
+    if (!panel) return bad('چنین کارتابلی نیست.', 404);
+    const row = await one(env, 'SELECT cfg FROM planners WHERE slug=?', slug);
+    const builtin = !row;
+
+    /* --- ویرایش: نام، شغل، بخش‌های شخصی --- */
+    if (sub === '' && m === 'PUT') {
+      if (builtin) return bad('این کارتابل هنوز در جدول نیست؛ یک‌بار مهاجرتش کنید.', 409);
+      let cfg;
+      try { cfg = JSON.parse(row.cfg); } catch (e) { return bad('تنظیماتِ این کارتابل خوانا نیست.', 500); }
+      const name = String(body.name || '').trim().slice(0, 40);
+      if (name) { cfg.title = 'کارتابل ماهانه ' + name; }
+      if (typeof body.job === 'string') {
+        if (body.job && !JOBS[body.job]) return bad('شغل انتخاب‌شده را نمی‌شناسم.');
+        cfg.job = body.job;
+      }
+      if (body.vault !== undefined) {
+        const v = cleanVault(body.vault);
+        if (!v.length) return bad('دست‌کم یک بخش باید باز بماند.');
+        cfg.vault = v;
+      }
+      await run(env, 'UPDATE planners SET name=COALESCE(NULLIF(?,\'\'), name), cfg=? WHERE slug=?',
+        name, JSON.stringify(cfg), slug);
+      await log(env, 'update', slug, Object.keys(body).join(','));
+      return json({ ok: true });
+    }
+
+    /* --- حذف --- */
+    if (sub === '' && m === 'DELETE') {
+      if (builtin) return bad('کارتابل‌های اصلی از این‌جا حذف نمی‌شوند.', 403);
+      if (String(body.confirm || '') !== slug)
+        return bad('برای حذف، آدرس کارتابل را دقیقاً تایپ کنید.');
+      const keys = panel.keys || {};
+      await run(env, 'DELETE FROM planners WHERE slug=?', slug);
+      await run(env, 'DELETE FROM kartabl WHERE k IN (?,?)', keys.state, keys.db);
+      try { await run(env, 'DELETE FROM kartabl_hist WHERE k IN (?,?)', keys.state, keys.db); } catch (e) {}
+      for (const k of [keys.pass, keys.gen, keys.last, keys.reset,
+                       'login:' + slug, 'escrow:' + slug])
+        await run(env, 'DELETE FROM settings WHERE k=?', k);
+      await log(env, 'delete', slug, '');
+      return json({ ok: true });
+    }
+
+    /* --- رمزِ ورود به کارتابل --- */
+    if (sub === '/password' && m === 'POST') {
+      const pass = String(body.password || '').trim() || newPassword();
+      if (pass.length < 8) return bad('رمز کوتاه است — دست‌کم ۸ حرف.');
+      await setSetting(env, panel.keys.pass, await hashPassword(pass));
+      /* شمارهٔ نسل بالا می‌رود: هر دستگاهی که وارد مانده بیرون می‌افتد. */
+      await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
+      await log(env, 'password', slug, '');
+      return json({ ok: true, password: pass });
+    }
+
+    /* --- بستهٔ پیچیدهٔ رمزِ دیتای شخصی --- */
+    if (sub === '/escrow' && m === 'GET') {
+      const e = await getSetting(env, 'escrow:' + slug, null);
+      if (!e) return bad('این کاربر هنوز رمزِ دیتای شخصی‌اش را به کلیدِ ادمین نسپرده.', 404);
+      return json({ ok: true, escrow: e });
+    }
+
+    /* --- خواندن و نوشتنِ خودِ صندوق، برای عوض‌کردنِ رمزش --- */
+    if (sub === '/vault' && m === 'GET') {
+      const r = await one(env, 'SELECT v FROM kartabl WHERE k=?', panel.keys.state);
+      if (!r) return bad('این کارتابل هنوز داده‌ای ندارد.', 404);
+      let st;
+      try { st = JSON.parse(r.v); } catch (e) { return bad('دادهٔ این کارتابل خوانا نیست.', 500); }
+      return json({ ok: true, vault: st.personalVault || null,
+                    recovery: st.personalRecovery || null });
+    }
+
+    if (sub === '/vault' && m === 'PUT') {
+      if (!body.vault || !body.vault.cipher) return bad('صندوقِ تازه ناقص است.');
+      const r = await one(env, 'SELECT v, rev FROM kartabl WHERE k=?', panel.keys.state);
+      if (!r) return bad('این کارتابل هنوز داده‌ای ندارد.', 404);
+      let st;
+      try { st = JSON.parse(r.v); } catch (e) { return bad('دادهٔ این کارتابل خوانا نیست.', 500); }
+      /* فقط همین سه کلید دست می‌خورد. بقیهٔ کارتابل حتی خوانده هم
+         نمی‌شود که اشتباهی جایی برود. */
+      st.personalVault = body.vault;
+      st.personalRecovery = body.recovery || null;
+      const rev = (r.rev || 0) + 1;
+      await run(env, 'UPDATE kartabl SET v=?, rev=?, updated=? WHERE k=?',
+        JSON.stringify(st), rev, Date.now(), panel.keys.state);
+      if (body.escrow) await setSetting(env, 'escrow:' + slug, body.escrow);
+      await log(env, 'vault-password', slug, '');
+      return json({ ok: true, rev });
+    }
+  }
+
+  /* ---- رمزِ خودِ ادمین ---- */
+  if (p === '/password' && m === 'POST') {
+    const stored = await getSetting(env, ADMIN.keys.pass, '');
+    const check = await checkPassword(String(body.current || ''), stored);
+    if (!check.ok) return bad('رمز فعلی درست نیست.', 401);
+    const next = String(body.password || '').trim();
+    if (next.length < 10) return bad('رمزِ ادمین دست‌کم ۱۰ حرف باشد.');
+    await setSetting(env, ADMIN.keys.pass, await hashPassword(next));
+    const gen = (await getSetting(env, ADMIN.keys.gen, 1)) + 1;
+    await setSetting(env, ADMIN.keys.gen, gen);
+    await log(env, 'admin-password', '', '');
+    /* نشستِ خودِ ادمین هم باطل شد، پس یکی تازه می‌دهیم. */
+    return json({ ok: true }, 200,
+      { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, 1), 1) });
+  }
+
+  /* ---- کلیدِ اضطراریِ ادمین ---- */
+  if (p === '/escrow-key' && m === 'GET')
+    return json({
+      ok: true,
+      pub: await getSetting(env, 'vaultEscrowPub', null),
+      priv: await getSetting(env, 'vaultEscrowPriv', null)
+    });
+
+  if (p === '/escrow-key' && m === 'POST') {
+    if (!body.pub || !body.priv || !body.priv.cipher)
+      return bad('کلید ناقص است.');
+    if (await getSetting(env, 'vaultEscrowPub', null) && !body.replace)
+      return bad('کلید از قبل هست. برای جایگزینی باید صریح بگویید.', 409);
+    await setSetting(env, 'vaultEscrowPub', body.pub);
+    await setSetting(env, 'vaultEscrowPriv', body.priv);
+    await log(env, 'escrow-key', '', body.replace ? 'replace' : 'new');
+    return json({ ok: true });
+  }
+
+  if (p === '/log' && m === 'GET') {
+    try {
+      const rows = await all(env, 'SELECT at, what, slug, note FROM admin_log ORDER BY at DESC LIMIT 100');
+      return json({ ok: true, items: rows });
+    } catch (e) { return json({ ok: true, items: [] }); }
+  }
+
+  return bad('مسیر پیدا نشد.', 404);
+}

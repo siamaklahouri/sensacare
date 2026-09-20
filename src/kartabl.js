@@ -201,22 +201,22 @@ export async function renderPanelPage(env, req, panel) {
 
 const enc = new TextEncoder();
 
-const all = async (env, sql, ...b) => (await env.DB.prepare(sql).bind(...b).all()).results || [];
-const one = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).first();
-const run = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).run();
+export const all = async (env, sql, ...b) => (await env.DB.prepare(sql).bind(...b).all()).results || [];
+export const one = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).first();
+export const run = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).run();
 
-const getSetting = async (env, k, d = null) => {
+export const getSetting = async (env, k, d = null) => {
   const r = await one(env, 'SELECT v FROM settings WHERE k=?', k);
   try { return r ? JSON.parse(r.v) : d; } catch { return d; }
 };
-const setSetting = (env, k, v) =>
+export const setSetting = (env, k, v) =>
   run(env, 'INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v',
       k, JSON.stringify(v));
 
-const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), {
+export const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type': 'application/json; charset=utf-8',
                      'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', ...extra } });
-const bad = (msg, status = 400) => json({ error: msg }, status);
+export const bad = (msg, status = 400) => json({ error: msg }, status);
 
 /* ---------- رمز عبور ----------
    مقایسه با زمان ثابت انجام می‌شود تا از روی مدتِ پاسخ نشود حدس زد چند
@@ -247,7 +247,7 @@ export async function hashPassword(password) {
    حدود ۱۱۶ بیت است — برای چیزی که چند دقیقه بعد عوضش می‌کنید بیش از کافی. */
 const PW_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
-function newPassword(groups = 4, per = 5) {
+export function newPassword(groups = 4, per = 5) {
   const need = groups * per;
   /* باقی‌ماندهٔ ساده (b % 56) شانسِ حرف‌های اول را کمی بیشتر می‌کند؛
      بایت‌های بالای این حد را دور می‌ریزیم تا همه برابر باشند. */
@@ -275,7 +275,7 @@ function constantEqual(a, b) {
 /* { ok } یا { error } برمی‌گرداند. اگر خودِ محاسبه شکست بخورد، «رمز اشتباه
    است» جواب نمی‌دهیم: یک بار همین قورت دادنِ خطا باعث شد ساعت‌ها دنبال
    رمزِ درست بگردیم، درحالی‌که ایراد از جای دیگری بود. */
-async function checkPassword(password, stored) {
+export async function checkPassword(password, stored) {
   if (!stored || typeof stored !== 'string') return { error: 'رمز کارتابل روی سرور تنظیم نشده است.', status: 503 };
   const [kind, rounds, salt, want] = stored.split('$');
   if (kind !== 'pbkdf2' || !salt || !want)
@@ -300,7 +300,7 @@ async function hmac(env, body) {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function makeSession(env, panel, days = 30) {
+export async function makeSession(env, panel, days = 30) {
   /* شمارهٔ نسل رمز داخل توکن است: با هر بار عوض شدن رمز بالا می‌رود و
      همهٔ نشست‌های قبلی — روی هر دستگاهی — از کار می‌افتند. */
   const gen = await getSetting(env, panel.keys.gen, 1);
@@ -309,7 +309,7 @@ async function makeSession(env, panel, days = 30) {
   return body + '.' + await hmac(env, body);
 }
 
-async function readSession(env, panel, req) {
+export async function readSession(env, panel, req) {
   const raw = (req.headers.get('Cookie') || '').split(';')
     .map(c => c.trim()).find(c => c.startsWith(panel.cookie + '='));
   if (!raw) return null;
@@ -329,7 +329,7 @@ async function readSession(env, panel, req) {
   } catch (e) { return null; }
 }
 
-const cookieHeader = (panel, value, days) =>
+export const cookieHeader = (panel, value, days) =>
   `${panel.cookie}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${days * 86400}`;
 
 /* ---------- داده ----------
@@ -635,12 +635,12 @@ const AI_KEY_SETTING = 'kartablAiKey';
 
 const TG = t => `https://api.telegram.org/bot${t}`;
 
-async function kartablBot(env) {
+export async function kartablBot(env) {
   return { token: await getSetting(env, 'kartablBotToken', ''),
            chat: await getSetting(env, 'kartablChatId', '') };
 }
 
-async function tgMessage(token, chat, text) {
+export async function tgMessage(token, chat, text) {
   try {
     const r = await fetch(`${TG(token)}/sendMessage`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -841,6 +841,23 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
        وسط کار بیرون نیفتد؛ بقیه باید دوباره وارد شوند. */
     return json({ ok: true }, 200,
       { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 30), 30) });
+  }
+
+  /* ---------- کلیدِ اضطراریِ ادمین ----------
+     ادمین یک جفت کلید دارد: عمومی روی سرور و خصوصی هم روی سرور ولی
+     قفل‌شده با عبارتی که فقط در مرورگرِ خودش تایپ می‌شود. این‌جا
+     مرورگرِ کاربر کلیدِ عمومی را می‌گیرد، رمزِ دیتای شخصی‌اش را با آن
+     می‌پیچد و بستهٔ پیچیده را پس می‌فرستد.
+
+     نتیجه‌اش این است: سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند؛
+     ادمین با عبارتِ خودش می‌تواند. */
+  if (p === '/escrow-pub' && m === 'GET')
+    return json({ ok: true, pub: await getSetting(env, 'vaultEscrowPub', null) });
+
+  if (p === '/escrow' && m === 'POST') {
+    if (!body.bundle || !body.bundle.cipher) return bad('بستهٔ کلید ناقص است.');
+    await setSetting(env, 'escrow:' + panel.slug, body.bundle);
+    return json({ ok: true });
   }
 
   /* ---------- کد بازیابیِ «دیتای شخصی» ----------
