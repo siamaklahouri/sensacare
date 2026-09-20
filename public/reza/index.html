@@ -475,6 +475,15 @@ try{ if(localStorage.getItem("reza-planner-v1" + ":theme") === "dark")
     font-family:var(--font-display); font-size:14.5px; margin:0 0 14px; color:var(--ink);
     display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--paper-deep);
   }
+  /* دکمهٔ «کد بازیابی دارم» روی صفحهٔ قفل — نباید به چشمِ دکمهٔ خطرناک
+     (پاک‌سازی) بیاید، پس رنگِ خنثی دارد. */
+  .lock-screen .ls-recover{
+    margin-top:10px; background:transparent; border:1px solid var(--line);
+    border-radius:9px; padding:8px 14px; cursor:pointer;
+    font-family:var(--font-body); font-size:12px; color:var(--ink-soft);
+  }
+  .lock-screen .ls-recover:hover{ border-color:var(--brass); color:var(--ink); }
+
   /* ---------- قابِ نمودارها ----------
      قبلاً بوم مستقیم توی کارت بود و فقط یک max-height داشت. Chart.js بوم را
      به اندازهٔ عرضِ کارت مربع می‌کرد، بعد CSS ارتفاعش را می‌بُرید و کتابخانه
@@ -4451,11 +4460,17 @@ function lockPersonal(){
 async function resetPersonalVault(){
   if(!confirm("با این کار همه‌ی داده‌های این بخش (شرکت‌ها و اقساط) برای همیشه پاک می‌شود و قابل بازگشت نیست. مطمئنید؟")) return;
   state.personalVault = null;
+  state.personalRecovery = null;   /* پاکتِ بازیابی هم با صندوق می‌رود */
   lockPersonal();
   savePersonalSheet();
 }
 
 function savePersonalSheet(){
+  /* آینهٔ اکسل اختیاری است و کتابخانه‌اش تنبل بار می‌شود. بدون این محافظ،
+     ذخیرهٔ صندوق یک استثنای بی‌صاحب می‌انداخت: خودِ داده سرِ جایش ذخیره
+     شده بود (scheduleSave قبلش اجرا می‌شود) و فقط همین آینه عقب می‌ماند،
+     ولی هیچ‌کس خبردار نمی‌شد چون هیچ‌کس این promise را نمی‌گرفت. */
+  if(typeof XLSX === "undefined") return;
   const blob = state.personalVault ? JSON.stringify(state.personalVault) : "";
   ensureDbWorkbook().Sheets["PersonalVault"] = XLSX.utils.aoa_to_sheet([["EncryptedBlob"],[blob]]);
   scheduleDbWrite();
@@ -4464,6 +4479,119 @@ function parsePersonalVaultSheet(wb){
   const rows = sheetToMatrix(wb, "PersonalVault");
   if(!rows || !rows[1] || !rows[1][0]) return null;
   try{ return JSON.parse(rows[1][0]); }catch(e){ return null; }
+}
+
+/* ---------- بازیابیِ رمزِ «دیتای شخصی» ----------
+   سرور کلیدِ این بخش را ندارد و نمی‌تواند رمزِ تازه بسازد؛ هر رمزِ تازه‌ای
+   فقط یک صندوقِ خالی باز می‌کند. پس «فراموشی» این‌جا فقط با چیزی کار
+   می‌کند که از قبل خودتان ساخته باشید:
+
+   موقع ساختنِ کد، همین‌جا در مرورگر یک کد تصادفی ساخته می‌شود، رمزِ فعلی
+   با آن قفل می‌شود، و پاکتِ قفل‌شده کنار بقیهٔ داده می‌ماند. خودِ کد
+   هیچ‌جا ذخیره نمی‌شود و فقط یک بار از سرور رد می‌شود تا به تلگرام برسد.
+   یعنی هر کس فقط به دادهٔ سرور برسد، پاکت را دارد و کلیدش را ندارد. */
+
+const VAULT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+function makeVaultRecoveryCode(groups, per){
+  groups = groups || 4; per = per || 5;
+  const need = groups * per;
+  /* باقی‌ماندهٔ ساده شانسِ حرف‌های اول را بیشتر می‌کند؛ بایت‌های اضافه را
+     دور می‌ریزیم تا همه برابر باشند. */
+  const limit = 256 - (256 % VAULT_CODE_ALPHABET.length);
+  const out = [];
+  while(out.length < need){
+    for(const b of crypto.getRandomValues(new Uint8Array(need))){
+      if(b >= limit) continue;
+      out.push(VAULT_CODE_ALPHABET[b % VAULT_CODE_ALPHABET.length]);
+      if(out.length === need) break;
+    }
+  }
+  const parts = [];
+  for(let i=0;i<groups;i++) parts.push(out.slice(i*per,(i+1)*per).join(""));
+  return parts.join("-");
+}
+
+async function wrapVaultPassword(password, code){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await derivePersonalKey(code, salt);   /* همان PBKDF2 با ۱۵۰٬۰۰۰ دور */
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key,
+    new TextEncoder().encode(password));
+  return { salt: b64FromBuf(salt), iv: b64FromBuf(iv), cipher: b64FromBuf(cipher), at: Date.now() };
+}
+
+async function unwrapVaultPassword(envelope, code){
+  const key = await derivePersonalKey(code, bufFromB64(envelope.salt));
+  const buf = await crypto.subtle.decrypt(
+    { name:"AES-GCM", iv:new Uint8Array(bufFromB64(envelope.iv)) }, key, bufFromB64(envelope.cipher));
+  return new TextDecoder().decode(buf);
+}
+
+/* رمز را واقعاً امتحان می‌کنیم، نه اینکه حرفش را باور کنیم */
+async function vaultPasswordWorks(password){
+  if(!state.personalVault || !state.personalVault.cipher) return false;
+  try{
+    const key = await derivePersonalKey(password, bufFromB64(state.personalVault.salt));
+    await crypto.subtle.decrypt(
+      { name:"AES-GCM", iv:new Uint8Array(bufFromB64(state.personalVault.iv)) },
+      key, bufFromB64(state.personalVault.cipher));
+    return true;
+  }catch(e){ return false; }
+}
+
+async function sendVaultRecoveryCode(code){
+  const r = await apiCall("/vault/recovery", { method:"POST", body: JSON.stringify({ code }) });
+  if(!r.ok) throw new Error(r.data.error || "به تلگرام نرسید.");
+}
+
+/* ساختنِ کدِ تازه — از داخلِ صندوقِ باز. رمز را دوباره می‌پرسیم چون
+   خودمان نگهش نداشته‌ایم و برای قفل کردنش لازم است. */
+async function armVaultRecovery(){
+  if(window.KARTABL_OFFLINE){ alert("در نسخهٔ پشتیبان به سرور وصل نیستیم، پس کد فرستاده نمی‌شود."); return; }
+  const had = !!(state.personalRecovery && state.personalRecovery.cipher);
+  if(!confirm(had
+    ? "یک کد بازیابیِ تازه ساخته و به تلگرام فرستاده می‌شود.\nکد قبلی از کار می‌افتد.\n\nادامه بدهم؟"
+    : "یک کد بازیابی ساخته و به همان گفتگوی تلگرامیِ پشتیبان‌ها فرستاده می‌شود.\nاگر روزی رمز این بخش را فراموش کردید، با همان کد باز می‌شود و داده‌ها سرِ جایشان می‌مانند.\n\nادامه بدهم؟")) return;
+
+  const pw = prompt("برای ساختن کد، رمزِ فعلیِ همین بخش را وارد کنید:");
+  if(pw === null) return;
+  if(!(await vaultPasswordWorks(pw))){ alert("❌ رمز درست نیست."); return; }
+
+  try{
+    const code = makeVaultRecoveryCode();
+    const envelope = await wrapVaultPassword(pw, code);
+    /* اول فرستادن، بعد ذخیره: اگر تلگرام نرفت، پاکتی که کدش به دستتان
+       نرسیده روی داده نمی‌نشیند. */
+    await sendVaultRecoveryCode(code);
+    state.personalRecovery = envelope;
+    scheduleSave();
+    renderPersonalView();
+    alert("✓ کد بازیابی به تلگرام رفت. آن پیام را نگه دارید.");
+  }catch(e){
+    alert("نشد — " + (e.message || e));
+  }
+}
+
+/* بازکردن با کد — از صفحهٔ قفل */
+async function recoverVaultWithCode(){
+  const env = state.personalRecovery;
+  if(!env || !env.cipher){ alert("کد بازیابی‌ای برای این بخش ساخته نشده."); return; }
+  const code = prompt("کد بازیابی را از پیام تلگرام این‌جا وارد کنید:");
+  if(code === null) return;
+  let pw;
+  try{
+    pw = await unwrapVaultPassword(env, code.trim());
+  }catch(e){
+    const err = document.getElementById("personalLockError");
+    if(err) err.textContent = "❌ این کد باز نکرد. دوباره از روی پیام تلگرام نگاه کنید.";
+    return;
+  }
+  await tryUnlockPersonal(pw);
+  if(personalUnlocked){
+    alert("✓ باز شد و داده‌ها سرِ جایشان هستند.\nحالا یک رمز تازه بگذارید که یادتان بماند.");
+    openChangePersonalPassword();
+  }
 }
 
 function renderPersonalView(){
@@ -4478,12 +4606,14 @@ function renderPersonalView(){
         <h3>${hasVault ? "ورود به دیتای شخصی" : "تعیین رمز عبور برای دیتای شخصی"}</h3>
         <p>${hasVault
           ? "این بخش رمزنگاری‌شده است. برای مشاهده، رمز عبور را وارد کنید."
-          : "این اولین باری است که به این بخش سر می‌زنید. یک رمز عبور انتخاب کنید — این رمز، کلید رمزنگاری داده‌هاست و در هیچ‌جا ذخیره نمی‌شود؛ اگر آن را فراموش کنید، امکان بازیابی داده‌ها وجود ندارد."}</p>
+          : "این اولین باری است که به این بخش سر می‌زنید. یک رمز عبور انتخاب کنید — این رمز، کلید رمزنگاری داده‌هاست و در هیچ‌جا ذخیره نمی‌شود. بعد از ورود، حتماً از دکمهٔ «ساختن کد بازیابی» یک کد بگیرید؛ وگرنه اگر رمز را فراموش کنید هیچ راهی برای باز کردن این بخش نمی‌ماند."}</p>
         <input type="password" id="personalPwInput" placeholder="رمز عبور" autocomplete="off">
         ${hasVault ? "" : `<input type="password" id="personalPwInput2" placeholder="تکرار رمز عبور" autocomplete="off">`}
         <button type="button" id="personalUnlockBtn">${hasVault ? "🔓 ورود" : "✅ تعیین رمز و ادامه"}</button>
         <div class="ls-error" id="personalLockError"></div>
-        ${hasVault ? `<button type="button" class="ls-reset" id="personalResetBtn">رمز را فراموش کرده‌ام — پاک‌سازی کامل این بخش</button>` : ""}
+        ${hasVault && state.personalRecovery && state.personalRecovery.cipher
+          ? `<button type="button" class="ls-recover" id="personalRecoverBtn">🔐 رمز را فراموش کرده‌ام — کد بازیابی دارم</button>` : ""}
+        ${hasVault ? `<button type="button" class="ls-reset" id="personalResetBtn">${state.personalRecovery && state.personalRecovery.cipher ? "پاک‌سازی کامل این بخش" : "رمز را فراموش کرده‌ام — پاک‌سازی کامل این بخش"}</button>` : ""}
       </div>`;
 
     const doUnlock = ()=>{
@@ -4501,6 +4631,8 @@ function renderPersonalView(){
     wrap.querySelectorAll("#personalPwInput, #personalPwInput2").forEach(inp=>{
       inp.addEventListener("keydown", e=>{ if(e.key==="Enter") doUnlock(); });
     });
+    const recoverBtn = document.getElementById("personalRecoverBtn");
+    if(recoverBtn) recoverBtn.addEventListener("click", recoverVaultWithCode);
     const resetBtn = document.getElementById("personalResetBtn");
     if(resetBtn) resetBtn.addEventListener("click", resetPersonalVault);
     return;
@@ -4514,6 +4646,7 @@ function renderPersonalView(){
         <button type="button" data-ptab="inst" class="${personalActiveTab==='inst'?'active':''}">💳 اقساط</button>
       </div>
       <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-lock-now" id="personalRecoveryBtn">${state.personalRecovery && state.personalRecovery.cipher ? "🔐 کد بازیابی تازه" : "🔐 ساختن کد بازیابی"}</button>
         <button type="button" class="btn-lock-now" id="personalChangePwBtn">🔑 تغییر رمز</button>
         <button type="button" class="btn-lock-now" id="personalLockBtn">🔒 قفل کن</button>
       </div>
@@ -4525,6 +4658,7 @@ function renderPersonalView(){
   });
   document.getElementById("personalLockBtn").addEventListener("click", lockPersonal);
   document.getElementById("personalChangePwBtn").addEventListener("click", openChangePersonalPassword);
+  document.getElementById("personalRecoveryBtn").addEventListener("click", armVaultRecovery);
 
   if(personalActiveTab === "creds") renderPersonalCreds(); else renderPersonalInstallments();
 }
@@ -4540,7 +4674,26 @@ function openChangePersonalPassword(){
     personalCryptoKey = await derivePersonalKey(np, salt);
     state.personalVault.salt = b64FromBuf(salt);
     await encryptPersonalVault();
-    alert("✓ رمز عبور با موفقیت تغییر کرد.");
+    /* پاکتِ بازیابی رمزِ قبلی را قفل کرده بود، پس با عوض شدن رمز دیگر به
+       درد نمی‌خورد. یا تازه‌اش می‌کنیم یا صریح می‌گوییم که خاموش شد —
+       بدترین حالت این بود که کاربر خیال کند هنوز کد دارد. */
+    if(state.personalRecovery && state.personalRecovery.cipher && !window.KARTABL_OFFLINE){
+      try{
+        const code = makeVaultRecoveryCode();
+        const envelope = await wrapVaultPassword(np, code);
+        await sendVaultRecoveryCode(code);
+        state.personalRecovery = envelope;
+        scheduleSave();
+        alert("✓ رمز عوض شد. کد بازیابیِ تازه هم به تلگرام رفت؛ کد قبلی دیگر کار نمی‌کند.");
+      }catch(e){
+        state.personalRecovery = null;
+        scheduleSave();
+        alert("✓ رمز عوض شد.\n\n⚠️ ولی کد بازیابیِ تازه به تلگرام نرفت (" + (e.message||e) + ")، پس بازیابی خاموش شد. از دکمهٔ «ساختن کد بازیابی» دوباره راهش بیندازید.");
+      }
+      renderPersonalView();
+    } else {
+      alert("✓ رمز عبور با موفقیت تغییر کرد.");
+    }
   })();
 }
 
