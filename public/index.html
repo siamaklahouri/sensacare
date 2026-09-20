@@ -1402,8 +1402,9 @@ footer #fContact ul{margin-top:4px}
 <div class="modal" id="acctModal"><div class="box">
   <div class="acct"><span class="av" id="acctAv">؟</span>
     <div style="flex:1"><b id="acctName">—</b><small id="acctPhone">—</small></div></div>
+  <div id="acctRef" style="display:none"></div>
   <h3 style="font-size:15px;margin-bottom:10px">سفارش‌هات</h3>
-  <div id="acctOrders" style="max-height:38vh;overflow-y:auto"></div>
+  <div id="acctOrders" style="max-height:32vh;overflow-y:auto"></div>
   <div style="display:flex;gap:10px;margin-top:16px">
     <button class="btn-main" id="acctClose" style="flex:1;padding:12px">بستن</button>
     <button class="mini del" id="acctOut" style="padding:12px 18px">خروج</button>
@@ -1905,6 +1906,9 @@ async function boot() {
   bootDone = true;
   applyTexts();
   render(); renderArticles(); updateCart(); paintAcctBtn();
+  /* وضعیت معرفی بعد از رسم صفحه پرسیده می‌شود تا باز شدن سایت را
+     عقب نیندازد. */
+  setTimeout(()=>{try{loadRefState()}catch(_){}} ,0);
 }
 
 /* ============ product art ============ */
@@ -2271,7 +2275,26 @@ function captureSource(){
 function orderSource(){
   try{ return localStorage.getItem(SRC_KEY)||'direct' }catch(e){ return 'direct' }
 }
-captureSource();
+
+/* کد معرف هم مثل منبع، اولین بار گرفته می‌شود و می‌ماند تا خرید.
+   جدا نگه داشته شده چون عمرش فرق می‌کند: منبع بعد از خرید پاک می‌شود،
+   این هم — ولی اگر سرور کد را نپذیرد (مثلاً خریدار تازه‌وارد نباشد)
+   هیچ اتفاقی نمی‌افتد و کاربر هم پیام خطایی نمی‌بیند. */
+const REF_KEY='sensa_ref';
+function captureRef(){
+  try{
+    /* حتماً ref، نه r: پارامتر r از قبل مالِ لینکِ دعوت به نوشتن نظر
+       است و اگر اینجا هم همان را می‌خواندیم، هر کسی که با لینک معرفی
+       می‌آمد یک درخواست بی‌فایدهٔ review-invite هم می‌زد که با ۴۰۱
+       برمی‌گشت. */
+    const v=new URLSearchParams(location.search).get('ref');
+    if(v) localStorage.setItem(REF_KEY, v.trim().toUpperCase().slice(0,12));
+  }catch(e){}
+}
+function orderRef(){
+  try{ return localStorage.getItem(REF_KEY)||'' }catch(e){ return '' }
+}
+captureSource(); captureRef();
 
 let coupon={code:'',amount:0};
 async function applyCoupon(){
@@ -2317,14 +2340,39 @@ function paintSum(){
   /* اگر سبد بعد از گرفتن کد عوض شود، تخفیف نباید از خودِ خرید بیشتر شود */
   /* کد تخفیف و تخفیف پک با هم جمع نمی‌شوند — هرکدام بیشتر بود، همان.
      دقیقاً همان قاعده‌ای که سرور هم اعمال می‌کند. */
-  const off=Math.min(Math.max(coupon.amount||0, packInfo().amount||0), goods);
-  const viaPack = off>0 && off===packInfo().amount && off!==(coupon.amount||0);
+  /* تخفیف معرفی هم در همین یک جایگاه است، پس با آن دو مقایسه می‌شود.
+     سرور حرف آخر را می‌زند؛ این فقط برای این است که خریدار پیش از
+     پرداخت ببیند چه خبر است. */
+  const refOff = refCheck.ok ? Math.min(refCheck.friend||0, goods) : 0;
+  const off=Math.min(Math.max(coupon.amount||0, packInfo().amount||0, refOff), goods);
+  const viaRef  = off>0 && off===refOff && off!==(coupon.amount||0) && off!==packInfo().amount;
+  const viaPack = off>0 && off===packInfo().amount && off!==(coupon.amount||0) && !viaRef;
+  const label = viaRef ? 'معرفی دوستت' : (viaPack ? 'پک' : esc(coupon.code));
+  /* اعتبارِ خودِ کاربر روی تخفیف سوار می‌شود، دقیقاً مثل سرور */
+  const cred = Math.min(myCredit||0, Math.max(0, goods-off));
   $('sum').innerHTML=`
     <div><span>کالاها (${fa(itemCount())} قلم)</span><span>${money(goods)}</span></div>
-    ${off>0?`<div style="color:#166534"><span>تخفیف — ${viaPack?'پک':esc(coupon.code)}</span><span>−${money(off)}</span></div>`:''}
+    ${off>0?`<div style="color:#166534"><span>تخفیف — ${label}</span><span>−${money(off)}</span></div>`:''}
+    ${cred>0?`<div style="color:#166534"><span>اعتبار معرفی تو</span><span>−${money(cred)}</span></div>`:''}
     <div><span>ارسال — ${m.name}</span><span>${ship===0?'رایگان':money(ship)}</span></div>
     ${(settings.freeOver>0&&goods<settings.freeOver)?`<div style="color:var(--red)"><span>تا ارسال رایگان</span><span>${money(settings.freeOver-goods)}</span></div>`:''}
-    <div class="big"><span>جمعاً می‌شه</span><span>${money(Math.max(0,goods-off)+ship)}</span></div>`;
+    <div class="big"><span>جمعاً می‌شه</span><span>${money(Math.max(0,goods-off-cred)+ship)}</span></div>`;
+}
+
+/* وضعیت کد معرف و اعتبار خودمان. یک‌بار پرسیده می‌شود و در حافظه
+   می‌ماند تا هر بار باز شدن سبد یک درخواست تازه نزند. */
+let refCheck={ok:false,friend:0}, myCredit=0;
+async function loadRefState(){
+  if(!ONLINE) return;
+  const code=orderRef();
+  if(code && settings.refOn!==false){
+    try{ const r=await req('/api/referral/check?code='+encodeURIComponent(code));
+         refCheck={ok:!!r.ok, friend:r.friend||0} }catch(e){}
+  }
+  if(authUser() && settings.refOn!==false){
+    try{ const d=await req('/api/me/referral',{asUser:true}); myCredit=d&&d.on?(d.credit||0):0 }catch(e){}
+  }
+  if(refCheck.ok||myCredit>0) try{ paintSum() }catch(e){}
 }
 $('applyCoupon').onclick=applyCoupon;
 $('cCoupon').onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); applyCoupon() } };
@@ -2425,7 +2473,7 @@ async function submitOrder(){
     lat:pin?pin.lat:null, lng:pin?pin.lng:null,
     method:m.id, methodName:m.name, ship, coupon:coupon.code||'',
     items:[...cart].map(([id,q])=>({id,q})),
-    guest: authUser()?0:1, payMethod, src: orderSource()
+    guest: authUser()?0:1, payMethod, src: orderSource(), ref: orderRef()
   };
   let o=null;
   if(ONLINE){
@@ -2436,7 +2484,7 @@ async function submitOrder(){
          items:[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);return{id,n:p.n,c:p.c,pr:p.pr,q}})};
       /* سرور منبع را ثبت کرد؛ پاکش می‌کنیم تا خرید بعدیِ همین آدم
          دوباره به حساب همان کانال نوشته نشود. */
-      try{ localStorage.removeItem(SRC_KEY) }catch(e){}
+      try{ localStorage.removeItem(SRC_KEY); localStorage.removeItem(REF_KEY) }catch(e){}
     }catch(e){ toast(e.message||'ثبت نشد، دوباره امتحان کن.'); return }
   }
   if(!o){
@@ -3377,8 +3425,53 @@ $('acctBtn').onclick=()=>{
       <div style="margin-top:5px">${o.paid?'<span class="paid-badge">پرداخت شده</span>':'<span class="unpaid-badge">در انتظار پرداخت</span>'}</div>
       <div style="font-weight:800;margin-top:5px">${money(o.total)}</div></div>`).join('')
     : '<p class="empty" style="padding:24px 8px">هنوز چیزی سفارش ندادی.</p>';
+  paintRef();
   $('acctModal').classList.add('open');
 };
+
+/* ---------- معرفی به دوست ----------
+   برای این کالا توصیهٔ خصوصی بهترین کانال است. کد و لینک را همین‌جا
+   می‌گذاریم تا فرستادنش یک ضربه باشد.
+
+   متنی که کپی می‌شود عمداً نام هیچ کالایی ندارد — همان دلیلی که
+   پیش‌نمایش لینک را هم خنثی کردیم. */
+async function paintRef(){
+  const box=$('acctRef');
+  box.style.display='none'; box.innerHTML='';
+  if(!ONLINE || settings.refOn===false || !authUser()) return;
+  let d;
+  try{ d=await req('/api/me/referral',{asUser:true}) }catch(e){ return }
+  if(!d || !d.on || !d.code) return;
+  const share=`سِنسا — کاندوم و ژل اصل با ارسال محرمانه و بسته‌بندی بی‌نشان.\nبا این لینک اولین خریدت ${money(d.friend)} کمتر می‌شه:\n${d.link}`;
+  box.style.display='';
+  box.innerHTML=`
+    <div style="background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:14px">
+      <b style="font-size:14px;display:block;margin-bottom:6px">معرفی به دوست</b>
+      <p class="hint" style="margin:0 0 9px">دوستت با این لینک ${money(d.friend)} تخفیف می‌گیره،
+        و وقتی سفارشش پرداخت شد ${money(d.reward)} اعتبار برای تو می‌مونه.</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:9px">
+        <code id="refCode" style="flex:1;font-size:15px;font-weight:800;letter-spacing:2px;
+          background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px;text-align:center">${esc(d.code)}</code>
+        <button class="mini" id="refCopy" style="padding:10px 14px;min-height:40px">کپی لینک</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--body)">
+        <span>دعوت‌شده: <b>${fa(d.used)}</b></span>
+        <span>پاداش گرفته: <b>${fa(d.done)}</b></span>
+        <span>اعتبار تو: <b style="color:var(--red)">${money(d.credit)}</b></span>
+      </div>
+      ${d.credit>0?`<p class="hint" style="margin:8px 0 0">این اعتبار سر خرید بعدی‌ات خودش کم می‌شه.</p>`:''}
+    </div>`;
+  $('refCopy').onclick=async()=>{
+    try{ await navigator.clipboard.writeText(share); toast('لینک کپی شد. برای هرکی خواستی بفرست.') }
+    catch(e){
+      /* مرورگرهای قدیمی‌تر و حالت ناامن کلیپ‌بورد ندارند */
+      const t=document.createElement('textarea'); t.value=share;
+      document.body.appendChild(t); t.select();
+      try{ document.execCommand('copy'); toast('لینک کپی شد.') }catch(_){ toast('کپی نشد؛ کد رو دستی بردار.') }
+      t.remove();
+    }
+  };
+}
 $('acctClose').onclick=()=>$('acctModal').classList.remove('open');
 $('acctOut').onclick=()=>{ store.del('sensa_user'); $('acctModal').classList.remove('open');
   paintAcctBtn(); toast('خارج شدی. هر وقت خواستی برگرد.') };

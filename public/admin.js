@@ -1084,6 +1084,18 @@ function repSet(){
       <div><label>تخفیف پک — چند درصد</label>
         <input id="s_packpct" type="number" value="${settings.packPct??10}">
         <p class="hint">با کد تخفیف جمع نمی‌شود؛ هرکدام بیشتر بود اعمال می‌شود.</p></div>
+      <div><label>معرفی به دوست</label>
+        <select id="s_refon">
+          <option value="0"${settings.refOn?'':' selected'}>خاموش</option>
+          <option value="1"${settings.refOn?' selected':''}>روشن</option>
+        </select>
+        <p class="hint">هر مشتری یک کد می‌گیرد. برای این کالا توصیهٔ خصوصی بهترین کانال است، چون نه بسته می‌شود نه هزینه دارد.</p></div>
+      <div><label>معرفی — تخفیف دوست (تومان)</label>
+        <input id="s_reffriend" type="number" value="${settings.refFriend??50000}">
+        <p class="hint">فقط روی <b>اولین</b> سفارش کسی که تا حالا از اینجا نخریده. با کد تخفیف و تخفیف پک جمع نمی‌شود؛ هرکدام بیشتر بود.</p></div>
+      <div><label>معرفی — اعتبار معرف (تومان)</label>
+        <input id="s_refreward" type="number" value="${settings.refReward??50000}">
+        <p class="hint">فقط وقتی داده می‌شود که پول سفارش دوستش را <b>تأیید کرده باشید</b> — وگرنه می‌شد با سفارش‌های پرداخت‌نشده اعتبار ساخت.</p></div>
       <div><label>نام فروشگاه</label><input id="s_name" value="${esc(settings.shopName)}"></div>
       <div style="grid-column:1/-1"><label>نوار بالای تیتر (صفحهٔ اصلی)</label>
         <input id="s_hpill" value="${esc((settings.hero||{}).pill||HERO_DEFAULT.pill)}">
@@ -1223,6 +1235,9 @@ function repSet(){
                    sub:$('s_hsub').value.trim()};
     settings.packMin=Math.max(0,+$('s_packmin').value||0);
     settings.packPct=Math.max(0,Math.min(90,+$('s_packpct').value||0));
+    settings.refOn=$('s_refon').value==='1';
+    settings.refFriend=Math.max(0,+$('s_reffriend').value||0);
+    settings.refReward=Math.max(0,+$('s_refreward').value||0);
     settings.aiKey=$('s_key').value.trim();
     settings.telegram=$('s_tg').value.trim().replace('@','')||'siamak_la';
     settings.trust={enamad:$('s_enamad').value.trim(),samandehi:$('s_saman').value.trim()};
@@ -1235,7 +1250,9 @@ function repSet(){
       body:{freeOver:settings.freeOver,shopName:settings.shopName,telegram:settings.telegram,
             shipExpress:settings.shipExpress,shipPost:settings.shipPost,trust:settings.trust,
             card:settings.card, contact:settings.contact, hero:settings.hero,
-            packMin:settings.packMin, packPct:settings.packPct}}).catch(()=>{});
+            packMin:settings.packMin, packPct:settings.packPct,
+            refOn:settings.refOn, refFriend:settings.refFriend,
+            refReward:settings.refReward}}).catch(()=>{});
     toast('تنظیمات ذخیره شد.')};
   $('resetBtn').onclick=()=>{if(confirm('محصولات به حالت اولیه برگردد؟')){
     products=JSON.parse(JSON.stringify(DEFAULTS));save();render();updateCart();toast('بازگردانی شد.')}};

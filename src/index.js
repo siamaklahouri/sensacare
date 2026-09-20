@@ -648,6 +648,22 @@ async function markPaid(env, orderId, by) {
   const items = await all(env, 'SELECT * FROM order_items WHERE order_id=?', orderId);
   await notifyAdmins(env, invoiceText(fresh, items, true));
 
+  /* پول این سفارش رسید، پس اگر با کد کسی آمده بود، حالا وقتِ پاداشِ
+     اوست. پیام نام کالا را نمی‌گوید — مثل بقیهٔ پیام‌ها. */
+  try {
+    const paid = await payReferral(env, orderId);
+    if (paid) {
+      const rc = await one(env, 'SELECT * FROM bot_chats WHERE phone=? AND role=?',
+        paid.phone, 'customer');
+      if (rc) await botCall(env, rc.platform, 'sendMessage', {
+        chat_id: rc.chat_id, parse_mode: 'HTML',
+        text: `🎁 کسی با کد معرفی تو خرید کرد.\n` +
+              `<b>${fa(paid.reward)} تومان</b> اعتبار به حسابت اضافه شد؛ ` +
+              `سر خرید بعدی‌ات خودش کم می‌شود.`
+      });
+    }
+  } catch (e) { /* پاداش هیچ‌وقت نباید جلوی تأیید پرداخت را بگیرد */ }
+
   /* اطلاع به مشتری، اگر به ربات پیام داده باشد */
   const c = await one(env, 'SELECT * FROM bot_chats WHERE phone=? AND role=?', o.phone, 'customer');
   if (c) await botCall(env, c.platform, 'sendMessage', {
@@ -685,6 +701,7 @@ async function handleUpdate(env, pf, u) {
       }
     } else if (act === 'cancel') {
       await run(env, "UPDATE orders SET status='لغو شده' WHERE id=?", oid);
+      await refundCredit(env, oid).catch(() => {});
       note = '❌ سفارش لغو شد';
       await notifyAdmins(env, `❌ سفارش <code>${oid}</code> لغو شد.`);
     }
@@ -1069,6 +1086,97 @@ function cleanSource(v) {
   const t = String(v == null ? '' : v).trim().toLowerCase().slice(0, 40)
     .replace(/[^a-z0-9._-]/g, '');
   return t.slice(0, 24) || 'direct';
+}
+
+/* ---------- معرفی به دوست ----------
+
+   کد هرکس یک‌بار ساخته می‌شود و تا همیشه همان می‌ماند. حروفِ اشتباه‌انداز
+   (O و 0 و I و 1) داخلش نیست، چون این کد را آدم‌ها دست‌به‌دست شفاهی هم
+   می‌فرستند. */
+const REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function newRefCode() {
+  return [...crypto.getRandomValues(new Uint8Array(6))]
+    .map(b => REF_ALPHABET[b % REF_ALPHABET.length]).join('');
+}
+
+async function refCodeFor(env, phone) {
+  const have = await one(env, 'SELECT code FROM referrals WHERE phone=?', phone);
+  if (have) return have.code;
+  /* برخورد تقریباً محال است ولی ارزان هم هست که چکش کنیم */
+  for (let i = 0; i < 6; i++) {
+    const code = newRefCode();
+    const taken = await one(env, 'SELECT 1 AS x FROM referrals WHERE code=?', code);
+    if (taken) continue;
+    try {
+      await run(env, 'INSERT INTO referrals(code,phone,created) VALUES(?,?,?)', code, phone, Date.now());
+      return code;
+    } catch (e) { /* مسابقه با درخواست هم‌زمان؟ دوباره می‌خوانیم */
+      const again = await one(env, 'SELECT code FROM referrals WHERE phone=?', phone);
+      if (again) return again.code;
+    }
+  }
+  return null;
+}
+
+/* کد از مرورگر می‌آید پس بی‌اعتماد است: فقط همان الفبای بالا و دقیقاً
+   شش نویسه. */
+function cleanRefCode(v) {
+  const t = String(v == null ? '' : v).trim().toUpperCase().slice(0, 12)
+    .replace(new RegExp(`[^${REF_ALPHABET}]`, 'g'), '');
+  return t.length === 6 ? t : '';
+}
+
+async function refSettings(env) {
+  return {
+    on: !!(await getSetting(env, 'refOn', false)),
+    friend: Math.max(0, Math.floor(Number(await getSetting(env, 'refFriend', 50000)) || 0)),
+    reward: Math.max(0, Math.floor(Number(await getSetting(env, 'refReward', 50000)) || 0)),
+  };
+}
+
+async function creditOf(env, phone) {
+  const r = await one(env, 'SELECT amount FROM referral_credit WHERE phone=?', phone);
+  return Math.max(0, Math.floor(Number(r?.amount) || 0));
+}
+
+/* معرفی وقتی معتبر است که: قابلیت روشن باشد، کد مال کسِ دیگری باشد، و
+   خریدار تازه‌وارد باشد. شرط سوم مهم‌ترین است — بدون آن هرکس می‌توانست
+   کد خودش را به خودش بدهد یا مشتری‌های قدیمی را دوباره تخفیف‌دار کند. */
+async function refFor(env, rawCode, phone, goods) {
+  const cfg = await refSettings(env);
+  if (!cfg.on) return null;
+  const code = cleanRefCode(rawCode);
+  if (!code) return null;
+  const row = await one(env, 'SELECT * FROM referrals WHERE code=?', code);
+  if (!row || !row.phone || row.phone === phone) return null;
+  const had = await one(env, 'SELECT 1 AS x FROM orders WHERE phone=? LIMIT 1', phone);
+  if (had) return null;
+  return {
+    code, referrer: row.phone,
+    friendOff: Math.min(cfg.friend, goods),
+    reward: cfg.reward,
+  };
+}
+
+/* پاداشِ معرف فقط وقتی داده می‌شود که پول سفارش دوستش واقعاً رسیده
+   باشد، وگرنه می‌شد با سفارش‌های پرداخت‌نشده اعتبار ساخت. */
+async function payReferral(env, orderId) {
+  const u = await one(env, 'SELECT * FROM referral_uses WHERE order_id=? AND rewarded=0', orderId);
+  if (!u || !u.referrer_phone || !(u.reward > 0)) return null;
+  await run(env, `INSERT INTO referral_credit(phone,amount) VALUES(?,?)
+    ON CONFLICT(phone) DO UPDATE SET amount = amount + excluded.amount`, u.referrer_phone, u.reward);
+  await run(env, 'UPDATE referral_uses SET rewarded=1 WHERE order_id=?', orderId);
+  return { phone: u.referrer_phone, reward: u.reward };
+}
+
+/* سفارشی که لغو شد، اعتباری که پایش خرج شده بود باید برگردد. */
+async function refundCredit(env, orderId) {
+  const r = await one(env, 'SELECT * FROM credit_use WHERE order_id=? AND refunded=0', orderId);
+  if (!r || !(r.amount > 0) || !r.phone) return;
+  await run(env, `INSERT INTO referral_credit(phone,amount) VALUES(?,?)
+    ON CONFLICT(phone) DO UPDATE SET amount = amount + excluded.amount`, r.phone, r.amount);
+  await run(env, 'UPDATE credit_use SET refunded=1 WHERE order_id=?', orderId);
 }
 
 /* ---------- کد تخفیف ----------
@@ -1677,6 +1785,9 @@ export default {
             texts: await getSetting(env, 'texts', {}),
             packMin: await getSetting(env, 'packMin', 3),
             packPct: await getSetting(env, 'packPct', 10),
+            refOn: !!(await getSetting(env, 'refOn', false)),
+            refFriend: await getSetting(env, 'refFriend', 50000),
+            refReward: await getSetting(env, 'refReward', 50000),
             ratings: await ratingMap(env),
             articleProducts: Object.fromEntries(
               (await all(env, 'SELECT slug, ids FROM article_products')).map(r => [r.slug, r.ids || ''])),
@@ -1819,6 +1930,41 @@ export default {
             body.name ?? null, body.city ?? null, body.address ?? null, body.postal ?? null, s.phone);
           return json({ ok: true });
         }
+      }
+
+      /* کد معرفیِ خودِ کاربر و اعتبارش. ورود لازم است، پس کسی نمی‌تواند
+         کد دیگری را بخواند. شمارهٔ کسانی که دعوت شده‌اند هیچ‌جا برگردانده
+         نمی‌شود — فقط تعدادشان. */
+      /* فقط می‌گوید این کد وجود دارد یا نه و تخفیفش چقدر است — نه اینکه
+         مال کیست. بدون این، کسی که با لینک دوستش آمده تا لحظهٔ ثبت
+         سفارش نمی‌فهمد تخفیفی در کار هست، و همان‌جا می‌رود. */
+      if (p === '/api/referral/check' && m === 'GET') {
+        const rl = await rateLimit(env, 'refchk:' + clientIp(req), 30, 600);
+        if (!rl.ok) return tooMany(rl);
+        const cfg = await refSettings(env);
+        const code = cleanRefCode(url.searchParams.get('code'));
+        if (!cfg.on || !code) return json({ ok: false });
+        const row = await one(env, 'SELECT 1 AS x FROM referrals WHERE code=?', code);
+        return json({ ok: !!row, friend: row ? cfg.friend : 0 });
+      }
+
+      if (p === '/api/me/referral' && m === 'GET') {
+        const s2 = await asUser(env, req);
+        if (!s2) return bad('unauthorized', 401);
+        const cfg = await refSettings(env);
+        if (!cfg.on) return json({ on: false });
+        const code = await refCodeFor(env, s2.phone);
+        const host = env.PUBLIC_HOST || url.host;
+        const stat = await one(env,
+          `SELECT COUNT(*) used, COALESCE(SUM(rewarded),0) done
+             FROM referral_uses WHERE referrer_phone=?`, s2.phone);
+        return json({
+          on: true, code,
+          link: code ? `https://${host}/?ref=${code}` : '',
+          credit: await creditOf(env, s2.phone),
+          friend: cfg.friend, reward: cfg.reward,
+          used: stat?.used || 0, done: stat?.done || 0
+        });
       }
 
       /* ---------------- سفارش ---------------- */
@@ -2021,10 +2167,21 @@ export default {
         if (!cp.ok) return bad(cp.error, 409);
         const qty = items.reduce((n, i) => n + i.q, 0);
         const pack = await packOff(env, qty, goods);
-        /* کد تخفیف و تخفیف پک روی هم جمع نمی‌شوند — هرکدام بیشتر بود. */
-        const discount = Math.max(cp.amount || 0, pack);
-        const usedCoupon = (cp.amount || 0) >= pack && cp.code ? cp.code : '';
-        const total = Math.max(0, goods - discount) + ship;
+        /* معرفی به دوست: تخفیفِ اولین خریدِ کسی که با کد دوستش آمده.
+           این هم مثل کد تخفیف و تخفیف پک، در همان یک جایگاه می‌نشیند —
+           هرکدام بیشتر بود، نه جمعشان. */
+        const ref = await refFor(env, body.ref, body.phone, goods);
+        /* کد تخفیف و تخفیف پک و تخفیف معرفی روی هم جمع نمی‌شوند. */
+        const discount = Math.max(cp.amount || 0, pack, ref?.friendOff || 0);
+        const usedCoupon = (cp.amount || 0) >= Math.max(pack, ref?.friendOff || 0) && cp.code ? cp.code : '';
+
+        /* اعتبارِ خودِ خریدار (از معرفی‌های قبلی‌اش) جداست و روی تخفیف
+           سوار می‌شود، چون پولی است که قبلاً برایش کار کرده. بیشتر از
+           باقی‌ماندهٔ کالا خرج نمی‌شود تا جمع منفی نشود. */
+        const roomForCredit = Math.max(0, goods - discount);
+        const credit = Math.min(await creditOf(env, body.phone), roomForCredit);
+
+        const total = Math.max(0, goods - discount - credit) + ship;
         /* شناسه قبلاً «S» + هشت رقمِ آخرِ ساعت بود، یعنی قابل حدس.
            هرکس می‌توانست شناسه‌ها را امتحان کند و ببیند دیگران چه خریده‌اند —
            برای فروشگاهی که تمام حرفش محرمانه بودن است، بدترین نشتی. */
@@ -2064,6 +2221,20 @@ export default {
           if (usedCoupon) await run(env, 'UPDATE coupons SET used = used + 1 WHERE code=?', usedCoupon);
         }
 
+        /* معرفی و اعتبار، بعد از اینکه سفارش قطعی شد. */
+        if (ref) await run(env, `INSERT OR REPLACE INTO referral_uses
+          (order_id,code,referrer_phone,friend_phone,friend_off,reward,rewarded,created)
+          VALUES(?,?,?,?,?,?,0,?)`,
+          id, ref.code, ref.referrer, body.phone,
+          discount === ref.friendOff ? ref.friendOff : 0, ref.reward, Date.now()).catch(() => {});
+
+        if (credit > 0) {
+          await run(env, 'UPDATE referral_credit SET amount = MAX(0, amount - ?) WHERE phone=?',
+            credit, body.phone);
+          await run(env, 'INSERT OR REPLACE INTO credit_use(order_id,phone,amount,refunded) VALUES(?,?,?,0)',
+            id, body.phone, credit);
+        }
+
         /* منبع سفارش. هیچ‌وقت نباید جلوی ثبت سفارش را بگیرد، پس خطایش
            بلعیده می‌شود. */
         await run(env, 'INSERT OR REPLACE INTO order_source(order_id,source,created) VALUES(?,?,?)',
@@ -2073,8 +2244,9 @@ export default {
           await run(env, 'INSERT OR REPLACE INTO order_extras(order_id,wants_invoice) VALUES(?,1)', id);
 
         ctx.waitUntil(sendInvoice(env, id).catch(e => console.log('invoice', e.message)));
-        return json({ ok: true, id, invoice, goods, ship, discount,
-          coupon: usedCoupon, pack: discount > 0 && !usedCoupon, total });
+        return json({ ok: true, id, invoice, goods, ship, discount, credit,
+          referral: ref ? ref.friendOff : 0,
+          coupon: usedCoupon, pack: discount > 0 && !usedCoupon && !ref, total });
       }
 
       if (p.startsWith('/api/orders/') && m === 'GET') {
@@ -2322,6 +2494,9 @@ export default {
           /* لحظه‌ای که مشتری بیشترین کنجکاوی را دارد همین است، پس اگر
              به ربات پیام داده باشد خبرش می‌کنیم. */
           const newStatus = body.status ?? before?.status;
+          /* اعتباری که پای این سفارش خرج شده بود، با لغو شدنش برمی‌گردد */
+          if (newStatus === 'لغو شده' && before?.status !== 'لغو شده')
+            await refundCredit(env, oid).catch(() => {});
           const newTrack = body.tracking ?? before?.tracking;
           const changed = before && (newStatus !== before.status || newTrack !== before.tracking);
           if (changed && before.phone) {
