@@ -342,9 +342,14 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
     ).bind(k, JSON.stringify(v ?? null), rev, now));
   }
   if (stmts.length) {
-    /* عکسِ نسخهٔ قبلی را پیش از بازنویسی نگه می‌داریم. اگر ذخیره خودش
-       نشد، عکس هم نباید بماند، پس اول عکس و بعد نوشتن در یک batch. */
-    stmts.unshift(...(await histStatements(env, panel, current, now)));
+    /* عکسِ نسخهٔ قبلی را پیش از بازنویسی نگه می‌داریم — ولی جدا، نه در
+       همان batch. اگر جدولِ تاریخچه نباشد یا نوشتنش بگیرد، نباید ذخیرهٔ
+       خودِ کاربر را بشکند: مکانیزمِ پشتیبان هیچ‌وقت نباید مسیرِ اصلی را
+       زمین بزند. نبودنِ یک عکس بد است، از کار افتادنِ ذخیره فاجعه. */
+    try {
+      const h = await histStatements(env, panel, current, now);
+      if (h.length) await env.DB.batch(h);
+    } catch (e) { console.log('kartabl-hist', e.message); }
     await env.DB.batch(stmts);
   }
   return { rev, updated: now };
@@ -379,6 +384,12 @@ async function histStatements(env, panel, current, now) {
 
 /* فهرستِ عکس‌ها و برگرداندنِ یکی از آن‌ها */
 export async function listKartablHistory(env, panel) {
+  try {
+    return await historyRows(env, panel);
+  } catch (e) { return []; }      /* جدول نبود؟ فهرست خالی، نه خطا */
+}
+
+async function historyRows(env, panel) {
   const rows = await all(env,
     `SELECT id, k, rev, at, length(v) AS size FROM kartabl_hist
      WHERE k IN (?,?) ORDER BY at DESC LIMIT 120`, panel.keys.state, panel.keys.db);
