@@ -615,3 +615,16 @@ CREATE TABLE IF NOT EXISTS credit_use(
   phone TEXT,
   amount INTEGER DEFAULT 0,
   refunded INTEGER DEFAULT 0);
+
+/* ۲۹ روشن کردن «معرفی به دوست» روی سرور.
+
+   DO NOTHING عمدی است و مهم: این فایل هر بار موقع استقرار اجرا می‌شود.
+   اگر UPDATE می‌نوشتیم، هر بار که بعداً از پنل خاموشش می‌کردید،
+   استقرار بعدی دوباره روشنش می‌کرد. با این شکل، فقط همان یک‌بارِ اول
+   که کلید اصلاً وجود ندارد نوشته می‌شود و از آن به بعد هرچه در پنل
+   انتخاب کنید همان می‌ماند.
+
+   مبلغ‌ها هم همین‌طور — پیش‌فرض ۵۰ هزار، و تغییرشان از پنل. */
+INSERT INTO settings(k,v) VALUES ('refOn', 'true')   ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('refFriend', '50000') ON CONFLICT(k) DO NOTHING;
+INSERT INTO settings(k,v) VALUES ('refReward', '50000') ON CONFLICT(k) DO NOTHING;
