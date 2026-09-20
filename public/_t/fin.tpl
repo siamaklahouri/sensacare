@@ -11,6 +11,11 @@
 try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
   document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
 </script>
+<script>
+/* چک‌لیستِ آمادهٔ شغلی که ادمین برای این کارتابل انتخاب کرده.
+   فقط دانهٔ اولیه است: بعد از اولین ذخیره، داده مالِ کاربر است. */
+window.KARTABL_JOB = {{JOBSEED}};
+</script>
 <title>{{TITLE}}</title>
 <style>
 /* ---------- صفحهٔ ورود کارتابل ----------
@@ -3503,7 +3508,8 @@ function setupBudget(){
   if(toggle) toggle.addEventListener("change", ()=>{ editMode.budget = toggle.checked; renderBudget(); });
 }
 /* ================= Monthly Checklist + Daily Plan (per-month state) ================= */
-const CATEGORIES = ["صورت‌های مالی","مطالبات و وصول","پرداخت به تامین‌کنندگان","حقوق و دستمزد","مالیات و بیمه","بودجه و گزارش‌گیری","بانک و نقدینگی","سایر"];
+const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
+  || ["صورت‌های مالی","مطالبات و وصول","پرداخت به تامین‌کنندگان","حقوق و دستمزد","مالیات و بیمه","بودجه و گزارش‌گیری","بانک و نقدینگی","سایر"];
 const STATUS = ["انجام نشده","در حال انجام","انجام شد"];
 const PRIORITY = ["بالا","متوسط","پایین"];
 

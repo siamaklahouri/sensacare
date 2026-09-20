@@ -15,6 +15,7 @@
    برود، آن بخش باز نمی‌شود. */
 
 import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from './kartabl-xlsx.js';
+import { jobSeed } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 
@@ -118,6 +119,7 @@ export function panelFromRow(row) {
            icon: c.icon, store: c.store, idb: c.idb, dbcache: c.dbcache,
            filejson: c.filejson, filexlsx: c.filexlsx },
     keys: c.keys,
+    job: c.job || '',
     folder: c.folder,
     files: { json: c.filejson, xlsx: c.filexlsx, html: c.filehtml },
     zip: stamp => `${c.zip}${stamp}.zip`,
@@ -170,6 +172,9 @@ export async function renderPanelPage(env, req, panel) {
   html = html.replace(new RegExp('<!--' + drop + '-->[\\s\\S]*?<!--/' + drop + '-->', 'g'), '');
   html = html.replace(/<!--\/?(?:IT|GEN)-->/g, '');
   const t = panel.tpl;
+  /* دانهٔ چک‌لیست جداگانه جاسازی می‌شود چون JSON است، نه متنِ ساده:
+     از esc() رد نمی‌شود وگرنه گیومه‌هایش خراب می‌شود. */
+  html = html.replaceAll('{{JOBSEED}}', jobSeed(panel.job));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],

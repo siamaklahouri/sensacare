@@ -11,6 +11,11 @@
 try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
   document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
 </script>
+<script>
+/* چک‌لیستِ آمادهٔ شغلی که ادمین برای این کارتابل انتخاب کرده.
+   فقط دانهٔ اولیه است: بعد از اولین ذخیره، داده مالِ کاربر است. */
+window.KARTABL_JOB = {{JOBSEED}};
+</script>
 <title>{{TITLE}}</title>
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
@@ -1858,7 +1863,8 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
 <script>
 const STATUS = ["انجام نشده","در حال انجام","انجام شد"];
 const PRIORITY = ["بالا","متوسط","پایین"];
-const CATEGORIES = ["بکاپ‌گیری","سرورها و زیرساخت","امنیت سایبری","شبکه","پشتیبانی کاربران","لایسنس و تمدیدها","مانیتورینگ","مستندسازی","سایر"];
+const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
+  || ["بکاپ‌گیری","سرورها و زیرساخت","امنیت سایبری","شبکه","پشتیبانی کاربران","لایسنس و تمدیدها","مانیتورینگ","مستندسازی","سایر"];
 
 /* ---------- Resilient Chart.js loader (tries several mirrors in case one is blocked) ---------- */
 const CHART_CDN_URLS = [
@@ -1934,7 +1940,10 @@ const DEFAULT_STATE = {
   meta:{ month:"", year:"" },
   remoteChecks:{},
   remoteCheckDates: Array.from({length:15}, ()=>""),
-  tasks:[
+  /* شغلِ انتخاب‌شده اگر چک‌لیستِ خودش را داشته باشد، همان می‌نشیند. */
+  tasks: (window.KARTABL_JOB && window.KARTABL_JOB.tasks)
+    ? JSON.parse(JSON.stringify(window.KARTABL_JOB.tasks))
+    : [
     {category:"بکاپ‌گیری", task:"بررسی صحت بکاپ شبانه‌ی سرورها", owner:"کارشناس زیرساخت", deadline:1, status:"انجام شد", priority:"بالا", note:"نمونه تکمیل‌شده"},
     {category:"بکاپ‌گیری", task:"تست بازیابی اطلاعات (Restore Test) از بکاپ", owner:"مدیر IT", deadline:15, status:"انجام نشده", priority:"بالا", note:""},
     {category:"سرورها و زیرساخت", task:"بررسی سلامت و منابع سرورها (CPU/RAM/Disk)", owner:"کارشناس زیرساخت", deadline:5, status:"انجام نشده", priority:"بالا", note:""},
