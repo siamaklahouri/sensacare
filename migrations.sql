@@ -684,3 +684,13 @@ INSERT OR IGNORE INTO planners(slug,name,kind,cfg,created) VALUES
     'keys', json_object('state','reza:state','db','reza:db','pass','rezaPassHash',
       'gen','rezaPassGen','last','rezaLastBackup','reset','rezaPassReset')
   ), 0);
+
+-- ۲۹ | بخش‌های «دیتای شخصی» هر کارتابل
+-- فهرستِ بخش‌ها تنظیمات است نه محتوا، پس رمزنگاری نمی‌شود و ادمین
+-- تعیینش می‌کند؛ محتوای هر بخش همچنان با رمزِ خودِ کاربر قفل است.
+-- هر بخش یک «نوع» دارد (شکلِ جدول) و یک «عنوان» دلخواه.
+-- کارتابل‌های فعلی همان دو بخشِ قبلی را می‌گیرند تا چیزی عوض نشود.
+UPDATE planners SET cfg = json_set(cfg, '$.vault', json_array(
+  json_object('id','creds','type','creds','title','شرکت‌های من'),
+  json_object('id','inst', 'type','inst', 'title','اقساط')
+)) WHERE json_extract(cfg, '$.vault') IS NULL;
