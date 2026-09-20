@@ -973,6 +973,33 @@ function funnelBox(f){
   </div>`;
 }
 
+/* ---------- سفارش‌ها به تفکیک منبع ----------
+   «این خرید از کجا آمد؟» تا حالا جوابی نداشت. حالا هر سفارش با یک کلمه
+   ثبت می‌شود: برچسبی که خودمان در لینک گذاشته‌ایم، یا دامنهٔ سایتی که
+   مشتری از آن آمده، یا direct.
+
+   ستون درآمد مهم‌تر از ستون تعداد است: کانالی که ده سفارش کوچک می‌آورد
+   با کانالی که سه سفارش بزرگ می‌آورد یکی نیست. */
+const SRC_NAME={direct:'مستقیم',telegram:'تلگرام','t.me':'تلگرام',instagram:'اینستاگرام',
+  'google.com':'گوگل','www.google.com':'گوگل',bale:'بله','web.bale.ai':'بله',
+  whatsapp:'واتساپ','api.whatsapp.com':'واتساپ','نامشخص':'نامشخص (پیش از این قابلیت)'};
+function sourceBox(rows){
+  rows=rows||[];
+  const totalN=rows.reduce((a,r)=>a+r.n,0);
+  return `<div class="box"><h3>سفارش‌ها از کجا آمدند</h3>
+    ${rows.length
+      ? `<table><thead><tr><th>منبع</th><th>سفارش</th><th>سهم</th><th>فروش</th></tr></thead><tbody>
+         ${rows.map(r=>`<tr><td>${esc(SRC_NAME[r.src]||r.src)}</td><td>${fa(r.n)}</td>
+           <td>${fa(totalN?Math.round(r.n/totalN*100):0)}٪</td><td>${money(r.rev)}</td></tr>`).join('')}
+         </tbody></table>`
+      : '<p class="empty">هنوز سفارشی ثبت نشده.</p>'}
+    <p class="hint" style="margin-top:10px">برای اینکه یک کانال را جدا بسنجید، لینکش را با
+      برچسب بفرستید — مثلاً <code>sensacare.ir/?s=telegram</code> یا <code>?s=post-mordad</code>.
+      برچسب همان اولین بار ذخیره می‌شود، پس اگر مشتری بعداً مستقیم برگردد و بخرد،
+      باز هم به حساب همان کانال نوشته می‌شود.</p>
+  </div>`;
+}
+
 function repStats(){
   C.innerHTML='<div class="box"><p class="empty">در حال خواندن آمار…</p></div>';
   if(!ONLINE){ C.innerHTML='<div class="box"><p class="empty">آمار فقط وقتی به سرور وصل باشید کار می‌کند.</p></div>'; return }
@@ -994,6 +1021,7 @@ function repStats(){
         ${statBar((d.byDay||[]).slice(-14), r=>new Date(r.day).toLocaleDateString('fa-IR'), r=>r.v)}</div>
       <div class="box"><h3>کدام صفحه‌ها</h3>
         ${statBar(d.byKind||[], r=>KIND[r.kind]||r.kind, r=>r.v)}</div>
+      ${sourceBox(d.bySource)}
       <div class="box"><h3>پربازدیدترین محصولات</h3>
         ${statBar(d.topProducts||[], r=>r.name||r.k, r=>r.v)}</div>
       <div class="box"><h3>استفاده از کدهای تخفیف</h3>

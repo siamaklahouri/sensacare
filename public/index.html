@@ -2242,6 +2242,37 @@ function paintPays(){
 }
 
 /* کد تخفیف. مقدارش را سرور می‌گوید، نه اینجا — این فقط نمایش است. */
+/* ---------- منبع بازدید ----------
+   «این خرید از کجا آمد؟» تا امروز جوابی نداشت، یعنی هر معرفی یا تبلیغی
+   در تاریکی انجام می‌شد.
+
+   اولین منبع نگه داشته می‌شود نه آخرین: کسی که از تلگرام آمده، مقاله‌ای
+   خوانده و سه روز بعد مستقیم برگشته و خریده، همچنان خریدِ تلگرام است.
+   بعد از ثبت اولین سفارش پاک می‌شود تا خریدِ بعدیِ همان آدم دوباره به
+   حساب همان کانال نوشته نشود.
+
+   هیچ چیزِ شخصی‌ای اینجا نیست: فقط یک کلمه، و فقط در مرورگر خودش. */
+const SRC_KEY='sensa_src';
+function captureSource(){
+  try{
+    if(localStorage.getItem(SRC_KEY)) return;          /* اولین منبع می‌ماند */
+    const q=new URLSearchParams(location.search);
+    let v=q.get('s')||q.get('utm_source')||'';
+    if(!v && document.referrer){
+      try{
+        const h=new URL(document.referrer).hostname.replace(/^www\./,'');
+        /* بازگشت از خود سایت منبع نیست */
+        if(h && h!==location.hostname) v=h;
+      }catch(e){}
+    }
+    localStorage.setItem(SRC_KEY, v||'direct');
+  }catch(e){ /* مرورگر خصوصی؟ بی‌خیال؛ نباید چیزی بشکند */ }
+}
+function orderSource(){
+  try{ return localStorage.getItem(SRC_KEY)||'direct' }catch(e){ return 'direct' }
+}
+captureSource();
+
 let coupon={code:'',amount:0};
 async function applyCoupon(){
   const code=$('cCoupon').value.trim().toUpperCase(), msg=$('couponMsg');
@@ -2394,7 +2425,7 @@ async function submitOrder(){
     lat:pin?pin.lat:null, lng:pin?pin.lng:null,
     method:m.id, methodName:m.name, ship, coupon:coupon.code||'',
     items:[...cart].map(([id,q])=>({id,q})),
-    guest: authUser()?0:1, payMethod
+    guest: authUser()?0:1, payMethod, src: orderSource()
   };
   let o=null;
   if(ONLINE){
@@ -2403,6 +2434,9 @@ async function submitOrder(){
       o={id:r.id, invoice:r.invoice, at:Date.now(), created:Date.now(), ...payload, methodName:m.name,
          goods:r.goods, total:r.total, status:'ثبت شده',
          items:[...cart].map(([id,q])=>{const p=products.find(x=>x.id===id);return{id,n:p.n,c:p.c,pr:p.pr,q}})};
+      /* سرور منبع را ثبت کرد؛ پاکش می‌کنیم تا خرید بعدیِ همین آدم
+         دوباره به حساب همان کانال نوشته نشود. */
+      try{ localStorage.removeItem(SRC_KEY) }catch(e){}
     }catch(e){ toast(e.message||'ثبت نشد، دوباره امتحان کن.'); return }
   }
   if(!o){

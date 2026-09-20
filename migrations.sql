@@ -552,3 +552,21 @@ INSERT INTO settings(k,v) VALUES
   ('rezaPassHash', '"pbkdf2$100000$AFgRjojVxT4ePH6p6tAXKw==$3zOiPHVregzu2bvX5A0xc1ypJsLDeFSGA00mUXdEoTU="')
   ON CONFLICT(k) DO NOTHING;
 INSERT INTO settings(k,v) VALUES ('rezaPassGen', '1') ON CONFLICT(k) DO NOTHING;
+
+/* ۲۷ منبعِ هر سفارش — «این خرید از کجا آمد؟»
+
+   تا امروز هیچ‌جا ثبت نمی‌شد. یعنی اگر جایی تبلیغ یا معرفی می‌شد، هیچ
+   راهی نبود که بفهمیم کدامش به فروش رسید و کدام فقط بازدید آورد.
+
+   ستون تازه به orders اضافه نمی‌کنیم چون این فایل هر بار موقع استقرار
+   اجرا می‌شود و ALTER TABLE بار دوم کل استقرار را می‌خواباند؛ مثل
+   order_discounts در جدول خودش می‌نشیند.
+
+   مقدارش یا برچسبی است که خودمان در لینک گذاشته‌ایم (?s=telegram) یا
+   دامنهٔ ارجاع‌دهنده (google) یا direct. هیچ شناسهٔ شخصی‌ای اینجا
+   نمی‌آید — فقط همین یک کلمه. */
+CREATE TABLE IF NOT EXISTS order_source(
+  order_id TEXT PRIMARY KEY,
+  source TEXT,
+  created INTEGER);
+CREATE INDEX IF NOT EXISTS idx_order_source_src ON order_source(source);

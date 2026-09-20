@@ -1061,6 +1061,16 @@ async function packOff(env, qty, goods) {
   return Math.max(0, Math.min(goods, Math.round(goods * pct / 100)));
 }
 
+/* برچسب منبع از مرورگر می‌آید، پس هرچه باشد بی‌اعتماد است: فقط حروف
+   کوچک انگلیسی و رقم و خط تیره، حداکثر ۲۴ نویسه. هر چیز دیگری دور
+   ریخته می‌شود تا نه به پایگاه داده چیزی تزریق شود نه پنل با متن
+   عجیب پر شود. */
+function cleanSource(v) {
+  const t = String(v == null ? '' : v).trim().toLowerCase().slice(0, 40)
+    .replace(/[^a-z0-9._-]/g, '');
+  return t.slice(0, 24) || 'direct';
+}
+
 /* ---------- کد تخفیف ----------
    مقدار تخفیف همیشه اینجا حساب می‌شود، نه در مرورگر. اگر از سمت مشتری
    می‌آمد، هرکس می‌توانست هر عددی بفرستد. */
@@ -1098,6 +1108,13 @@ async function countVisit(env, kind, key) {
    نام واقعی در تب نشسته. موتورهای جست‌وجو این کوکی را ندارند، پس عنوانِ
    درست را می‌گیرند و رتبهٔ سایت دست نمی‌خورد. */
 const QUIET_TITLE = 'یادداشت‌ها';
+
+/* پیش‌نمایشی که تلگرام و واتساپ از لینک کالا و دسته می‌سازند. عمداً هیچ
+   نامی از کالا ندارد تا فرستادن لینک به کسی چیزی را لو ندهد. */
+const SHARE_NEUTRAL = {
+  title: 'سِنسا — ارسال محرمانه',
+  desc: 'کاندوم، ژل و محصولات بهداشت جنسی اصل. بسته‌بندی بی‌نشان، ارسال به سراسر ایران.',
+};
 function wantsQuiet(req) {
   return /(?:^|;\s*)sq=1(?:;|$)/.test(req.headers.get('Cookie') || '');
 }
@@ -1119,17 +1136,37 @@ async function injectMeta(env, req, meta) {
   const quiet = wantsQuiet(req);
 
   const swap = (re, val) => { html = html.replace(re, val); };
+
+  /* دو دسته برچسب داریم و مخاطبشان یکی نیست:
+
+     title و description و canonical و ld+json را موتور جست‌وجو می‌خواند —
+     اینها باید دقیق و کامل بمانند، وگرنه رتبهٔ صفحه می‌رود.
+
+     برچسب‌های og: و twitter: را فقط تلگرام و واتساپ و بله می‌خوانند تا
+     پیش‌نمایش لینک را بسازند. تا امروز اینها هم نام و عکس کالا را
+     می‌گذاشتند، یعنی هرکس لینک یک کالا را در گروهی می‌فرستاد، «تأخیری
+     کلاسیک ۱۲ عددی» با عکسش وسط گروه باز می‌شد. برای فروشگاهی که تمام
+     حرفش بی‌نشان بودن است این هم خلاف قول است، هم جلوی تنها کانالی را
+     می‌گیرد که برای این کالا واقعاً کار می‌کند: فرستادن لینک به یک نفر
+     دیگر. گوگل رتبه را از title می‌گیرد نه از og:title، پس خنثی کردن
+     اینها هیچ هزینهٔ سئویی ندارد. */
+  const share = {
+    title: meta.shareTitle || meta.title,
+    desc:  meta.shareDesc  != null ? meta.shareDesc : meta.desc,
+    image: meta.shareImage || meta.image,
+  };
+
   swap(/<title>[\s\S]*?<\/title>/, `<title>${esc(quiet ? QUIET_TITLE : meta.title)}</title>`);
   swap(/<meta name="description" content="[^"]*">/,
        `<meta name="description" content="${esc(quiet ? '' : meta.desc)}">`);
   swap(/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${esc(meta.url)}">`);
-  swap(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(meta.title)}">`);
-  swap(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(meta.desc)}">`);
+  swap(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${esc(share.title)}">`);
+  swap(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${esc(share.desc)}">`);
   swap(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${esc(meta.url)}">`);
-  swap(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${esc(meta.image)}">`);
-  swap(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${esc(meta.title)}">`);
-  swap(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${esc(meta.desc)}">`);
-  swap(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${esc(meta.image)}">`);
+  swap(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${esc(share.image)}">`);
+  swap(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${esc(share.title)}">`);
+  swap(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${esc(share.desc)}">`);
+  swap(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${esc(share.image)}">`);
   swap(/<meta property="og:type" content="[^"]*">/,
        `<meta property="og:type" content="${meta.ld && meta.ld['@type'] === 'Product' ? 'product' : 'article'}">`);
 
@@ -1405,6 +1442,11 @@ export default {
               desc: productDesc(row),
               url: `${base}/p/${encodeURIComponent(row.id)}`,
               image: img,
+              /* عنوان و عکس واقعی بالا می‌مانند چون گوگل همان‌ها را
+                 می‌خواند؛ پیش‌نمایشِ پیام‌رسان‌ها خنثی می‌شود. */
+              shareTitle: SHARE_NEUTRAL.title,
+              shareDesc: SHARE_NEUTRAL.desc,
+              shareImage: base + '/og.png',
               ld: {
                 '@context': 'https://schema.org', '@type': 'Product',
                 name: row.n, description: row.d || undefined, sku: row.id,
@@ -1460,6 +1502,8 @@ export default {
                     `${list.length ? `${faNum(list.length)} کالا` : ''} با تاریخ انقضای معتبر و کد رهگیری.`,
               url: `${base}/c/${encodeURIComponent(row.id)}`,
               image: base + '/og.png',
+              shareTitle: SHARE_NEUTRAL.title,
+              shareDesc: SHARE_NEUTRAL.desc,
               ld: {
                 '@context': 'https://schema.org', '@type': 'CollectionPage',
                 name: row.name, description: row.sub || undefined,
@@ -2020,6 +2064,11 @@ export default {
           if (usedCoupon) await run(env, 'UPDATE coupons SET used = used + 1 WHERE code=?', usedCoupon);
         }
 
+        /* منبع سفارش. هیچ‌وقت نباید جلوی ثبت سفارش را بگیرد، پس خطایش
+           بلعیده می‌شود. */
+        await run(env, 'INSERT OR REPLACE INTO order_source(order_id,source,created) VALUES(?,?,?)',
+          id, cleanSource(body.src), Date.now()).catch(() => {});
+
         if (body.wantsInvoice)
           await run(env, 'INSERT OR REPLACE INTO order_extras(order_id,wants_invoice) VALUES(?,1)', id);
 
@@ -2415,6 +2464,14 @@ export default {
               ordered: (await one(env, `SELECT COUNT(*) v FROM orders
                 WHERE date(created/1000,'unixepoch')>=?`, from))?.v || 0
             },
+            /* سفارش‌ها به تفکیک منبع: هر خرید از کدام لینک یا کدام
+               ارجاع‌دهنده آمده، با درآمدش. سفارش‌های قدیمی‌تر از این
+               قابلیت منبع ندارند و زیر «نامشخص» جمع می‌شوند. */
+            bySource: await all(env, `SELECT COALESCE(NULLIF(s.source,''),'نامشخص') src,
+              COUNT(*) n, COALESCE(SUM(o.total),0) rev
+              FROM orders o LEFT JOIN order_source s ON s.order_id = o.id
+              WHERE date(o.created/1000,'unixepoch')>=?
+              GROUP BY src ORDER BY n DESC LIMIT 20`, from),
             topProducts: await all(env, `SELECT v.key AS k, SUM(v.n) v, p.n AS name
               FROM visits v LEFT JOIN products p ON p.id = v.key
               WHERE v.day>=? AND v.kind='product' GROUP BY v.key ORDER BY v DESC LIMIT 12`, from),
