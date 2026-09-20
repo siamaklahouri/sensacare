@@ -241,14 +241,21 @@ const WORDS_FIN = ['فاکتور','مشتری','بدهی','طلب','مطالبا
   'هزینه','منابع','مصارف','بانک','حساب','موجودی','نقدینگی','بودجه','طرف‌حساب','تامین‌کننده',
   'تأمین‌کننده','ذی‌نفع','ذینفع','مبلغ','تومان','ریال','وصول','دریافتنی','پرداختنی','پروژه'];
 
-export function looksPlannerRelated(messages, panelId) {
-  const words = WORDS_COMMON.concat(panelId === 'it' ? WORDS_IT : WORDS_FIN);
+export function looksPlannerRelated(messages, panelKind) {
+  /* کارتابلِ عمومی هیچ حوزهٔ خاصی ندارد، پس فقط کلمه‌های مشترک. */
+  const extra = panelKind === 'it' ? WORDS_IT : panelKind === 'fin' ? WORDS_FIN : [];
+  const words = WORDS_COMMON.concat(extra);
   /* سه پیامِ آخرِ کاربر، نه فقط آخری: «آن‌ها را مرتب کن» به‌تنهایی هیچ
      کلمهٔ کارتابلی ندارد ولی دنبالهٔ سؤالِ قبلی است. */
   const recent = (Array.isArray(messages) ? messages : [])
     .filter(m => m && m.role === 'user').slice(-3)
     .map(m => txt(m.content).toLowerCase()).join(' ');
   return words.some(w => recent.includes(w));
+}
+
+/* کارتابلِ عمومی: فقط چک‌لیست و برنامهٔ روزانه — جدولِ تخصصی ندارد. */
+function generalContext(state) {
+  return tasksPart(state, 'چک‌لیست ماهانه') + daysPart(state, 'مربوط به');
 }
 
 /* ---------- ساختنِ متنِ داده‌ها ---------- */
@@ -262,7 +269,9 @@ export function buildAiContext(panel, state, db, today, detail = true) {
   if (detail) {
     /* بر اساس «نوع» تصمیم می‌گیریم نه شناسه: شناسه حالا اسمِ آدرس است
        (siamak) و می‌تواند هر چیزی باشد، ولی نوع همیشه it یا fin است. */
-    s += panel.kind === 'it' ? itContext(st, database, today) : financeContext(st, database, today);
+    s += panel.kind === 'it' ? itContext(st, database, today)
+       : panel.kind === 'fin' ? financeContext(st, database, today)
+       : generalContext(st);
   } else {
     /* حالتِ خلاصه: مدل بداند کارتابل چه دارد، بی‌آنکه جدول‌ها حواسش را پرت کنند */
     const c = panel.counts(st, database);

@@ -14,7 +14,7 @@
    سرور فقط متن رمزشده را نگه می‌دارد. این عمدی است: اگر سرور هم روزی لو
    برود، آن بخش باز نمی‌شود. */
 
-import { buildKartablWorkbook, buildSinaWorkbook } from './kartabl-xlsx.js';
+import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from './kartabl-xlsx.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 
@@ -93,19 +93,23 @@ export const PANELS = {
    هرچه در جدول باشد روی آن‌ها می‌نشیند و کارتابل‌های تازه هم از همان‌جا
    می‌آیند. */
 
-const WORKBOOKS = { it: buildKartablWorkbook, fin: buildSinaWorkbook };
-const TEMPLATES = { it: 'it', fin: 'fin' };
+const WORKBOOKS = { it: buildKartablWorkbook, fin: buildSinaWorkbook, gen: buildGeneralWorkbook };
+/* «عمومی» فایل جدایی ندارد: همان قالبِ IT است که تکه‌های مخصوصِ IT
+   از آن برداشته می‌شود. یک فایل کمتر یعنی یک فایل کمتر برای عقب‌ماندن. */
+const TEMPLATES = { it: 'it', fin: 'fin', gen: 'it' };
 const COUNTS = {
   it: (st, db) => ({ سرور: (db.vm || []).length, شرکت: Object.keys(db.companies || {}).length,
                      'خط MVPN': (db.lines || []).length }),
   fin: (st, db) => ({ 'طرف‌حساب': (db.parties || []).length, فاکتور: (db.invoices || []).length,
-                      'حساب بانکی': (db.bank || []).length })
+                      'حساب بانکی': (db.bank || []).length }),
+  gen: (st) => ({ وظیفه: (st.tasks || []).length, 'روز برنامه': (st.days || []).length })
 };
 
 export function panelFromRow(row) {
   let c;
   try { c = JSON.parse(row.cfg); } catch (e) { return null; }
-  const kind = row.kind === 'it' ? 'it' : 'fin';
+  /* نوعِ ناشناخته به «عمومی» می‌افتد، نه اینکه صفحه بالا نیاید. */
+  const kind = TEMPLATES[row.kind] ? row.kind : 'gen';
   return {
     id: row.slug, slug: row.slug, name: row.name, kind,
     title: c.title, page: '/' + row.slug + '/', api: c.api || row.slug,
@@ -159,6 +163,12 @@ export async function renderPanelPage(env, req, panel) {
   const res = await env.ASSETS.fetch(new Request(new URL(file, req.url), req));
   if (!res.ok) return null;
   let html = await res.text();
+  /* <!--IT-->…<!--/IT--> فقط برای کارتابلِ IT می‌ماند و <!--GEN-->…<!--/GEN-->
+     فقط برای بقیه. تکه‌های جاوااسکریپتِ IT سرِ جایشان می‌مانند؛ همه‌شان
+     پیش از دست‌زدن به صفحه وجودِ عنصر را بررسی می‌کنند. */
+  const drop = panel.kind === 'it' ? 'GEN' : 'IT';
+  html = html.replace(new RegExp('<!--' + drop + '-->[\\s\\S]*?<!--/' + drop + '-->', 'g'), '');
+  html = html.replace(/<!--\/?(?:IT|GEN)-->/g, '');
   const t = panel.tpl;
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],

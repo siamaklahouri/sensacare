@@ -5366,31 +5366,16 @@ async function init(){
     if(signedIn){
       try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     }
-    renderMonthSelector();
-    setupNav();
-    setupMeta();
-    setupChartModal();
-    setupChecklist();
-    setupDaily();
-    setupReminders();
-    setupParties();
-    setupInvoices();
-    setupPayables();
-    setupPayableNotes();
-    setupReceivableNotes();
-    setupExpenses();
-    setupBank();
-    setupBudget();
-    setupSettings();
-    setupToolbar();
-    setupTheme();
-    setupAssistant();
-    setupAiSettings();
-    showLastLogin();
-    renderPersonalView();
-    const cf = document.getElementById("connectFolderBtn");
-    if(cf) cf.addEventListener("click", connectFolder);
-    renderEverything();
+    /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود. */
+    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupChecklist,
+     setupDaily, setupReminders, setupParties, setupInvoices, setupPayables,
+     setupPayableNotes, setupReceivableNotes, setupExpenses, setupBank,
+     setupBudget, setupSettings, setupToolbar, setupTheme, setupAssistant,
+     setupAiSettings, showLastLogin, renderPersonalView,
+     ()=>{ const cf = document.getElementById("connectFolderBtn");
+           if(cf) cf.addEventListener("click", connectFolder); },
+     renderEverything
+    ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+(fn.name||"")+":", e); } });
   }catch(e){
     console.error("خطا در راه‌اندازی کارتابل مالی:", e);
   }finally{

@@ -173,6 +173,17 @@ export function buildKartablWorkbook(state, db) {
   ]);
 }
 
+/* ---------- کارتابل عمومی ----------
+   همان چک‌لیست و برنامهٔ روزانه، بدون برگه‌های مخصوص IT. */
+
+export function buildGeneralWorkbook(state) {
+  return buildXlsx([
+    { name: 'Tasks',         aoa: tasksToAOA(state) },
+    { name: 'DailyPlan',     aoa: daysToAOA(state) },
+    { name: 'PersonalVault', aoa: personalVaultToAOA(state) }
+  ]);
+}
+
 /* ---------- کارتابل مدیر مالی ----------
    ده برگه، آینهٔ همان تابع‌های ...ToAOA در public/sina/index.html.
    سرستون‌ها باید دقیقاً یکی بمانند، وگرنه فایل پشتیبان با کارتابل

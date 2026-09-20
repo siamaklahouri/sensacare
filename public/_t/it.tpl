@@ -1181,11 +1181,15 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
       <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
       <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
       <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
+<!--IT-->
       <button class="navbtn" data-view="servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn"><span class="ic">📱</span> سرویس MVPN</button>
+<!--/IT-->
       <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
+<!--IT-->
       <button class="navbtn" data-view="datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+<!--/IT-->
       <button class="navbtn" data-view="assistant"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1206,7 +1210,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
       <div class="section-title">داشبورد ماهانه</div>
-      <div class="section-sub">خلاصه‌ی زنده‌ی وضعیت وظایف فنی این ماه</div>
+<!--IT-->      <div class="section-sub">خلاصه‌ی زنده‌ی وضعیت وظایف فنی این ماه</div><!--/IT--><!--GEN-->      <div class="section-sub">خلاصه‌ی زنده‌ی وضعیت وظایف این ماه</div><!--/GEN-->
 
       <div class="dash-hero" id="dashHero"></div>
 
@@ -1215,7 +1219,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
       <div class="cards" id="statCards"></div>
 
       <div class="dash-group-label"><span class="dgl-ic">📋</span> وظایف و برنامه‌ی این ماه</div>
-      <div class="grid3">
+<!--IT-->      <div class="grid3"><!--/IT--><!--GEN-->      <div class="grid2"><!--/GEN-->
         <div class="panel accent-blue">
           <h3>🥧 وضعیت وظایف ماه</h3>
           <div class="chart-box"><canvas id="chartStatus"></canvas></div>
@@ -1224,12 +1228,15 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
           <h3>🗓️ وضعیت برنامه روزانه</h3>
           <div class="chart-box"><canvas id="chartDaily"></canvas></div>
         </div>
+<!--IT-->
         <div class="panel accent-blue">
           <h3>✅ نرخ کلی موفقیت بکاپ روزانه</h3>
           <div class="chart-box"><canvas id="chartBackupSuccessRate"></canvas></div>
         </div>
+<!--/IT-->
       </div>
 
+<!--IT-->
       <div class="dash-group-label"><span class="dgl-ic">🏢</span> شرکت‌ها</div>
       <div class="grid3">
         <div class="panel accent-amber">
@@ -1257,6 +1264,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
           <div class="chart-box"><canvas id="chartRemoteStatus"></canvas></div>
         </div>
       </div>
+<!--/IT-->
 
       <div class="panel">
         <h3>🕒 مهلت‌های نزدیک</h3>
@@ -1272,7 +1280,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
     <!-- CHECKLIST -->
     <section class="view" id="view-checklist">
       <div class="section-title">چک‌لیست وظایف ماهانه</div>
-      <div class="section-sub">وظایف تکرارشونده‌ی مدیر IT — هر ردیف را ویرایش کنید یا وظیفه‌ی جدید اضافه کنید</div>
+<!--IT-->      <div class="section-sub">وظایف تکرارشونده‌ی مدیر IT — هر ردیف را ویرایش کنید یا وظیفه‌ی جدید اضافه کنید</div><!--/IT--><!--GEN-->      <div class="section-sub">وظایف تکرارشونده‌ی این ماه — هر ردیف را ویرایش کنید یا وظیفه‌ی جدید اضافه کنید</div><!--/GEN-->
       <div class="toolbar">
         <button class="btn btn-brass" id="addTaskBtn">＋ افزودن وظیفه</button>
         <button class="btn btn-ghost" id="resetTasksBtn">بازنشانی چک‌لیست</button>
@@ -1314,6 +1322,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
       <datalist id="dailyCompanyOptions"></datalist>
     </section>
 
+<!--IT-->
     <!-- SERVERS & BACKUP -->
     <section class="view" id="view-servers">
       <div class="section-title">سرورها و بکاپ</div>
@@ -1445,6 +1454,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
         </div>
       </div>
     </section>
+<!--/IT-->
 
     <!-- PERSONAL (password protected) -->
     <section class="view" id="view-personal">
@@ -1453,6 +1463,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
       <div id="personalWrap"></div>
     </section>
 
+<!--IT-->
     <!-- DATE TOOLS -->
     <section class="view" id="view-datetools">
       <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
@@ -1501,6 +1512,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
         <div class="dt-result dt-diff-result" id="dtDiffResult"></div>
       </div>
     </section>
+<!--/IT-->
 
     <!-- GUIDE -->
     <!-- SETTINGS -->
@@ -1633,6 +1645,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
           <div class="ic">🗓️</div>
           <div><h4>برنامه روزانه</h4><p>برای هر روز ماه، وظایف اصلی، جلسات و وضعیت پیشرفت را ثبت کنید.</p></div>
         </div>
+<!--IT-->
         <div class="guide-item">
           <div class="ic">📈</div>
           <div><h4>شاخص‌های کلیدی (KPI)</h4><p>هدف و مقدار واقعی هر شاخص فنی (مثل آپ‌تایم یا نرخ موفقیت بکاپ) را وارد کنید تا انحراف و درصد تحقق به‌طور خودکار محاسبه و نمودار آن رسم شود.</p></div>
@@ -1653,6 +1666,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
           <div class="ic">🛰️</div>
           <div><h4>چک‌لیست بررسی ریموت روزانه</h4><p>از برگ RemoteChecklist در همان فایل دیتابیس خوانده می‌شود؛ روی هر روز کلیک کنید تا علامت «بررسی‌شده و موفق» بخورد، یا سرور/روز جدید اضافه کنید — همه‌ی این‌ها خودکار روی همان اکسل ذخیره می‌شود.</p></div>
         </div>
+<!--/IT-->
         <div class="guide-item">
           <div class="ic">💾</div>
           <div><h4>ذخیره‌سازی</h4><p>تغییرات به‌صورت خودکار در حافظه‌ی همین مرورگر و همین سیستم ذخیره می‌شود — روی سیستم دیگری از صفر شروع می‌شود، مگر یکی از این دو راه را استفاده کنید:</p>
@@ -2658,7 +2672,7 @@ function renderCharts(){
     });
 
     destroyChart("mvpnStage");
-    (function(){
+    if(document.getElementById("chartMvpnStage")) (function(){
       const mvpnLines = (mvpnData && mvpnData.lines) || [];
       const activeCount = mvpnLines.filter(l=>String(l.stage||"").includes("فعال شده")).length;
       const removeCount = mvpnLines.filter(l=>String(l.stage||"").includes("حذف")).length;
@@ -2695,7 +2709,7 @@ function renderCharts(){
     })();
 
     destroyChart("topCompanies");
-    (function(){
+    if(document.getElementById("chartTopCompanies")) (function(){
       const names = companiesData ? Object.keys(companiesData.companies) : [];
       const counts = names.map(n=> (companiesData.companies[n]||[]).length);
       const paired = names.map((n,i)=>({name:n, count:counts[i]})).sort((a,b)=> b.count-a.count).slice(0,8);
@@ -2718,7 +2732,7 @@ function renderCharts(){
     })();
 
     destroyChart("remoteStatus");
-    (function(){
+    if(document.getElementById("chartRemoteStatus")) (function(){
       const roster = (remoteBackupData && remoteBackupData.roster) || [];
       const totalDays = state.remoteCheckDates.length || 1;
       const paired = roster.map(m=>{
@@ -2744,7 +2758,7 @@ function renderCharts(){
     })();
 
     destroyChart("visitType");
-    (function(){
+    if(document.getElementById("chartVisitType")) (function(){
       const allVisits = [];
       const names = companiesData ? Object.keys(companiesData.companies) : [];
       names.forEach(n=> (companiesData.companies[n]||[]).forEach(v=> allVisits.push(Object.assign({company:n}, v))));
@@ -2777,7 +2791,7 @@ function renderCharts(){
     })();
 
     destroyChart("backupSuccessRate");
-    (function(){
+    if(document.getElementById("chartBackupSuccessRate")) (function(){
       const merged = {};
       Object.keys(dailyLog).forEach(group=>{
         (dailyLog[group]||[]).forEach(e=>{
@@ -4149,6 +4163,8 @@ function renderDailyCalendar(){
 }
 
 function setupServers(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("refreshExcelBtn")) return;
   document.getElementById("refreshExcelBtn").addEventListener("click", loadDatabase);
   document.querySelectorAll(".col-filter").forEach(el=>{
     const evt = el.tagName==="SELECT" ? "change" : "input";
@@ -4292,6 +4308,8 @@ function renderCompanies(){
 }
 
 function setupCompanies(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("refreshDateBtn")) return;
   document.getElementById("refreshDateBtn").addEventListener("click", loadDatabase);
 }
 
@@ -4397,6 +4415,8 @@ function renderMvpn(){
 }
 
 function setupMvpn(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("refreshMvpnBtn")) return;
   document.getElementById("refreshMvpnBtn").addEventListener("click", loadDatabase);
   document.querySelectorAll(".mvpn-filter").forEach(el=>{
     const evt = el.tagName==="SELECT" ? "change" : "input";
@@ -4568,6 +4588,8 @@ function renderRemoteChecklist(){
 }
 
 function setupRemote(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("refreshRemoteBtn")) return;
   document.getElementById("refreshRemoteBtn").addEventListener("click", loadDatabase);
 }
 
@@ -5317,6 +5339,8 @@ function formatGregorianLong(y,m,d){
 }
 
 function setupDateTools(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("dtDiffBtn")) return;
   const today = getTodayJalaliParts();
   const ty = parseInt(today.year)||1405, tm = today.monthNum||1, td = today.day||1;
 
@@ -5919,30 +5943,14 @@ async function init(){
     if(signedIn){
       try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     }
-    renderMeta();
-    setupNav();
-    setupMeta();
-    setupToolbar();
-    setupTheme();
-    setupAssistant();
-    setupAiSettings();
-    showLastLogin();
-    setupBackup();
-    setupServers();
-    setupCompanies();
-    setupMvpn();
-    setupRemote();
-    setupChartModal();
-    setupDateTools();
-    setupSettings();
-    renderAll();
-    renderServers();
-    renderCompanies();
-    renderMvpn();
-    renderRemoteChecklist();
-    renderPersonalView();
-    requestNotifyPermission();
-    checkAndFireReminders();
+    /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود.
+       یک‌بار همین اتفاق افتاد و نیمی از صفحه بی‌صدا راه نیفتاد. */
+    [renderMeta, setupNav, setupMeta, setupToolbar, setupTheme, setupAssistant,
+     setupAiSettings, showLastLogin, setupBackup, setupServers, setupCompanies,
+     setupMvpn, setupRemote, setupChartModal, setupDateTools, setupSettings,
+     renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
+     renderPersonalView, requestNotifyPermission, checkAndFireReminders
+    ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){
     console.error("خطا در راه‌اندازی کارتابل:", e);
