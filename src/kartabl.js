@@ -28,7 +28,12 @@ import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from 
    «kartablPassHash»)، وگرنه دادهٔ زنده‌اش باید جابه‌جا می‌شد. */
 export const PANELS = {
   it: {
-    id: 'it', title: 'کارتابل ماهانه سیامک', page: '/siamak/', cookie: 'kartabl_s',
+    id: 'siamak', slug: 'siamak', name: 'سیامک', kind: 'it', api: 'kartabl',
+    tpl: { title: 'کارتابل ماهانه سیامک', name: 'سیامک', api: '/api/kartabl',
+           icon: '/icon-siamak.2.png', store: 'it-manager-planner-v1', idb: 'planner-fs-db',
+           dbcache: 'it-manager-db-cache-v19', filejson: 'کارتابل-IT-داده.json',
+           filexlsx: 'کارتابل-IT-دیتابیس.xlsx' },
+    title: 'کارتابل ماهانه سیامک', page: '/siamak/', cookie: 'kartabl_s',
     keys: { state: 'state', db: 'db', pass: 'kartablPassHash', gen: 'kartablPassGen', last: 'kartablLastBackup',
             reset: 'kartablPassReset' },
     folder: 'It',
@@ -42,7 +47,12 @@ export const PANELS = {
     })
   },
   sina: {
-    id: 'sina', title: 'کارتابل ماهانه سینا', page: '/sina/', cookie: 'sina_s',
+    id: 'sina', slug: 'sina', name: 'سینا', kind: 'fin', api: 'sina',
+    tpl: { title: 'کارتابل ماهانه سینا', name: 'سینا', api: '/api/sina',
+           icon: '/icon-sina.2.png', store: 'finance-planner-v1', idb: 'finance-fs-db',
+           dbcache: 'finance-db-cache-v1', filejson: 'کارتابل-مالی-داده.json',
+           filexlsx: 'کارتابل-مالی-دیتابیس.xlsx' },
+    title: 'کارتابل ماهانه سینا', page: '/sina/', cookie: 'sina_s',
     keys: { state: 'sina:state', db: 'sina:db', pass: 'sinaPassHash', gen: 'sinaPassGen', last: 'sinaLastBackup',
             reset: 'sinaPassReset' },
     folder: 'Mali',
@@ -56,7 +66,12 @@ export const PANELS = {
     })
   },
   reza: {
-    id: 'reza', title: 'کارتابل ماهانه رضا', page: '/reza/', cookie: 'reza_s',
+    id: 'reza', slug: 'reza', name: 'رضا', kind: 'fin', api: 'reza',
+    tpl: { title: 'کارتابل ماهانه رضا', name: 'رضا', api: '/api/reza',
+           icon: '/icon-reza.2.png', store: 'reza-planner-v1', idb: 'reza-fs-db',
+           dbcache: 'reza-db-cache-v1', filejson: 'کارتابل-رضا-داده.json',
+           filexlsx: 'کارتابل-رضا-دیتابیس.xlsx' },
+    title: 'کارتابل ماهانه رضا', page: '/reza/', cookie: 'reza_s',
     keys: { state: 'reza:state', db: 'reza:db', pass: 'rezaPassHash', gen: 'rezaPassGen', last: 'rezaLastBackup',
             reset: 'rezaPassReset' },
     folder: 'Reza',
@@ -71,6 +86,87 @@ export const PANELS = {
     })
   }
 };
+
+/* ---------- کارتابل‌ها از روی دیتابیس ----------
+   سه کارتابلِ اول داخل همین فایل نوشته شده‌اند (بالا) و همان‌ها پیش‌فرض
+   می‌مانند: اگر جدولِ planners نباشد یا خوانده نشود، سایت سرِ پا می‌ماند.
+   هرچه در جدول باشد روی آن‌ها می‌نشیند و کارتابل‌های تازه هم از همان‌جا
+   می‌آیند. */
+
+const WORKBOOKS = { it: buildKartablWorkbook, fin: buildSinaWorkbook };
+const TEMPLATES = { it: 'it', fin: 'fin' };
+const COUNTS = {
+  it: (st, db) => ({ سرور: (db.vm || []).length, شرکت: Object.keys(db.companies || {}).length,
+                     'خط MVPN': (db.lines || []).length }),
+  fin: (st, db) => ({ 'طرف‌حساب': (db.parties || []).length, فاکتور: (db.invoices || []).length,
+                      'حساب بانکی': (db.bank || []).length })
+};
+
+export function panelFromRow(row) {
+  let c;
+  try { c = JSON.parse(row.cfg); } catch (e) { return null; }
+  const kind = row.kind === 'it' ? 'it' : 'fin';
+  return {
+    id: row.slug, slug: row.slug, name: row.name, kind,
+    title: c.title, page: '/' + row.slug + '/', api: c.api || row.slug,
+    cookie: c.cookie, icon: (c.icon || '').replace(/^\//, ''),
+    tpl: { title: c.title, name: row.name, api: '/api/' + (c.api || row.slug),
+           icon: c.icon, store: c.store, idb: c.idb, dbcache: c.dbcache,
+           filejson: c.filejson, filexlsx: c.filexlsx },
+    keys: c.keys,
+    folder: c.folder,
+    files: { json: c.filejson, xlsx: c.filexlsx, html: c.filehtml },
+    zip: stamp => `${c.zip}${stamp}.zip`,
+    workbook: WORKBOOKS[kind],
+    counts: COUNTS[kind]
+  };
+}
+
+/* فهرستِ کامل: پیش‌فرض‌های داخل کد + هرچه در جدول هست */
+export async function allPanels(env) {
+  const out = new Map();
+  for (const p of Object.values(PANELS)) out.set(p.slug, p);
+  try {
+    const rows = await all(env, 'SELECT slug, name, kind, cfg FROM planners ORDER BY created, slug');
+    for (const r of rows) {
+      const p = panelFromRow(r);
+      if (p) out.set(p.slug, p);
+    }
+  } catch (e) { /* جدول نبود — همان سه تای داخل کد */ }
+  return [...out.values()];
+}
+
+export async function panelBySlug(env, slug) {
+  return (await allPanels(env)).find(p => p.slug === slug) || null;
+}
+
+export async function panelByApi(env, api) {
+  return (await allPanels(env)).find(p => (p.api || p.id) === api) || null;
+}
+
+/* ---------- ساختنِ صفحهٔ کارتابل از قالب ----------
+   قالب یک فایل ثابت است و جاهای خالی‌اش با مشخصاتِ همین کارتابل پر
+   می‌شود. اسم و عنوان را آدمِ ادمین وارد می‌کند، پس پیش از نشستن در
+   HTML فرار داده می‌شوند. */
+const esc = t => String(t == null ? '' : t)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+export async function renderPanelPage(env, req, panel) {
+  /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
+     ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */
+  const file = '/_t/' + (TEMPLATES[panel.kind] || 'fin') + '.tpl';
+  const res = await env.ASSETS.fetch(new Request(new URL(file, req.url), req));
+  if (!res.ok) return null;
+  let html = await res.text();
+  const t = panel.tpl;
+  for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
+                        ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
+                        ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],
+                        ['FILEXLSX', t.filexlsx]])
+    html = html.replaceAll('{{' + k + '}}', esc(v));
+  return html;
+}
 
 const enc = new TextEncoder();
 
@@ -448,13 +544,13 @@ export async function buildKartablBackup(env, req, panel) {
     } catch (e) { return null; }
   };
 
-  /* هر دو کارتابل کتابخانه‌ها را از /siamak/v/ می‌گیرند — یک نسخه برای
+  /* همهٔ کارتابل‌ها کتابخانه‌ها را از /v/ می‌گیرند — یک نسخه برای
      هر دو، نه دو کپی روی سرور. */
   const F = panel.folder;
   const extras = [];
   for (const [from, to] of [
-    ['/siamak/v/chart.umd.min.js', F + '/v/chart.umd.min.js'],
-    ['/siamak/v/xlsx.full.min.js', F + '/v/xlsx.full.min.js'],
+    ['/v/chart.umd.min.js', F + '/v/chart.umd.min.js'],
+    ['/v/xlsx.full.min.js', F + '/v/xlsx.full.min.js'],
     ['/f/Vazirmatn-Regular.2.woff2',   F + '/f/Vazirmatn-Regular.2.woff2'],
     ['/f/Vazirmatn-Medium.2.woff2',    F + '/f/Vazirmatn-Medium.2.woff2'],
     ['/f/Vazirmatn-SemiBold.2.woff2',  F + '/f/Vazirmatn-SemiBold.2.woff2'],
@@ -562,7 +658,7 @@ export async function nightlyKartablBackup(env, slot) {
   /* ورکر در cron درخواستی ندارد، ولی برای گرفتن فایل HTML از ASSETS یک
      Request لازم است. یکی می‌سازیم. */
   const out = {};
-  for (const panel of Object.values(PANELS)) {
+  for (const panel of await allPanels(env)) {
     const req = new Request('https://sensacare.ir' + panel.page);
     /* اگر یکی نرفت، آن یکی نباید قربانی شود */
     const r = await sendKartablBackup(env, req, panel, slot === 'noon' ? 'خودکار — ظهر' : 'خودکار — شبانه')
@@ -672,7 +768,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const d = await loadKartabl(env, panel);
     /* کلاد متنِ کامل را می‌گیرد. مدل‌های رایگان فقط وقتی سؤال به کارتابل
        می‌خورد، وگرنه جدول‌ها حواسشان را از سؤال پرت می‌کند. */
-    const detail = !!claudeKey || looksPlannerRelated(body.messages, panel.id);
+    const detail = !!claudeKey || looksPlannerRelated(body.messages, panel.kind);
     const ctx = buildAiContext(panel, d.state, d.db, today, detail);
     const r = await askKartablAI(env, panel, body.messages, ctx, { claudeKey });
     return r.ok ? json({ reply: r.reply, model: r.model, via: r.via }) : bad(r.error, r.status || 502);

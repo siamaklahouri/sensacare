@@ -260,7 +260,9 @@ export function buildAiContext(panel, state, db, today, detail = true) {
   s += `ماهِ بازِ کارتابل: ${monthLabel(st.currentMonthKey) || '—'}\n`;
 
   if (detail) {
-    s += panel.id === 'it' ? itContext(st, database, today) : financeContext(st, database, today);
+    /* بر اساس «نوع» تصمیم می‌گیریم نه شناسه: شناسه حالا اسمِ آدرس است
+       (siamak) و می‌تواند هر چیزی باشد، ولی نوع همیشه it یا fin است. */
+    s += panel.kind === 'it' ? itContext(st, database, today) : financeContext(st, database, today);
   } else {
     /* حالتِ خلاصه: مدل بداند کارتابل چه دارد، بی‌آنکه جدول‌ها حواسش را پرت کنند */
     const c = panel.counts(st, database);

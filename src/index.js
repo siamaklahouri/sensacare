@@ -1,4 +1,5 @@
-import { handleKartabl, nightlyKartablBackup, PANELS } from './kartabl.js';
+import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
+         renderPanelPage } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1730,6 +1731,26 @@ export default {
         { headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
+    /* ---------------- صفحهٔ کارتابل ----------------
+       آدرسِ هر کارتابل از فهرستِ دیتابیس می‌آید و صفحه‌اش همان‌جا از قالب
+       ساخته می‌شود. این باید پیش از سرو کردنِ فایل‌های ثابت بیاید، وگرنه
+       آدرسِ ناموجود به صفحهٔ فروشگاه می‌افتد. */
+    if (!p.startsWith('/api/') && req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(p)) {
+      const slug = p.replace(/^\/+|\/+$/g, '');
+      if (slug && !slug.includes('/') && env.DB) {
+        const panel = await panelBySlug(env, slug).catch(() => null);
+        if (panel) {
+          /* بدون اسلشِ آخر، آدرس‌های نسبی داخل صفحه یک پله بالاتر می‌افتند */
+          if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
+          const html = await renderPanelPage(env, req, panel);
+          if (html) return withSecurity(new Response(html, { headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'X-Robots-Tag': 'noindex, nofollow' } }));
+        }
+      }
+    }
+
     if (!p.startsWith('/api/')) {
       /* اگر تنظیم فایل‌های سایت به ورکر نرسیده باشد، به‌جای خطای گنگ ۱۱۰۱
          یک پیام روشن بده تا معلوم شود ایراد از کجاست. */
@@ -1762,10 +1783,15 @@ export default {
       /* کارتابل‌ها — مدیر IT و مدیر مالی. بررسی ورودشان جداست و از کوکی
          خودشان می‌آید، نه از توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها
          جواب می‌گیرند. هر کدام کوکی و رمز خودش را دارد. */
-      for (const [prefix, panel] of [['/api/kartabl', PANELS.it], ['/api/sina', PANELS.sina],
-                                     ['/api/reza', PANELS.reza]])
-        if (p.startsWith(prefix + '/'))
-          return handleKartabl(env, req, panel, p.slice(prefix.length), m, body, { rateLimit, clientIp });
+      if (p.startsWith('/api/')) {
+        const seg = p.slice(5);
+        const cut = seg.indexOf('/');
+        if (cut > 0) {
+          const panel = await panelByApi(env, seg.slice(0, cut)).catch(() => null);
+          if (panel)
+            return handleKartabl(env, req, panel, seg.slice(cut), m, body, { rateLimit, clientIp });
+        }
+      }
 
       if (p === '/api/bootstrap') {
         /* صفحهٔ اصلی مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد،

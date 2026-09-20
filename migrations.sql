@@ -642,3 +642,45 @@ CREATE TABLE IF NOT EXISTS kartabl_hist(
   at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS kartabl_hist_k_at ON kartabl_hist(k, at DESC);
+
+-- ۲۸ | فهرست کارتابل‌ها
+-- تا حالا سه کارتابل داخل کد نوشته شده بودند و ساختنِ چهارمی یعنی دیپلوی.
+-- حالا فهرستشان این‌جاست و صفحه از یک قالب ساخته می‌شود. cfg همان چیزی است
+-- که جای جاهای خالیِ قالب می‌نشیند؛ برای این سه تا عیناً همان مقدارهای
+-- فعلی است تا نه آدرسشان عوض شود نه دادهٔ ذخیره‌شده‌شان.
+CREATE TABLE IF NOT EXISTS planners(
+  slug    TEXT PRIMARY KEY,
+  name    TEXT NOT NULL,
+  kind    TEXT NOT NULL,
+  cfg     TEXT NOT NULL,
+  created INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO planners(slug,name,kind,cfg,created) VALUES
+ ('siamak','سیامک','it', json_object(
+    'title','کارتابل ماهانه سیامک','api','kartabl','cookie','kartabl_s',
+    'icon','/icon-siamak.2.png','store','it-manager-planner-v1','idb','planner-fs-db',
+    'dbcache','it-manager-db-cache-v19','filejson','کارتابل-IT-داده.json',
+    'filexlsx','کارتابل-IT-دیتابیس.xlsx','filehtml','کارتابل مدیر IT.html',
+    'folder','It','zip','کارتابل-IT-پشتیبان-',
+    'keys', json_object('state','state','db','db','pass','kartablPassHash',
+      'gen','kartablPassGen','last','kartablLastBackup','reset','kartablPassReset')
+  ), 0),
+ ('sina','سینا','fin', json_object(
+    'title','کارتابل ماهانه سینا','api','sina','cookie','sina_s',
+    'icon','/icon-sina.2.png','store','finance-planner-v1','idb','finance-fs-db',
+    'dbcache','finance-db-cache-v1','filejson','کارتابل-مالی-داده.json',
+    'filexlsx','کارتابل-مالی-دیتابیس.xlsx','filehtml','کارتابل مدیر مالی.html',
+    'folder','Mali','zip','کارتابل-مالی-پشتیبان-',
+    'keys', json_object('state','sina:state','db','sina:db','pass','sinaPassHash',
+      'gen','sinaPassGen','last','sinaLastBackup','reset','sinaPassReset')
+  ), 0),
+ ('reza','رضا','fin', json_object(
+    'title','کارتابل ماهانه رضا','api','reza','cookie','reza_s',
+    'icon','/icon-reza.2.png','store','reza-planner-v1','idb','reza-fs-db',
+    'dbcache','reza-db-cache-v1','filejson','کارتابل-رضا-داده.json',
+    'filexlsx','کارتابل-رضا-دیتابیس.xlsx','filehtml','کارتابل ماهانه رضا.html',
+    'folder','Reza','zip','کارتابل-رضا-پشتیبان-',
+    'keys', json_object('state','reza:state','db','reza:db','pass','rezaPassHash',
+      'gen','rezaPassGen','last','rezaLastBackup','reset','rezaPassReset')
+  ), 0);
