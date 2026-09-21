@@ -14,7 +14,8 @@
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
-  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature, enabledViews
+  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
+  handleKartabl
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 
@@ -29,6 +30,20 @@ const ADMIN = {
 };
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,30}$/;
+/* نام کاربری کمی بازتر از آدرس است — نقطه و زیرخط هم می‌گیرد — چون
+   آدرس در URL می‌نشیند و این یکی فقط در فرمِ ورود. */
+const USER_RE = /^[a-z0-9][a-z0-9._-]{1,30}$/;
+const ADMIN_USER_KEY = 'adminPlanerUser';
+const DEFAULT_ADMIN_USER = 'admin';
+const adminUser = env => getSetting(env, ADMIN_USER_KEY, DEFAULT_ADMIN_USER);
+
+/* نامِ کاربری نباید تکراری باشد؛ نه با کاربرِ دیگر، نه با خودِ ادمین.
+   وگرنه یکی از آن دو دیگر نمی‌تواند وارد شود. */
+async function userTaken(env, user, exceptSlug) {
+  if (user === (await adminUser(env)).toLowerCase()) return true;
+  const p = await panelByUser(env, user);
+  return !!(p && p.slug !== exceptSlug);
+}
 /* آدرس‌هایی که قبلاً مالِ خودِ سایت‌اند و نباید کارتابل شوند */
 const RESERVED = new Set(['admin', 'admin.planer', 'api', 'f', 'v', 'assets', 'cart',
   'checkout', 'shop', 'product', 'products', 'blog', 'about', 'contact', 'login',
@@ -53,6 +68,7 @@ function freshConfig(slug, name, kind, job, vault) {
     folder: 'کارتابل ' + name,
     zip: 'kartabl-' + slug + '-',
     job: job || '',
+    user: slug,
     vault: vault,
     keys: {
       state: slug + ':state', db: slug + ':db',
@@ -133,6 +149,12 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     if (!codeCheck.ok) return bad('کدِ راه‌اندازی درست نیست.', 403);
     const pass = String(body.password || '').trim();
     if (pass.length < 10) return bad('رمزِ ادمین دست‌کم ۱۰ حرف باشد.');
+    /* نامِ کاربریِ ادمین هم همین‌جا انتخاب می‌شود؛ نگفته باشد «admin». */
+    const user = (String(body.user || '').trim() || DEFAULT_ADMIN_USER).toLowerCase();
+    if (!USER_RE.test(user))
+      return bad('نام کاربری فقط حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط — بین ۲ تا ۳۱ حرف.');
+    if (await panelByUser(env, user)) return bad('این نام کاربری مالِ یکی از کارتابل‌هاست.');
+    await setSetting(env, ADMIN_USER_KEY, user);
     await setSetting(env, ADMIN.keys.pass, await hashPassword(pass));
     await setSetting(env, ADMIN.keys.gen, 1);
     await setSetting(env, 'login:admin.planer', Date.now());
@@ -140,6 +162,74 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     await log(env, 'setup', '', '');
     return json({ ok: true, lastLogin: 0 }, 200,
       { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, 1), 1) });
+  }
+
+  /* ---------- ورودِ مشترک ----------
+     یک صفحهٔ ورود برای همه: کاربر نام کاربری و رمزش را می‌زند و به
+     کارتابلِ خودش می‌رود؛ ادمین همان‌جا وارد پنل می‌شود. چون هر دو از
+     یک فرم می‌آیند، پیامِ خطا هم یکی است — وگرنه همین صفحه می‌شد
+     فهرستی از اینکه کدام نام کاربری روی سایت هست.
+
+     نشستی هم که این‌جا ساخته می‌شود دقیقاً همان نشستِ خودِ کارتابل
+     است (همان کوکی، همان نسلِ رمز)، پس عوض‌شدنِ رمز از هر جایی که
+     باشد این ورود را هم باطل می‌کند. */
+  if (p === '/signin' && m === 'POST') {
+    /* سقف را دست‌ودل‌بازتر از یک کارتابلِ تنها گرفته‌ایم: این‌جا همهٔ
+       کاربرها از یک فرم وارد می‌شوند و چند نفرشان می‌توانند پشتِ یک
+       IP باشند. جلوی حدسِ پیاپیِ رمز را هم PBKDF2 و هم مکثِ خودِ
+       بررسیِ رمز می‌گیرد. */
+    const rl = await rateLimit(env, 'adminplaner-signin:' + clientIp(req), 30, 900);
+    if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    const user = String(body.user || '').trim().toLowerCase();
+    const pass = String(body.password || '');
+    const nope = () => bad('نام کاربری یا رمز درست نیست.', 401);
+    if (!user || !pass) return nope();
+    const days = body.remember ? 7 : 1;
+
+    if (user === (await adminUser(env)).toLowerCase()) {
+      const stored = await getSetting(env, ADMIN.keys.pass, '');
+      if (!stored) return bad('هنوز رمزِ ادمین گذاشته نشده.', 409);
+      const check = await checkPassword(pass, stored);
+      if (!check.ok) return check.status === 429 ? bad(check.error, 429) : nope();
+      const prev = await getSetting(env, 'login:admin.planer', 0);
+      await setSetting(env, 'login:admin.planer', Date.now());
+      await log(env, 'login', '', 'ورودِ مشترک');
+      return json({ ok: true, admin: true, name: 'ادمین', lastLogin: prev || 0 }, 200,
+        { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, days), days) });
+    }
+
+    const panel = await panelByUser(env, user);
+    if (!panel) return nope();
+    const stored = await getSetting(env, panel.keys.pass, '');
+    if (!stored) return nope();
+    const check = await checkPassword(pass, stored);
+    if (!check.ok) return check.status === 429 ? bad(check.error, 429) : nope();
+    /* رمزِ درست را اول بررسی می‌کنیم و بعد می‌گوییم کارتابل بسته است:
+       این‌طور کسی که رمز را ندارد از پیام هم چیزی نمی‌فهمد. */
+    if (panel.disabled)
+      return bad(panel.expired && !panel.manualOff
+        ? 'مهلتِ استفاده از این کارتابل تمام شده. با مدیر تماس بگیرید.'
+        : 'این کارتابل فعلاً بسته است. با مدیر تماس بگیرید.', 403);
+    const loginKey = 'login:' + panel.slug;
+    const prev = await getSetting(env, loginKey, 0);
+    await setSetting(env, loginKey, Date.now());
+    return json({ ok: true, admin: false, go: panel.page, name: panel.name,
+                  lastLogin: prev || 0 }, 200,
+      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, days), days) });
+  }
+
+  /* فراموشیِ رمز از همین صفحه: نام کاربری را می‌گیریم تا بفهمیم کدام
+     کارتابل، و بقیه‌اش دقیقاً همان مسیرِ فراموشیِ خودِ کارتابل است —
+     رمزِ تازه فقط به تلگرام می‌رود، نه به این صفحه. */
+  if (p === '/forgot' && m === 'POST') {
+    const rl = await rateLimit(env, 'adminplaner-forgot:' + clientIp(req), 6, 3600);
+    if (!rl.ok) return bad('درخواست‌ها زیاد شد. یک ساعت دیگر.', 429);
+    const user = String(body.user || '').trim().toLowerCase();
+    if (!user) return bad('اول نام کاربری را بنویسید.');
+    const panel = await panelByUser(env, user);
+    if (!panel) return bad('چنین نام کاربری‌ای نیست.', 404);
+    if (panel.disabled) return bad('این کارتابل فعلاً بسته است. با مدیر تماس بگیرید.', 403);
+    return handleKartabl(env, req, panel, '/forgot', 'POST', body, helpers);
   }
 
   if (p === '/login' && m === 'POST') {
@@ -162,7 +252,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   const session = await readSession(env, ADMIN, req);
   if (p === '/me')
     return json(session
-      ? { in: true, lastLogin: await getSetting(env, 'login:admin.planer', 0) }
+      ? { in: true, lastLogin: await getSetting(env, 'login:admin.planer', 0),
+          user: await adminUser(env) }
       : { in: false, needsSetup: !(await getSetting(env, ADMIN.keys.pass, '')) });
   if (!session) return bad('وارد نشده‌اید.', 401);
 
@@ -176,6 +267,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       try { c = JSON.parse(r.cfg); } catch (e) { /* خرابش را هم نشان بده */ }
       items.push({
         slug: r.slug, name: r.name, kind: r.kind, job: c.job || '',
+        user: String(c.user || r.slug).toLowerCase(),
         /* «disabled» یعنی ادمین با دست بسته؛ «closed» یعنی عملاً بسته
            است — چه با دست، چه چون مهلتش سر رسیده. */
         disabled: !!c.disabled,
@@ -196,6 +288,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     for (const b of Object.values(PANELS))
       if (!known.has(b.slug))
         items.push({ slug: b.slug, name: b.name, kind: b.kind, job: '', vault: DEFAULT_VAULT,
+                     user: b.user || b.slug,
                      disabled: false, closed: false, core: true, off: [], until: 0,
                      views: (VIEWS[b.kind] || []).map(v => v.id),
                      url: b.page, created: 0, builtin: true,
@@ -249,6 +342,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     if (Object.values(PANELS).some(b => b.slug === slug))
       return bad('کارتابلی با این آدرس هست.');
 
+    /* نام کاربری: اگر چیزی نگفته باشد، همان آدرس. */
+    const user = (String(body.user || '').trim() || slug).toLowerCase();
+    if (!USER_RE.test(user))
+      return bad('نام کاربری فقط حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط — بین ۲ تا ۳۱ حرف.');
+    if (await userTaken(env, user))
+      return bad('این نام کاربری گرفته شده.');
+
     /* تیکِ ادمین در همان فرمِ ساخت هم خوانده می‌شود؛ اگر چیزی نگفته
        باشد، پیشنهادِ شغل می‌نشیند. */
     const allViews = (VIEWS[kind] || []).map(v => v.id);
@@ -256,6 +356,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       ? body.views.filter(v => allViews.includes(v)) : null;
     const vault = cleanVault(body.vault);
     const cfg = freshConfig(slug, name, kind, job, vault.length ? vault : DEFAULT_VAULT);
+    cfg.user = user;
     if (views) cfg.views = views;
     const pass = String(body.password || '').trim() || newPassword();
     await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
@@ -264,7 +365,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     await setSetting(env, cfg.keys.gen, 1);
     await log(env, 'create', slug, kind + (job ? '/' + job : ''));
     /* رمز فقط همین یک‌بار برمی‌گردد — جایی ذخیره نمی‌شود. */
-    return json({ ok: true, slug, url: '/' + slug + '/', password: pass });
+    return json({ ok: true, slug, url: '/' + slug + '/', user, password: pass });
   }
 
   /* از این‌جا به بعد همه دربارهٔ یک کارتابلِ مشخص‌اند */
@@ -292,6 +393,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (typeof body.job === 'string') {
         if (body.job && !JOBS[body.job]) return bad('شغل انتخاب‌شده را نمی‌شناسم.');
         cfg.job = body.job;
+      }
+      if (typeof body.user === 'string' && body.user.trim()) {
+        const user = body.user.trim().toLowerCase();
+        if (!USER_RE.test(user))
+          return bad('نام کاربری فقط حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط — بین ۲ تا ۳۱ حرف.');
+        if (await userTaken(env, user, slug)) return bad('این نام کاربری گرفته شده.');
+        cfg.user = user;
       }
       if (body.days !== undefined) {
         /* عددِ روز می‌گیریم و تاریخِ پایان را حساب می‌کنیم؛ خالی یا صفر
@@ -421,6 +529,18 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   }
 
   /* ---- رمزِ خودِ ادمین ---- */
+  /* ---- نام کاربریِ خودِ ادمین ---- */
+  if (p === '/admin-user' && m === 'POST') {
+    const user = String(body.user || '').trim().toLowerCase();
+    if (!USER_RE.test(user))
+      return bad('نام کاربری فقط حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط — بین ۲ تا ۳۱ حرف.');
+    if (user !== (await adminUser(env)).toLowerCase() && await panelByUser(env, user))
+      return bad('این نام کاربری مالِ یکی از کارتابل‌هاست.');
+    await setSetting(env, ADMIN_USER_KEY, user);
+    await log(env, 'admin-user', '', user);
+    return json({ ok: true, user });
+  }
+
   if (p === '/password' && m === 'POST') {
     const stored = await getSetting(env, ADMIN.keys.pass, '');
     const check = await checkPassword(String(body.current || ''), stored);

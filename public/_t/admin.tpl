@@ -137,6 +137,11 @@ a{ color:var(--brass-ink); }
 .gate-card button[type="submit"]:disabled{ opacity:.6; cursor:default; transform:none; }
 .gate-err{ color:var(--red-ink); font-size:12.5px; min-height:20px; margin-top:9px; }
 .gate-note{ color:var(--ink-soft); font-size:12.5px; margin-top:8px; line-height:2; }
+.gate-forgot{ display:block; margin:10px auto 0; background:none; border:0; padding:4px;
+  color:var(--ink-faint); font:inherit; font-size:12px; cursor:pointer;
+  text-decoration:underline; text-underline-offset:3px; }
+.gate-forgot:hover{ color:var(--brass); }
+.gate-forgot:disabled{ cursor:default; opacity:.6; text-decoration:none; }
 
 /* ---------- چارچوب ---------- */
 /* یک متغیّر برای حاشیهٔ کناری، چون نوارِ چسبان با حاشیهٔ منفی از آن
@@ -467,16 +472,19 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
     <img class="gate-mark" src="/icon-admin.2.png" alt="SL" width="60" height="60">
-    <h1 id="gateTitle">پنل کارتابل‌ها</h1>
-    <p id="gateSub">برای ادامه رمز ادمین را وارد کنید.</p>
+    <h1 id="gateTitle">ورود به کارتابل</h1>
+    <p id="gateSub">نام کاربری و رمزتان را بزنید تا وارد کارتابل خودتان شوید.</p>
     <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
-    <input type="password" id="gatePass" placeholder="رمز ادمین" autocomplete="current-password">
+    <input type="text" id="gateUser" placeholder="نام کاربری" autocomplete="username"
+           dir="ltr" spellcheck="false" autocapitalize="off">
+    <input type="password" id="gatePass" placeholder="رمز" autocomplete="current-password">
     <input type="password" id="gatePass2" placeholder="تکرار رمز" autocomplete="new-password" hidden>
     <button type="submit" id="gateBtn">ورود</button>
     <button type="button" class="btn" id="gateCodeBtn" style="width:100%; margin-top:8px;" hidden>
       فرستادن کد به تلگرام</button>
     <div class="gate-err" id="gateErr"></div>
     <div class="gate-note" id="gateNote"></div>
+    <button type="button" class="gate-forgot" id="gateForgot">رمزم را فراموش کرده‌ام</button>
   </form>
 </div>
 
@@ -542,8 +550,9 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
   <section id="tab-new" hidden>
     <div class="panel">
       <h2>ساختن کارتابل تازه</h2>
-      <p class="sub">نامِ شخص و آدرسی که کارتابلش روی آن باز می‌شود. رمزِ ورود همین‌جا
-        یک‌بار نشان داده می‌شود و بعد دیگر هیچ‌جا نیست — همان لحظه جایی یادداشتش کنید.</p>
+      <p class="sub">نامِ شخص، آدرسی که کارتابلش روی آن باز می‌شود، و نام کاربری‌ای که
+        با آن از صفحهٔ ورود وارد می‌شود. رمزِ ورود همین‌جا یک‌بار نشان داده می‌شود و
+        بعد دیگر هیچ‌جا نیست — همان لحظه جایی یادداشتش کنید.</p>
       <div class="kinds" id="nKinds"></div>
       <div id="nViewsWrap" hidden>
         <p class="sub" style="margin:0 0 9px;">این شغل معمولاً به این بخش‌ها کار دارد —
@@ -553,6 +562,8 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
       <div class="row">
         <div class="fld"><label>نام شخص</label><input type="text" id="nName" placeholder="مثلاً: نسرین" autocomplete="off"></div>
         <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
+        <div class="fld"><label>نام کاربری (خالی = مثل آدرس)</label>
+          <input type="text" id="nUser" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
         <div class="fld"><label>چک‌لیست آماده (اختیاری)</label><select id="nJob"></select></div>
         <div class="fld"><label>رمز ورود (خالی = خودکار)</label>
           <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off"></div>
@@ -564,6 +575,17 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
   </section>
 
   <section id="tab-keys" hidden>
+    <div class="panel">
+      <h2>نام کاربری ادمین</h2>
+      <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr">sensacare.ir/admin.planer</b>)
+        وارد این پنل می‌شوید — همان صفحه‌ای که کاربرها هم از آن وارد کارتابلِ خودشان می‌شوند.</p>
+      <div class="row">
+        <div class="fld"><label>نام کاربری</label>
+          <input type="text" id="auName" dir="ltr" autocomplete="off" spellcheck="false"></div>
+        <div><button class="btn btn-main" id="auGo">ذخیره</button></div>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>رمز ادمین</h2>
       <p class="sub">با عوض شدنش همهٔ نشست‌های باز — روی هر دستگاهی — بسته می‌شوند.</p>
@@ -660,24 +682,28 @@ async function keyFrom(pass, salt, uses){
 
 /* ---------- قفل ورود ---------- */
 let needsSetup = false;
+let ADMIN_USER = "admin";
 
 (async function gate(){
   const me = await api("/me");
   document.getElementById("loading").style.display = "none";
-  if(me.ok && me.data.in){ openApp(me.data.lastLogin); return; }
+  if(me.ok && me.data.in){ ADMIN_USER = me.data.user || "admin"; openApp(me.data.lastLogin); return; }
   needsSetup = !!(me.data && me.data.needsSetup);
   if(needsSetup){
-    document.getElementById("gateTitle").textContent = "اولین بار: رمز ادمین را بگذارید";
+    document.getElementById("gateTitle").textContent = "اولین بار: نام کاربری و رمز ادمین را بگذارید";
     document.getElementById("gateSub").innerHTML =
       "تا وقتی رمزی نیست این پنل بی‌صاحب است، پس رمزِ اول با کدی گذاشته می‌شود " +
       "که فقط به همان گفتگوی تلگرامیِ پشتیبان‌ها می‌رود.<br>" +
       "اول کد را بگیرید، بعد کد و رمزِ تازه را این‌جا بزنید.";
+    document.getElementById("gateUser").placeholder = "نام کاربریِ ادمین (پیش‌فرض admin)";
+    document.getElementById("gateUser").setAttribute("autocomplete","off");
     document.getElementById("gatePass").placeholder = "رمز تازه (دست‌کم ۱۰ حرف)";
     document.getElementById("gatePass").setAttribute("autocomplete","new-password");
     document.getElementById("gatePass2").hidden = false;
     document.getElementById("gateCode").hidden = false;
     document.getElementById("gateCodeBtn").hidden = false;
     document.getElementById("gateBtn").textContent = "بگذار و وارد شو";
+    document.getElementById("gateForgot").hidden = true;
     document.getElementById("gateCodeBtn").addEventListener("click", async ()=>{
       const b = document.getElementById("gateCodeBtn");
       const note = document.getElementById("gateNote");
@@ -690,11 +716,29 @@ let needsSetup = false;
     });
   }
   document.getElementById("gate").hidden = false;
-  setTimeout(()=>{ try{ document.getElementById("gatePass").focus(); }catch(e){} }, 60);
+  setTimeout(()=>{ try{ document.getElementById("gateUser").focus(); }catch(e){} }, 60);
+
+  /* رمزِ تازه فقط به تلگرامِ پشتیبان‌ها می‌رود، نه به این صفحه. */
+  document.getElementById("gateForgot").addEventListener("click", async ()=>{
+    const b = document.getElementById("gateForgot");
+    const err = document.getElementById("gateErr");
+    const note = document.getElementById("gateNote");
+    const user = document.getElementById("gateUser").value.trim().toLowerCase();
+    err.textContent = ""; note.textContent = "";
+    if(!user){ err.textContent = "اول نام کاربری را بنویسید."; return; }
+    if(!confirm("رمزِ تازه ساخته می‌شود و به تلگرام می‌رود. رمزِ فعلی از کار می‌افتد.\n\nادامه؟")) return;
+    b.disabled = true; note.textContent = "در حال فرستادن…";
+    const r = await api("/forgot", { method:"POST", body: JSON.stringify({ user }) });
+    note.textContent = "";
+    if(r.ok) note.textContent = "رمزِ تازه به تلگرام رفت. از همان‌جا بردارید و این‌جا بزنید.";
+    else err.textContent = r.data.error || "نشد.";
+    b.disabled = false;
+  });
 })();
 
 document.getElementById("gateForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
+  const user = document.getElementById("gateUser").value.trim();
   const pass = document.getElementById("gatePass").value;
   const btn = document.getElementById("gateBtn");
   const err = document.getElementById("gateErr");
@@ -705,16 +749,29 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
     if(pass !== document.getElementById("gatePass2").value){ err.textContent = "تکرار رمز نمی‌خواند."; return; }
     if(!document.getElementById("gateCode").value.trim()){
       err.textContent = "اول کد را از تلگرام بگیرید و این‌جا بزنید."; return; }
+  } else if(!user){
+    err.textContent = "نام کاربری را بنویسید."; return;
   }
   btn.disabled = true; btn.textContent = "…";
-  const r = await api(needsSetup ? "/setup" : "/login",
-    { method:"POST", body: JSON.stringify({ password: pass, remember: true,
+  /* یک فرم، دو مقصد: «signin» هم ادمین را می‌شناسد هم کاربرها را و
+     خودش می‌گوید کجا باید رفت. */
+  const r = await api(needsSetup ? "/setup" : "/signin",
+    { method:"POST", body: JSON.stringify({ user: user, password: pass, remember: true,
       code: document.getElementById("gateCode").value.trim() }) });
   if(r.ok){
     const prev = Number(r.data.lastLogin || 0);
+    const note = document.getElementById("gateNote");
+    /* کاربرِ عادی به کارتابلِ خودش می‌رود؛ ادمین همین صفحه را
+       می‌گیرد، چون پنلش همین‌جاست. */
+    if(r.data.go){
+      btn.textContent = "در حال باز کردن کارتابل…";
+      note.innerHTML = "خوش آمدید <b>" + esc(r.data.name || "") + "</b>" +
+        (prev > 0 ? "<br>آخرین ورودِ قبلی شما: <b>" + esc(faDateTime(prev)) + "</b>" : "");
+      setTimeout(()=>{ location.href = r.data.go; }, prev > 0 ? 1800 : 350);
+      return;
+    }
     if(prev > 0){
-      document.getElementById("gateNote").innerHTML =
-        "آخرین ورودِ شما به این پنل:<br><b>" + esc(faDateTime(prev)) + "</b>";
+      note.innerHTML = "آخرین ورودِ شما به این پنل:<br><b>" + esc(faDateTime(prev)) + "</b>";
       btn.textContent = "در حال باز کردن…";
       setTimeout(()=> location.reload(), 2000);
     } else location.reload();
@@ -839,7 +896,7 @@ function renderPlanners(){
   const wrap = document.getElementById("plist");
   const q = findText.trim().toLowerCase();
   const items = q
-    ? DATA.items.filter(p => (p.name + " " + p.slug).toLowerCase().includes(q))
+    ? DATA.items.filter(p => (p.name + " " + p.slug + " " + (p.user||"")).toLowerCase().includes(q))
     : DATA.items;
   const cnt = document.getElementById("findCount");
   if(cnt) cnt.textContent = q
@@ -866,6 +923,8 @@ function renderPlanners(){
         </div>
       </div>
       <div class="meta">
+        <div class="m"><span>نام کاربری</span><span dir="ltr">${esc(p.user || p.slug)}
+          <button class="copy" data-copy="${esc(p.user || p.slug)}" title="رونوشتِ نام کاربری">⧉</button></span></div>
         <div class="m"><span>چک‌لیست آماده</span><span>${p.job ? esc(jobLabel(p.job)) : "—"}</span></div>
         <div class="m"><span>بخش‌های شخصی</span><span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">${
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
@@ -957,6 +1016,9 @@ function openEdit(slug){
     <p class="sub">${p.builtin ? "این کارتابل هنوز در جدول نیست، پس فقط دیده می‌شود." : "sensacare.ir"+esc(p.url)}</p>
     <div class="row">
       <div class="fld"><label>نام</label><input type="text" id="eName" value="${esc(p.name)}"></div>
+      <div class="fld"><label>نام کاربری</label>
+        <input type="text" id="eUser" dir="ltr" autocomplete="off" spellcheck="false"
+          value="${esc(p.user || p.slug)}" ${p.builtin ? "disabled" : ""}></div>
       <div class="fld"><label>مهلت (روز)</label>
         <input type="number" id="eDays" min="0" max="3650" dir="ltr" autocomplete="off"
           placeholder="${p.until ? esc(String(Math.max(0, daysLeft(p.until)))) : "بی‌مهلت"}"></div>
@@ -1061,6 +1123,7 @@ function openEdit(slug){
       .filter(i=> i.checked).map(i=> i.dataset.view);
     const r = await api("/planners/" + slug, { method:"PUT", body: JSON.stringify({
       name: document.getElementById("eName").value.trim(),
+      user: document.getElementById("eUser").value.trim().toLowerCase(),
       job: document.getElementById("eJob").value,
       off, views, vault: secs,
       days: document.getElementById("eDays").value.trim() === ""
@@ -1344,6 +1407,7 @@ function setupNew(){
     const r = await api("/planners", { method:"POST", body: JSON.stringify({
       name: name.value.trim(),
       slug: slug.value.trim().toLowerCase(),
+      user: document.getElementById("nUser").value.trim().toLowerCase(),
       kind: kind.value,
       job: document.getElementById("nJob").value,
       views: Array.from(document.querySelectorAll("#nViews input"))
@@ -1353,8 +1417,12 @@ function setupNew(){
     btn.disabled = false;
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }
     name.value = ""; slug.value = ""; document.getElementById("nPass").value = "";
+    document.getElementById("nUser").value = "";
     paint();
     say("کارتابل ساخته شد: <b>sensacare.ir" + esc(r.data.url) + "</b><br>" +
+        "از صفحهٔ ورود (<b>sensacare.ir/admin.planer</b>) با این نام کاربری وارد می‌شود:<br>" +
+        "<code>" + esc(r.data.user) + "</code>" +
+        ` <button class="copy" data-copy="${esc(r.data.user)}" title="رونوشت">⧉</button><br>` +
         "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +
         ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
         "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
@@ -1373,6 +1441,17 @@ function renderEscrowState(){
 }
 
 function setupKeys(){
+  const au = document.getElementById("auName");
+  au.value = ADMIN_USER || "admin";
+  document.getElementById("auGo").onclick = async ()=>{
+    const user = au.value.trim().toLowerCase();
+    if(!user){ say("نام کاربری را بنویسید.", true); return; }
+    const r = await api("/admin-user", { method:"POST", body: JSON.stringify({ user }) });
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    ADMIN_USER = r.data.user; au.value = ADMIN_USER;
+    say("از این به بعد با <code dir=\"ltr\">" + esc(ADMIN_USER) + "</code> وارد شوید.");
+  };
+
   document.getElementById("apGo").onclick = async ()=>{
     const cur = document.getElementById("apCur").value;
     const np = document.getElementById("apNew").value;

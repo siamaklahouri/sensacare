@@ -29,7 +29,7 @@ import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from 
    «kartablPassHash»)، وگرنه دادهٔ زنده‌اش باید جابه‌جا می‌شد. */
 export const PANELS = {
   it: {
-    id: 'siamak', slug: 'siamak', name: 'سیامک', kind: 'it', api: 'kartabl',
+    id: 'siamak', slug: 'siamak', user: 'siamak', name: 'سیامک', kind: 'it', api: 'kartabl',
     tpl: { title: 'کارتابل ماهانه سیامک', name: 'سیامک', api: '/api/kartabl',
            icon: '/icon-siamak.2.png', store: 'it-manager-planner-v1', idb: 'planner-fs-db',
            dbcache: 'it-manager-db-cache-v19', filejson: 'کارتابل-IT-داده.json',
@@ -48,7 +48,7 @@ export const PANELS = {
     })
   },
   sina: {
-    id: 'sina', slug: 'sina', name: 'سینا', kind: 'fin', api: 'sina',
+    id: 'sina', slug: 'sina', user: 'sina', name: 'سینا', kind: 'fin', api: 'sina',
     tpl: { title: 'کارتابل ماهانه سینا', name: 'سینا', api: '/api/sina',
            icon: '/icon-sina.2.png', store: 'finance-planner-v1', idb: 'finance-fs-db',
            dbcache: 'finance-db-cache-v1', filejson: 'کارتابل-مالی-داده.json',
@@ -67,7 +67,7 @@ export const PANELS = {
     })
   },
   reza: {
-    id: 'reza', slug: 'reza', name: 'رضا', kind: 'fin', api: 'reza',
+    id: 'reza', slug: 'reza', user: 'reza', name: 'رضا', kind: 'fin', api: 'reza',
     tpl: { title: 'کارتابل ماهانه رضا', name: 'رضا', api: '/api/reza',
            icon: '/icon-reza.2.png', store: 'reza-planner-v1', idb: 'reza-fs-db',
            dbcache: 'reza-db-cache-v1', filejson: 'کارتابل-رضا-داده.json',
@@ -198,6 +198,9 @@ export function panelFromRow(row) {
   const expired = until > 0 && Date.now() > until;
   return {
     id: row.slug, slug: row.slug, name: row.name, kind,
+    /* نامِ کاربری برای صفحهٔ ورودِ مشترک. پیش‌فرضش همان آدرسِ کارتابل
+       است، ولی ادمین می‌تواند چیزِ دیگری بگذارد. */
+    user: String(c.user || row.slug).toLowerCase(),
     title: c.title, page: '/' + row.slug + '/', api: c.api || row.slug,
     cookie: c.cookie, icon: (c.icon || '').replace(/^\//, ''),
     tpl: { title: c.title, name: row.name, api: '/api/' + (c.api || row.slug),
@@ -240,6 +243,14 @@ export async function allPanels(env) {
 
 export async function panelBySlug(env, slug) {
   return (await allPanels(env)).find(p => p.slug === slug) || null;
+}
+
+/* ورودِ مشترک با نام کاربری: یک صفحهٔ ورود برای همه، و هر کس به
+   کارتابلِ خودش می‌رسد. */
+export async function panelByUser(env, user) {
+  const u = String(user || '').trim().toLowerCase();
+  if (!u) return null;
+  return (await allPanels(env)).find(p => (p.user || p.slug) === u) || null;
 }
 
 export async function panelByApi(env, api) {
