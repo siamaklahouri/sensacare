@@ -98,6 +98,27 @@ const WORKBOOKS = { it: buildKartablWorkbook, fin: buildSinaWorkbook, gen: build
 /* «عمومی» فایل جدایی ندارد: همان قالبِ IT است که تکه‌های مخصوصِ IT
    از آن برداشته می‌شود. یک فایل کمتر یعنی یک فایل کمتر برای عقب‌ماندن. */
 const TEMPLATES = { it: 'it', fin: 'fin', gen: 'it' };
+
+/* بخش‌هایی که می‌شود برای هر کاربر باز یا بسته گذاشت.
+   «همگام‌سازی» عمداً این‌جا نیست: بدونش کارتابل اصلاً کار نمی‌کند. */
+export const FEATURES = ['pass', 'ai', 'backup', 'folder', 'vault', 'files'];
+
+/* هر مسیرِ API زیرِ کدام بخش است. پنهان‌کردنِ دکمه کافی نیست؛ کسی که
+   درخواست را دستی بفرستد باید همین‌جا جواب رد بگیرد. */
+const FEATURE_ROUTES = [
+  [/^\/password$/, 'pass'],
+  [/^\/ai(\/|$)/, 'ai'],
+  [/^\/backup(\/|$)/, 'backup'],
+  [/^\/(vault|escrow)(\/|$)/, 'vault'],
+  [/^\/escrow-pub$/, 'vault']
+];
+
+export function featureOff(panel, p) {
+  if (!panel.off || !panel.off.length) return null;
+  for (const [re, f] of FEATURE_ROUTES)
+    if (re.test(p) && panel.off.includes(f)) return f;
+  return null;
+}
 const COUNTS = {
   it: (st, db) => ({ سرور: (db.vm || []).length, شرکت: Object.keys(db.companies || {}).length,
                      'خط MVPN': (db.lines || []).length }),
@@ -111,6 +132,9 @@ export function panelFromRow(row) {
   try { c = JSON.parse(row.cfg); } catch (e) { return null; }
   /* نوعِ ناشناخته به «عمومی» می‌افتد، نه اینکه صفحه بالا نیاید. */
   const kind = TEMPLATES[row.kind] ? row.kind : 'gen';
+  /* مهلت: از این تاریخ به بعد کارتابل خودش بسته می‌شود. صفر یعنی بی‌مهلت. */
+  const until = Number(c.until) || 0;
+  const expired = until > 0 && Date.now() > until;
   return {
     id: row.slug, slug: row.slug, name: row.name, kind,
     title: c.title, page: '/' + row.slug + '/', api: c.api || row.slug,
@@ -121,7 +145,14 @@ export function panelFromRow(row) {
     keys: c.keys,
     /* غیرفعال یعنی همه‌چیزش سرِ جایش هست ولی در باز نمی‌شود و
        پشتیبانی هم برایش نمی‌رود. برگرداندنش یک کلیک است. */
-    disabled: !!c.disabled,
+    /* دو جور بسته بودن: یکی را ادمین با دست زده، آن یکی خودش سر رسیده.
+       هر دو یک نتیجه دارند، ولی پیامشان به کاربر فرق می‌کند. */
+    disabled: !!c.disabled || expired,
+    manualOff: !!c.disabled,
+    until, expired,
+    /* بخش‌هایی که ادمین برای این کاربر بسته است. فقط اسمِ بخش‌های
+       شناخته‌شده رد می‌شود تا یک مقدارِ عجیب چیزی را باز نکند. */
+    off: (Array.isArray(c.off) ? c.off : []).filter(f => FEATURES.includes(f)),
     job: c.job || '',
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
@@ -194,6 +225,7 @@ export async function renderPanelPage(env, req, panel) {
      از esc() رد نمی‌شود وگرنه گیومه‌هایش خراب می‌شود. */
   html = html.replaceAll('{{JOBSEED}}', jobSeed(panel.job));
   html = html.replaceAll('{{VAULTSECS}}', vaultSeed(panel.vault));
+  html = html.replaceAll('{{FEATOFF}}', JSON.stringify(panel.off || []).replace(/</g, '\\u003c'));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],
@@ -783,6 +815,12 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       ? { in: true, lastLogin: await getSetting(env, 'login:' + panel.slug, 0) }
       : { in: false });
   if (!session) return bad('وارد نشده‌اید.', 401);
+
+  /* بخشی که ادمین بسته، حتی با نشستِ معتبر هم باز نمی‌شود. */
+  {
+    const f = featureOff(panel, p);
+    if (f) return bad('این بخش برای شما بسته است. با مدیر سیستم تماس بگیرید.', 403);
+  }
 
   if (p === '/state' && m === 'GET') {
     const d = await loadKartabl(env, panel);

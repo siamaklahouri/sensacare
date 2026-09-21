@@ -13,8 +13,8 @@
 
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
-  getSetting, setSetting, all, one, run, newPassword, panelBySlug,
-  PANELS, kartablBot, tgMessage
+  getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
+  PANELS, kartablBot, tgMessage, FEATURES
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 
@@ -176,7 +176,12 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       try { c = JSON.parse(r.cfg); } catch (e) { /* خرابش را هم نشان بده */ }
       items.push({
         slug: r.slug, name: r.name, kind: r.kind, job: c.job || '',
+        /* «disabled» یعنی ادمین با دست بسته؛ «closed» یعنی عملاً بسته
+           است — چه با دست، چه چون مهلتش سر رسیده. */
         disabled: !!c.disabled,
+        until: Number(c.until) || 0,
+        closed: !!c.disabled || (Number(c.until) > 0 && Date.now() > Number(c.until)),
+        off: (Array.isArray(c.off) ? c.off : []).filter(f => FEATURES.includes(f)),
         core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
         url: '/' + r.slug + '/', created: r.created,
@@ -190,7 +195,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     for (const b of Object.values(PANELS))
       if (!known.has(b.slug))
         items.push({ slug: b.slug, name: b.name, kind: b.kind, job: '', vault: DEFAULT_VAULT,
-                     disabled: false, core: true,
+                     disabled: false, closed: false, core: true, off: [], until: 0,
                      url: b.page, created: 0, builtin: true,
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
@@ -208,6 +213,14 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label })),
       vaultTypes: [{ id: 'creds', label: 'شرکت‌ها و رمزها' }, { id: 'inst', label: 'اقساط و وام' },
                    { id: 'contacts', label: 'دفتر تلفن' }, { id: 'table', label: 'جدول دل‌خواه' }],
+      features: [
+        { id: 'pass', label: 'عوض کردن رمز ورود', note: 'کاربر بتواند رمز ورودِ خودش را عوض کند' },
+        { id: 'backup', label: 'تنظیم پشتیبان تلگرام', note: 'ربات و گفتگوی پشتیبان و ارسال دستی' },
+        { id: 'ai', label: 'دستیار هوشمند', note: 'خود دستیار و تنظیم کلید هوش مصنوعی' },
+        { id: 'vault', label: 'دیتای شخصی', note: 'بخش رمزدارِ شخصی کاربر' },
+        { id: 'files', label: 'پشتیبان و بازیابی دستی', note: 'دکمه‌های گرفتن و برگرداندن فایل' },
+        { id: 'folder', label: 'آینهٔ اکسل روی سیستم', note: 'اتصال به پوشهٔ مشترک' }
+      ],
       escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null))
     });
   }
@@ -266,6 +279,21 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         if (body.job && !JOBS[body.job]) return bad('شغل انتخاب‌شده را نمی‌شناسم.');
         cfg.job = body.job;
       }
+      if (body.days !== undefined) {
+        /* عددِ روز می‌گیریم و تاریخِ پایان را حساب می‌کنیم؛ خالی یا صفر
+           یعنی بی‌مهلت. سقفِ ده سال تا یک صفرِ اضافه تاریخ را پرت نکند. */
+        const d = Number(body.days);
+        if (body.days === null || body.days === '' || d === 0) cfg.until = 0;
+        else if (!Number.isFinite(d) || d < 0 || d > 3650)
+          return bad('تعداد روز باید عددی بین ۱ تا ۳۶۵۰ باشد.');
+        else cfg.until = Date.now() + Math.round(d) * 86400000;
+      }
+      if (body.off !== undefined) {
+        if (!Array.isArray(body.off)) return bad('فهرست بخش‌های بسته درست نیست.');
+        const bad_ = body.off.filter(f => !FEATURES.includes(f));
+        if (bad_.length) return bad('بخشِ ناشناخته: ' + bad_.join('، '));
+        cfg.off = [...new Set(body.off)];
+      }
       if (body.vault !== undefined) {
         const v = cleanVault(body.vault);
         if (!v.length) return bad('دست‌کم یک بخش باید باز بماند.');
@@ -308,6 +336,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       try { cfg = JSON.parse(row.cfg); } catch (e) { return bad('تنظیماتِ این کارتابل خوانا نیست.', 500); }
       const off = !!body.disabled;
       cfg.disabled = off;
+      /* روشن‌کردنِ کارتابلی که مهلتش گذشته، بدون برداشتنِ مهلت بی‌فایده
+         است: لحظهٔ بعد دوباره خودش بسته می‌شود. */
+      if (!off && Number(cfg.until) && Date.now() > Number(cfg.until)) {
+        const d = Number(body.days);
+        cfg.until = (Number.isFinite(d) && d > 0 && d <= 3650)
+          ? Date.now() + Math.round(d) * 86400000 : 0;
+      }
       await run(env, 'UPDATE planners SET cfg=? WHERE slug=?', JSON.stringify(cfg), slug);
       /* هر دستگاهی که وارد مانده باید بیرون بیفتد، وگرنه تا وقتی کوکی
          دارد کارتابلِ بسته هم برایش باز می‌ماند. */
@@ -396,6 +431,56 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     await setSetting(env, 'vaultEscrowPriv', body.priv);
     await log(env, 'escrow-key', '', body.replace ? 'replace' : 'new');
     return json({ ok: true });
+  }
+
+  /* ---- گزارش ----
+     همه‌چیز از همان جاهایی خوانده می‌شود که خودِ کارتابل‌ها می‌نویسند؛
+     چیز تازه‌ای ذخیره نمی‌شود. محتوای کارتابل‌ها هم خوانده نمی‌شود،
+     فقط اندازه و زمانِ آخرین تغییرشان. */
+  if (p === '/report' && m === 'GET') {
+    const list = await allPanels(env);
+    const rows = await all(env, 'SELECT k, length(v) AS n, rev, updated FROM kartabl');
+    const size = new Map(rows.map(r => [r.k, r]));
+    let hist = new Map();
+    try {
+      const h = await all(env, 'SELECT k, COUNT(*) AS n FROM kartabl_hist GROUP BY k');
+      hist = new Map(h.map(r => [r.k, r.n]));
+    } catch (e) { /* تاریخچه هنوز نیست */ }
+
+    const planners = [];
+    for (const panel of list) {
+      const st = size.get(panel.keys.state) || {};
+      const db = size.get(panel.keys.db) || {};
+      planners.push({
+        slug: panel.slug, name: panel.name, kind: panel.kind,
+        disabled: !!panel.manualOff,
+        bytes: (st.n || 0) + (db.n || 0),
+        rev: st.rev || 0,
+        updated: Math.max(st.updated || 0, db.updated || 0),
+        expired: !!panel.expired,
+        snapshots: (hist.get(panel.keys.state) || 0) + (hist.get(panel.keys.db) || 0),
+        lastLogin: await getSetting(env, 'login:' + panel.slug, 0),
+        lastBackup: await getSetting(env, panel.keys.last, null)
+      });
+    }
+
+    /* کارهای ادمین، روز به روز — برای اینکه معلوم باشد این پنل چقدر
+       و کِی استفاده شده. */
+    let activity = [];
+    try {
+      const day = 86400000;
+      const from = Date.now() - 29 * day;
+      const items = await all(env, 'SELECT at FROM admin_log WHERE at >= ?', from);
+      const bucket = new Map();
+      for (let i = 0; i < 30; i++) bucket.set(i, 0);
+      for (const r of items) {
+        const i = Math.floor((r.at - from) / day);
+        if (i >= 0 && i < 30) bucket.set(i, bucket.get(i) + 1);
+      }
+      activity = [...bucket.entries()].map(([i, n]) => ({ at: from + i * day, n }));
+    } catch (e) { /* سیاهه هنوز نیست */ }
+
+    return json({ ok: true, planners, activity, now: Date.now() });
   }
 
   if (p === '/log' && m === 'GET') {

@@ -41,6 +41,12 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   --sh-2:0 2px 6px rgba(11,37,69,.06), 0 12px 32px rgba(11,37,69,.09);
   --sh-3:0 8px 24px rgba(11,37,69,.12), 0 32px 64px rgba(11,37,69,.16);
   --glow:0 0 0 3px rgba(14,139,139,.16);
+  /* رنگِ هویتِ سه نوع کارتابل. این سه با سنجهٔ کوررنگی بررسی شده‌اند:
+     نزدیک‌ترین جفتشان در دید عادی ΔE ۱۹٫۶ و در پروتان ۱۲٫۸ فاصله دارد.
+     جای ثابتی دارند و هیچ‌وقت چرخانده نمی‌شوند. */
+  --s-it:#0A8F88; --s-fin:#B5791B; --s-gen:#6E45B0;
+  --s-it-bg:#E2F3F2; --s-fin-bg:#FAF0DD; --s-gen-bg:#EDE7F6;
+  --bar:#0A8F88; --bar-soft:#E2F3F2;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -56,6 +62,10 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
     --sh-2:0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.36);
     --sh-3:0 8px 24px rgba(0,0,0,.45), 0 32px 64px rgba(0,0,0,.5);
     --glow:0 0 0 3px rgba(63,182,174,.2);
+    /* گامِ شب از همان رنگ‌ها، ولی دوباره سنجیده — نه وارونهٔ خودکارِ روز */
+    --s-it:#1FA298; --s-fin:#B8862C; --s-gen:#8B73C8;
+    --s-it-bg:#10302E; --s-fin-bg:#382B11; --s-gen-bg:#221A33;
+    --bar:#3FB6AE; --bar-soft:#12312F;
   }
 }
 :root[data-theme="dark"]{
@@ -71,6 +81,10 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   --sh-2:0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.36);
   --sh-3:0 8px 24px rgba(0,0,0,.45), 0 32px 64px rgba(0,0,0,.5);
   --glow:0 0 0 3px rgba(63,182,174,.2);
+  /* گامِ شب از همان رنگ‌ها، ولی دوباره سنجیده — نه وارونهٔ خودکارِ روز */
+  --s-it:#1FA298; --s-fin:#B8862C; --s-gen:#8B73C8;
+  --s-it-bg:#10302E; --s-fin-bg:#382B11; --s-gen-bg:#221A33;
+  --bar:#3FB6AE; --bar-soft:#12312F;
 }
 
 *{box-sizing:border-box;}
@@ -101,10 +115,8 @@ a{ color:var(--brass-ink); }
   width:100%; max-width:390px; text-align:center;
   animation:rise .4s cubic-bezier(.2,.8,.3,1); }
 @keyframes rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
-.gate-mark{ width:52px; height:52px; margin:0 auto 14px; border-radius:15px;
-  display:flex; align-items:center; justify-content:center; font-size:23px;
-  background:linear-gradient(145deg, var(--brass), var(--brass-deep));
-  box-shadow:0 6px 16px rgba(14,139,139,.28); }
+/* خودِ نشانِ سنسا، نه شکلک: همان چیزی که روی فروشگاه هم هست. */
+.gate-mark{ display:block; width:58px; height:auto; margin:0 auto 16px; }
 .gate-card h1{ font-size:17.5px; margin:0 0 7px; }
 .gate-card p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:0 0 18px; }
 .gate-card input{ width:100%; padding:12px 13px; margin-bottom:9px;
@@ -127,10 +139,7 @@ a{ color:var(--brass-ink); }
 /* ---------- چارچوب ---------- */
 .wrap{ max-width:1160px; margin:0 auto; padding:22px 18px 70px; }
 .top{ display:flex; align-items:center; gap:13px; margin-bottom:20px; }
-.mark{ width:42px; height:42px; border-radius:13px; flex:none;
-  display:flex; align-items:center; justify-content:center; font-size:19px;
-  background:linear-gradient(145deg, var(--brass), var(--brass-deep));
-  box-shadow:0 4px 12px rgba(14,139,139,.24); }
+.mark{ width:40px; height:auto; flex:none; display:block; }
 .top .titles{ flex:1; min-width:0; }
 .top h1{ font-size:19px; margin:0; }
 .top .sub2{ font-size:11.5px; color:var(--ink-faint); margin:1px 0 0; }
@@ -213,25 +222,25 @@ a{ color:var(--brass-ink); }
 .pcard::before{ content:""; position:absolute; inset:0 0 auto 0; height:3px;
   background:var(--accent, var(--brass)); opacity:.85; }
 .pcard:hover{ box-shadow:var(--sh-2); transform:translateY(-2px); }
-.pcard.k-it{ --accent:var(--brass); }
-.pcard.k-fin{ --accent:var(--green); }
-.pcard.k-gen{ --accent:var(--purple); }
+.pcard.k-it{ --accent:var(--s-it); }
+.pcard.k-fin{ --accent:var(--s-fin); }
+.pcard.k-gen{ --accent:var(--s-gen); }
 .pcard.off{ opacity:.75; }
 .pcard.off::before{ background:var(--amber); }
 .pc-head{ display:flex; align-items:flex-start; gap:10px; margin-bottom:3px; }
 .pc-ic{ width:34px; height:34px; flex:none; border-radius:11px; font-size:16px;
   display:flex; align-items:center; justify-content:center;
   background:var(--accent-bg, var(--brass-bg)); }
-.pcard.k-it .pc-ic{ background:var(--brass-bg); }
-.pcard.k-fin .pc-ic{ background:var(--green-bg); }
-.pcard.k-gen .pc-ic{ background:var(--purple-bg); }
+.pcard.k-it .pc-ic{ background:var(--s-it-bg); }
+.pcard.k-fin .pc-ic{ background:var(--s-fin-bg); }
+.pcard.k-gen .pc-ic{ background:var(--s-gen-bg); }
 .pcard h3{ margin:0; font-size:15px; display:flex; align-items:center;
   gap:6px; flex-wrap:wrap; line-height:1.6; }
 .pill{ font-size:10px; padding:2px 8px; border-radius:999px; font-weight:700;
   line-height:1.8; }
-.pill-it{ background:var(--brass-bg); color:var(--brass-ink); }
-.pill-fin{ background:var(--green-bg); color:var(--green-ink); }
-.pill-gen{ background:var(--purple-bg); color:var(--purple-ink); }
+.pill-it{ background:var(--s-it-bg); color:var(--s-it); }
+.pill-fin{ background:var(--s-fin-bg); color:var(--s-fin); }
+.pill-gen{ background:var(--s-gen-bg); color:var(--s-gen); }
 .pill-builtin{ background:var(--amber-bg); color:var(--amber-ink); }
 .pill-off{ background:var(--red-bg); color:var(--red-ink); }
 .pcard .url{ font-size:12px; color:var(--brass-ink); text-decoration:none;
@@ -257,6 +266,19 @@ a{ color:var(--brass-ink); }
 .kind.on{ border-color:var(--brass); background:var(--white); box-shadow:var(--glow); }
 .kind .kt{ font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:7px; }
 .kind .kn{ font-size:11.5px; color:var(--ink-faint); line-height:1.95; margin-top:5px; }
+
+/* ---------- بخش‌هایی که باز یا بسته‌اند ---------- */
+.feats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:8px; }
+.feat{ display:flex; gap:9px; align-items:flex-start; padding:10px 11px;
+  border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2);
+  cursor:pointer; transition:border-color .15s, background .15s; }
+.feat:hover{ border-color:var(--brass); background:var(--white); }
+.feat input{ margin:3px 0 0; accent-color:var(--brass); width:15px; height:15px;
+  flex:none; cursor:pointer; }
+.feat .ft{ font-size:12.5px; font-weight:600; }
+.feat .fn{ font-size:11.5px; color:var(--ink-faint); line-height:1.85; }
+.feat.closed{ background:var(--red-bg); border-color:var(--red-bg); }
+.feat.closed .ft{ color:var(--red-ink); }
 
 /* ---------- بخش‌های شخصی ---------- */
 .secrow{ display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;
@@ -286,6 +308,51 @@ a{ color:var(--brass-ink); }
   display:inline-block; background:var(--white); padding:5px 11px; border-radius:8px;
   font-size:13.5px; letter-spacing:.6px; margin:3px 0; box-shadow:var(--sh-1);
   color:var(--ink); }
+
+/* ---------- گزارش ---------- */
+.grid2{ display:grid; grid-template-columns:repeat(auto-fit, minmax(320px,1fr)); gap:14px; }
+.mix{ display:flex; height:26px; border-radius:8px; overflow:hidden; gap:2px;
+  background:var(--line-soft); margin-bottom:12px; }
+.mix i{ display:block; }
+.legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft); }
+.legend b{ display:inline-flex; align-items:center; gap:6px; font-weight:500; }
+.legend b::before{ content:""; width:10px; height:10px; border-radius:3px;
+  background:var(--c); flex:none; }
+.legend .v{ color:var(--ink); font-weight:700; }
+
+/* میله‌های افقی — یک رنگ، چون اندازه را نشان می‌دهند نه هویت را */
+.bars{ display:flex; flex-direction:column; gap:9px; }
+.bar-row{ display:grid; grid-template-columns:86px 1fr auto; gap:10px; align-items:center;
+  font-size:12px; }
+.bar-row .nm{ color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }
+/* فلکس، نه بلاک: در راست‌چین جای شروعِ میله باید بدون ابهام سمتِ راست
+   باشد — میله از راست رشد می‌کند، هم‌جهت با خواندن. */
+.bar-track{ display:flex; justify-content:flex-start; height:16px;
+  background:var(--bar-soft); border-radius:5px; overflow:hidden; }
+.bar-fill{ display:block; height:100%; flex:none; background:var(--bar); border-radius:5px;
+  transition:width .5s cubic-bezier(.2,.8,.3,1); }
+.bar-row .v{ color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums;
+  min-width:56px; text-align:left; direction:ltr; }
+
+/* ستون‌های روزانه */
+.cols{ display:flex; align-items:flex-end; gap:2px; height:104px;
+  padding-bottom:2px; border-bottom:1px solid var(--line); }
+.col{ flex:1; min-width:3px; background:var(--bar); border-radius:3px 3px 0 0;
+  min-height:2px; transition:opacity .15s; }
+.col.zero{ background:var(--line); }
+.col:hover{ opacity:.65; }
+.cols-x{ display:flex; justify-content:space-between; font-size:11px;
+  color:var(--ink-faint); margin-top:7px; }
+
+.chart-empty{ color:var(--ink-faint); font-size:12.5px; text-align:center;
+  padding:26px 10px; }
+.chip{ display:inline-flex; align-items:center; gap:5px; font-size:11px;
+  padding:2px 9px; border-radius:999px; font-weight:600; white-space:nowrap; }
+.chip-ok{ background:var(--green-bg); color:var(--green-ink); }
+.chip-warn{ background:var(--amber-bg); color:var(--amber-ink); }
+.chip-bad{ background:var(--red-bg); color:var(--red-ink); }
+.chip-none{ background:var(--line-soft); color:var(--ink-faint); }
 
 /* ---------- سیاهه ---------- */
 .tbl{ overflow-x:auto; border:1px solid var(--line-soft); border-radius:var(--r); }
@@ -333,7 +400,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
-    <div class="gate-mark">🗂</div>
+    <img class="gate-mark" src="/logo.svg" alt="سنسا" width="58" height="55">
     <h1 id="gateTitle">پنل کارتابل‌ها</h1>
     <p id="gateSub">برای ادامه رمز ادمین را وارد کنید.</p>
     <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
@@ -349,7 +416,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div class="wrap" id="app" hidden>
   <div class="top">
-    <div class="mark">🗂</div>
+    <img class="mark" src="/logo.svg" alt="سنسا" width="40" height="38">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
       <p class="sub2" id="topSub">sensacare.ir</p>
@@ -362,6 +429,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
   <div class="tabs">
     <button data-tab="list" class="active">کارتابل‌ها</button>
+    <button data-tab="report">گزارش</button>
     <button data-tab="new">کارتابل تازه</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
     <button data-tab="log">سیاههٔ کارها</button>
@@ -371,6 +439,33 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
   <section id="tab-list">
     <div class="plist" id="plist"></div>
+  </section>
+
+  <section id="tab-report" hidden>
+    <div class="panel">
+      <h2>ترکیب کارتابل‌ها</h2>
+      <p class="sub">هر کارتابل از کدام نوع است.</p>
+      <div id="rMix"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h2>حجم داده</h2>
+        <p class="sub">اندازهٔ چیزی که هر کارتابل روی سرور دارد — خودِ داده خوانده نمی‌شود، فقط اندازه‌اش.</p>
+        <div id="rSize"></div>
+      </div>
+      <div class="panel">
+        <h2>کارهای این پنل</h2>
+        <p class="sub">سی روز گذشته.</p>
+        <div id="rAct"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>وضعیت هر کارتابل</h2>
+      <p class="sub">همان چیزی که نمودارها نشان می‌دهند، عدد به عدد.</p>
+      <div id="rTable"></div>
+    </div>
   </section>
 
   <section id="tab-new" hidden>
@@ -582,9 +677,10 @@ function setupTabs(){
   document.querySelectorAll(".tabs button").forEach(b=>{
     b.addEventListener("click", ()=>{
       document.querySelectorAll(".tabs button").forEach(x=> x.classList.toggle("active", x===b));
-      ["list","new","keys","log"].forEach(t=>
+      ["list","report","new","keys","log"].forEach(t=>
         document.getElementById("tab-"+t).hidden = (t !== b.dataset.tab));
       if(b.dataset.tab === "log") loadLog();
+      if(b.dataset.tab === "report") loadReport();
     });
   });
   document.getElementById("logoutBtn").addEventListener("click", async ()=>{
@@ -612,10 +708,23 @@ function fillSelect(id, items){
 
 function kindLabel(k){ const f = DATA.kinds.find(x=>x.id===k); return f ? f.label : k; }
 function kindIcon(k){ const f = DATA.kinds.find(x=>x.id===k); return (f && f.icon) || "🗂"; }
+function featLabel(id){ const f = (DATA.features||[]).find(x=>x.id===id); return f ? f.label : id; }
+
+/* مهلتِ کارتابل: چند روز مانده، یا کِی تمام شد. */
+function daysLeft(until){
+  if(!until) return null;
+  return Math.ceil((until - Date.now()) / 86400000);
+}
+function untilText(p){
+  const d = daysLeft(p.until);
+  if(d === null) return "بی‌مهلت";
+  if(d <= 0) return "تمام شد — " + esc(faDateTime(p.until));
+  return "‏" + fa(d) + " روز مانده";
+}
 
 function renderStats(){
   const n = DATA.items.length;
-  const off = DATA.items.filter(p=>p.disabled).length;
+  const off = DATA.items.filter(p=>p.closed).length;
   const keys = DATA.items.filter(p=>p.hasEscrow).length;
   document.getElementById("stats").innerHTML = `
     <div class="stat"><div class="n">${fa(n)}</div><div class="l">کارتابل</div></div>
@@ -633,14 +742,18 @@ function jobLabel(j){ const f = DATA.jobs.find(x=>x.id===j); return f ? f.label 
 function renderPlanners(){
   const wrap = document.getElementById("plist");
   wrap.innerHTML = DATA.items.map(p=>`
-    <div class="pcard k-${esc(p.kind)}${p.disabled?' off':''}">
+    <div class="pcard k-${esc(p.kind)}${p.closed?' off':''}">
       <div class="pc-head">
         <div class="pc-ic">${kindIcon(p.kind)}</div>
         <div style="min-width:0;flex:1;">
           <h3>${esc(p.name)}
             <span class="pill pill-${esc(p.kind)}">${esc(kindLabel(p.kind))}</span>
             ${p.core ? `<span class="pill pill-builtin">اصلی</span>` : ``}
-            ${p.disabled ? `<span class="pill pill-off">غیرفعال</span>` : ``}</h3>
+            ${p.disabled ? `<span class="pill pill-off">غیرفعال</span>`
+              : (p.until && daysLeft(p.until) <= 0)
+                ? `<span class="pill pill-off">مهلت تمام</span>`
+                : (p.until && daysLeft(p.until) <= 7)
+                  ? `<span class="pill pill-builtin">${fa(daysLeft(p.until))} روز مانده</span>` : ``}</h3>
           <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
         </div>
       </div>
@@ -650,13 +763,16 @@ function renderPlanners(){
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
         <div class="m"><span>آخرین ورود</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
         <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
+        <div class="m"><span>مهلت</span><span>${untilText(p)}</span></div>
+        <div class="m"><span>بخش‌های بسته</span><span>${(p.off||[]).length
+          ? esc((p.off||[]).map(featLabel).join("، ")) : "—"}</span></div>
       </div>
       <div class="acts">
         <button class="btn" data-edit="${esc(p.slug)}">ویرایش</button>
         <button class="btn" data-pw="${esc(p.slug)}">رمز ورود</button>
         <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
-        ${p.builtin ? `` : `<button class="btn ${p.disabled?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
-          p.disabled ? "فعال کن" : "غیرفعال"}</button>`}
+        ${p.builtin ? `` : `<button class="btn ${p.closed?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
+          p.closed ? "فعال کن" : "غیرفعال"}</button>`}
         ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">🗑</button>`}
       </div>
     </div>`).join("") || `<div class="panel" style="text-align:center;color:var(--ink-faint);">
@@ -705,11 +821,31 @@ function openEdit(slug){
     <p class="sub">${p.builtin ? "این کارتابل هنوز در جدول نیست، پس فقط دیده می‌شود." : "sensacare.ir"+esc(p.url)}</p>
     <div class="row">
       <div class="fld"><label>نام</label><input type="text" id="eName" value="${esc(p.name)}"></div>
+      <div class="fld"><label>مهلت (روز)</label>
+        <input type="number" id="eDays" min="0" max="3650" dir="ltr" autocomplete="off"
+          placeholder="${p.until ? esc(String(Math.max(0, daysLeft(p.until)))) : "بی‌مهلت"}"></div>
       <div class="fld"><label>شغل (چک‌لیست آماده)</label><select id="eJob">${
         jobs.map(j=>`<option value="${esc(j.id)}" ${p.job===j.id?"selected":""}>${esc(j.label)}</option>`).join("")
       }</select></div>
     </div>
-    <p class="sub" style="margin-top:16px;">بخش‌های «دیتای شخصی» — برداشتنِ یک بخش
+    <p class="hint">${p.until
+      ? "این کارتابل " + (daysLeft(p.until) > 0
+          ? "تا " + esc(faDateTime(p.until)) + " باز است و بعدش خودش بسته می‌شود."
+          : "مهلتش " + esc(faDateTime(p.until)) + " تمام شده و الان بسته است.") +
+        " برای برداشتنِ مهلت، صفر بزنید."
+      : "بی‌مهلت است. اگر عددی بزنید، از همین حالا شمرده می‌شود و سرِ روزِ آخر خودش بسته می‌شود."}</p>
+
+    <p class="sub" style="margin-top:18px;">کاربر به کدام بخش‌ها دسترسی داشته باشد —
+      تیکِ برداشته‌شده یعنی آن بخش برایش بسته است و نه می‌بیندش نه می‌تواند
+      از راهِ دیگری بازش کند.</p>
+    <div class="feats">${(DATA.features||[]).map(f=>`
+      <label class="feat${(p.off||[]).includes(f.id) ? ' closed' : ''}">
+        <input type="checkbox" data-feat="${esc(f.id)}" ${(p.off||[]).includes(f.id) ? "" : "checked"}>
+        <span><span class="ft">${esc(f.label)}</span><br>
+          <span class="fn">${esc(f.note||"")}</span></span>
+      </label>`).join("")}</div>
+
+    <p class="sub" style="margin-top:18px;">بخش‌های «دیتای شخصی» — برداشتنِ یک بخش
       محتوایش را پاک نمی‌کند؛ فقط از چشمِ کاربر پنهان می‌شود و با برگرداندنش
       دوباره پیدا می‌شود.</p>
     <div id="eSecs">${(p.vault||[]).map(sectionRow).join("")}</div>
@@ -728,6 +864,9 @@ function openEdit(slug){
       sectionRow({ id:"", type:"table", title:"", cols:[] }));
     wire();
   };
+  document.querySelectorAll(".feat input").forEach(inp=>{
+    inp.onchange = ()=> inp.closest(".feat").classList.toggle("closed", !inp.checked);
+  });
   document.getElementById("eCancel").onclick = closeOverlay;
   const save = document.getElementById("eSave");
   if(save) save.onclick = async ()=>{
@@ -750,10 +889,14 @@ function openEdit(slug){
     }
     if(!secs.length){ document.getElementById("eErr").textContent = "دست‌کم یک بخش باید بماند."; return; }
     save.disabled = true;
+    const off = Array.from(document.querySelectorAll(".feat input"))
+      .filter(i=> !i.checked).map(i=> i.dataset.feat);
     const r = await api("/planners/" + slug, { method:"PUT", body: JSON.stringify({
       name: document.getElementById("eName").value.trim(),
       job: document.getElementById("eJob").value,
-      vault: secs
+      off, vault: secs,
+      days: document.getElementById("eDays").value.trim() === ""
+        ? undefined : Number(document.getElementById("eDays").value)
     })});
     save.disabled = false;
     if(!r.ok){ document.getElementById("eErr").textContent = r.data.error || "نشد."; return; }
@@ -905,14 +1048,25 @@ async function runVaultReset(slug){
 async function toggleState(slug){
   const p = find(slug);
   if(!p) return;
-  const off = !p.disabled;
+  const off = !p.closed;
   if(off && !confirm(
       "«" + p.name + "» غیرفعال شود؟\n\n" +
       "• آدرسش دیگر باز نمی‌شود و هر دستگاهی که وارد مانده بیرون می‌افتد.\n" +
       "• پشتیبان خودکار هم دیگر برایش نمی‌رود.\n" +
       "• هیچ داده‌ای پاک نمی‌شود؛ هر وقت خواستید با یک کلیک برمی‌گردد.")) return;
+  /* اگر مهلتش گذشته، روشن‌کردنِ خالی بی‌فایده است — لحظهٔ بعد دوباره
+     خودش بسته می‌شود. پس همان‌جا می‌پرسیم چند روز دیگر. */
+  let days;
+  if(!off && p.until && daysLeft(p.until) <= 0){
+    const t = prompt(
+      "مهلتِ «" + p.name + "» تمام شده.\n\n" +
+      "چند روز دیگر باز بماند؟ خالی بگذارید تا بی‌مهلت شود.", "30");
+    if(t === null) return;
+    days = t.trim() === "" ? 0 : Number(t);
+    if(!Number.isFinite(days) || days < 0 || days > 3650){ say("عدد روز درست نیست.", true); return; }
+  }
   const r = await api("/planners/" + slug + "/state",
-    { method:"POST", body: JSON.stringify({ disabled: off }) });
+    { method:"POST", body: JSON.stringify({ disabled: off, days }) });
   if(!r.ok){ say(r.data.error || "نشد.", true); return; }
   say(off
     ? "«" + esc(p.name) + "» غیرفعال شد. داده‌هایش سرِ جایشان است و پشتیبان خودکار هم دیگر برایش نمی‌رود."
@@ -1069,6 +1223,128 @@ function setupKeys(){
     btn.disabled = false;
     renderEscrowState();
   };
+}
+
+/* ==========================================================================
+   گزارش
+   نمودارها با همین div و CSS ساخته می‌شوند، نه کتابخانهٔ بیرونی: این
+   صفحه نباید برای نشان دادنِ چهار میله منتظرِ اینترنت بماند.
+   ========================================================================== */
+let REPORT = null;
+
+/* رنگِ هویتِ هر نوع. جای ثابتی دارد و با فیلتر عوض نمی‌شود. */
+const KIND_COLOR = { it:"var(--s-it)", fin:"var(--s-fin)", gen:"var(--s-gen)" };
+
+function kb(n){
+  if(!n) return "۰";
+  if(n < 1024) return fa(n) + " بایت";
+  if(n < 1024*1024) return fa((n/1024).toFixed(1)) + " کیلوبایت";
+  return fa((n/1024/1024).toFixed(2)) + " مگابایت";
+}
+function daysAgo(ms, now){ return ms ? Math.floor((now - ms) / 86400000) : null; }
+function agoText(ms, now){
+  if(!ms) return "هرگز";
+  const d = daysAgo(ms, now);
+  if(d <= 0) return "امروز";
+  if(d === 1) return "دیروز";
+  if(d < 30) return fa(d) + " روز پیش";
+  if(d < 365) return fa(Math.floor(d/30)) + " ماه پیش";
+  return fa(Math.floor(d/365)) + " سال پیش";
+}
+function faDate(ms){
+  try{ return new Intl.DateTimeFormat("fa-IR-u-ca-persian",
+    {month:"long", day:"numeric"}).format(new Date(ms)); }
+  catch(e){ return ""; }
+}
+
+async function loadReport(){
+  const r = await api("/report");
+  if(!r.ok){ say(r.data.error || "گزارش نیامد.", true); return; }
+  REPORT = r.data;
+  renderMix(); renderSize(); renderActivity(); renderReportTable();
+}
+
+/* ترکیب: یک میلهٔ افقی با برچسبِ مستقیم. برای چهار پنج کارتابل، نمودار
+   دایره‌ای بیشتر تزئین است تا اطلاعات. */
+function renderMix(){
+  const el = document.getElementById("rMix");
+  const items = REPORT.planners;
+  const total = items.length || 1;
+  const seen = DATA.kinds.map(k=>({ id:k.id, label:k.label,
+    n: items.filter(p=>p.kind===k.id).length })).filter(k=>k.n > 0);
+  if(!seen.length){ el.innerHTML = `<p class="chart-empty">کارتابلی نیست.</p>`; return; }
+  el.innerHTML =
+    `<div class="mix">${seen.map(k=>
+      `<i style="width:${(k.n/total*100).toFixed(2)}%;background:${KIND_COLOR[k.id]||'var(--bar)'}"
+          title="${esc(k.label)}: ${fa(k.n)}"></i>`).join("")}</div>
+     <div class="legend">${seen.map(k=>
+      `<b style="--c:${KIND_COLOR[k.id]||'var(--bar)'}">${esc(k.label)}
+        <span class="v">${fa(k.n)}</span></b>`).join("")}</div>`;
+}
+
+/* حجم داده: اندازه است نه هویت، پس یک رنگ بس است. */
+function renderSize(){
+  const el = document.getElementById("rSize");
+  const items = REPORT.planners.slice().sort((a,b)=> b.bytes - a.bytes);
+  if(!items.length || !items[0].bytes){
+    el.innerHTML = `<p class="chart-empty">هنوز داده‌ای ذخیره نشده.</p>`; return; }
+  const max = items[0].bytes || 1;
+  el.innerHTML = `<div class="bars">${items.map(p=>`
+    <div class="bar-row">
+      <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${
+        Math.max(2, p.bytes/max*100).toFixed(1)}%"></span></span>
+      <span class="v">${kb(p.bytes)}</span>
+    </div>`).join("")}</div>`;
+}
+
+function renderActivity(){
+  const el = document.getElementById("rAct");
+  const a = REPORT.activity || [];
+  if(!a.length || !a.some(d=>d.n)){
+    el.innerHTML = `<p class="chart-empty">در سی روز گذشته کاری در پنل انجام نشده.</p>`; return; }
+  const max = Math.max(...a.map(d=>d.n), 1);
+  el.innerHTML = `
+    <div class="cols">${a.map(d=>`
+      <span class="col${d.n?'':' zero'}" style="height:${d.n? Math.max(6, d.n/max*100) : 2}%"
+        title="${esc(faDate(d.at))} — ${fa(d.n)} کار"></span>`).join("")}</div>
+    <div class="cols-x"><span>${esc(faDate(a[0].at))}</span>
+      <span>${esc(faDate(a[a.length-1].at))}</span></div>`;
+}
+
+/* وضعیت — رنگ به‌تنهایی حرف نمی‌زند؛ نشانه و نوشته هم کنارش هست. */
+function backupChip(b, now){
+  if(!b || !b.at) return `<span class="chip chip-none">— بی‌سابقه</span>`;
+  if(b.ok === false) return `<span class="chip chip-bad" title="${esc(b.error||"")}">✕ نرفت</span>`;
+  const d = daysAgo(b.at, now);
+  if(d > 2) return `<span class="chip chip-warn">! ${esc(agoText(b.at, now))}</span>`;
+  return `<span class="chip chip-ok">✓ ${esc(agoText(b.at, now))}</span>`;
+}
+
+function renderReportTable(){
+  const now = REPORT.now;
+  document.getElementById("rTable").innerHTML = `
+    <div class="tbl"><table>
+      <thead><tr>
+        <th>کارتابل</th><th>نوع</th><th>وضعیت</th><th>حجم</th>
+        <th>نسخه</th><th>آخرین ذخیره</th><th>آخرین ورود</th><th>پشتیبان</th>
+      </tr></thead>
+      <tbody>${REPORT.planners.map(p=>`<tr>
+        <td>${esc(p.name)}</td>
+        <td><span class="pill pill-${esc(p.kind)}">${esc(kindLabel(p.kind))}</span></td>
+        <td>${p.disabled
+          ? `<span class="chip chip-warn">⏸ غیرفعال</span>`
+          : p.expired
+            ? `<span class="chip chip-warn">⏳ مهلت تمام</span>`
+            : `<span class="chip chip-ok">✓ فعال</span>`}</td>
+        <td>${kb(p.bytes)}</td>
+        <td>${fa(p.rev)}${p.snapshots ? ` <span style="color:var(--ink-faint)">(${
+          fa(p.snapshots)} عکس)</span>` : ``}</td>
+        <td>${esc(agoText(p.updated, now))}</td>
+        <td>${esc(agoText(p.lastLogin, now))}</td>
+        <td>${backupChip(p.lastBackup, now)}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
 }
 
 /* ---------- سیاهه ---------- */

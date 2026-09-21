@@ -18,8 +18,8 @@ function disabledPanelPage(panel) {
  @media (prefers-color-scheme:dark){p{color:#A9B7C6}}
  .i{font-size:34px;margin-bottom:10px}
 </style></head><body><div class="c">
-<div class="i">⏸</div>
-<h1>کارتابل ${name} فعلاً غیرفعال است</h1>
+<div class="i">${panel.expired && !panel.manualOff ? "⏳" : "⏸"}</div>
+<h1>کارتابل ${name} ${panel.expired && !panel.manualOff ? "مهلتش تمام شده" : "فعلاً غیرفعال است"}</h1>
 <p>داده‌هایتان سرِ جایشان هستند و چیزی پاک نشده.<br>
 برای باز شدنِ دوباره با مدیر سیستم تماس بگیرید.</p>
 </div></body></html>`;

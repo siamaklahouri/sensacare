@@ -17,6 +17,8 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
 window.KARTABL_JOB = {{JOBSEED}};
 /* بخش‌های «دیتای شخصی» که ادمین برای این کاربر باز گذاشته. */
 window.KARTABL_VAULT = {{VAULTSECS}};
+/* بخش‌هایی که ادمین برای این کاربر بسته است. */
+window.KARTABL_OFF = {{FEATOFF}};
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -959,16 +961,16 @@ window.KARTABL_VAULT = {{VAULTSECS}};
     <button class="navbtn" data-view="bank"><span class="ic">🏦</span> حساب‌های بانکی</button>
     <button class="navbtn" data-view="budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
     <button class="navbtn" data-view="parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
-    <button class="navbtn navbtn-lock" data-view="personal"><span class="ic">🔒</span> دیتای شخصی</button>
-      <button class="navbtn" data-view="assistant"><span class="ic">🤖</span> دستیار هوشمند</button>
+    <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
+      <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
     </nav>
     <div class="sidebar-foot">
       <div class="save-hint" id="saveHint"></div>
       <div class="foot-actions">
-        <button class="btn btn-ghost" id="exportBtn">⬇ پشتیبان</button>
-        <button class="btn btn-ghost" id="importBtn">⬆ بازیابی</button>
+        <button class="btn btn-ghost" id="exportBtn" data-feat="files">⬇ پشتیبان</button>
+        <button class="btn btn-ghost" id="importBtn" data-feat="files">⬆ بازیابی</button>
       </div>
       <input type="file" id="importFile" accept="application/json" style="display:none;">
       <button class="btn btn-ghost foot-lock" id="lockBtn">🔓 خروج از کارتابل</button>
@@ -1379,7 +1381,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
     </section>
 
     <!-- PERSONAL (password protected) -->
-    <section class="view" id="view-personal">
+    <section class="view" id="view-personal" data-feat="vault">
       <div class="section-title">🔒 دیتای شخصی</div>
       <div class="section-sub">این بخش با رمز عبور جداگانه محافظت می‌شود و داده‌هایش حتی در فایل اکسل و فایل ذخیره‌سازی به‌صورت رمزنگاری‌شده نگه‌داری می‌شود — بدون رمز درست، هیچ‌کس (از جمله خود این برنامه) نمی‌تواند آن را بخواند.</div>
       <div id="personalWrap"></div>
@@ -1401,7 +1403,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-feat="pass">
         <h3 class="set-h">🔑 رمز ورود</h3>
         <p class="set-p">رمز روی سرور و به شکل PBKDF2 با ۱۰۰٬۰۰۰ دور نگه داشته می‌شود؛ نه در این صفحه هست و نه از روی چیزی که ذخیره شده درمی‌آید. با عوض کردنش، همهٔ دستگاه‌های دیگر که وارد مانده‌اند بیرون می‌افتند.</p>
         <form id="passForm" autocomplete="off">
@@ -1423,7 +1425,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
         </form>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-feat="ai">
         <h3 class="set-h">🤖 موتور دستیار هوشمند</h3>
         <p class="set-p">دستیار به‌طور پیش‌فرض روی هوش مصنوعیِ رایگانِ کلادفلر کار می‌کند — چیزی لازم ندارد، ولی کیفیتش متوسط است و گاهی در فارسی گیج می‌زند. اگر کلید API کلاد داشته باشید، این‌جا بگذاریدش تا دستیار از همان لحظه با کلاد کار کند. کلید را از <code dir="ltr">console.anthropic.com</code> می‌سازید و هزینه‌اش پای مصرف خودتان است.</p>
         <div class="set-row">
@@ -1441,7 +1443,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-feat="backup">
         <h3 class="set-h">🤖 پشتیبان شبانه در تلگرام</h3>
         <p class="set-p">هر شب یک زیپ کامل — فایل داده، فایل اکسل، و خودِ صفحهٔ کارتابل — برای ربات شما فرستاده می‌شود. با همان زیپ، کارتابل بدون سرور و بدون اینترنت هم باز می‌شود.</p>
         <div class="set-grid">
@@ -1471,7 +1473,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
       </div>
 
       <!-- فقط در مرورگرهایی که File System Access دارند دیده می‌شود -->
-      <div class="panel" id="folderPanel" hidden>
+      <div class="panel" id="folderPanel" data-feat="folder" hidden>
         <h3 class="set-h">🗂️ آینهٔ اکسل روی سیستم (اختیاری)</h3>
         <p class="set-p">اگر بخواهید، کارتابل می‌تواند هم‌زمان یک فایل اکسل را در پوشه‌ای روی سیستم شما به‌روز نگه دارد. برای کار کردن با کارتابل لازم نیست — داده‌ها روی سرور هستند و پشتیبان شبانه هم می‌رود. این فقط برای وقتی است که بخواهید همان فایل اکسل همیشه روی دیسک خودتان تازه باشد. (فقط Chrome و Edge این امکان را دارند.)</p>
         <div class="set-row">
@@ -1483,7 +1485,7 @@ window.KARTABL_VAULT = {{VAULTSECS}};
 
     <!-- GUIDE -->
     <!-- ASSISTANT -->
-    <section class="view" id="view-assistant">
+    <section class="view" id="view-assistant" data-feat="ai">
       <div class="section-title">🤖 دستیار هوشمند</div>
       <div class="section-sub">هر چیزی بپرسید — هم دربارهٔ همین کارتابل، هم هر سؤال دیگری</div>
       <div class="ai-wrap">
@@ -1620,6 +1622,19 @@ function escapeGateHtml(t){
   return String(t == null ? "" : t)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+
+/* ---------- بخش‌هایی که ادمین بسته است ----------
+   فهرستش را سرور داخل صفحه می‌گذارد. این‌جا فقط از چشم برداشته می‌شوند؛
+   جلوگیریِ واقعی سمتِ سرور است، چون پنهان‌کردنِ یک دکمه کسی را که
+   درخواست را دستی بفرستد نگه نمی‌دارد. */
+function hideClosedFeatures(){
+  const off = Array.isArray(window.KARTABL_OFF) ? window.KARTABL_OFF : [];
+  if(!off.length) return;
+  off.forEach(f=>{
+    document.querySelectorAll('[data-feat="' + f + '"]').forEach(el=> el.remove());
+  });
+}
+hideClosedFeatures();
 
 let gateReady = null;   /* وعده‌ای که وقتی تکلیف ورود روشن شد باز می‌شود */
 let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه */
