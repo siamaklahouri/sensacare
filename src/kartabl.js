@@ -15,7 +15,7 @@
    برود، آن بخش باز نمی‌شود. */
 
 import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from './kartabl-xlsx.js';
-import { jobSeed } from './kartabl-jobs.js';
+import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 
@@ -121,10 +121,16 @@ export const VIEWS = {
     { id: 'expenses',        label: 'منابع و مصارف' },
     { id: 'bank',            label: 'حساب‌های بانکی' },
     { id: 'budget',          label: 'بودجه‌بندی ماهانه' },
-    { id: 'parties',         label: 'طرف‌حساب‌ها' }
+    { id: 'parties',         label: 'طرف‌حساب‌ها' },
+    { id: 'datetools',       label: 'تبدیل تاریخ' }
   ],
-  gen: []
+  /* «عمومی» از همان قالبِ IT ساخته می‌شود، پس همان بخش‌ها را هم
+     می‌تواند داشته باشد — مثلاً هلپ‌دسکی که به سرورها و MVPN کار دارد.
+     فرقش این است که این‌جا پیش‌فرض بسته است و شغل تعیین می‌کند کدام
+     پیشنهاد شود. */
+  gen: null
 };
+VIEWS.gen = VIEWS.it;
 
 const ALL_VIEWS = new Set(Object.values(VIEWS).flat().map(v => v.id));
 
@@ -132,6 +138,27 @@ const ALL_VIEWS = new Set(Object.values(VIEWS).flat().map(v => v.id));
    که می‌شناسیم. هر چیزِ دیگری دور ریخته می‌شود. */
 export const isFeature = f => typeof f === 'string' &&
   (FEATURES.includes(f) || (f.startsWith('view:') && ALL_VIEWS.has(f.slice(5))));
+
+/* کدام بخش‌های خودِ کارتابل برای این کاربر باز است.
+   ترتیبِ حرف: اول تیکِ صریحِ ادمین، بعد پیشنهادِ شغل، و اگر هیچ‌کدام
+   نبود همهٔ بخش‌های آن نوع — مگر «عمومی» که پیش‌فرضش بسته است. */
+export function enabledViews(cfg, kind) {
+  const all = (VIEWS[kind] || []).map(v => v.id);
+  if (Array.isArray(cfg.views)) return cfg.views.filter(v => all.includes(v));
+  const job = JOBS[cfg.job];
+  if (kind === 'gen') return job ? (job.views || []).filter(v => all.includes(v)) : [];
+  return all;
+}
+
+/* فهرستِ نهاییِ «بسته‌ها» که به صفحه می‌رسد: هم بخش‌های عمومی، هم
+   نماهایی که باز نیستند. صفحه فقط همین یک فهرست را می‌فهمد. */
+export function effectiveOff(cfg, kind) {
+  const off = (Array.isArray(cfg.off) ? cfg.off : []).filter(isFeature);
+  const on = new Set(enabledViews(cfg, kind));
+  for (const v of (VIEWS[kind] || []))
+    if (!on.has(v.id) && !off.includes('view:' + v.id)) off.push('view:' + v.id);
+  return off;
+}
 
 /* هر مسیرِ API زیرِ کدام بخش است. پنهان‌کردنِ دکمه کافی نیست؛ کسی که
    درخواست را دستی بفرستد باید همین‌جا جواب رد بگیرد. */
@@ -186,7 +213,7 @@ export function panelFromRow(row) {
     until, expired,
     /* بخش‌هایی که ادمین برای این کاربر بسته است. فقط اسمِ بخش‌های
        شناخته‌شده رد می‌شود تا یک مقدارِ عجیب چیزی را باز نکند. */
-    off: (Array.isArray(c.off) ? c.off : []).filter(isFeature),
+    off: effectiveOff(c, kind),
     job: c.job || '',
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
@@ -260,6 +287,7 @@ export async function renderPanelPage(env, req, panel) {
   html = html.replaceAll('{{JOBSEED}}', jobSeed(panel.job));
   html = html.replaceAll('{{VAULTSECS}}', vaultSeed(panel.vault));
   html = html.replaceAll('{{FEATOFF}}', JSON.stringify(panel.off || []).replace(/</g, '\\u003c'));
+  html = html.replaceAll('{{UNTIL}}', String(Number(panel.until) || 0));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],

@@ -19,6 +19,8 @@ window.KARTABL_JOB = {{JOBSEED}};
 window.KARTABL_VAULT = {{VAULTSECS}};
 /* بخش‌هایی که ادمین برای این کاربر بسته است. */
 window.KARTABL_OFF = {{FEATOFF}};
+/* تاریخِ پایانِ مهلت. صفر یعنی بی‌مهلت. */
+window.KARTABL_UNTIL = {{UNTIL}};
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -223,6 +225,24 @@ window.KARTABL_OFF = {{FEATOFF}};
   .navbtn .ic{ font-size:15px; width:20px; text-align:center; }
   .navbtn:hover{ background:var(--paper-deep); }
   .navbtn.active{ background:var(--brass-bg); color:var(--brass-ink); font-weight:700; }
+
+/* ---------- هشدارِ پایانِ مهلت ----------
+   وقتی یک هفته بیشتر نمانده، بعد از هر ورود یک بار گفته می‌شود. */
+.exp-ov{ position:fixed; inset:0; z-index:88; display:flex; align-items:center;
+  justify-content:center; padding:20px; background:rgba(11,37,69,.55); }
+.exp-ov[hidden]{ display:none; }
+.exp-box{ background:var(--white); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow-lg); padding:28px 24px;
+  width:100%; max-width:390px; text-align:center; }
+.exp-ic{ font-size:38px; line-height:1; margin-bottom:10px; }
+.exp-box h3{ font-family:var(--font-display); font-size:16.5px; margin:0 0 8px; color:var(--ink); }
+.exp-n{ font-size:30px; font-weight:800; color:var(--amber-ink); line-height:1.4;
+  letter-spacing:-.02em; }
+.exp-box p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:6px 0 18px; }
+.exp-box button{ width:100%; padding:11px; border:0; border-radius:var(--radius-sm);
+  background:var(--brass); color:#fff; font-family:var(--font-body); font-size:13.5px;
+  font-weight:600; cursor:pointer; }
+.exp-box button:hover{ background:var(--brass-deep); }
   /* ---------- بخش تنظیمات و نوار تداخل نسخه ---------- */
   .set-h{ font-family:var(--font-display); font-size:15px; margin:0 0 6px; color:var(--ink); }
   .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
@@ -472,6 +492,21 @@ window.KARTABL_OFF = {{FEATOFF}};
   /* ---------- Panels / grids ---------- */
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
   @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+  .dt-row{ display:flex; gap:8px; }
+  .dt-row select, .dt-row input[type="date"]{
+    flex:1; box-sizing:border-box; border:1px solid var(--card-border); border-radius:8px;
+    padding:9px 10px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); background:var(--white);
+  }
+  .dt-row select:focus, .dt-row input:focus{ outline:none; border-color:var(--brass); }
+  .dt-result{
+    margin-top:14px; padding:12px 14px; background:#F9F6EC; border:1px solid var(--card-border); border-radius:10px;
+    font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--ink); text-align:center; min-height:20px;
+  }
+  .dt-diff-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:700px){ .dt-diff-grid{ grid-template-columns:1fr; } }
+  .dt-diff-grid label{ font-size:11.5px; color:var(--ink-soft); display:block; margin-bottom:6px; }
+  .dt-diff-result{ font-size:13px; line-height:2; }
+  .dt-diff-result b{ color:var(--brass-ink); font-family:var(--font-display); font-size:16px; }
   .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
   @media (max-width:1100px){ .grid3{ grid-template-columns:1fr 1fr; } }
   @media (max-width:700px){ .grid3{ grid-template-columns:1fr; } }
@@ -962,6 +997,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <button class="navbtn" data-view="budget" data-feat="view:budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
     <button class="navbtn" data-view="parties" data-feat="view:parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
+    <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1085,7 +1121,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- INVOICES -->
     <section class="view" id="view-invoices" data-feat="view:invoices">
       <div class="section-title">سررسید اسناد دریافتنی از مشتری</div>
-      <div class="section-sub">فهرست فاکتورهای صادرشده و وضعیت وصول مطالبات — برگ «اسناد دریافتنی از مشتری» در فایل دیتابیس</div>
+      <div class="section-sub">فهرست فاکتورهای صادرشده و وضعیت وصول مطالبات</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshInvoicesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="invoicesSyncStatus"></span>
@@ -1126,7 +1162,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- PAYABLES -->
     <section class="view" id="view-payables" data-feat="view:payables">
       <div class="section-title">بدهی و پرداخت</div>
-      <div class="section-sub">فهرست بدهی‌ها به تامین‌کنندگان به تفکیک پروژه — برگ «بدهی و پرداخت» در فایل دیتابیس</div>
+      <div class="section-sub">فهرست بدهی‌ها به تامین‌کنندگان به تفکیک پروژه</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPayablesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="payablesSyncStatus"></span>
@@ -1166,7 +1202,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- PAYABLE NOTES (چک‌های پرداختنی نزد دیگران) -->
     <section class="view" id="view-payablenotes" data-feat="view:payablenotes">
       <div class="section-title">اسناد پرداختنی نزد دیگران</div>
-      <div class="section-sub">چک‌ها و اسنادی که شرکت به دیگران بدهکار است — برگ «اسناد پرداختنی نزد دیگران» در فایل دیتابیس</div>
+      <div class="section-sub">چک‌ها و اسنادی که شرکت به دیگران بدهکار است</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPayableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="payableNotesSyncStatus"></span>
@@ -1204,7 +1240,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- RECEIVABLE NOTES (چک‌های دریافتنی به نفع شرکت) -->
     <section class="view" id="view-receivablenotes" data-feat="view:receivablenotes">
       <div class="section-title">اسناد دریافتنی به نفع شرکت</div>
-      <div class="section-sub">چک‌ها و اسنادی که دیگران به شرکت بدهکارند — برگ «اسناد دریافتنی شرکت» در فایل دیتابیس</div>
+      <div class="section-sub">چک‌ها و اسنادی که دیگران به شرکت بدهکارند</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshReceivableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="receivableNotesSyncStatus"></span>
@@ -1242,7 +1278,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- EXPENSES -->
     <section class="view" id="view-expenses" data-feat="view:expenses">
       <div class="section-title">منابع و مصارف</div>
-      <div class="section-sub">ثبت منابع (دریافت‌ها و ورودی‌های نقدی) و مصارف (هزینه‌ها و خروجی‌های نقدی) — برگ «منابع و مصارف» در فایل دیتابیس</div>
+      <div class="section-sub">ثبت منابع (دریافت‌ها و ورودی‌های نقدی) و مصارف (هزینه‌ها و خروجی‌های نقدی)</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshExpensesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="expensesSyncStatus"></span>
@@ -1283,7 +1319,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- BANK ACCOUNTS -->
     <section class="view" id="view-bank" data-feat="view:bank">
       <div class="section-title">حساب‌های بانکی و نقدینگی</div>
-      <div class="section-sub">فهرست حساب‌ها و موجودی هرکدام — برگ «حساب‌های بانکی» در فایل دیتابیس</div>
+      <div class="section-sub">فهرست حساب‌ها و موجودی هرکدام</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshBankBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="bankSyncStatus"></span>
@@ -1315,7 +1351,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- BUDGET -->
     <section class="view" id="view-budget" data-feat="view:budget">
       <div class="section-title">بودجه‌بندی ماهانه</div>
-      <div class="section-sub">مقایسه‌ی بودجه‌ی مصوب با هزینه‌ی واقعی هر دسته — برگ «بودجه‌بندی» در فایل دیتابیس</div>
+      <div class="section-sub">مقایسه‌ی بودجه‌ی مصوب با هزینه‌ی واقعی هر دسته</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshBudgetBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="budgetSyncStatus"></span>
@@ -1346,7 +1382,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- PARTIES -->
     <section class="view" id="view-parties" data-feat="view:parties">
       <div class="section-title">طرف‌حساب‌ها</div>
-      <div class="section-sub">فهرست مشتریان و تامین‌کنندگان — برگ «طرف‌حساب‌ها» در فایل دیتابیس</div>
+      <div class="section-sub">فهرست مشتریان و تامین‌کنندگان</div>
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPartiesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="partiesSyncStatus"></span>
@@ -1483,6 +1519,55 @@ window.KARTABL_OFF = {{FEATOFF}};
       </div>
     </section>
 
+    <!-- DATE TOOLS -->
+    <section class="view" id="view-datetools" data-feat="view:datetools">
+      <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
+      <div class="section-sub">تبدیل دوطرفه‌ی تاریخ شمسی و میلادی، و محاسبه‌ی فاصله‌ی بین دو تاریخ شمسی</div>
+
+      <div class="grid2">
+        <div class="panel">
+          <h3>📅 شمسی ← میلادی</h3>
+          <div class="dt-row">
+            <select id="dtJY"></select>
+            <select id="dtJM"></select>
+            <select id="dtJD"></select>
+          </div>
+          <div class="dt-result" id="dtJ2GResult">—</div>
+        </div>
+        <div class="panel">
+          <h3>📅 میلادی ← شمسی</h3>
+          <div class="dt-row">
+            <input type="date" id="dtGDate">
+          </div>
+          <div class="dt-result" id="dtG2JResult">—</div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <h3>⏳ محاسبه‌ی فاصله‌ی بین دو تاریخ (شمسی)</h3>
+        <div class="dt-diff-grid">
+          <div>
+            <label>تاریخ شروع</label>
+            <div class="dt-row">
+              <select id="dtStartY"></select>
+              <select id="dtStartM"></select>
+              <select id="dtStartD"></select>
+            </div>
+          </div>
+          <div>
+            <label>تاریخ پایان</label>
+            <div class="dt-row">
+              <select id="dtEndY"></select>
+              <select id="dtEndM"></select>
+              <select id="dtEndD"></select>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-brass btn-sm" id="dtDiffBtn" style="margin-top:10px;">محاسبه‌ی فاصله</button>
+        <div class="dt-result dt-diff-result" id="dtDiffResult"></div>
+      </div>
+    </section>
+
     <!-- GUIDE -->
     <!-- ASSISTANT -->
     <section class="view" id="view-assistant" data-feat="ai">
@@ -1550,6 +1635,16 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <footer class="appfoot">{{TITLE}} — نسخه‌ی دیجیتال پلنر</footer>
+  </div>
+</div>
+
+<div class="exp-ov" id="expOverlay" hidden>
+  <div class="exp-box">
+    <div class="exp-ic">⏳</div>
+    <h3>مهلتِ این کارتابل رو به پایان است</h3>
+    <div class="exp-n" id="expDays"></div>
+    <p id="expNote"></p>
+    <button type="button" id="expOk">باشه، متوجه شدم</button>
   </div>
 </div>
 
@@ -1634,6 +1729,31 @@ function closedFeatures(){
   return all;
 }
 function featClosed(f){ return closedFeatures().has(f); }
+
+/* ---------- هشدارِ پایانِ مهلت ----------
+   ادمین می‌تواند برای هر کارتابل مهلت بگذارد. از یک هفته مانده به
+   پایان، هر بار که کارتابل باز می‌شود یک بار گفته می‌شود — تا کسی
+   یک روز صبح با درِ بسته روبه‌رو نشود. */
+function showExpiryWarning(){
+  const until = Number(window.KARTABL_UNTIL || 0);
+  if(!until || window.KARTABL_OFFLINE) return;
+  /* گرد می‌کنیم، نه بالا و نه پایین: «۳ روز و یک ساعت» برای آدم
+     «۳ روز» است، نه چهار. تاریخِ دقیق هم پایینش می‌آید. */
+  const left = Math.round((until - Date.now()) / 86400000);
+  if(left > 7 || until < Date.now()) return;
+  const ov = document.getElementById("expOverlay");
+  if(!ov) return;
+  document.getElementById("expDays").textContent =
+    left <= 0 ? "امروز آخرین روز است" : fa(left) + " روز مانده";
+  document.getElementById("expNote").innerHTML =
+    "تا <b>" + escapeHtml(faDateTime(until)) + "</b> باز است.<br>"
+    + "بعد از آن بسته می‌شود و تا وقتی مدیر سیستم دوباره بازش نکند باز "
+    + "نمی‌شود. داده‌هایتان سرِ جایشان می‌مانند و چیزی پاک نمی‌شود.";
+  ov.hidden = false;
+  const ok = document.getElementById("expOk");
+  ok.addEventListener("click", ()=>{ ov.hidden = true; });
+  setTimeout(()=>{ try{ ok.focus(); }catch(e){} }, 80);
+}
 
 function hideClosedFeatures(){
   const off = closedFeatures();
@@ -4215,6 +4335,184 @@ function setupNav(){
   });
 }
 
+function daysInJalaliMonth(year, month){
+  if(month>=1 && month<=6) return 31;
+  if(month>=7 && month<=11) return 30;
+  return JALALI_LEAP_YEARS.has(year) ? 30 : 29; // month 12 - اسفند
+}
+function jalaliMonthDayOptions(year, month, selectedDay){
+  const n = daysInJalaliMonth(year, month);
+  let out = "";
+  for(let d=1; d<=n; d++) out += `<option value="${d}" ${d===selectedDay?"selected":""}>${fa(d)}</option>`;
+  return out;
+}
+function getTodayJalaliParts(){
+  const str = getTodayJalaliStr();
+  const p = str.split("/");
+  const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
+  return { year: p[0]||"", monthNum: p[1]?parseInt(p[1],10):0, day: p[2]?parseInt(p[2],10):0, monthName: p[1] ? monthNames[parseInt(p[1],10)-1] : "" };
+}
+function fillJalaliMonthSelect(sel, curM){
+  sel.innerHTML = JALALI_MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${i+1===curM?"selected":""}>${m}</option>`).join("");
+}
+function fillJalaliYearSelect(sel, curY){
+  sel.innerHTML = "";
+  for(let y=1370; y<=curY+10; y++) sel.innerHTML += `<option value="${y}" ${y===curY?"selected":""}>${fa(y)}</option>`;
+}
+function formatJalaliLong(y,m,d){
+  return `${fa(d)} ${JALALI_MONTH_NAMES[m-1]} ${fa(y)}`;
+}
+function formatGregorianLong(y,m,d){
+  const names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  return `${d} ${names[m-1]} ${y}`;
+}
+
+/* ---------------- Jalali <-> Gregorian conversion (jalaali algorithm) ---------------- */
+function jDiv(a,b){ return ~~(a/b); }
+function jMod(a,b){ return a - ~~(a/b)*b; }
+function jalCal(jy){
+  const breaks = [-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
+  const bl = breaks.length;
+  const gy = jy + 621;
+  let leapJ = -14, jp = breaks[0], jm, jump=0, n, i;
+  for(i=1;i<bl;i++){
+    jm = breaks[i];
+    jump = jm - jp;
+    if(jy < jm) break;
+    leapJ = leapJ + jDiv(jump,33)*8 + jDiv(jMod(jump,33),4);
+    jp = jm;
+  }
+  n = jy - jp;
+  leapJ = leapJ + jDiv(n,33)*8 + jDiv(jMod(n,33)+3,4);
+  if(jMod(jump,33)===4 && jump-n===4) leapJ += 1;
+  const leapG = jDiv(gy,4) - jDiv((jDiv(gy,100)+1)*3,4) - 150;
+  const march = 20 + leapJ - leapG;
+  if(jump - n < 6) n = n - jump + jDiv(jump,33)*33;
+  let leap = jMod(jMod(n+1,33)-1,4);
+  if(leap===-1) leap=4;
+  return { leap, gy, march };
+}
+function g2d(gy,gm,gd){
+  let d = jDiv((gy+jDiv(gm-8,6)+100100)*1461,4) + jDiv(153*jMod(gm+9,12)+2,5) + gd - 34840408;
+  d = d - jDiv(jDiv(gy+100100+jDiv(gm-8,6),100)*3,4) + 752;
+  return d;
+}
+function j2d(jy,jm,jd){
+  const r = jalCal(jy);
+  return g2d(r.gy,3,r.march) + (jm-1)*31 - jDiv(jm,7)*(jm-7) + jd - 1;
+}
+function d2g(jdn){
+  let j = 4*jdn + 139361631;
+  j = j + jDiv(jDiv(4*jdn+183187720,146097)*3,4)*4 - 3908;
+  const i = jDiv(jMod(j,1461),4)*5 + 308;
+  const gd = jDiv(jMod(i,153),5) + 1;
+  const gm = jMod(jDiv(i,153),12) + 1;
+  const gy = jDiv(j,1461) - 100100 + jDiv(8-gm,6);
+  return { gy, gm, gd };
+}
+function gregorianToJalali(gy,gm,gd){
+  // find jy by iterating march-anchor; use standard approach via g2d/j2d comparison
+  let jy = gy - 621;
+  // adjust jy using jalCal until march date bounds gd correctly
+  let r = jalCal(jy+1);
+  const gd2jdn = g2d(gy,gm,gd);
+  if(gd2jdn >= g2d(r.gy, 3, r.march)) jy += 1;
+  r = jalCal(jy);
+  const jdn1f = g2d(r.gy,3,r.march);
+  let k = gd2jdn - jdn1f;
+  let jm, jd;
+  if(k >= 0){
+    if(k <= 185){ jm = 1 + jDiv(k,31); jd = jMod(k,31) + 1; }
+    else{ k -= 186; jm = 7 + jDiv(k,30); jd = jMod(k,30) + 1; }
+  } else {
+    // shouldn't normally happen given the guard above, but fallback
+    jy -= 1;
+    const r2 = jalCal(jy);
+    k = gd2jdn - g2d(r2.gy,3,r2.march);
+    if(k <= 185){ jm = 1 + jDiv(k,31); jd = jMod(k,31) + 1; }
+    else{ k -= 186; jm = 7 + jDiv(k,30); jd = jMod(k,30) + 1; }
+  }
+  return { jy, jm, jd };
+}
+
+/* دو کارتابل دو پیادهٔ متفاوت از تبدیل تاریخ دارند: یکی شیء برمی‌گرداند
+   و آن یکی آرایه. این‌جا هر دو را یک‌شکل می‌کنیم تا ابزار تبدیل تاریخ
+   در هر دو یکسان کار کند. */
+function asGreg(g){
+  return Array.isArray(g) ? { gy:g[0], gm:g[1], gd:g[2] } : g;
+}
+
+function setupDateTools(){
+  /* در کارتابلِ عمومی این نما وجود ندارد */
+  if(!document.getElementById("dtDiffBtn")) return;
+  const today = getTodayJalaliParts();
+  const ty = parseInt(today.year)||1405, tm = today.monthNum||1, td = today.day||1;
+
+  // ---- شمسی → میلادی ----
+  const jy = document.getElementById("dtJY"), jm = document.getElementById("dtJM"), jd = document.getElementById("dtJD");
+  fillJalaliYearSelect(jy, ty);
+  fillJalaliMonthSelect(jm, tm);
+  jd.innerHTML = jalaliMonthDayOptions(ty, tm, td);
+  function recomputeJ2G(){
+    const y=parseInt(jy.value), m=parseInt(jm.value), keepD=parseInt(jd.value)||1;
+    jd.innerHTML = jalaliMonthDayOptions(y, m, Math.min(keepD, daysInJalaliMonth(y,m)));
+    const d = parseInt(jd.value);
+    const g = asGreg(jalaliToGregorian(y,m,d));
+    document.getElementById("dtJ2GResult").textContent = formatGregorianLong(g.gy, g.gm, g.gd);
+  }
+  [jy,jm,jd].forEach(el=> el.addEventListener("change", recomputeJ2G));
+  recomputeJ2G();
+
+  // ---- میلادی → شمسی ----
+  const gInput = document.getElementById("dtGDate");
+  const now = new Date();
+  gInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  function recomputeG2J(){
+    if(!gInput.value){ document.getElementById("dtG2JResult").textContent = "—"; return; }
+    const [gy,gm,gd] = gInput.value.split("-").map(Number);
+    const j = gregorianToJalali(gy,gm,gd);
+    document.getElementById("dtG2JResult").textContent = formatJalaliLong(j.jy, j.jm, j.jd);
+  }
+  gInput.addEventListener("change", recomputeG2J);
+  recomputeG2J();
+
+  // ---- محاسبه‌ی فاصله‌ی بین دو تاریخ شمسی ----
+  const sy=document.getElementById("dtStartY"), sm=document.getElementById("dtStartM"), sd=document.getElementById("dtStartD");
+  const ey=document.getElementById("dtEndY"), em=document.getElementById("dtEndM"), ed=document.getElementById("dtEndD");
+  fillJalaliYearSelect(sy, ty); fillJalaliMonthSelect(sm, tm); sd.innerHTML = jalaliMonthDayOptions(ty, tm, td);
+  fillJalaliYearSelect(ey, ty); fillJalaliMonthSelect(em, tm); ed.innerHTML = jalaliMonthDayOptions(ty, tm, td);
+  function refreshDayOptions(ySel,mSel,dSel){
+    const y=parseInt(ySel.value), m=parseInt(mSel.value), keepD=parseInt(dSel.value)||1;
+    dSel.innerHTML = jalaliMonthDayOptions(y, m, Math.min(keepD, daysInJalaliMonth(y,m)));
+  }
+  sy.addEventListener("change", ()=>refreshDayOptions(sy,sm,sd));
+  sm.addEventListener("change", ()=>refreshDayOptions(sy,sm,sd));
+  ey.addEventListener("change", ()=>refreshDayOptions(ey,em,ed));
+  em.addEventListener("change", ()=>refreshDayOptions(ey,em,ed));
+
+  document.getElementById("dtDiffBtn").addEventListener("click", ()=>{
+    const y1=parseInt(sy.value), m1=parseInt(sm.value), d1=parseInt(sd.value);
+    const y2=parseInt(ey.value), m2=parseInt(em.value), d2=parseInt(ed.value);
+    const jdn1 = j2d(y1,m1,d1), jdn2 = j2d(y2,m2,d2);
+    const totalDays = Math.abs(jdn2 - jdn1);
+    // شکست تقویمی فاصله به سال/ماه/روز (مستقل از جهت، همیشه تاریخ کوچک‌تر را به‌عنوان مبدا در نظر می‌گیرد)
+    let [ay1,am1,ad1,ay2,am2,ad2] = jdn1<=jdn2 ? [y1,m1,d1,y2,m2,d2] : [y2,m2,d2,y1,m1,d1];
+    let dd = ad2-ad1, mm = am2-am1, yy = ay2-ay1;
+    if(dd<0){
+      mm -= 1;
+      let bm = am2-1, by = ay2;
+      if(bm<1){ bm = 12; by -= 1; }
+      dd += daysInJalaliMonth(by, bm);
+    }
+    if(mm<0){ mm += 12; yy -= 1; }
+    const resultEl = document.getElementById("dtDiffResult");
+    resultEl.innerHTML = `
+      مجموع فاصله: <b>${fa(totalDays)}</b> روز (تقریباً <b>${fa(Math.round(totalDays/7))}</b> هفته)<br>
+      به‌صورت تقویمی: <b>${fa(yy)}</b> سال، <b>${fa(mm)}</b> ماه و <b>${fa(dd)}</b> روز
+    `;
+  });
+}
+
 /* ---------- همگام‌سازی با سرور ----------
    کارتابل تا دیروز فقط در حافظهٔ همین مرورگر زندگی می‌کرد: با عوض کردن
    دستگاه یا پاک شدن حافظهٔ مرورگر همه‌چیز می‌رفت. حالا سرور مرجع است و
@@ -5534,11 +5832,11 @@ async function init(){
       try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     }
     /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود. */
-    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupChecklist,
+    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupDateTools, setupChecklist,
      setupDaily, setupReminders, setupParties, setupInvoices, setupPayables,
      setupPayableNotes, setupReceivableNotes, setupExpenses, setupBank,
      setupBudget, setupSettings, setupToolbar, setupTheme, setupAssistant,
-     setupAiSettings, showLastLogin, renderPersonalView,
+     setupAiSettings, showLastLogin, showExpiryWarning, renderPersonalView,
      ()=>{ const cf = document.getElementById("connectFolderBtn");
            if(cf) cf.addEventListener("click", connectFolder); },
      renderEverything

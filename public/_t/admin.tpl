@@ -350,6 +350,7 @@ a{ color:var(--brass-ink); }
   background:var(--white); color:var(--ink); }
 .secrow input:focus, .secrow select:focus{ outline:none; border-color:var(--brass);
   box-shadow:var(--glow); }
+.secrow input.bad{ border-color:var(--red); background:var(--red-bg); }
 .secrow .stitle{ flex:1; min-width:130px; }
 .secrow .scols{ flex:1.4; min-width:160px; }
 .x{ border:0; background:transparent; color:var(--red-ink); font-size:15px;
@@ -544,6 +545,11 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
       <p class="sub">نامِ شخص و آدرسی که کارتابلش روی آن باز می‌شود. رمزِ ورود همین‌جا
         یک‌بار نشان داده می‌شود و بعد دیگر هیچ‌جا نیست — همان لحظه جایی یادداشتش کنید.</p>
       <div class="kinds" id="nKinds"></div>
+      <div id="nViewsWrap" hidden>
+        <p class="sub" style="margin:0 0 9px;">این شغل معمولاً به این بخش‌ها کار دارد —
+          هر کدام را نخواستید، همین‌جا تیکش را بردارید.</p>
+        <div class="feats" id="nViews"></div>
+      </div>
       <div class="row">
         <div class="fld"><label>نام شخص</label><input type="text" id="nName" placeholder="مثلاً: نسرین" autocomplete="off"></div>
         <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
@@ -769,6 +775,7 @@ async function loadPlanners(){
   DATA = r.data;
   fillSelect("nJob", [{id:"",label:"— بدون چک‌لیست آماده —"}].concat(DATA.jobs));
   renderKindPicker();
+  renderNewViews();
   renderPlanners();
   renderEscrowState();
 }
@@ -793,7 +800,9 @@ function featLabel(id){
 /* مهلتِ کارتابل: چند روز مانده، یا کِی تمام شد. */
 function daysLeft(until){
   if(!until) return null;
-  return Math.ceil((until - Date.now()) / 86400000);
+  /* همان گردکردنی که کارتابل‌ها هم می‌کنند، تا دو جا دو عدد نگویند. */
+  if(until <= Date.now()) return 0;
+  return Math.max(1, Math.round((until - Date.now()) / 86400000));
 }
 function untilText(p){
   const d = daysLeft(p.until);
@@ -864,7 +873,14 @@ function renderPlanners(){
         <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
         <div class="m${p.until && daysLeft(p.until) <= 7 ? " warn" : ""}"><span>مهلت</span><span>${
           untilText(p)}</span></div>
-        <div class="m"><span>بخش‌های بسته</span><span>${(p.off||[]).length
+        <div class="m"><span>بخش‌های کارتابل</span><span>${
+          ((DATA.views||{})[p.kind]||[]).length
+            ? ((p.views||[]).length
+                ? esc(((DATA.views||{})[p.kind]||[])
+                    .filter(v=> (p.views||[]).includes(v.id)).map(v=>v.label).join("، "))
+                : "هیچ‌کدام")
+            : "—"}</span></div>
+        <div class="m"><span>دسترسی‌های بسته</span><span>${(p.off||[]).length
           ? esc((p.off||[]).map(featLabel).join("، ")) : "—"}</span></div>
       </div>
       <div class="acts">
@@ -923,7 +939,8 @@ function sectionRow(sec){
     `<option value="${esc(t.id)}" ${sec.type===t.id?"selected":""}>${esc(t.label)}</option>`).join("");
   return `<div class="secrow" data-sec>
     <select class="stype">${types}</select>
-    <input class="stitle" type="text" value="${esc(sec.title||"")}" placeholder="عنوان بخش">
+    <input class="stitle" type="text" value="${esc(sec.title||"")}"
+      placeholder="عنوان بخش (لازم)" autocomplete="off">
     <input class="scols" type="text" value="${esc((sec.cols||[]).join("، "))}"
       placeholder="ستون‌ها با ، جدا شوند (فقط جدول دل‌خواه)">
     <input class="sid" type="hidden" value="${esc(sec.id||"")}">
@@ -968,9 +985,9 @@ function openEdit(slug){
     <p class="sub" style="margin-top:18px;">کدام بخش‌های خودِ کارتابل را ببیند —
       داشبورد، چک‌لیست، برنامهٔ روزانه، راهنما و تنظیمات همیشه هستند.</p>
     <div class="feats">${(((DATA.views||{})[p.kind])||[]).map(v=>`
-      <label class="feat${(p.off||[]).includes("view:"+v.id) ? ' closed' : ''}">
-        <input type="checkbox" data-feat="view:${esc(v.id)}"
-          ${(p.off||[]).includes("view:"+v.id) ? "" : "checked"}>
+      <label class="feat${(p.views||[]).includes(v.id) ? '' : ' closed'}">
+        <input type="checkbox" data-view="${esc(v.id)}"
+          ${(p.views||[]).includes(v.id) ? "checked" : ""}>
         <span><span class="ft">${esc(v.label)}</span></span>
       </label>`).join("")}</div>` : ``}
 
@@ -985,13 +1002,22 @@ function openEdit(slug){
     </div>
     <div class="gate-err" id="eErr"></div>`);
 
-  const wire = ()=> document.querySelectorAll("#eSecs .x").forEach(x=>
-    x.onclick = ()=> { x.closest("[data-sec]").remove(); });
+  const wire = ()=>{
+    document.querySelectorAll("#eSecs .x").forEach(x=>
+      x.onclick = ()=> { x.closest("[data-sec]").remove(); });
+    document.querySelectorAll("#eSecs .stitle").forEach(i=>
+      i.oninput = ()=>{ i.classList.remove("bad");
+        document.getElementById("eErr").textContent = ""; });
+  };
   wire();
   document.getElementById("eAddSec").onclick = ()=>{
     document.getElementById("eSecs").insertAdjacentHTML("beforeend",
       sectionRow({ id:"", type:"table", title:"", cols:[] }));
     wire();
+    /* مکان‌نما می‌رود داخلِ عنوان، چون همان است که لازم است. */
+    const rows = document.querySelectorAll("#eSecs [data-sec] .stitle");
+    const last = rows[rows.length - 1];
+    if(last){ last.focus(); last.scrollIntoView({ block:"nearest" }); }
   };
   document.querySelectorAll(".feat input").forEach(inp=>{
     inp.onchange = ()=> inp.closest(".feat").classList.toggle("closed", !inp.checked);
@@ -1001,9 +1027,20 @@ function openEdit(slug){
   if(save) save.onclick = async ()=>{
     const secs = [];
     const used = new Set();
+    document.querySelectorAll("#eSecs .stitle").forEach(i=> i.classList.remove("bad"));
     for(const row of document.querySelectorAll("#eSecs [data-sec]")){
-      const title = row.querySelector(".stitle").value.trim();
-      if(!title) continue;
+      const box = row.querySelector(".stitle");
+      const title = box.value.trim();
+      /* قبلاً ردیفِ بی‌عنوان بی‌صدا دور ریخته می‌شد و ادمین خیال می‌کرد
+         بخش ساخته شده ولی «پریده». حالا می‌گوید کدام ردیف. */
+      if(!title){
+        box.classList.add("bad");
+        box.focus();
+        box.scrollIntoView({ block:"nearest" });
+        document.getElementById("eErr").textContent =
+          "برای هر بخش یک عنوان بنویسید — ردیفِ بی‌عنوان ذخیره نمی‌شود.";
+        return;
+      }
       const type = row.querySelector(".stype").value;
       let id = row.querySelector(".sid").value.trim();
       if(!id){
@@ -1018,12 +1055,14 @@ function openEdit(slug){
     }
     if(!secs.length){ document.getElementById("eErr").textContent = "دست‌کم یک بخش باید بماند."; return; }
     save.disabled = true;
-    const off = Array.from(document.querySelectorAll(".feat input"))
+    const off = Array.from(document.querySelectorAll(".feat input[data-feat]"))
       .filter(i=> !i.checked).map(i=> i.dataset.feat);
+    const views = Array.from(document.querySelectorAll(".feat input[data-view]"))
+      .filter(i=> i.checked).map(i=> i.dataset.view);
     const r = await api("/planners/" + slug, { method:"PUT", body: JSON.stringify({
       name: document.getElementById("eName").value.trim(),
       job: document.getElementById("eJob").value,
-      off, vault: secs,
+      off, views, vault: secs,
       days: document.getElementById("eDays").value.trim() === ""
         ? undefined : Number(document.getElementById("eDays").value)
     })});
@@ -1253,6 +1292,30 @@ function renderKindPicker(){
     document.getElementById("nKind").value = b.dataset.kind;
     renderKindPicker();
     paintNew();
+    renderNewViews();
+  });
+}
+
+/* بخش‌هایی که این نوع کارتابل می‌تواند داشته باشد، با پیشنهادِ شغل
+   از پیش تیک‌خورده. */
+function renderNewViews(){
+  const wrap = document.getElementById("nViewsWrap");
+  const box  = document.getElementById("nViews");
+  if(!wrap || !box) return;
+  const kind = document.getElementById("nKind").value;
+  const all  = ((DATA.views||{})[kind]) || [];
+  if(!all.length){ wrap.hidden = true; box.innerHTML = ""; return; }
+  const job  = (DATA.jobs||[]).find(j=> j.id === document.getElementById("nJob").value);
+  /* برای «عمومی» پیشنهادِ شغل ملاک است؛ برای IT و مالی همه‌چیز باز. */
+  const on = kind === "gen" ? new Set((job && job.views) || []) : new Set(all.map(v=>v.id));
+  wrap.hidden = false;
+  box.innerHTML = all.map(v=>`
+    <label class="feat${on.has(v.id) ? '' : ' closed'}">
+      <input type="checkbox" data-nview="${esc(v.id)}" ${on.has(v.id) ? "checked" : ""}>
+      <span><span class="ft">${esc(v.label)}</span></span>
+    </label>`).join("");
+  box.querySelectorAll("input").forEach(i=>{
+    i.onchange = ()=> i.closest(".feat").classList.toggle("closed", !i.checked);
   });
 }
 
@@ -1271,8 +1334,9 @@ function setupNew(){
   const slug = document.getElementById("nSlug");
   const kind = document.getElementById("nKind");
   slug.addEventListener("input", paintNew);
+  document.getElementById("nJob").addEventListener("change", renderNewViews);
   const paint = paintNew;
-  setTimeout(paintNew, 0);
+  setTimeout(()=>{ paintNew(); renderNewViews(); }, 0);
 
   document.getElementById("nCreate").onclick = async ()=>{
     const btn = document.getElementById("nCreate");
@@ -1282,6 +1346,8 @@ function setupNew(){
       slug: slug.value.trim().toLowerCase(),
       kind: kind.value,
       job: document.getElementById("nJob").value,
+      views: Array.from(document.querySelectorAll("#nViews input"))
+        .filter(i=> i.checked).map(i=> i.dataset.nview),
       password: document.getElementById("nPass").value.trim()
     })});
     btn.disabled = false;

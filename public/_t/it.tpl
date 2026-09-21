@@ -19,6 +19,8 @@ window.KARTABL_JOB = {{JOBSEED}};
 window.KARTABL_VAULT = {{VAULTSECS}};
 /* بخش‌هایی که ادمین برای این کاربر بسته است. */
 window.KARTABL_OFF = {{FEATOFF}};
+/* تاریخِ پایانِ مهلت. صفر یعنی بی‌مهلت. */
+window.KARTABL_UNTIL = {{UNTIL}};
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -157,6 +159,24 @@ window.KARTABL_OFF = {{FEATOFF}};
   ::selection{ background:var(--brass); color:#fff; }
 
 
+
+/* ---------- هشدارِ پایانِ مهلت ----------
+   وقتی یک هفته بیشتر نمانده، بعد از هر ورود یک بار گفته می‌شود. */
+.exp-ov{ position:fixed; inset:0; z-index:88; display:flex; align-items:center;
+  justify-content:center; padding:20px; background:rgba(11,37,69,.55); }
+.exp-ov[hidden]{ display:none; }
+.exp-box{ background:var(--white); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow-lg); padding:28px 24px;
+  width:100%; max-width:390px; text-align:center; }
+.exp-ic{ font-size:38px; line-height:1; margin-bottom:10px; }
+.exp-box h3{ font-family:var(--font-display); font-size:16.5px; margin:0 0 8px; color:var(--ink); }
+.exp-n{ font-size:30px; font-weight:800; color:var(--amber-ink); line-height:1.4;
+  letter-spacing:-.02em; }
+.exp-box p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:6px 0 18px; }
+.exp-box button{ width:100%; padding:11px; border:0; border-radius:var(--radius-sm);
+  background:var(--brass); color:#fff; font-family:var(--font-body); font-size:13.5px;
+  font-weight:600; cursor:pointer; }
+.exp-box button:hover{ background:var(--brass-deep); }
   /* ---------- بخش تنظیمات و نوار تداخل نسخه ---------- */
   .set-h{ font-family:var(--font-display); font-size:15px; margin:0 0 6px; color:var(--ink); }
   .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
@@ -309,6 +329,8 @@ window.KARTABL_OFF = {{FEATOFF}};
   .section-sub{ color:var(--ink-faint); font-size:12.5px; margin-bottom:18px; }
 
   /* ---------- Cards ---------- */
+  .grid-auto{ display:grid; gap:16px;
+    grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); }
   .cards{
     display:grid; grid-template-columns:repeat(auto-fit, minmax(148px,1fr)); gap:12px; margin-bottom:22px;
   }
@@ -1190,15 +1212,11 @@ window.KARTABL_OFF = {{FEATOFF}};
       <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
       <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
       <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
-<!--IT-->
       <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
-<!--/IT-->
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
-<!--IT-->
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
-<!--/IT-->
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1228,7 +1246,7 @@ window.KARTABL_OFF = {{FEATOFF}};
       <div class="cards" id="statCards"></div>
 
       <div class="dash-group-label"><span class="dgl-ic">📋</span> وظایف و برنامه‌ی این ماه</div>
-<!--IT-->      <div class="grid3"><!--/IT--><!--GEN-->      <div class="grid2"><!--/GEN-->
+      <div class="grid-auto">
         <div class="panel accent-blue">
           <h3>🥧 وضعیت وظایف ماه</h3>
           <div class="chart-box"><canvas id="chartStatus"></canvas></div>
@@ -1237,15 +1255,13 @@ window.KARTABL_OFF = {{FEATOFF}};
           <h3>🗓️ وضعیت برنامه روزانه</h3>
           <div class="chart-box"><canvas id="chartDaily"></canvas></div>
         </div>
-<!--IT-->
-        <div class="panel accent-blue">
+        <div class="panel accent-blue" data-feat="view:servers">
           <h3>✅ نرخ کلی موفقیت بکاپ روزانه</h3>
           <div class="chart-box"><canvas id="chartBackupSuccessRate"></canvas></div>
         </div>
-<!--/IT-->
       </div>
 
-<!--IT-->
+      <div data-feat="view:companies">
       <div class="dash-group-label"><span class="dgl-ic">🏢</span> شرکت‌ها</div>
       <div class="grid3">
         <div class="panel accent-amber">
@@ -1262,6 +1278,9 @@ window.KARTABL_OFF = {{FEATOFF}};
         </div>
       </div>
 
+      </div>
+
+      <div data-feat="view:mvpn">
       <div class="dash-group-label"><span class="dgl-ic">🖥️</span> زیرساخت و ارتباطات</div>
       <div class="grid2">
         <div class="panel accent-teal">
@@ -1273,7 +1292,7 @@ window.KARTABL_OFF = {{FEATOFF}};
           <div class="chart-box"><canvas id="chartRemoteStatus"></canvas></div>
         </div>
       </div>
-<!--/IT-->
+      </div>
 
       <div class="panel">
         <h3>🕒 مهلت‌های نزدیک</h3>
@@ -1331,7 +1350,6 @@ window.KARTABL_OFF = {{FEATOFF}};
       <datalist id="dailyCompanyOptions"></datalist>
     </section>
 
-<!--IT-->
     <!-- SERVERS & BACKUP -->
     <section class="view" id="view-servers" data-feat="view:servers">
       <div class="section-title">سرورها و بکاپ</div>
@@ -1398,7 +1416,7 @@ window.KARTABL_OFF = {{FEATOFF}};
       <div class="panel">
         <h3>🛰️ چک‌لیست بررسی ریموت روزانه</h3>
         <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin:0 0 10px;">
-          فهرست سرورها از برگ RemoteChecklist در فایل «{{FILEXLSX}}» خوانده می‌شود؛ روی هر روز کلیک کنید تا به‌عنوان «بررسی‌شده و موفق» علامت بخورد، یا سرور/روز جدید اضافه کنید — هر تغییری خودکار روی همان اکسل ذخیره می‌شود.
+          روی هر روز کلیک کنید تا به‌عنوان «بررسی‌شده و موفق» علامت بخورد.
         </p>
         <div class="toolbar" data-feat="folder" style="margin-bottom:12px;">
           <button class="btn btn-brass" id="refreshRemoteBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
@@ -1411,7 +1429,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- COMPANIES -->
     <section class="view" id="view-companies" data-feat="view:companies">
       <div class="section-title">شرکت‌ها</div>
-      <div class="section-sub">تاریخچه‌ی بازدید/پشتیبانی شرکت‌ها — برگ Companies در فایل دیتابیس یکپارچه</div>
+      <div class="section-sub">تاریخچه‌ی بازدید/پشتیبانی شرکت‌ها</div>
 
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshDateBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
@@ -1424,7 +1442,7 @@ window.KARTABL_OFF = {{FEATOFF}};
     <!-- MVPN -->
     <section class="view" id="view-mvpn" data-feat="view:mvpn">
       <div class="section-title">سرویس MVPN</div>
-      <div class="section-sub">فهرست خطوط سازمانی — برگ MVPN در فایل دیتابیس یکپارچه</div>
+      <div class="section-sub">فهرست خطوط سازمانی</div>
 
       <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshMvpnBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
@@ -1463,7 +1481,6 @@ window.KARTABL_OFF = {{FEATOFF}};
         </div>
       </div>
     </section>
-<!--/IT-->
 
     <!-- PERSONAL (password protected) -->
     <section class="view" id="view-personal" data-feat="vault">
@@ -1472,7 +1489,6 @@ window.KARTABL_OFF = {{FEATOFF}};
       <div id="personalWrap"></div>
     </section>
 
-<!--IT-->
     <!-- DATE TOOLS -->
     <section class="view" id="view-datetools" data-feat="view:datetools">
       <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
@@ -1521,7 +1537,6 @@ window.KARTABL_OFF = {{FEATOFF}};
         <div class="dt-result dt-diff-result" id="dtDiffResult"></div>
       </div>
     </section>
-<!--/IT-->
 
     <!-- GUIDE -->
     <!-- SETTINGS -->
@@ -1659,23 +1674,23 @@ window.KARTABL_OFF = {{FEATOFF}};
           <div class="ic">📈</div>
           <div><h4>شاخص‌های کلیدی (KPI)</h4><p>هدف و مقدار واقعی هر شاخص فنی (مثل آپ‌تایم یا نرخ موفقیت بکاپ) را وارد کنید تا انحراف و درصد تحقق به‌طور خودکار محاسبه و نمودار آن رسم شود.</p></div>
         </div>
-        <div class="guide-item">
-          <div class="ic">🖥️</div>
-          <div><h4>سرورها و بکاپ</h4><p>همه‌ی داده‌ها اکنون در یک فایل واحد به‌نام «{{FILEXLSX}}» نگه‌داری می‌شود. کافی‌ست یک‌بار از «🗂️ اتصال به پوشه» همان پوشه را انتخاب کنید — فایل خودش خوانده و بارگذاری می‌شود. هر افزودن سرور، ویرایش سلول (کلیک روی هر خانه از جدول)، یا تیک‌زدن تقویم بکاپ روزانه، بلافاصله و خودکار روی همان فایل اکسل ذخیره می‌شود؛ لازم نیست خودتان چیزی را در اکسل دستی تغییر دهید (فقط Chrome/Edge؛ به اینترنت هم برای بارگذاری یک‌بارهٔ ابزار خواندن اکسل نیاز دارد).</p></div>
-        </div>
-        <div class="guide-item">
-          <div class="ic">🏢</div>
-          <div><h4>شرکت‌ها</h4><p>از برگ Companies در همان فایل دیتابیس خوانده می‌شود. برای هر شرکت می‌توانید بازدید جدید اضافه کنید یا شرکت تازه بسازید — همه روی همان اکسل ذخیره می‌شود.</p></div>
-        </div>
-        <div class="guide-item">
-          <div class="ic">📱</div>
-          <div><h4>سرویس MVPN</h4><p>از برگ MVPN در همان فایل دیتابیس خوانده می‌شود. خطوط را می‌توانید ویرایش (کلیک روی هر خانه) یا خط جدید اضافه کنید — خودکار روی اکسل ذخیره می‌شود.</p></div>
-        </div>
-        <div class="guide-item">
-          <div class="ic">🛰️</div>
-          <div><h4>چک‌لیست بررسی ریموت روزانه</h4><p>از برگ RemoteChecklist در همان فایل دیتابیس خوانده می‌شود؛ روی هر روز کلیک کنید تا علامت «بررسی‌شده و موفق» بخورد، یا سرور/روز جدید اضافه کنید — همه‌ی این‌ها خودکار روی همان اکسل ذخیره می‌شود.</p></div>
-        </div>
 <!--/IT-->
+        <div class="guide-item" data-feat="view:servers">
+          <div class="ic">🖥️</div>
+          <div><h4>سرورها و بکاپ</h4><p>فهرست سرورها، زمان‌بندی بکاپ و تقویم بکاپ روزانه. هر افزودن سرور، ویرایش سلول یا تیک‌زدنِ تقویم، همان لحظه روی سرور ذخیره می‌شود.</p></div>
+        </div>
+        <div class="guide-item" data-feat="view:companies">
+          <div class="ic">🏢</div>
+          <div><h4>شرکت‌ها</h4><p>تاریخچهٔ بازدید و پشتیبانی هر شرکت. می‌توانید بازدید تازه اضافه کنید یا شرکت جدید بسازید؛ همه‌چیز خودکار ذخیره می‌شود.</p></div>
+        </div>
+        <div class="guide-item" data-feat="view:mvpn">
+          <div class="ic">📱</div>
+          <div><h4>سرویس MVPN</h4><p>فهرست خطوط سازمانی. روی هر خانه کلیک کنید تا ویرایش شود، یا خط تازه اضافه کنید — خودکار ذخیره می‌شود.</p></div>
+        </div>
+        <div class="guide-item" data-feat="view:servers">
+          <div class="ic">🛰️</div>
+          <div><h4>چک‌لیست بررسی ریموت روزانه</h4><p>روی هر روز کلیک کنید تا علامت «بررسی‌شده و موفق» بخورد، یا سرور و روزِ تازه اضافه کنید.</p></div>
+        </div>
         <div class="legend-row">
           <span><i class="dot" style="background:var(--green);"></i> انجام شد</span>
           <span><i class="dot" style="background:var(--amber);"></i> در حال انجام</span>
@@ -1685,6 +1700,16 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <footer class="appfoot">{{TITLE}} — نسخه‌ی دیجیتال پلنر</footer>
+  </div>
+</div>
+
+<div class="exp-ov" id="expOverlay" hidden>
+  <div class="exp-box">
+    <div class="exp-ic">⏳</div>
+    <h3>مهلتِ این کارتابل رو به پایان است</h3>
+    <div class="exp-n" id="expDays"></div>
+    <p id="expNote"></p>
+    <button type="button" id="expOk">باشه، متوجه شدم</button>
   </div>
 </div>
 
@@ -1749,6 +1774,31 @@ function closedFeatures(){
   return all;
 }
 function featClosed(f){ return closedFeatures().has(f); }
+
+/* ---------- هشدارِ پایانِ مهلت ----------
+   ادمین می‌تواند برای هر کارتابل مهلت بگذارد. از یک هفته مانده به
+   پایان، هر بار که کارتابل باز می‌شود یک بار گفته می‌شود — تا کسی
+   یک روز صبح با درِ بسته روبه‌رو نشود. */
+function showExpiryWarning(){
+  const until = Number(window.KARTABL_UNTIL || 0);
+  if(!until || window.KARTABL_OFFLINE) return;
+  /* گرد می‌کنیم، نه بالا و نه پایین: «۳ روز و یک ساعت» برای آدم
+     «۳ روز» است، نه چهار. تاریخِ دقیق هم پایینش می‌آید. */
+  const left = Math.round((until - Date.now()) / 86400000);
+  if(left > 7 || until < Date.now()) return;
+  const ov = document.getElementById("expOverlay");
+  if(!ov) return;
+  document.getElementById("expDays").textContent =
+    left <= 0 ? "امروز آخرین روز است" : fa(left) + " روز مانده";
+  document.getElementById("expNote").innerHTML =
+    "تا <b>" + escapeHtml(faDateTime(until)) + "</b> باز است.<br>"
+    + "بعد از آن بسته می‌شود و تا وقتی مدیر سیستم دوباره بازش نکند باز "
+    + "نمی‌شود. داده‌هایتان سرِ جایشان می‌مانند و چیزی پاک نمی‌شود.";
+  ov.hidden = false;
+  const ok = document.getElementById("expOk");
+  ok.addEventListener("click", ()=>{ ov.hidden = true; });
+  setTimeout(()=>{ try{ ok.focus(); }catch(e){} }, 80);
+}
 
 function hideClosedFeatures(){
   const off = closedFeatures();
@@ -5506,6 +5556,13 @@ function formatGregorianLong(y,m,d){
   return `${d} ${names[m-1]} ${y}`;
 }
 
+/* دو کارتابل دو پیادهٔ متفاوت از تبدیل تاریخ دارند: یکی شیء برمی‌گرداند
+   و آن یکی آرایه. این‌جا هر دو را یک‌شکل می‌کنیم تا ابزار تبدیل تاریخ
+   در هر دو یکسان کار کند. */
+function asGreg(g){
+  return Array.isArray(g) ? { gy:g[0], gm:g[1], gd:g[2] } : g;
+}
+
 function setupDateTools(){
   /* در کارتابلِ عمومی این نما وجود ندارد */
   if(!document.getElementById("dtDiffBtn")) return;
@@ -5521,7 +5578,7 @@ function setupDateTools(){
     const y=parseInt(jy.value), m=parseInt(jm.value), keepD=parseInt(jd.value)||1;
     jd.innerHTML = jalaliMonthDayOptions(y, m, Math.min(keepD, daysInJalaliMonth(y,m)));
     const d = parseInt(jd.value);
-    const g = jalaliToGregorian(y,m,d);
+    const g = asGreg(jalaliToGregorian(y,m,d));
     document.getElementById("dtJ2GResult").textContent = formatGregorianLong(g.gy, g.gm, g.gd);
   }
   [jy,jm,jd].forEach(el=> el.addEventListener("change", recomputeJ2G));
@@ -6114,7 +6171,7 @@ async function init(){
     /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود.
        یک‌بار همین اتفاق افتاد و نیمی از صفحه بی‌صدا راه نیفتاد. */
     [renderMeta, setupNav, setupMeta, setupToolbar, setupTheme, setupAssistant,
-     setupAiSettings, showLastLogin, setupBackup, setupServers, setupCompanies,
+     setupAiSettings, showLastLogin, showExpiryWarning, setupBackup, setupServers, setupCompanies,
      setupMvpn, setupRemote, setupChartModal, setupDateTools, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
      renderPersonalView, requestNotifyPermission, checkAndFireReminders

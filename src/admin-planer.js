@@ -14,7 +14,7 @@
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
-  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature
+  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature, enabledViews
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 
@@ -181,7 +181,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         disabled: !!c.disabled,
         until: Number(c.until) || 0,
         closed: !!c.disabled || (Number(c.until) > 0 && Date.now() > Number(c.until)),
-        off: (Array.isArray(c.off) ? c.off : []).filter(isFeature),
+        off: (Array.isArray(c.off) ? c.off : []).filter(f => FEATURES.includes(f)),
+        views: enabledViews(c, r.kind === 'it' ? 'it' : r.kind === 'fin' ? 'fin' : 'gen'),
         core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
         url: '/' + r.slug + '/', created: r.created,
@@ -196,6 +197,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (!known.has(b.slug))
         items.push({ slug: b.slug, name: b.name, kind: b.kind, job: '', vault: DEFAULT_VAULT,
                      disabled: false, closed: false, core: true, off: [], until: 0,
+                     views: (VIEWS[b.kind] || []).map(v => v.id),
                      url: b.page, created: 0, builtin: true,
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
@@ -210,7 +212,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         { id: 'fin', label: 'مالی', icon: '💰',
           note: 'اسناد دریافتنی و پرداختنی، بدهی‌ها، منابع و مصارف، بانک، بودجه و طرف‌حساب‌ها' }
       ],
-      jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label })),
+      /* پیشنهادِ هر شغل هم می‌رود، تا پنل با انتخابِ شغل تیک‌ها را
+         همان‌جا جابه‌جا کند. */
+      jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label, views: j.views || [] })),
       vaultTypes: [{ id: 'creds', label: 'شرکت‌ها و رمزها' }, { id: 'inst', label: 'اقساط و وام' },
                    { id: 'contacts', label: 'دفتر تلفن' }, { id: 'table', label: 'جدول دل‌خواه' }],
       features: [
@@ -245,8 +249,14 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     if (Object.values(PANELS).some(b => b.slug === slug))
       return bad('کارتابلی با این آدرس هست.');
 
+    /* تیکِ ادمین در همان فرمِ ساخت هم خوانده می‌شود؛ اگر چیزی نگفته
+       باشد، پیشنهادِ شغل می‌نشیند. */
+    const allViews = (VIEWS[kind] || []).map(v => v.id);
+    const views = Array.isArray(body.views)
+      ? body.views.filter(v => allViews.includes(v)) : null;
     const vault = cleanVault(body.vault);
     const cfg = freshConfig(slug, name, kind, job, vault.length ? vault : DEFAULT_VAULT);
+    if (views) cfg.views = views;
     const pass = String(body.password || '').trim() || newPassword();
     await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
       slug, name, kind, JSON.stringify(cfg), Date.now());
@@ -264,7 +274,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const sub = mSlug[2] || '';
     const panel = await panelBySlug(env, slug);
     if (!panel) return bad('چنین کارتابلی نیست.', 404);
-    const row = await one(env, 'SELECT cfg FROM planners WHERE slug=?', slug);
+    const row = await one(env, 'SELECT cfg, kind FROM planners WHERE slug=?', slug);
+    const row0 = row || {};
     const builtin = !row;
     /* سه کارتابلِ اصلی داخلِ خودِ کد هم هستند: با پاک شدنِ ردیفشان
        دوباره سبز می‌شوند، ولی داده‌شان رفته. پس حذفشان اصلاً نباید
@@ -293,9 +304,17 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       }
       if (body.off !== undefined) {
         if (!Array.isArray(body.off)) return bad('فهرست بخش‌های بسته درست نیست.');
-        const bad_ = body.off.filter(f => !isFeature(f));
+        const bad_ = body.off.filter(f => !FEATURES.includes(f));
         if (bad_.length) return bad('بخشِ ناشناخته: ' + bad_.join('، '));
         cfg.off = [...new Set(body.off)];
+      }
+      if (body.views !== undefined) {
+        if (!Array.isArray(body.views)) return bad('فهرست بخش‌های کارتابل درست نیست.');
+        const kind = row0.kind === 'it' ? 'it' : row0.kind === 'fin' ? 'fin' : 'gen';
+        const all = (VIEWS[kind] || []).map(v => v.id);
+        const bad2 = body.views.filter(v => !all.includes(v));
+        if (bad2.length) return bad('بخشِ ناشناخته: ' + bad2.join('، '));
+        cfg.views = [...new Set(body.views)];
       }
       if (body.vault !== undefined) {
         const v = cleanVault(body.vault);
