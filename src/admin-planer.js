@@ -14,7 +14,7 @@
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
-  PANELS, kartablBot, tgMessage, FEATURES
+  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 
@@ -181,7 +181,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         disabled: !!c.disabled,
         until: Number(c.until) || 0,
         closed: !!c.disabled || (Number(c.until) > 0 && Date.now() > Number(c.until)),
-        off: (Array.isArray(c.off) ? c.off : []).filter(f => FEATURES.includes(f)),
+        off: (Array.isArray(c.off) ? c.off : []).filter(isFeature),
         core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
         url: '/' + r.slug + '/', created: r.created,
@@ -216,11 +216,14 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       features: [
         { id: 'pass', label: 'عوض کردن رمز ورود', note: 'کاربر بتواند رمز ورودِ خودش را عوض کند' },
         { id: 'backup', label: 'تنظیم پشتیبان تلگرام', note: 'ربات و گفتگوی پشتیبان و ارسال دستی' },
-        { id: 'ai', label: 'دستیار هوشمند', note: 'خود دستیار و تنظیم کلید هوش مصنوعی' },
+        { id: 'ai', label: 'دستیار هوشمند', note: 'خودِ دستیار — بخشش از نوار کنار برداشته می‌شود' },
+        { id: 'aikey', label: 'تنظیم موتور دستیار', note: 'کاربر نتواند کلید هوش مصنوعی را عوض کند' },
         { id: 'vault', label: 'دیتای شخصی', note: 'بخش رمزدارِ شخصی کاربر' },
         { id: 'files', label: 'پشتیبان و بازیابی دستی', note: 'دکمه‌های گرفتن و برگرداندن فایل' },
         { id: 'folder', label: 'آینهٔ اکسل روی سیستم', note: 'اتصال به پوشهٔ مشترک' }
       ],
+      /* بخش‌های خودِ کارتابل، جدا برای هر نوع */
+      views: VIEWS,
       escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null))
     });
   }
@@ -290,7 +293,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       }
       if (body.off !== undefined) {
         if (!Array.isArray(body.off)) return bad('فهرست بخش‌های بسته درست نیست.');
-        const bad_ = body.off.filter(f => !FEATURES.includes(f));
+        const bad_ = body.off.filter(f => !isFeature(f));
         if (bad_.length) return bad('بخشِ ناشناخته: ' + bad_.join('، '));
         cfg.off = [...new Set(body.off)];
       }

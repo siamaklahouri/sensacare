@@ -711,7 +711,14 @@ function fillSelect(id, items){
 
 function kindLabel(k){ const f = DATA.kinds.find(x=>x.id===k); return f ? f.label : k; }
 function kindIcon(k){ const f = DATA.kinds.find(x=>x.id===k); return (f && f.icon) || "🗂"; }
-function featLabel(id){ const f = (DATA.features||[]).find(x=>x.id===id); return f ? f.label : id; }
+function featLabel(id){
+  if(id.startsWith("view:")){
+    const v = Object.values(DATA.views||{}).flat().find(x=>x.id===id.slice(5));
+    return v ? v.label : id.slice(5);
+  }
+  const f = (DATA.features||[]).find(x=>x.id===id);
+  return f ? f.label : id;
+}
 
 /* مهلتِ کارتابل: چند روز مانده، یا کِی تمام شد. */
 function daysLeft(until){
@@ -847,6 +854,16 @@ function openEdit(slug){
         <span><span class="ft">${esc(f.label)}</span><br>
           <span class="fn">${esc(f.note||"")}</span></span>
       </label>`).join("")}</div>
+
+    ${(((DATA.views||{})[p.kind])||[]).length ? `
+    <p class="sub" style="margin-top:18px;">کدام بخش‌های خودِ کارتابل را ببیند —
+      داشبورد، چک‌لیست، برنامهٔ روزانه، راهنما و تنظیمات همیشه هستند.</p>
+    <div class="feats">${(((DATA.views||{})[p.kind])||[]).map(v=>`
+      <label class="feat${(p.off||[]).includes("view:"+v.id) ? ' closed' : ''}">
+        <input type="checkbox" data-feat="view:${esc(v.id)}"
+          ${(p.off||[]).includes("view:"+v.id) ? "" : "checked"}>
+        <span><span class="ft">${esc(v.label)}</span></span>
+      </label>`).join("")}</div>` : ``}
 
     <p class="sub" style="margin-top:18px;">بخش‌های «دیتای شخصی» — برداشتنِ یک بخش
       محتوایش را پاک نمی‌کند؛ فقط از چشمِ کاربر پنهان می‌شود و با برگرداندنش

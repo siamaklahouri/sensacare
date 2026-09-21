@@ -953,14 +953,14 @@ window.KARTABL_OFF = {{FEATOFF}};
     <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
     <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
     <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
-    <button class="navbtn" data-view="invoices"><span class="ic">🧾</span> سررسید اسناد دریافتنی از مشتری</button>
-    <button class="navbtn" data-view="payables"><span class="ic">💳</span> بدهی‌ها و پرداخت‌ها</button>
-    <button class="navbtn" data-view="payablenotes"><span class="ic">📄</span> اسناد پرداختنی نزد دیگران</button>
-    <button class="navbtn" data-view="receivablenotes"><span class="ic">📃</span> اسناد دریافتنی به نفع شرکت</button>
-    <button class="navbtn" data-view="expenses"><span class="ic">🧮</span> منابع و مصارف</button>
-    <button class="navbtn" data-view="bank"><span class="ic">🏦</span> حساب‌های بانکی</button>
-    <button class="navbtn" data-view="budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
-    <button class="navbtn" data-view="parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
+    <button class="navbtn" data-view="invoices" data-feat="view:invoices"><span class="ic">🧾</span> سررسید اسناد دریافتنی از مشتری</button>
+    <button class="navbtn" data-view="payables" data-feat="view:payables"><span class="ic">💳</span> بدهی‌ها و پرداخت‌ها</button>
+    <button class="navbtn" data-view="payablenotes" data-feat="view:payablenotes"><span class="ic">📄</span> اسناد پرداختنی نزد دیگران</button>
+    <button class="navbtn" data-view="receivablenotes" data-feat="view:receivablenotes"><span class="ic">📃</span> اسناد دریافتنی به نفع شرکت</button>
+    <button class="navbtn" data-view="expenses" data-feat="view:expenses"><span class="ic">🧮</span> منابع و مصارف</button>
+    <button class="navbtn" data-view="bank" data-feat="view:bank"><span class="ic">🏦</span> حساب‌های بانکی</button>
+    <button class="navbtn" data-view="budget" data-feat="view:budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
+    <button class="navbtn" data-view="parties" data-feat="view:parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
@@ -1083,10 +1083,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- INVOICES -->
-    <section class="view" id="view-invoices">
+    <section class="view" id="view-invoices" data-feat="view:invoices">
       <div class="section-title">سررسید اسناد دریافتنی از مشتری</div>
       <div class="section-sub">فهرست فاکتورهای صادرشده و وضعیت وصول مطالبات — برگ «اسناد دریافتنی از مشتری» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshInvoicesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="invoicesSyncStatus"></span>
       </div>
@@ -1124,10 +1124,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- PAYABLES -->
-    <section class="view" id="view-payables">
+    <section class="view" id="view-payables" data-feat="view:payables">
       <div class="section-title">بدهی و پرداخت</div>
       <div class="section-sub">فهرست بدهی‌ها به تامین‌کنندگان به تفکیک پروژه — برگ «بدهی و پرداخت» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPayablesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="payablesSyncStatus"></span>
       </div>
@@ -1164,10 +1164,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- PAYABLE NOTES (چک‌های پرداختنی نزد دیگران) -->
-    <section class="view" id="view-payablenotes">
+    <section class="view" id="view-payablenotes" data-feat="view:payablenotes">
       <div class="section-title">اسناد پرداختنی نزد دیگران</div>
       <div class="section-sub">چک‌ها و اسنادی که شرکت به دیگران بدهکار است — برگ «اسناد پرداختنی نزد دیگران» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPayableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="payableNotesSyncStatus"></span>
       </div>
@@ -1202,10 +1202,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- RECEIVABLE NOTES (چک‌های دریافتنی به نفع شرکت) -->
-    <section class="view" id="view-receivablenotes">
+    <section class="view" id="view-receivablenotes" data-feat="view:receivablenotes">
       <div class="section-title">اسناد دریافتنی به نفع شرکت</div>
       <div class="section-sub">چک‌ها و اسنادی که دیگران به شرکت بدهکارند — برگ «اسناد دریافتنی شرکت» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshReceivableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="receivableNotesSyncStatus"></span>
       </div>
@@ -1240,10 +1240,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- EXPENSES -->
-    <section class="view" id="view-expenses">
+    <section class="view" id="view-expenses" data-feat="view:expenses">
       <div class="section-title">منابع و مصارف</div>
       <div class="section-sub">ثبت منابع (دریافت‌ها و ورودی‌های نقدی) و مصارف (هزینه‌ها و خروجی‌های نقدی) — برگ «منابع و مصارف» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshExpensesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="expensesSyncStatus"></span>
       </div>
@@ -1281,10 +1281,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- BANK ACCOUNTS -->
-    <section class="view" id="view-bank">
+    <section class="view" id="view-bank" data-feat="view:bank">
       <div class="section-title">حساب‌های بانکی و نقدینگی</div>
       <div class="section-sub">فهرست حساب‌ها و موجودی هرکدام — برگ «حساب‌های بانکی» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshBankBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="bankSyncStatus"></span>
       </div>
@@ -1313,10 +1313,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- BUDGET -->
-    <section class="view" id="view-budget">
+    <section class="view" id="view-budget" data-feat="view:budget">
       <div class="section-title">بودجه‌بندی ماهانه</div>
       <div class="section-sub">مقایسه‌ی بودجه‌ی مصوب با هزینه‌ی واقعی هر دسته — برگ «بودجه‌بندی» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshBudgetBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="budgetSyncStatus"></span>
       </div>
@@ -1344,10 +1344,10 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- PARTIES -->
-    <section class="view" id="view-parties">
+    <section class="view" id="view-parties" data-feat="view:parties">
       <div class="section-title">طرف‌حساب‌ها</div>
       <div class="section-sub">فهرست مشتریان و تامین‌کنندگان — برگ «طرف‌حساب‌ها» در فایل دیتابیس</div>
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshPartiesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="partiesSyncStatus"></span>
       </div>
@@ -1425,7 +1425,7 @@ window.KARTABL_OFF = {{FEATOFF}};
         </form>
       </div>
 
-      <div class="panel" data-feat="ai">
+      <div class="panel" data-feat="aikey">
         <h3 class="set-h">🤖 موتور دستیار هوشمند</h3>
         <p class="set-p">دستیار به‌طور پیش‌فرض روی هوش مصنوعیِ رایگانِ کلادفلر کار می‌کند — چیزی لازم ندارد، ولی کیفیتش متوسط است و گاهی در فارسی گیج می‌زند. اگر کلید API کلاد داشته باشید، این‌جا بگذاریدش تا دستیار از همان لحظه با کلاد کار کند. کلید را از <code dir="ltr">console.anthropic.com</code> می‌سازید و هزینه‌اش پای مصرف خودتان است.</p>
         <div class="set-row">
@@ -1546,10 +1546,6 @@ window.KARTABL_OFF = {{FEATOFF}};
           <div class="ic">👥</div>
           <div><h4>طرف‌حساب‌ها</h4><p>فهرست مشتریان و تامین‌کنندگان را مدیریت کنید تا در فرم‌های فاکتور و بدهی قابل انتخاب باشند.</p></div>
         </div>
-        <div class="guide-item">
-          <div class="ic">💾</div>
-          <div><h4>ذخیره‌سازی</h4><p>همه‌ی داده‌ها در یک فایل اکسل واحد به‌نام «{{FILEXLSX}}» ذخیره می‌شود. یک‌بار از «🗂️ اتصال به پوشه» یک پوشه‌ی مشترک (مثلاً پوشه‌ی هم‌گام‌شده با Google Drive یا OneDrive) را انتخاب کنید — از آن پس هر تغییری در همین صفحه خودکار روی همان فایل اکسل ذخیره می‌شود (فقط Chrome/Edge).</p></div>
-        </div>
       </div>
     </section>
 
@@ -1627,9 +1623,21 @@ function escapeGateHtml(t){
    فهرستش را سرور داخل صفحه می‌گذارد. این‌جا فقط از چشم برداشته می‌شوند؛
    جلوگیریِ واقعی سمتِ سرور است، چون پنهان‌کردنِ یک دکمه کسی را که
    درخواست را دستی بفرستد نگه نمی‌دارد. */
-function hideClosedFeatures(){
+/* بستنِ یک بخش گاهی بخشِ دیگری را هم می‌بندد: وقتی خودِ دستیار نیست،
+   تنظیمِ موتورش هم بی‌معنی است. همین قاعده سمتِ سرور هم هست. */
+const FEAT_IMPLIES = { ai: ["aikey"] };
+
+function closedFeatures(){
   const off = Array.isArray(window.KARTABL_OFF) ? window.KARTABL_OFF : [];
-  if(!off.length) return;
+  const all = new Set(off);
+  off.forEach(f => (FEAT_IMPLIES[f] || []).forEach(x => all.add(x)));
+  return all;
+}
+function featClosed(f){ return closedFeatures().has(f); }
+
+function hideClosedFeatures(){
+  const off = closedFeatures();
+  if(!off.size) return;
   off.forEach(f=>{
     document.querySelectorAll('[data-feat="' + f + '"]').forEach(el=> el.remove());
   });
@@ -2141,6 +2149,9 @@ async function readStateFromFolder(){
   }
 }
 async function tryReconnectFolder(){
+  /* ادمین این بخش را بسته: نه وصل می‌شویم، نه سراغِ پوشه‌ای که
+     قبلاً وصل بوده می‌رویم. */
+  if(featClosed("folder")) return;
   if(!fsaSupported()){
     updateFolderStatus("💡 اتصال به پوشه فقط در Chrome/Edge پشتیبانی می‌شود.");
     const btn = document.getElementById("connectFolderBtn");
@@ -2167,6 +2178,9 @@ async function tryReconnectFolder(){
   }
 }
 async function connectFolder(){
+  /* ادمین این بخش را بسته: نه وصل می‌شویم، نه سراغِ پوشه‌ای که
+     قبلاً وصل بوده می‌رویم. */
+  if(featClosed("folder")) return;
   if(!fsaSupported()){
     alert("اتصال به پوشه فقط در مرورگرهای Chrome یا Edge (نسخه‌ی دسکتاپ) پشتیبانی می‌شود.");
     return;

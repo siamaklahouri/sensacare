@@ -1191,13 +1191,13 @@ window.KARTABL_OFF = {{FEATOFF}};
       <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
       <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
 <!--IT-->
-      <button class="navbtn" data-view="servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
-      <button class="navbtn" data-view="companies"><span class="ic">🏢</span> شرکت‌ها</button>
-      <button class="navbtn" data-view="mvpn"><span class="ic">📱</span> سرویس MVPN</button>
+      <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
+      <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
+      <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
 <!--/IT-->
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
 <!--IT-->
-      <button class="navbtn" data-view="datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+      <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
 <!--/IT-->
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
@@ -1333,11 +1333,11 @@ window.KARTABL_OFF = {{FEATOFF}};
 
 <!--IT-->
     <!-- SERVERS & BACKUP -->
-    <section class="view" id="view-servers">
+    <section class="view" id="view-servers" data-feat="view:servers">
       <div class="section-title">سرورها و بکاپ</div>
       <div class="section-sub">فهرست سرورها و وضعیت بکاپ‌گیری بر اساس دیتای شما</div>
 
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshExcelBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="backupSyncStatus" style="font-size:11.5px;"></span>
       </div>
@@ -1400,7 +1400,7 @@ window.KARTABL_OFF = {{FEATOFF}};
         <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin:0 0 10px;">
           فهرست سرورها از برگ RemoteChecklist در فایل «{{FILEXLSX}}» خوانده می‌شود؛ روی هر روز کلیک کنید تا به‌عنوان «بررسی‌شده و موفق» علامت بخورد، یا سرور/روز جدید اضافه کنید — هر تغییری خودکار روی همان اکسل ذخیره می‌شود.
         </p>
-        <div class="toolbar" style="margin-bottom:12px;">
+        <div class="toolbar" data-feat="folder" style="margin-bottom:12px;">
           <button class="btn btn-brass" id="refreshRemoteBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
           <span class="save-hint" id="remoteSyncStatus" style="font-size:11.5px;"></span>
         </div>
@@ -1409,11 +1409,11 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- COMPANIES -->
-    <section class="view" id="view-companies">
+    <section class="view" id="view-companies" data-feat="view:companies">
       <div class="section-title">شرکت‌ها</div>
       <div class="section-sub">تاریخچه‌ی بازدید/پشتیبانی شرکت‌ها — برگ Companies در فایل دیتابیس یکپارچه</div>
 
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshDateBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="dateSyncStatus" style="font-size:11.5px;"></span>
       </div>
@@ -1422,11 +1422,11 @@ window.KARTABL_OFF = {{FEATOFF}};
     </section>
 
     <!-- MVPN -->
-    <section class="view" id="view-mvpn">
+    <section class="view" id="view-mvpn" data-feat="view:mvpn">
       <div class="section-title">سرویس MVPN</div>
       <div class="section-sub">فهرست خطوط سازمانی — برگ MVPN در فایل دیتابیس یکپارچه</div>
 
-      <div class="toolbar">
+      <div class="toolbar" data-feat="folder">
         <button class="btn btn-brass" id="refreshMvpnBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
         <span class="save-hint" id="mvpnSyncStatus" style="font-size:11.5px;"></span>
       </div>
@@ -1474,7 +1474,7 @@ window.KARTABL_OFF = {{FEATOFF}};
 
 <!--IT-->
     <!-- DATE TOOLS -->
-    <section class="view" id="view-datetools">
+    <section class="view" id="view-datetools" data-feat="view:datetools">
       <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
       <div class="section-sub">تبدیل دوطرفه‌ی تاریخ شمسی و میلادی، و محاسبه‌ی فاصله‌ی بین دو تاریخ شمسی</div>
 
@@ -1562,7 +1562,7 @@ window.KARTABL_OFF = {{FEATOFF}};
         </form>
       </div>
 
-      <div class="panel" data-feat="ai">
+      <div class="panel" data-feat="aikey">
         <h3 class="set-h">🤖 موتور دستیار هوشمند</h3>
         <p class="set-p">دستیار به‌طور پیش‌فرض روی هوش مصنوعیِ رایگانِ کلادفلر کار می‌کند — چیزی لازم ندارد، ولی کیفیتش متوسط است و گاهی در فارسی گیج می‌زند. اگر کلید API کلاد داشته باشید، این‌جا بگذاریدش تا دستیار از همان لحظه با کلاد کار کند. کلید را از <code dir="ltr">console.anthropic.com</code> می‌سازید و هزینه‌اش پای مصرف خودتان است.</p>
         <div class="set-row">
@@ -1676,12 +1676,6 @@ window.KARTABL_OFF = {{FEATOFF}};
           <div><h4>چک‌لیست بررسی ریموت روزانه</h4><p>از برگ RemoteChecklist در همان فایل دیتابیس خوانده می‌شود؛ روی هر روز کلیک کنید تا علامت «بررسی‌شده و موفق» بخورد، یا سرور/روز جدید اضافه کنید — همه‌ی این‌ها خودکار روی همان اکسل ذخیره می‌شود.</p></div>
         </div>
 <!--/IT-->
-        <div class="guide-item">
-          <div class="ic">💾</div>
-          <div><h4>ذخیره‌سازی</h4><p>تغییرات به‌صورت خودکار در حافظه‌ی همین مرورگر و همین سیستم ذخیره می‌شود — روی سیستم دیگری از صفر شروع می‌شود، مگر یکی از این دو راه را استفاده کنید:</p>
-          <p style="margin-top:8px;"><b>راه ۱ — پشتیبان دستی:</b> روی سیستم قبلی «⬇ پشتیبان» را بزنید، فایل JSON را به سیستم جدید منتقل کنید (فلش/ایمیل/تلگرام)، سپس روی سیستم جدید «⬆ بازیابی» را بزنید و همان فایل را انتخاب کنید.</p>
-          <p style="margin-top:8px;"><b>راه ۲ — پوشه‌ی مشترک:</b> اگر یک پوشه‌ی هم‌گام‌شده دارید (مثلاً پوشه‌ی Google Drive یا OneDrive روی سیستم، یا یک فلش‌مموری)، روی «🗂️ اتصال به پوشه» همان پوشه را در هر دو سیستم انتخاب کنید — برنامه خودش داده‌ی موجود را تشخیص داده و پیشنهاد بارگذاری آن را می‌دهد (فقط Chrome/Edge).</p></div>
-        </div>
         <div class="legend-row">
           <span><i class="dot" style="background:var(--green);"></i> انجام شد</span>
           <span><i class="dot" style="background:var(--amber);"></i> در حال انجام</span>
@@ -1744,9 +1738,21 @@ function escapeGateHtml(t){
    فهرستش را سرور داخل صفحه می‌گذارد. این‌جا فقط از چشم برداشته می‌شوند؛
    جلوگیریِ واقعی سمتِ سرور است، چون پنهان‌کردنِ یک دکمه کسی را که
    درخواست را دستی بفرستد نگه نمی‌دارد. */
-function hideClosedFeatures(){
+/* بستنِ یک بخش گاهی بخشِ دیگری را هم می‌بندد: وقتی خودِ دستیار نیست،
+   تنظیمِ موتورش هم بی‌معنی است. همین قاعده سمتِ سرور هم هست. */
+const FEAT_IMPLIES = { ai: ["aikey"] };
+
+function closedFeatures(){
   const off = Array.isArray(window.KARTABL_OFF) ? window.KARTABL_OFF : [];
-  if(!off.length) return;
+  const all = new Set(off);
+  off.forEach(f => (FEAT_IMPLIES[f] || []).forEach(x => all.add(x)));
+  return all;
+}
+function featClosed(f){ return closedFeatures().has(f); }
+
+function hideClosedFeatures(){
+  const off = closedFeatures();
+  if(!off.size) return;
   off.forEach(f=>{
     document.querySelectorAll('[data-feat="' + f + '"]').forEach(el=> el.remove());
   });
@@ -2033,6 +2039,9 @@ function updateFolderStatus(text){
 function fsaSupported(){ return typeof window.showDirectoryPicker === "function"; }
 
 async function tryReconnectFolder(){
+  /* ادمین این بخش را بسته: نه وصل می‌شویم، نه سراغِ پوشه‌ای که
+     قبلاً وصل بوده می‌رویم. */
+  if(featClosed("folder")) return;
   /* در سافاری و مرورگر گوشی این امکان نیست. قبلاً یک دکمهٔ خاکستریِ
      «نامعتبر در این مرورگر» ته ستون کناری می‌ماند که فقط جا می‌گرفت؛
      حالا کل بخش نشان داده نمی‌شود. */
@@ -2060,6 +2069,9 @@ async function tryReconnectFolder(){
 }
 
 async function connectFolder(){
+  /* ادمین این بخش را بسته: نه وصل می‌شویم، نه سراغِ پوشه‌ای که
+     قبلاً وصل بوده می‌رویم. */
+  if(featClosed("folder")) return;
   if(!fsaSupported()) return;
   try{
     const handle = await window.showDirectoryPicker({ mode:"readwrite" });

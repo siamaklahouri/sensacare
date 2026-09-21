@@ -101,12 +101,46 @@ const TEMPLATES = { it: 'it', fin: 'fin', gen: 'it' };
 
 /* بخش‌هایی که می‌شود برای هر کاربر باز یا بسته گذاشت.
    «همگام‌سازی» عمداً این‌جا نیست: بدونش کارتابل اصلاً کار نمی‌کند. */
-export const FEATURES = ['pass', 'ai', 'backup', 'folder', 'vault', 'files'];
+export const FEATURES = ['pass', 'ai', 'aikey', 'backup', 'folder', 'vault', 'files'];
+
+/* بخش‌های خودِ کارتابل که می‌شود برای هر کاربر برداشت. داشبورد،
+   چک‌لیست، برنامهٔ روزانه، راهنما و تنظیمات این‌جا نیستند: ستون‌فقراتِ
+   کارتابل‌اند. «دیتای شخصی» و «دستیار» هم قبلاً بالا آمده‌اند. */
+export const VIEWS = {
+  it: [
+    { id: 'servers',   label: 'سرورها و بکاپ' },
+    { id: 'companies', label: 'شرکت‌ها' },
+    { id: 'mvpn',      label: 'سرویس MVPN' },
+    { id: 'datetools', label: 'تبدیل تاریخ' }
+  ],
+  fin: [
+    { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },
+    { id: 'payables',        label: 'بدهی‌ها و پرداخت‌ها' },
+    { id: 'payablenotes',    label: 'اسناد پرداختنی' },
+    { id: 'receivablenotes', label: 'اسناد دریافتنی' },
+    { id: 'expenses',        label: 'منابع و مصارف' },
+    { id: 'bank',            label: 'حساب‌های بانکی' },
+    { id: 'budget',          label: 'بودجه‌بندی ماهانه' },
+    { id: 'parties',         label: 'طرف‌حساب‌ها' }
+  ],
+  gen: []
+};
+
+const ALL_VIEWS = new Set(Object.values(VIEWS).flat().map(v => v.id));
+
+/* نامِ معتبر: یا یکی از بخش‌های بالا، یا «view:» به‌علاوهٔ نامِ نمایی
+   که می‌شناسیم. هر چیزِ دیگری دور ریخته می‌شود. */
+export const isFeature = f => typeof f === 'string' &&
+  (FEATURES.includes(f) || (f.startsWith('view:') && ALL_VIEWS.has(f.slice(5))));
 
 /* هر مسیرِ API زیرِ کدام بخش است. پنهان‌کردنِ دکمه کافی نیست؛ کسی که
    درخواست را دستی بفرستد باید همین‌جا جواب رد بگیرد. */
 const FEATURE_ROUTES = [
   [/^\/password$/, 'pass'],
+  /* تنظیمِ موتور جدا از خودِ دستیار است: می‌شود دستیار باز باشد ولی
+     کاربر نتواند کلیدِ هوش مصنوعی را دست بزند. ترتیب مهم است — اگر
+     «aikey» باز باشد، همین مسیر با قاعدهٔ بعدی سنجیده می‌شود. */
+  [/^\/ai\/settings$/, 'aikey'],
   [/^\/ai(\/|$)/, 'ai'],
   [/^\/backup(\/|$)/, 'backup'],
   [/^\/(vault|escrow)(\/|$)/, 'vault'],
@@ -152,7 +186,7 @@ export function panelFromRow(row) {
     until, expired,
     /* بخش‌هایی که ادمین برای این کاربر بسته است. فقط اسمِ بخش‌های
        شناخته‌شده رد می‌شود تا یک مقدارِ عجیب چیزی را باز نکند. */
-    off: (Array.isArray(c.off) ? c.off : []).filter(f => FEATURES.includes(f)),
+    off: (Array.isArray(c.off) ? c.off : []).filter(isFeature),
     job: c.job || '',
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
