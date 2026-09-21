@@ -176,6 +176,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       try { c = JSON.parse(r.cfg); } catch (e) { /* خرابش را هم نشان بده */ }
       items.push({
         slug: r.slug, name: r.name, kind: r.kind, job: c.job || '',
+        disabled: !!c.disabled,
+        core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
         url: '/' + r.slug + '/', created: r.created,
         hasPassword: !!(await getSetting(env, (c.keys || {}).pass || '', '')),
@@ -188,14 +190,21 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     for (const b of Object.values(PANELS))
       if (!known.has(b.slug))
         items.push({ slug: b.slug, name: b.name, kind: b.kind, job: '', vault: DEFAULT_VAULT,
+                     disabled: false, core: true,
                      url: b.page, created: 0, builtin: true,
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
     return json({
       items,
-      kinds: [{ id: 'it', label: 'مدیر IT' }, { id: 'fin', label: 'مالی' },
-              { id: 'gen', label: 'عمومی' }],
+      kinds: [
+        { id: 'gen', label: 'عمومی', icon: '🗂',
+          note: 'داشبورد، چک‌لیست ماهانه، برنامهٔ روزانه، دیتای شخصی، دستیار — برای هر شغلی' },
+        { id: 'it', label: 'مدیر IT', icon: '🖥',
+          note: 'همهٔ بخش‌های عمومی، به‌علاوهٔ سرورها و بکاپ، شرکت‌ها، MVPN و تبدیل تاریخ' },
+        { id: 'fin', label: 'مالی', icon: '💰',
+          note: 'اسناد دریافتنی و پرداختنی، بدهی‌ها، منابع و مصارف، بانک، بودجه و طرف‌حساب‌ها' }
+      ],
       jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label })),
       vaultTypes: [{ id: 'creds', label: 'شرکت‌ها و رمزها' }, { id: 'inst', label: 'اقساط و وام' },
                    { id: 'contacts', label: 'دفتر تلفن' }, { id: 'table', label: 'جدول دل‌خواه' }],
@@ -241,6 +250,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     if (!panel) return bad('چنین کارتابلی نیست.', 404);
     const row = await one(env, 'SELECT cfg FROM planners WHERE slug=?', slug);
     const builtin = !row;
+    /* سه کارتابلِ اصلی داخلِ خودِ کد هم هستند: با پاک شدنِ ردیفشان
+       دوباره سبز می‌شوند، ولی داده‌شان رفته. پس حذفشان اصلاً نباید
+       شروع شود. غیرفعال‌کردنشان اشکالی ندارد، چون برگشت‌پذیر است. */
+    const core = Object.values(PANELS).some(b => b.slug === slug);
 
     /* --- ویرایش: نام، شغل، بخش‌های شخصی --- */
     if (sub === '' && m === 'PUT') {
@@ -266,8 +279,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
 
     /* --- حذف --- */
     if (sub === '' && m === 'DELETE') {
-      if (builtin) return bad('کارتابل‌های اصلی از این‌جا حذف نمی‌شوند.', 403);
-      if (String(body.confirm || '') !== slug)
+      if (builtin || core) return bad('کارتابل‌های اصلی حذف نمی‌شوند — می‌توانید غیرفعالشان کنید.', 403);
+      /* سافاری خودش آدرسِ کامل را داخل کادر می‌ریزد و تأیید هیچ‌وقت
+         نمی‌خواند. آخرین تکهٔ آدرس همان چیزی است که خواسته‌ایم. */
+      const typed = String(body.confirm || '').trim().toLowerCase()
+        .replace(/^https?:\/\//, '').replace(/[?#].*$/, '')
+        .replace(/\/+$/, '').split('/').filter(Boolean).pop() || '';
+      if (typed !== slug)
         return bad('برای حذف، آدرس کارتابل را دقیقاً تایپ کنید.');
       const keys = panel.keys || {};
       await run(env, 'DELETE FROM planners WHERE slug=?', slug);
@@ -278,6 +296,24 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         await run(env, 'DELETE FROM settings WHERE k=?', k);
       await log(env, 'delete', slug, '');
       return json({ ok: true });
+    }
+
+    /* --- غیرفعال یا فعال کردن ---
+       برخلافِ حذف، این کار برگشت‌پذیر است: داده و رمز و تاریخچه سرِ
+       جایشان می‌مانند، فقط در بسته می‌شود و پشتیبانِ خودکار هم برایش
+       نمی‌رود. */
+    if (sub === '/state' && m === 'POST') {
+      if (builtin) return bad('این کارتابل هنوز در جدول نیست؛ یک‌بار مهاجرتش کنید.', 409);
+      let cfg;
+      try { cfg = JSON.parse(row.cfg); } catch (e) { return bad('تنظیماتِ این کارتابل خوانا نیست.', 500); }
+      const off = !!body.disabled;
+      cfg.disabled = off;
+      await run(env, 'UPDATE planners SET cfg=? WHERE slug=?', JSON.stringify(cfg), slug);
+      /* هر دستگاهی که وارد مانده باید بیرون بیفتد، وگرنه تا وقتی کوکی
+         دارد کارتابلِ بسته هم برایش باز می‌ماند. */
+      if (off) await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
+      await log(env, off ? 'disable' : 'enable', slug, '');
+      return json({ ok: true, disabled: off });
     }
 
     /* --- رمزِ ورود به کارتابل --- */

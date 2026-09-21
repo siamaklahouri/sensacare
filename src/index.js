@@ -1,4 +1,30 @@
 import { handleAdminPlaner, ADMIN_PAGE } from './admin-planer.js';
+
+/* صفحه‌ای که به‌جای کارتابلِ غیرفعال نشان داده می‌شود. عمداً ساده و
+   بی‌داده است: کسی که به این آدرس می‌رسد نباید چیزی جز همین بفهمد. */
+function disabledPanelPage(panel) {
+  const name = String(panel.name || '').replace(/[<>&"]/g, '');
+  return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow"><title>غیرفعال</title>
+<style>
+ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+   background:#EEF2F6;color:#0B2545;font-family:Vazirmatn,Tahoma,Arial,sans-serif;padding:20px}
+ @media (prefers-color-scheme:dark){body{background:#0D1620;color:#E6EDF3}
+   .c{background:#131F2B!important;border-color:#22303E!important}}
+ .c{background:#fff;border:1px solid #DCE3E9;border-radius:14px;padding:30px 26px;
+   max-width:400px;text-align:center;box-shadow:0 6px 18px rgba(11,37,69,.06)}
+ h1{font-size:17px;margin:0 0 10px} p{font-size:13px;line-height:2.1;margin:0;color:#3E5164}
+ @media (prefers-color-scheme:dark){p{color:#A9B7C6}}
+ .i{font-size:34px;margin-bottom:10px}
+</style></head><body><div class="c">
+<div class="i">⏸</div>
+<h1>کارتابل ${name} فعلاً غیرفعال است</h1>
+<p>داده‌هایتان سرِ جایشان هستند و چیزی پاک نشده.<br>
+برای باز شدنِ دوباره با مدیر سیستم تماس بگیرید.</p>
+</div></body></html>`;
+}
+
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
          renderPanelPage } from './kartabl.js';
 /* ==========================================================
@@ -1754,6 +1780,14 @@ export default {
         if (panel) {
           /* بدون اسلشِ آخر، آدرس‌های نسبی داخل صفحه یک پله بالاتر می‌افتند */
           if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
+          /* غیرفعال: داده سرِ جایش است، ولی در باز نمی‌شود. یک صفحهٔ
+             روشن بهتر از ۴۰۴ است، وگرنه صاحبش خیال می‌کند کارتابلش
+             پاک شده. */
+          if (panel.disabled) return withSecurity(new Response(disabledPanelPage(panel), {
+            status: 403,
+            headers: { 'Content-Type': 'text/html; charset=utf-8',
+                       'Cache-Control': 'no-store',
+                       'X-Robots-Tag': 'noindex, nofollow' } }));
           const html = await renderPanelPage(env, req, panel);
           if (html) return withSecurity(new Response(html, { headers: {
             'Content-Type': 'text/html; charset=utf-8',
@@ -1806,8 +1840,11 @@ export default {
         const cut = seg.indexOf('/');
         if (cut > 0) {
           const panel = await panelByApi(env, seg.slice(0, cut)).catch(() => null);
-          if (panel)
+          if (panel) {
+            if (panel.disabled)
+              return bad('این کارتابل موقتاً غیرفعال است. با مدیر سیستم تماس بگیرید.', 403);
             return handleKartabl(env, req, panel, seg.slice(cut), m, body, { rateLimit, clientIp });
+          }
         }
       }
 

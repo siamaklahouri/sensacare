@@ -119,6 +119,9 @@ export function panelFromRow(row) {
            icon: c.icon, store: c.store, idb: c.idb, dbcache: c.dbcache,
            filejson: c.filejson, filexlsx: c.filexlsx },
     keys: c.keys,
+    /* غیرفعال یعنی همه‌چیزش سرِ جایش هست ولی در باز نمی‌شود و
+       پشتیبانی هم برایش نمی‌رود. برگرداندنش یک کلیک است. */
+    disabled: !!c.disabled,
     job: c.job || '',
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
@@ -690,6 +693,9 @@ export async function nightlyKartablBackup(env, slot) {
      Request لازم است. یکی می‌سازیم. */
   const out = {};
   for (const panel of await allPanels(env)) {
+    /* کارتابلِ غیرفعال پشتیبان نمی‌خواهد. حذف‌شده که اصلاً در فهرست
+       نیست، چون فهرست از همان جدول خوانده می‌شود. */
+    if (panel.disabled) continue;
     const req = new Request('https://sensacare.ir' + panel.page);
     /* اگر یکی نرفت، آن یکی نباید قربانی شود */
     const r = await sendKartablBackup(env, req, panel, slot === 'noon' ? 'خودکار — ظهر' : 'خودکار — شبانه')

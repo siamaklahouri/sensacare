@@ -21,144 +21,310 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   src:url(/f/Vazirmatn-Bold.2.woff2) format("woff2")}
 </style>
 <style>
+/* ==========================================================================
+   پنل کارتابل‌ها — شیوه‌نامه
+   رنگ‌ها همان لهجهٔ کارتابل‌هاست تا وقتی بینشان جابه‌جا می‌شوید حس
+   دو برنامهٔ جدا ندهد. تم شب رنگِ وارونه نیست؛ مقدارهای خودش را دارد.
+   ========================================================================== */
 :root{
-  --paper:#EEF2F6; --ink:#0B2545; --ink-soft:#3E5164; --ink-faint:#8592A0;
-  --brass:#0E8B8B; --brass-deep:#0B6E6E; --brass-bg:#E3F4F3;
-  --green:#2F6B4F; --green-bg:#E3EFE7;
-  --amber:#C98A2C; --amber-bg:#FBF1DF;
-  --red:#A6222B; --red-bg:#F6E1E2;
-  --purple:#5B3E8C; --purple-bg:#EAE4F2;
-  --line:#DCE3E9; --white:#FFFFFF; --deep:#0B2545;
+  --paper:#EDF1F6; --paper-2:#F7F9FB;
+  --ink:#0B2545; --ink-soft:#43586D; --ink-faint:#8697A8;
+  --brass:#0E8B8B; --brass-deep:#0B6E6E; --brass-bg:#E2F3F2; --brass-ink:#0B6E6E;
+  --green:#2F6B4F; --green-bg:#E4EFE8; --green-ink:#2F6B4F;
+  --amber:#B5791B; --amber-bg:#FAF0DD; --amber-ink:#8E5E12;
+  --red:#A6222B;   --red-bg:#F7E2E3;   --red-ink:#8E1D25;
+  --purple:#5B3E8C;--purple-bg:#EBE5F3;--purple-ink:#5B3E8C;
+  --line:#DCE3EA; --line-soft:#E9EEF3; --white:#FFFFFF;
   --font:'Vazirmatn', Tahoma, 'Segoe UI', Arial, sans-serif;
-  --radius:14px; --radius-sm:10px;
-  --shadow: 0 1px 2px rgba(11,37,69,.05), 0 6px 18px rgba(11,37,69,.06);
+  --r-lg:18px; --r:13px; --r-sm:9px;
+  --sh-1:0 1px 2px rgba(11,37,69,.04), 0 2px 8px rgba(11,37,69,.05);
+  --sh-2:0 2px 6px rgba(11,37,69,.06), 0 12px 32px rgba(11,37,69,.09);
+  --sh-3:0 8px 24px rgba(11,37,69,.12), 0 32px 64px rgba(11,37,69,.16);
+  --glow:0 0 0 3px rgba(14,139,139,.16);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#0D1620; --ink:#E6EDF3; --ink-soft:#A9B7C6; --ink-faint:#7C8B9B;
-    --brass:#3FB6AE; --brass-deep:#2A8F89; --brass-bg:#12312F;
-    --green:#5FB07E; --green-bg:#16301F;
-    --amber:#E0AC55; --amber-bg:#3A2D12;
-    --red:#E8737C; --red-bg:#3A1A1D;
-    --purple:#A88FD8; --purple-bg:#241B36;
-    --line:#22303E; --white:#131F2B; --deep:#E6EDF3;
-    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.30);
+    --paper:#0B141D; --paper-2:#101C27;
+    --ink:#E7EEF4; --ink-soft:#AAB9C7; --ink-faint:#78899A;
+    --brass:#3FB6AE; --brass-deep:#2E958F; --brass-bg:#10302E; --brass-ink:#5CCCC4;
+    --green:#5FB07E; --green-bg:#15301F; --green-ink:#7CC698;
+    --amber:#DFA94F; --amber-bg:#382B11; --amber-ink:#EBBE72;
+    --red:#E8737C;   --red-bg:#391A1D;   --red-ink:#F09099;
+    --purple:#A88FD8;--purple-bg:#221A33;--purple-ink:#BCA8E4;
+    --line:#1F2C38; --line-soft:#182430; --white:#121E29;
+    --sh-1:0 1px 2px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.26);
+    --sh-2:0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.36);
+    --sh-3:0 8px 24px rgba(0,0,0,.45), 0 32px 64px rgba(0,0,0,.5);
+    --glow:0 0 0 3px rgba(63,182,174,.2);
   }
 }
 :root[data-theme="dark"]{
-  --paper:#0D1620; --ink:#E6EDF3; --ink-soft:#A9B7C6; --ink-faint:#7C8B9B;
-  --brass:#3FB6AE; --brass-deep:#2A8F89; --brass-bg:#12312F;
-  --green:#5FB07E; --green-bg:#16301F;
-  --amber:#E0AC55; --amber-bg:#3A2D12;
-  --red:#E8737C; --red-bg:#3A1A1D;
-  --purple:#A88FD8; --purple-bg:#241B36;
-  --line:#22303E; --white:#131F2B; --deep:#E6EDF3;
-  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.30);
+  --paper:#0B141D; --paper-2:#101C27;
+  --ink:#E7EEF4; --ink-soft:#AAB9C7; --ink-faint:#78899A;
+  --brass:#3FB6AE; --brass-deep:#2E958F; --brass-bg:#10302E; --brass-ink:#5CCCC4;
+  --green:#5FB07E; --green-bg:#15301F; --green-ink:#7CC698;
+  --amber:#DFA94F; --amber-bg:#382B11; --amber-ink:#EBBE72;
+  --red:#E8737C;   --red-bg:#391A1D;   --red-ink:#F09099;
+  --purple:#A88FD8;--purple-bg:#221A33;--purple-ink:#BCA8E4;
+  --line:#1F2C38; --line-soft:#182430; --white:#121E29;
+  --sh-1:0 1px 2px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.26);
+  --sh-2:0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.36);
+  --sh-3:0 8px 24px rgba(0,0,0,.45), 0 32px 64px rgba(0,0,0,.5);
+  --glow:0 0 0 3px rgba(63,182,174,.2);
 }
+
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
-body{ font-family:var(--font); background:var(--paper); color:var(--ink);
-  min-height:100vh; -webkit-font-smoothing:antialiased; font-size:13.5px; }
+body{
+  font-family:var(--font); font-size:13.5px; line-height:1.75;
+  color:var(--ink);
+  background:
+    radial-gradient(900px 420px at 100% -8%, rgba(14,139,139,.07), transparent 62%),
+    radial-gradient(760px 380px at -8% 4%, rgba(91,62,140,.06), transparent 58%),
+    var(--paper);
+  background-attachment:fixed;
+  min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+::selection{ background:var(--brass); color:#fff; }
+h1,h2,h3,h4{ font-weight:700; letter-spacing:-.01em; }
+a{ color:var(--brass-ink); }
 
 /* ---------- قفل ورود ---------- */
-#gate{ position:fixed; inset:0; z-index:90; background:var(--paper);
-  display:flex; align-items:center; justify-content:center; padding:20px; }
+#gate{ position:fixed; inset:0; z-index:90; display:flex; align-items:center;
+  justify-content:center; padding:20px;
+  background:
+    radial-gradient(700px 360px at 50% -10%, rgba(14,139,139,.1), transparent 60%),
+    var(--paper); }
 #gate[hidden]{ display:none; }
-.gate-card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
-  box-shadow:var(--shadow); padding:26px 22px; width:100%; max-width:380px; text-align:center; }
-.gate-card h1{ font-size:17px; margin:0 0 6px; }
-.gate-card p{ font-size:12.5px; color:var(--ink-soft); line-height:2; margin:0 0 16px; }
-.gate-card input{ width:100%; padding:11px 12px; margin-bottom:10px; border:1px solid var(--line);
-  border-radius:var(--radius-sm); font-family:var(--font); font-size:13.5px;
-  background:var(--paper); color:var(--ink); }
-.gate-card input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
-.gate-card button{ width:100%; padding:11px; border:0; border-radius:var(--radius-sm);
-  background:var(--brass); color:#fff; font-family:var(--font); font-size:14px;
-  font-weight:600; cursor:pointer; }
-.gate-card button:disabled{ opacity:.6; cursor:default; }
-.gate-err{ color:var(--red); font-size:12.5px; min-height:19px; margin-top:8px; }
-.gate-note{ color:var(--ink-soft); font-size:12.5px; margin-top:10px; line-height:2; }
+.gate-card{ background:var(--white); border:1px solid var(--line);
+  border-radius:var(--r-lg); box-shadow:var(--sh-2); padding:34px 28px 28px;
+  width:100%; max-width:390px; text-align:center;
+  animation:rise .4s cubic-bezier(.2,.8,.3,1); }
+@keyframes rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.gate-mark{ width:52px; height:52px; margin:0 auto 14px; border-radius:15px;
+  display:flex; align-items:center; justify-content:center; font-size:23px;
+  background:linear-gradient(145deg, var(--brass), var(--brass-deep));
+  box-shadow:0 6px 16px rgba(14,139,139,.28); }
+.gate-card h1{ font-size:17.5px; margin:0 0 7px; }
+.gate-card p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:0 0 18px; }
+.gate-card input{ width:100%; padding:12px 13px; margin-bottom:9px;
+  border:1px solid var(--line); border-radius:var(--r);
+  font-family:var(--font); font-size:13.5px;
+  background:var(--paper-2); color:var(--ink); transition:border-color .15s, box-shadow .15s; }
+.gate-card input::placeholder{ color:var(--ink-faint); }
+.gate-card input:focus{ outline:none; border-color:var(--brass);
+  background:var(--white); box-shadow:var(--glow); }
+.gate-card button[type="submit"]{ width:100%; padding:12px; border:0; border-radius:var(--r);
+  background:linear-gradient(145deg, var(--brass), var(--brass-deep)); color:#fff;
+  font-family:var(--font); font-size:14px; font-weight:700; cursor:pointer;
+  box-shadow:0 4px 12px rgba(14,139,139,.25); transition:transform .12s, box-shadow .15s; }
+.gate-card button[type="submit"]:hover{ transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(14,139,139,.32); }
+.gate-card button[type="submit"]:disabled{ opacity:.6; cursor:default; transform:none; }
+.gate-err{ color:var(--red-ink); font-size:12.5px; min-height:20px; margin-top:9px; }
+.gate-note{ color:var(--ink-soft); font-size:12.5px; margin-top:8px; line-height:2; }
 
 /* ---------- چارچوب ---------- */
-.wrap{ max-width:1100px; margin:0 auto; padding:18px 16px 60px; }
-.top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
-.top h1{ font-size:18px; margin:0; flex:1; }
-.tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
-.tabs button{ padding:8px 14px; border:1px solid var(--line); background:var(--white);
-  color:var(--ink-soft); border-radius:999px; font-family:var(--font); font-size:12.5px;
-  cursor:pointer; }
-.tabs button.active{ background:var(--brass); border-color:var(--brass); color:#fff; font-weight:600; }
-.panel{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
-  box-shadow:var(--shadow); padding:16px; margin-bottom:14px; }
-.panel h2{ font-size:14.5px; margin:0 0 4px; }
-.panel .sub{ font-size:12px; color:var(--ink-soft); line-height:1.9; margin:0 0 14px; }
-.btn{ padding:8px 13px; border:1px solid var(--line); background:var(--white); color:var(--ink);
-  border-radius:var(--radius-sm); font-family:var(--font); font-size:12.5px; cursor:pointer; }
-.btn:hover{ border-color:var(--brass); color:var(--brass); }
-.btn-main{ background:var(--brass); border-color:var(--brass); color:#fff; font-weight:600; }
-.btn-main:hover{ background:var(--brass-deep); border-color:var(--brass-deep); color:#fff; }
-.btn-danger{ color:var(--red); border-color:var(--red); }
+.wrap{ max-width:1160px; margin:0 auto; padding:22px 18px 70px; }
+.top{ display:flex; align-items:center; gap:13px; margin-bottom:20px; }
+.mark{ width:42px; height:42px; border-radius:13px; flex:none;
+  display:flex; align-items:center; justify-content:center; font-size:19px;
+  background:linear-gradient(145deg, var(--brass), var(--brass-deep));
+  box-shadow:0 4px 12px rgba(14,139,139,.24); }
+.top .titles{ flex:1; min-width:0; }
+.top h1{ font-size:19px; margin:0; }
+.top .sub2{ font-size:11.5px; color:var(--ink-faint); margin:1px 0 0; }
+.icon-btn{ width:36px; height:36px; flex:none; display:flex; align-items:center;
+  justify-content:center; border:1px solid var(--line); background:var(--white);
+  color:var(--ink-soft); border-radius:11px; cursor:pointer; font-size:14px;
+  transition:border-color .15s, color .15s, transform .12s; }
+.icon-btn:hover{ border-color:var(--brass); color:var(--brass-ink); transform:translateY(-1px); }
+
+/* ---------- نوار آمار ---------- */
+.stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+  gap:10px; margin-bottom:18px; }
+.stat{ background:var(--white); border:1px solid var(--line); border-radius:var(--r);
+  padding:12px 14px; box-shadow:var(--sh-1); }
+.stat .n{ font-size:21px; font-weight:800; line-height:1.3; letter-spacing:-.02em; }
+.stat .l{ font-size:11.5px; color:var(--ink-faint); }
+.stat.s-on .n{ color:var(--green-ink); }
+.stat.s-off .n{ color:var(--amber-ink); }
+.stat.s-key .n{ font-size:15px; padding-top:4px; }
+
+/* ---------- سربرگ‌ها ---------- */
+.tabs{ display:flex; gap:4px; flex-wrap:wrap; margin-bottom:18px;
+  background:var(--white); border:1px solid var(--line); border-radius:14px;
+  padding:4px; box-shadow:var(--sh-1); width:fit-content; max-width:100%; }
+.tabs button{ padding:8px 16px; border:0; background:transparent; color:var(--ink-soft);
+  border-radius:10px; font-family:var(--font); font-size:12.5px; font-weight:500;
+  cursor:pointer; transition:background .15s, color .15s; white-space:nowrap; }
+.tabs button:hover{ color:var(--ink); background:var(--paper-2); }
+.tabs button.active{ background:var(--brass); color:#fff; font-weight:700;
+  box-shadow:0 2px 8px rgba(14,139,139,.28); }
+
+/* ---------- پنل ---------- */
+.panel{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--sh-1); padding:20px; margin-bottom:14px; }
+.panel h2{ font-size:15px; margin:0 0 5px; display:flex; align-items:center; gap:7px; }
+.panel .sub{ font-size:12px; color:var(--ink-soft); line-height:2; margin:0 0 16px; }
+
+/* ---------- دکمه‌ها ---------- */
+.btn{ padding:8px 14px; border:1px solid var(--line); background:var(--white);
+  color:var(--ink-soft); border-radius:var(--r-sm); font-family:var(--font);
+  font-size:12.5px; font-weight:500; cursor:pointer;
+  transition:border-color .15s, color .15s, background .15s, transform .12s; }
+.btn:hover{ border-color:var(--brass); color:var(--brass-ink); transform:translateY(-1px); }
+.btn:active{ transform:none; }
+.btn-main{ background:linear-gradient(145deg, var(--brass), var(--brass-deep));
+  border-color:transparent; color:#fff; font-weight:700;
+  box-shadow:0 3px 10px rgba(14,139,139,.24); }
+.btn-main:hover{ color:#fff; border-color:transparent;
+  box-shadow:0 5px 14px rgba(14,139,139,.3); }
+.btn-danger{ color:var(--red-ink); border-color:var(--red-bg); background:var(--red-bg); }
 .btn-danger:hover{ background:var(--red); color:#fff; border-color:var(--red); }
-.btn:disabled{ opacity:.5; cursor:default; }
-.row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-.fld{ display:flex; flex-direction:column; gap:5px; min-width:150px; flex:1; }
-.fld label{ font-size:11.5px; color:var(--ink-soft); }
-.fld input, .fld select{ padding:9px 10px; border:1px solid var(--line); border-radius:var(--radius-sm);
-  font-family:var(--font); font-size:13px; background:var(--paper); color:var(--ink); }
-.fld input:focus, .fld select:focus{ outline:none; border-color:var(--brass); background:var(--white); }
-.hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.9; margin-top:6px; }
+.btn-off{ color:var(--amber-ink); border-color:var(--amber-bg); background:var(--amber-bg); }
+.btn-off:hover{ background:var(--amber); color:#fff; border-color:var(--amber); }
+.btn-on{ color:var(--green-ink); border-color:var(--green-bg); background:var(--green-bg); }
+.btn-on:hover{ background:var(--green); color:#fff; border-color:var(--green); }
+.btn:disabled{ opacity:.5; cursor:default; transform:none; }
+
+/* ---------- کادرها ---------- */
+.row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+.fld{ display:flex; flex-direction:column; gap:6px; min-width:150px; flex:1; }
+.fld label{ font-size:11.5px; color:var(--ink-soft); font-weight:500; }
+.fld input, .fld select{ padding:10px 11px; border:1px solid var(--line);
+  border-radius:var(--r-sm); font-family:var(--font); font-size:13px;
+  background:var(--paper-2); color:var(--ink);
+  transition:border-color .15s, box-shadow .15s, background .15s; }
+.fld input::placeholder{ color:var(--ink-faint); }
+.fld input:focus, .fld select:focus{ outline:none; border-color:var(--brass);
+  background:var(--white); box-shadow:var(--glow); }
+.hint{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-top:8px; }
+.hint b{ color:var(--ink-soft); }
 
 /* ---------- کارت کارتابل ---------- */
-.plist{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:12px; }
-.pcard{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
-  box-shadow:var(--shadow); padding:14px; }
-.pcard h3{ margin:0 0 3px; font-size:14.5px; display:flex; align-items:center; gap:7px; }
-.pill{ font-size:10.5px; padding:2px 8px; border-radius:999px; font-weight:600; }
-.pill-it{ background:var(--brass-bg); color:var(--brass-deep); }
-.pill-fin{ background:var(--green-bg); color:var(--green); }
-.pill-gen{ background:var(--purple-bg); color:var(--purple); }
-.pill-builtin{ background:var(--amber-bg); color:var(--amber); }
-.pcard .url{ font-size:12px; color:var(--brass); text-decoration:none; direction:ltr;
-  display:inline-block; margin-bottom:8px; }
-.pcard .meta{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-bottom:10px; }
+.plist{ display:grid; grid-template-columns:repeat(auto-fill, minmax(352px,1fr)); gap:14px;
+  align-items:stretch; }
+.pcard{ display:flex; flex-direction:column; }
+.pcard .acts{ margin-top:auto; }
+.pcard{ position:relative; background:var(--white); border:1px solid var(--line);
+  border-radius:var(--r-lg); box-shadow:var(--sh-1); padding:17px 16px 15px;
+  overflow:hidden; transition:box-shadow .2s, transform .15s, border-color .15s; }
+.pcard::before{ content:""; position:absolute; inset:0 0 auto 0; height:3px;
+  background:var(--accent, var(--brass)); opacity:.85; }
+.pcard:hover{ box-shadow:var(--sh-2); transform:translateY(-2px); }
+.pcard.k-it{ --accent:var(--brass); }
+.pcard.k-fin{ --accent:var(--green); }
+.pcard.k-gen{ --accent:var(--purple); }
+.pcard.off{ opacity:.75; }
+.pcard.off::before{ background:var(--amber); }
+.pc-head{ display:flex; align-items:flex-start; gap:10px; margin-bottom:3px; }
+.pc-ic{ width:34px; height:34px; flex:none; border-radius:11px; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent-bg, var(--brass-bg)); }
+.pcard.k-it .pc-ic{ background:var(--brass-bg); }
+.pcard.k-fin .pc-ic{ background:var(--green-bg); }
+.pcard.k-gen .pc-ic{ background:var(--purple-bg); }
+.pcard h3{ margin:0; font-size:15px; display:flex; align-items:center;
+  gap:6px; flex-wrap:wrap; line-height:1.6; }
+.pill{ font-size:10px; padding:2px 8px; border-radius:999px; font-weight:700;
+  line-height:1.8; }
+.pill-it{ background:var(--brass-bg); color:var(--brass-ink); }
+.pill-fin{ background:var(--green-bg); color:var(--green-ink); }
+.pill-gen{ background:var(--purple-bg); color:var(--purple-ink); }
+.pill-builtin{ background:var(--amber-bg); color:var(--amber-ink); }
+.pill-off{ background:var(--red-bg); color:var(--red-ink); }
+.pcard .url{ font-size:12px; color:var(--brass-ink); text-decoration:none;
+  direction:ltr; display:inline-block; margin:2px 0 11px 0;
+  border-bottom:1px solid transparent; transition:border-color .15s; }
+.pcard .url:hover{ border-bottom-color:currentColor; }
+.meta{ border-top:1px solid var(--line-soft); padding-top:10px; margin-bottom:12px; }
+.meta .m{ display:flex; gap:8px; font-size:11.5px; line-height:2.1; }
+.meta .m span:first-child{ color:var(--ink-faint); flex:none; min-width:112px; }
+.meta .m span:last-child{ color:var(--ink-soft); min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pcard .acts{ display:flex; gap:6px; flex-wrap:wrap; }
-.pcard .acts .btn{ padding:6px 10px; font-size:11.5px; }
+.pcard .acts .btn{ padding:6px 11px; font-size:11.5px; }
+.pcard .acts .btn-ic{ padding:6px 9px; font-size:13px; line-height:1.4; }
+
+/* ---------- انتخاب نوع کارتابل ---------- */
+.kinds{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px,1fr));
+  gap:10px; margin-bottom:16px; }
+.kind{ text-align:right; border:1px solid var(--line); background:var(--paper-2);
+  border-radius:var(--r); padding:13px 14px; cursor:pointer; font-family:var(--font);
+  color:var(--ink); transition:border-color .15s, background .15s, box-shadow .15s; }
+.kind:hover{ border-color:var(--brass); background:var(--white); }
+.kind.on{ border-color:var(--brass); background:var(--white); box-shadow:var(--glow); }
+.kind .kt{ font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:7px; }
+.kind .kn{ font-size:11.5px; color:var(--ink-faint); line-height:1.95; margin-top:5px; }
 
 /* ---------- بخش‌های شخصی ---------- */
-.secrow{ display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
-.secrow input, .secrow select{ padding:7px 9px; border:1px solid var(--line);
+.secrow{ display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;
+  background:var(--paper-2); border:1px solid var(--line-soft);
+  border-radius:var(--r-sm); padding:8px; }
+.secrow input, .secrow select{ padding:8px 10px; border:1px solid var(--line);
   border-radius:8px; font-family:var(--font); font-size:12.5px;
-  background:var(--paper); color:var(--ink); }
+  background:var(--white); color:var(--ink); }
+.secrow input:focus, .secrow select:focus{ outline:none; border-color:var(--brass);
+  box-shadow:var(--glow); }
 .secrow .stitle{ flex:1; min-width:130px; }
 .secrow .scols{ flex:1.4; min-width:160px; }
-.x{ border:0; background:transparent; color:var(--red); font-size:15px; cursor:pointer; padding:2px 6px; }
+.x{ border:0; background:transparent; color:var(--red-ink); font-size:15px;
+  cursor:pointer; padding:3px 7px; border-radius:7px; transition:background .15s; }
+.x:hover{ background:var(--red-bg); }
 
 /* ---------- پیام ---------- */
-.msg{ padding:10px 12px; border-radius:var(--radius-sm); font-size:12.5px; line-height:2;
-  margin-bottom:12px; white-space:pre-wrap; word-break:break-word; }
-.msg-ok{ background:var(--green-bg); color:var(--green); border:1px solid var(--green); }
-.msg-bad{ background:var(--red-bg); color:var(--red); border:1px solid var(--red); }
+.msg{ padding:12px 14px; border-radius:var(--r); font-size:12.5px; line-height:2.1;
+  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
+  animation:rise .3s cubic-bezier(.2,.8,.3,1); box-shadow:var(--sh-1); }
+.msg-ok{ background:var(--green-bg); color:var(--green-ink);
+  border:1px solid transparent; border-right:3px solid var(--green); }
+.msg-bad{ background:var(--red-bg); color:var(--red-ink);
+  border:1px solid transparent; border-right:3px solid var(--red); }
+.msg b{ font-weight:700; }
 .msg code{ font-family:ui-monospace, Menlo, Consolas, monospace; direction:ltr;
-  display:inline-block; background:rgba(0,0,0,.06); padding:2px 7px; border-radius:6px;
-  font-size:13px; letter-spacing:.5px; }
-:root[data-theme="dark"] .msg code{ background:rgba(255,255,255,.08); }
+  display:inline-block; background:var(--white); padding:5px 11px; border-radius:8px;
+  font-size:13.5px; letter-spacing:.6px; margin:3px 0; box-shadow:var(--sh-1);
+  color:var(--ink); }
 
 /* ---------- سیاهه ---------- */
+.tbl{ overflow-x:auto; border:1px solid var(--line-soft); border-radius:var(--r); }
 table{ width:100%; border-collapse:collapse; font-size:12px; }
-th,td{ padding:7px 9px; border-bottom:1px solid var(--line); text-align:right; }
-th{ color:var(--ink-soft); font-weight:600; font-size:11.5px; }
-td.ltr{ direction:ltr; text-align:left; }
+th,td{ padding:9px 11px; border-bottom:1px solid var(--line-soft); text-align:right; }
+tbody tr:last-child td{ border-bottom:0; }
+tbody tr:hover{ background:var(--paper-2); }
+th{ color:var(--ink-faint); font-weight:600; font-size:11px;
+  background:var(--paper-2); position:sticky; top:0; }
+td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 /* ---------- پنجره ---------- */
-.ov{ position:fixed; inset:0; background:rgba(11,37,69,.55); z-index:80;
-  display:flex; align-items:center; justify-content:center; padding:18px; }
+.ov{ position:fixed; inset:0; z-index:80; display:flex; align-items:center;
+  justify-content:center; padding:18px;
+  background:rgba(8,22,38,.55); backdrop-filter:blur(3px);
+  animation:fade .2s ease; }
+@keyframes fade{ from{ opacity:0; } to{ opacity:1; } }
 .ov[hidden]{ display:none; }
-.ov-box{ background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow);
-  padding:20px; width:100%; max-width:520px; max-height:88vh; overflow:auto; }
-.ov-box h2{ margin:0 0 4px; font-size:15px; }
-.ov-acts{ display:flex; gap:8px; justify-content:flex-start; margin-top:16px; }
+.ov-box{ background:var(--white); border:1px solid var(--line);
+  border-radius:var(--r-lg); box-shadow:var(--sh-3); padding:24px;
+  width:100%; max-width:540px; max-height:88vh; overflow:auto;
+  animation:rise .28s cubic-bezier(.2,.8,.3,1); }
+.ov-box h2{ margin:0 0 5px; font-size:16px; }
+.ov-acts{ display:flex; gap:9px; margin-top:20px;
+  border-top:1px solid var(--line-soft); padding-top:16px; }
 #loading{ position:fixed; inset:0; background:var(--paper); z-index:95;
-  display:flex; align-items:center; justify-content:center; color:var(--ink-faint); }
+  display:flex; align-items:center; justify-content:center;
+  color:var(--ink-faint); font-size:13px; }
+
+/* ---------- موبایل ---------- */
+@media (max-width:560px){
+  .wrap{ padding:16px 14px 50px; }
+  .top h1{ font-size:17px; }
+  .plist{ grid-template-columns:1fr; }
+  .tabs{ width:100%; }
+  .tabs button{ flex:1; padding:8px 10px; font-size:12px; }
+  .ov-box{ padding:18px; }
+  .meta .m span:first-child{ min-width:96px; }
+}
 </style>
 </head>
 <body>
@@ -167,6 +333,7 @@ td.ltr{ direction:ltr; text-align:left; }
 
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
+    <div class="gate-mark">🗂</div>
     <h1 id="gateTitle">پنل کارتابل‌ها</h1>
     <p id="gateSub">برای ادامه رمز ادمین را وارد کنید.</p>
     <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
@@ -182,10 +349,16 @@ td.ltr{ direction:ltr; text-align:left; }
 
 <div class="wrap" id="app" hidden>
   <div class="top">
-    <h1>پنل کارتابل‌ها</h1>
-    <button class="btn" id="themeBtn" title="تم روز و شب">🌙</button>
+    <div class="mark">🗂</div>
+    <div class="titles">
+      <h1>پنل کارتابل‌ها</h1>
+      <p class="sub2" id="topSub">sensacare.ir</p>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="تم روز و شب">🌙</button>
     <button class="btn" id="logoutBtn">خروج</button>
   </div>
+
+  <div class="stats" id="stats"></div>
 
   <div class="tabs">
     <button data-tab="list" class="active">کارتابل‌ها</button>
@@ -205,16 +378,15 @@ td.ltr{ direction:ltr; text-align:left; }
       <h2>ساختن کارتابل تازه</h2>
       <p class="sub">نامِ شخص و آدرسی که کارتابلش روی آن باز می‌شود. رمزِ ورود همین‌جا
         یک‌بار نشان داده می‌شود و بعد دیگر هیچ‌جا نیست — همان لحظه جایی یادداشتش کنید.</p>
+      <div class="kinds" id="nKinds"></div>
       <div class="row">
-        <div class="fld"><label>نام شخص</label><input type="text" id="nName" placeholder="مثلاً: نسرین"></div>
-        <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr"></div>
-        <div class="fld"><label>نوع کارتابل</label><select id="nKind"></select></div>
-        <div class="fld" id="nJobWrap"><label>شغل (چک‌لیست آماده)</label><select id="nJob"></select></div>
+        <div class="fld"><label>نام شخص</label><input type="text" id="nName" placeholder="مثلاً: نسرین" autocomplete="off"></div>
+        <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
+        <div class="fld"><label>چک‌لیست آماده (اختیاری)</label><select id="nJob"></select></div>
+        <div class="fld"><label>رمز ورود (خالی = خودکار)</label>
+          <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off"></div>
       </div>
-      <div class="row" style="margin-top:10px;">
-        <div class="fld"><label>رمز ورود (خالی بگذارید تا خودش بسازد)</label>
-          <input type="text" id="nPass" placeholder="خودکار" dir="ltr"></div>
-      </div>
+      <input type="hidden" id="nKind" value="gen">
       <div class="hint" id="nPreview"></div>
       <div style="margin-top:12px;"><button class="btn btn-main" id="nCreate">ساختن کارتابل</button></div>
     </div>
@@ -292,10 +464,14 @@ function faDateTime(ms){
   }catch(e){ return "—"; }
 }
 
+/* هر پیام شمارهٔ خودش را دارد: وگرنه تایمرِ پیامِ قبلی پیامِ بعدی را
+   پاک می‌کرد و کار انجام‌شده بی‌جواب به نظر می‌رسید. */
+let msgSeq = 0;
 function say(text, bad){
   const el = document.getElementById("msg");
+  const mine = ++msgSeq;
   el.innerHTML = `<div class="msg ${bad?'msg-bad':'msg-ok'}">${text}</div>`;
-  if(!bad) setTimeout(()=>{ if(el.firstChild && el.firstChild.classList.contains("msg-ok")) el.innerHTML=""; }, 12000);
+  if(!bad) setTimeout(()=>{ if(msgSeq === mine) el.innerHTML = ""; }, 12000);
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
@@ -422,8 +598,8 @@ async function loadPlanners(){
   const r = await api("/planners");
   if(!r.ok){ say(r.data.error || "فهرست نیامد.", true); return; }
   DATA = r.data;
-  fillSelect("nKind", DATA.kinds);
   fillSelect("nJob", [{id:"",label:"— بدون چک‌لیست آماده —"}].concat(DATA.jobs));
+  renderKindPicker();
   renderPlanners();
   renderEscrowState();
 }
@@ -435,33 +611,62 @@ function fillSelect(id, items){
 }
 
 function kindLabel(k){ const f = DATA.kinds.find(x=>x.id===k); return f ? f.label : k; }
+function kindIcon(k){ const f = DATA.kinds.find(x=>x.id===k); return (f && f.icon) || "🗂"; }
+
+function renderStats(){
+  const n = DATA.items.length;
+  const off = DATA.items.filter(p=>p.disabled).length;
+  const keys = DATA.items.filter(p=>p.hasEscrow).length;
+  document.getElementById("stats").innerHTML = `
+    <div class="stat"><div class="n">${fa(n)}</div><div class="l">کارتابل</div></div>
+    <div class="stat s-on"><div class="n">${fa(n-off)}</div><div class="l">فعال</div></div>
+    <div class="stat s-off"><div class="n">${fa(off)}</div><div class="l">غیرفعال</div></div>
+    <div class="stat s-key"><div class="n">${DATA.escrowReady
+      ? "✅ ساخته شده" : "⚠️ ساخته نشده"}</div>
+      <div class="l">کلید اضطراری${DATA.escrowReady ? " — رمز " + fa(keys) + " نفر نزد شماست" : ""}</div></div>`;
+}
+
+/* عددهای فارسی — همان چیزی که در کارتابل‌ها هم دیده می‌شود */
+function fa(n){ return String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]); }
 function jobLabel(j){ const f = DATA.jobs.find(x=>x.id===j); return f ? f.label : ""; }
 
 function renderPlanners(){
   const wrap = document.getElementById("plist");
   wrap.innerHTML = DATA.items.map(p=>`
-    <div class="pcard">
-      <h3>${esc(p.name)}
-        <span class="pill pill-${esc(p.kind)}">${esc(kindLabel(p.kind))}</span>
-        ${p.builtin ? `<span class="pill pill-builtin">اصلی</span>` : ``}</h3>
-      <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
+    <div class="pcard k-${esc(p.kind)}${p.disabled?' off':''}">
+      <div class="pc-head">
+        <div class="pc-ic">${kindIcon(p.kind)}</div>
+        <div style="min-width:0;flex:1;">
+          <h3>${esc(p.name)}
+            <span class="pill pill-${esc(p.kind)}">${esc(kindLabel(p.kind))}</span>
+            ${p.core ? `<span class="pill pill-builtin">اصلی</span>` : ``}
+            ${p.disabled ? `<span class="pill pill-off">غیرفعال</span>` : ``}</h3>
+          <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
+        </div>
+      </div>
       <div class="meta">
-        ${p.job ? "چک‌لیست: " + esc(jobLabel(p.job)) + "<br>" : ""}
-        بخش‌های شخصی: ${esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}<br>
-        آخرین ورود: ${esc(faDateTime(p.lastLogin))}<br>
-        رمز دیتای شخصی نزد ادمین: ${p.hasEscrow ? "بله" : "نه"}
+        <div class="m"><span>چک‌لیست آماده</span><span>${p.job ? esc(jobLabel(p.job)) : "—"}</span></div>
+        <div class="m"><span>بخش‌های شخصی</span><span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">${
+          esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
+        <div class="m"><span>آخرین ورود</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
+        <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
       </div>
       <div class="acts">
         <button class="btn" data-edit="${esc(p.slug)}">ویرایش</button>
         <button class="btn" data-pw="${esc(p.slug)}">رمز ورود</button>
-        <button class="btn" data-vpw="${esc(p.slug)}">رمز دیتای شخصی</button>
-        ${p.builtin ? `` : `<button class="btn btn-danger" data-del="${esc(p.slug)}">حذف</button>`}
+        <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
+        ${p.builtin ? `` : `<button class="btn ${p.disabled?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
+          p.disabled ? "فعال کن" : "غیرفعال"}</button>`}
+        ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">🗑</button>`}
       </div>
-    </div>`).join("") || `<p class="hint">هنوز کارتابلی نیست.</p>`;
+    </div>`).join("") || `<div class="panel" style="text-align:center;color:var(--ink-faint);">
+      هنوز کارتابلی نیست. از سربرگ «کارتابل تازه» شروع کنید.</div>`;
+  renderStats();
 
   wrap.querySelectorAll("[data-edit]").forEach(b=> b.onclick = ()=> openEdit(b.dataset.edit));
   wrap.querySelectorAll("[data-pw]").forEach(b=> b.onclick = ()=> resetLoginPassword(b.dataset.pw));
   wrap.querySelectorAll("[data-vpw]").forEach(b=> b.onclick = ()=> openVaultReset(b.dataset.vpw));
+  wrap.querySelectorAll("[data-off]").forEach(b=> b.onclick = ()=> toggleState(b.dataset.off));
   wrap.querySelectorAll("[data-del]").forEach(b=> b.onclick = ()=> openDelete(b.dataset.del));
 }
 
@@ -696,6 +901,25 @@ async function runVaultReset(slug){
   }
 }
 
+/* ---------- غیرفعال / فعال ---------- */
+async function toggleState(slug){
+  const p = find(slug);
+  if(!p) return;
+  const off = !p.disabled;
+  if(off && !confirm(
+      "«" + p.name + "» غیرفعال شود؟\n\n" +
+      "• آدرسش دیگر باز نمی‌شود و هر دستگاهی که وارد مانده بیرون می‌افتد.\n" +
+      "• پشتیبان خودکار هم دیگر برایش نمی‌رود.\n" +
+      "• هیچ داده‌ای پاک نمی‌شود؛ هر وقت خواستید با یک کلیک برمی‌گردد.")) return;
+  const r = await api("/planners/" + slug + "/state",
+    { method:"POST", body: JSON.stringify({ disabled: off }) });
+  if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+  say(off
+    ? "«" + esc(p.name) + "» غیرفعال شد. داده‌هایش سرِ جایشان است و پشتیبان خودکار هم دیگر برایش نمی‌رود."
+    : "«" + esc(p.name) + "» دوباره فعال شد. رمزِ ورودش همان است که بود.");
+  loadPlanners();
+}
+
 /* ---------- حذف ---------- */
 function openDelete(slug){
   const p = find(slug);
@@ -706,7 +930,9 @@ function openDelete(slug){
       دیتای شخصی‌اش پاک می‌شوند. پشتیبان‌های تلگرام سرِ جایشان می‌مانند.</p>
     <div class="row">
       <div class="fld"><label>برای تأیید، <code>${esc(slug)}</code> را تایپ کنید</label>
-        <input type="text" id="dSlug" dir="ltr"></div>
+        <input type="text" id="dSlug" dir="ltr" autocomplete="off" autocorrect="off"
+          autocapitalize="off" spellcheck="false" name="confirm-text"
+          placeholder="${esc(slug)}"></div>
     </div>
     <div class="ov-acts">
       <button class="btn btn-danger" id="dGo">حذف کن</button>
@@ -715,8 +941,13 @@ function openDelete(slug){
     <div class="gate-err" id="dErr"></div>`);
   document.getElementById("dCancel").onclick = closeOverlay;
   document.getElementById("dGo").onclick = async ()=>{
+    /* اگر مرورگر آدرسِ کامل را ریخته باشد، آخرین تکه‌اش همان چیزی است
+       که خواسته‌ایم. یک‌بار همین باعث شد حذف اصلاً کار نکند. */
+    const typed = document.getElementById("dSlug").value.trim().toLowerCase()
+      .replace(/^https?:\/\//, "").replace(/[?#].*$/, "")
+      .replace(/\/+$/, "").split("/").filter(Boolean).pop() || "";
     const r = await api("/planners/" + slug, { method:"DELETE",
-      body: JSON.stringify({ confirm: document.getElementById("dSlug").value.trim() }) });
+      body: JSON.stringify({ confirm: typed }) });
     if(!r.ok){ document.getElementById("dErr").textContent = r.data.error || "نشد."; return; }
     closeOverlay();
     say("«" + esc(p.name) + "» حذف شد.");
@@ -725,20 +956,39 @@ function openDelete(slug){
 }
 
 /* ---------- کارتابل تازه ---------- */
+function renderKindPicker(){
+  const box = document.getElementById("nKinds");
+  if(!box || !DATA.kinds.length) return;
+  const cur = document.getElementById("nKind").value;
+  box.innerHTML = DATA.kinds.map(k=>`
+    <button type="button" class="kind${k.id===cur?' on':''}" data-kind="${esc(k.id)}">
+      <div class="kt">${k.icon||"🗂"} ${esc(k.label)}</div>
+      <div class="kn">${esc(k.note||"")}</div>
+    </button>`).join("");
+  box.querySelectorAll("[data-kind]").forEach(b=> b.onclick = ()=>{
+    document.getElementById("nKind").value = b.dataset.kind;
+    renderKindPicker();
+    paintNew();
+  });
+}
+
+function paintNew(){
+  const slug = document.getElementById("nSlug");
+  const prev = document.getElementById("nPreview");
+  if(!prev) return;
+  const v = slug.value.trim().toLowerCase();
+  prev.innerHTML = v
+    ? "آدرسش می‌شود: <b>sensacare.ir/" + esc(v) + "</b>"
+    : "آدرس فقط حروف انگلیسی کوچک، عدد و خط تیره.";
+}
+
 function setupNew(){
   const name = document.getElementById("nName");
   const slug = document.getElementById("nSlug");
   const kind = document.getElementById("nKind");
-  const prev = document.getElementById("nPreview");
-  const paint = ()=>{
-    document.getElementById("nJobWrap").style.display = kind.value === "gen" ? "" : "none";
-    prev.textContent = slug.value.trim()
-      ? "آدرسش می‌شود: sensacare.ir/" + slug.value.trim().toLowerCase() : "";
-  };
-  slug.addEventListener("input", paint);
-  kind.addEventListener("change", paint);
-  name.addEventListener("input", ()=>{ if(!slug.value.trim()) paint(); });
-  setTimeout(paint, 0);
+  slug.addEventListener("input", paintNew);
+  const paint = paintNew;
+  setTimeout(paintNew, 0);
 
   document.getElementById("nCreate").onclick = async ()=>{
     const btn = document.getElementById("nCreate");
@@ -747,7 +997,7 @@ function setupNew(){
       name: name.value.trim(),
       slug: slug.value.trim().toLowerCase(),
       kind: kind.value,
-      job: kind.value === "gen" ? document.getElementById("nJob").value : "",
+      job: document.getElementById("nJob").value,
       password: document.getElementById("nPass").value.trim()
     })});
     btn.disabled = false;
@@ -829,12 +1079,12 @@ async function loadLog(){
     delete:"حذف", password:"رمز ورود", "vault-password":"رمز دیتای شخصی",
     "admin-password":"رمز ادمین", "escrow-key":"کلید اضطراری" };
   document.getElementById("logBody").innerHTML = items.length
-    ? `<table><thead><tr><th>زمان</th><th>کار</th><th>کارتابل</th><th>توضیح</th></tr></thead>
+    ? `<div class="tbl"><table><thead><tr><th>زمان</th><th>کار</th><th>کارتابل</th><th>توضیح</th></tr></thead>
        <tbody>${items.map(i=>`<tr>
          <td>${esc(faDateTime(i.at))}</td>
          <td>${esc(WHAT[i.what] || i.what)}</td>
          <td class="ltr">${esc(i.slug || "—")}</td>
-         <td class="ltr">${esc(i.note || "")}</td></tr>`).join("")}</tbody></table>`
+         <td class="ltr">${esc(i.note || "")}</td></tr>`).join("")}</tbody></table></div>`
     : `<p class="hint">هنوز چیزی ثبت نشده.</p>`;
 }
 </script>
