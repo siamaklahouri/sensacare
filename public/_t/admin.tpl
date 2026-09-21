@@ -139,8 +139,22 @@ a{ color:var(--brass-ink); }
 .gate-note{ color:var(--ink-soft); font-size:12.5px; margin-top:8px; line-height:2; }
 
 /* ---------- چارچوب ---------- */
-.wrap{ max-width:1160px; margin:0 auto; padding:22px 18px 70px; }
-.top{ display:flex; align-items:center; gap:13px; margin-bottom:20px; }
+/* یک متغیّر برای حاشیهٔ کناری، چون نوارِ چسبان با حاشیهٔ منفی از آن
+   بیرون می‌زند: اگر دو عدد از هم بیفتند، روی موبایل نوارِ افقی می‌آید. */
+:root{ --gut:18px; }
+@media (max-width:560px){ :root{ --gut:14px; } }
+.wrap{ max-width:1160px; margin:0 auto; padding:0 var(--gut) 70px; }
+
+/* سربالا می‌چسبد تا «خروج» و تمِ شب همیشه دمِ دست باشد، و پشتش مات
+   می‌شود تا کارت‌ها از زیرش رد شوند بی‌آنکه متن را شلوغ کنند. */
+.topbar{ position:sticky; top:0; z-index:40;
+  margin:0 calc(-1 * var(--gut)) 18px;
+  padding:14px var(--gut); border-bottom:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 82%, transparent);
+  backdrop-filter:blur(10px) saturate(1.4); }
+@supports not (backdrop-filter: blur(1px)){ .topbar{ background:var(--paper); } }
+.top{ display:flex; align-items:center; gap:13px;
+  max-width:1160px; margin:0 auto; }
 .mark{ width:42px; height:42px; flex:none; display:block; border-radius:50%;
   box-shadow:0 3px 10px rgba(14,139,139,.22); }
 .top .titles{ flex:1; min-width:0; }
@@ -153,20 +167,36 @@ a{ color:var(--brass-ink); }
 .icon-btn:hover{ border-color:var(--brass); color:var(--brass-ink); transform:translateY(-1px); }
 
 /* ---------- نوار آمار ---------- */
-.stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
-  gap:10px; margin-bottom:18px; }
-.stat{ background:var(--white); border:1px solid var(--line); border-radius:var(--r);
-  padding:12px 14px; box-shadow:var(--sh-1); }
-.stat .n{ font-size:21px; font-weight:800; line-height:1.3; letter-spacing:-.02em; }
-.stat .l{ font-size:11.5px; color:var(--ink-faint); }
+.stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+  gap:11px; margin-bottom:18px; }
+.stat{ position:relative; display:flex; align-items:center; gap:12px;
+  background:var(--white); border:1px solid var(--line); border-radius:var(--r);
+  padding:13px 15px; box-shadow:var(--sh-1); overflow:hidden;
+  transition:box-shadow .2s, transform .15s; }
+.stat:hover{ box-shadow:var(--sh-2); transform:translateY(-1px); }
+/* نوارِ رنگی لبهٔ «شروع» است، پس در راست‌چین سمتِ راست می‌نشیند. */
+.stat::before{ content:""; position:absolute; inset-block:0; inset-inline-start:0;
+  width:3px; background:var(--sc, var(--brass)); }
+.stat .si{ width:34px; height:34px; flex:none; border-radius:11px; font-size:15px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--sbg, var(--brass-bg)); }
+.stat .sv{ min-width:0; }
+.stat .n{ font-size:21px; font-weight:800; line-height:1.25; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums; }
+.stat .l{ font-size:11.5px; color:var(--ink-faint); line-height:1.7; }
+.stat.s-all{ --sc:var(--brass); --sbg:var(--brass-bg); }
+.stat.s-on{ --sc:var(--green); --sbg:var(--green-bg); }
 .stat.s-on .n{ color:var(--green-ink); }
+.stat.s-off{ --sc:var(--amber); --sbg:var(--amber-bg); }
 .stat.s-off .n{ color:var(--amber-ink); }
-.stat.s-key .n{ font-size:15px; padding-top:4px; }
+.stat.s-key{ --sc:var(--purple); --sbg:var(--purple-bg); }
+.stat.s-key .n{ font-size:14px; line-height:1.9; }
 
 /* ---------- سربرگ‌ها ---------- */
 .tabs{ display:flex; gap:4px; flex-wrap:wrap; margin-bottom:18px;
   background:var(--white); border:1px solid var(--line); border-radius:14px;
-  padding:4px; box-shadow:var(--sh-1); width:fit-content; max-width:100%; }
+  padding:4px; box-shadow:var(--sh-1); width:fit-content; max-width:100%;
+  overflow-x:auto; }
 .tabs button{ padding:8px 16px; border:0; background:transparent; color:var(--ink-soft);
   border-radius:10px; font-family:var(--font); font-size:12.5px; font-weight:500;
   cursor:pointer; transition:background .15s, color .15s; white-space:nowrap; }
@@ -220,18 +250,26 @@ a{ color:var(--brass-ink); }
 .pcard{ display:flex; flex-direction:column; }
 .pcard .acts{ margin-top:auto; }
 .pcard{ position:relative; background:var(--white); border:1px solid var(--line);
-  border-radius:var(--r-lg); box-shadow:var(--sh-1); padding:17px 16px 15px;
-  overflow:hidden; transition:box-shadow .2s, transform .15s, border-color .15s; }
+  border-radius:var(--r-lg); box-shadow:var(--sh-1); padding:18px 17px 16px;
+  overflow:hidden; transition:box-shadow .22s, transform .18s, border-color .18s; }
 .pcard::before{ content:""; position:absolute; inset:0 0 auto 0; height:3px;
-  background:var(--accent, var(--brass)); opacity:.85; }
-.pcard:hover{ box-shadow:var(--sh-2); transform:translateY(-2px); }
+  background:var(--accent, var(--brass)); opacity:.9; }
+/* یک هالهٔ نرم از رنگِ خودِ نوع، که فقط موقعِ نزدیک‌شدن دیده می‌شود */
+.pcard::after{ content:""; position:absolute; inset:-40% -30% auto auto;
+  width:190px; height:190px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, var(--accent, var(--brass)), transparent 68%);
+  opacity:0; transition:opacity .3s; }
+.pcard:hover{ box-shadow:var(--sh-2); transform:translateY(-3px);
+  border-color:color-mix(in srgb, var(--accent, var(--brass)) 35%, var(--line)); }
+.pcard:hover::after{ opacity:.07; }
+.pcard > *{ position:relative; }
 .pcard.k-it{ --accent:var(--s-it); }
 .pcard.k-fin{ --accent:var(--s-fin); }
 .pcard.k-gen{ --accent:var(--s-gen); }
 .pcard.off{ opacity:.75; }
 .pcard.off::before{ background:var(--amber); }
 .pc-head{ display:flex; align-items:flex-start; gap:10px; margin-bottom:3px; }
-.pc-ic{ width:34px; height:34px; flex:none; border-radius:11px; font-size:16px;
+.pc-ic{ width:36px; height:36px; flex:none; border-radius:12px; font-size:17px;
   display:flex; align-items:center; justify-content:center;
   background:var(--accent-bg, var(--brass-bg)); }
 .pcard.k-it .pc-ic{ background:var(--s-it-bg); }
@@ -246,18 +284,38 @@ a{ color:var(--brass-ink); }
 .pill-gen{ background:var(--s-gen-bg); color:var(--s-gen); }
 .pill-builtin{ background:var(--amber-bg); color:var(--amber-ink); }
 .pill-off{ background:var(--red-bg); color:var(--red-ink); }
-.pcard .url{ font-size:12px; color:var(--brass-ink); text-decoration:none;
-  direction:ltr; display:inline-block; margin:2px 0 11px 0;
-  border-bottom:1px solid transparent; transition:border-color .15s; }
-.pcard .url:hover{ border-bottom-color:currentColor; }
-.meta{ border-top:1px solid var(--line-soft); padding-top:10px; margin-bottom:12px; }
-.meta .m{ display:flex; gap:8px; font-size:11.5px; line-height:2.1; }
+.urlrow{ display:flex; align-items:center; gap:5px; margin:3px 0 12px; }
+.pcard .url{ font-size:11.5px; color:var(--brass-ink); text-decoration:none;
+  direction:ltr; display:inline-block; padding:3px 9px; border-radius:7px;
+  background:var(--paper-2); border:1px solid var(--line-soft);
+  transition:border-color .15s, background .15s;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pcard .url:hover{ border-color:var(--brass); background:var(--white); }
+.copy{ border:1px solid var(--line-soft); background:var(--paper-2);
+  color:var(--ink-faint); border-radius:7px; padding:3px 7px; font-size:11px;
+  cursor:pointer; line-height:1.7; transition:color .15s, border-color .15s; }
+.copy:hover{ color:var(--brass-ink); border-color:var(--brass); }
+.copy.done{ color:var(--green-ink); border-color:var(--green); }
+.meta{ border-top:1px solid var(--line-soft); padding-top:11px; margin-bottom:13px; }
+.meta .m{ display:flex; gap:8px; font-size:11.5px; line-height:2.15; }
 .meta .m span:first-child{ color:var(--ink-faint); flex:none; min-width:112px; }
 .meta .m span:last-child{ color:var(--ink-soft); min-width:0;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pcard .acts{ display:flex; gap:6px; flex-wrap:wrap; }
+.meta .m.warn span:last-child{ color:var(--amber-ink); font-weight:600; }
+.pcard .acts{ display:flex; gap:6px; flex-wrap:wrap;
+  border-top:1px solid var(--line-soft); padding-top:13px; }
 .pcard .acts .btn{ padding:6px 11px; font-size:11.5px; }
 .pcard .acts .btn-ic{ padding:6px 9px; font-size:13px; line-height:1.4; }
+
+/* ---------- نوار جستجو ---------- */
+.findbar{ display:flex; gap:9px; align-items:center; margin-bottom:14px; }
+.findbar input{ flex:1; padding:10px 13px; border:1px solid var(--line);
+  border-radius:var(--r); font-family:var(--font); font-size:13px;
+  background:var(--white); color:var(--ink); box-shadow:var(--sh-1);
+  transition:border-color .15s, box-shadow .15s; }
+.findbar input::placeholder{ color:var(--ink-faint); }
+.findbar input:focus{ outline:none; border-color:var(--brass); box-shadow:var(--glow); }
+.findbar .n{ font-size:11.5px; color:var(--ink-faint); white-space:nowrap; }
 
 /* ---------- انتخاب نوع کارتابل ---------- */
 .kinds{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px,1fr));
@@ -376,18 +434,22 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 .ov[hidden]{ display:none; }
 .ov-box{ background:var(--white); border:1px solid var(--line);
   border-radius:var(--r-lg); box-shadow:var(--sh-3); padding:24px;
-  width:100%; max-width:540px; max-height:88vh; overflow:auto;
+  width:100%; max-width:560px; max-height:88vh; overflow:auto;
   animation:rise .28s cubic-bezier(.2,.8,.3,1); }
-.ov-box h2{ margin:0 0 5px; font-size:16px; }
+.ov-box h2{ margin:0 0 5px; font-size:16px;
+  position:sticky; top:-24px; background:var(--white); padding:2px 0 6px;
+  z-index:2; }
+/* کفِ پنجره می‌چسبد: در فهرست‌های بلند، «ذخیره» همیشه دیده می‌شود. */
 .ov-acts{ display:flex; gap:9px; margin-top:20px;
-  border-top:1px solid var(--line-soft); padding-top:16px; }
+  border-top:1px solid var(--line-soft); padding-top:16px;
+  position:sticky; bottom:-24px; background:var(--white); padding-bottom:4px; }
 #loading{ position:fixed; inset:0; background:var(--paper); z-index:95;
   display:flex; align-items:center; justify-content:center;
   color:var(--ink-faint); font-size:13px; }
 
 /* ---------- موبایل ---------- */
 @media (max-width:560px){
-  .wrap{ padding:16px 14px 50px; }
+  .wrap{ padding-bottom:50px; }
   .top h1{ font-size:17px; }
   .plist{ grid-template-columns:1fr; }
   .tabs{ width:100%; }
@@ -418,7 +480,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 </div>
 
 <div class="wrap" id="app" hidden>
-  <div class="top">
+  <div class="topbar"><div class="top">
     <img class="mark" src="/icon-admin.2.png" alt="SL" width="42" height="42">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
@@ -426,7 +488,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     </div>
     <button class="icon-btn" id="themeBtn" title="تم روز و شب">🌙</button>
     <button class="btn" id="logoutBtn">خروج</button>
-  </div>
+  </div></div>
 
   <div class="stats" id="stats"></div>
 
@@ -441,6 +503,11 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
   <div id="msg"></div>
 
   <section id="tab-list">
+    <div class="findbar">
+      <input type="search" id="find" placeholder="جستجو در نام یا آدرس کارتابل…"
+        autocomplete="off" spellcheck="false">
+      <span class="n" id="findCount"></span>
+    </div>
     <div class="plist" id="plist"></div>
   </section>
 
@@ -569,6 +636,7 @@ function say(text, bad){
   const el = document.getElementById("msg");
   const mine = ++msgSeq;
   el.innerHTML = `<div class="msg ${bad?'msg-bad':'msg-ok'}">${text}</div>`;
+  el.querySelectorAll("[data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
   if(!bad) setTimeout(()=>{ if(msgSeq === mine) el.innerHTML = ""; }, 12000);
   window.scrollTo({top:0, behavior:"smooth"});
 }
@@ -686,6 +754,8 @@ function setupTabs(){
       if(b.dataset.tab === "report") loadReport();
     });
   });
+  const fx = document.getElementById("find");
+  if(fx) fx.addEventListener("input", ()=>{ findText = fx.value; renderPlanners(); });
   document.getElementById("logoutBtn").addEventListener("click", async ()=>{
     await api("/logout", { method:"POST" });
     location.reload();
@@ -736,22 +806,37 @@ function renderStats(){
   const n = DATA.items.length;
   const off = DATA.items.filter(p=>p.closed).length;
   const keys = DATA.items.filter(p=>p.hasEscrow).length;
-  document.getElementById("stats").innerHTML = `
-    <div class="stat"><div class="n">${fa(n)}</div><div class="l">کارتابل</div></div>
-    <div class="stat s-on"><div class="n">${fa(n-off)}</div><div class="l">فعال</div></div>
-    <div class="stat s-off"><div class="n">${fa(off)}</div><div class="l">غیرفعال</div></div>
-    <div class="stat s-key"><div class="n">${DATA.escrowReady
-      ? "✅ ساخته شده" : "⚠️ ساخته نشده"}</div>
-      <div class="l">کلید اضطراری${DATA.escrowReady ? " — رمز " + fa(keys) + " نفر نزد شماست" : ""}</div></div>`;
+  const tile = (cls, ic, v, l) =>
+    `<div class="stat ${cls}"><div class="si">${ic}</div>
+      <div class="sv"><div class="n">${v}</div><div class="l">${l}</div></div></div>`;
+  document.getElementById("stats").innerHTML =
+    tile("s-all", "🗂", fa(n), "کارتابل") +
+    tile("s-on",  "✓",  fa(n-off), "فعال") +
+    tile("s-off", "⏸",  fa(off), "غیرفعال") +
+    tile("s-key", DATA.escrowReady ? "🔑" : "⚠️",
+      DATA.escrowReady ? "ساخته شده" : "ساخته نشده",
+      DATA.escrowReady
+        ? "کلید اضطراری — رمز " + fa(keys) + " نفر نزد شماست"
+        : "کلید اضطراری هنوز نیست");
 }
 
 /* عددهای فارسی — همان چیزی که در کارتابل‌ها هم دیده می‌شود */
 function fa(n){ return String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]); }
 function jobLabel(j){ const f = DATA.jobs.find(x=>x.id===j); return f ? f.label : ""; }
 
+let findText = "";
+
 function renderPlanners(){
   const wrap = document.getElementById("plist");
-  wrap.innerHTML = DATA.items.map(p=>`
+  const q = findText.trim().toLowerCase();
+  const items = q
+    ? DATA.items.filter(p => (p.name + " " + p.slug).toLowerCase().includes(q))
+    : DATA.items;
+  const cnt = document.getElementById("findCount");
+  if(cnt) cnt.textContent = q
+    ? fa(items.length) + " از " + fa(DATA.items.length)
+    : fa(DATA.items.length) + " کارتابل";
+  wrap.innerHTML = items.map(p=>`
     <div class="pcard k-${esc(p.kind)}${p.closed?' off':''}">
       <div class="pc-head">
         <div class="pc-ic">${kindIcon(p.kind)}</div>
@@ -764,7 +849,11 @@ function renderPlanners(){
                 ? `<span class="pill pill-off">مهلت تمام</span>`
                 : (p.until && daysLeft(p.until) <= 7)
                   ? `<span class="pill pill-builtin">${fa(daysLeft(p.until))} روز مانده</span>` : ``}</h3>
-          <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
+          <div class="urlrow">
+            <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
+            <button class="copy" data-copy="https://sensacare.ir${esc(p.url)}"
+              title="رونوشتِ آدرس">⧉</button>
+          </div>
         </div>
       </div>
       <div class="meta">
@@ -773,7 +862,8 @@ function renderPlanners(){
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
         <div class="m"><span>آخرین ورود</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
         <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
-        <div class="m"><span>مهلت</span><span>${untilText(p)}</span></div>
+        <div class="m${p.until && daysLeft(p.until) <= 7 ? " warn" : ""}"><span>مهلت</span><span>${
+          untilText(p)}</span></div>
         <div class="m"><span>بخش‌های بسته</span><span>${(p.off||[]).length
           ? esc((p.off||[]).map(featLabel).join("، ")) : "—"}</span></div>
       </div>
@@ -786,8 +876,10 @@ function renderPlanners(){
         ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">🗑</button>`}
       </div>
     </div>`).join("") || `<div class="panel" style="text-align:center;color:var(--ink-faint);">
-      هنوز کارتابلی نیست. از سربرگ «کارتابل تازه» شروع کنید.</div>`;
+      ${q ? "چیزی با «" + esc(findText) + "» پیدا نشد."
+          : "هنوز کارتابلی نیست. از سربرگ «کارتابل تازه» شروع کنید."}</div>`;
   renderStats();
+  wrap.querySelectorAll("[data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
 
   wrap.querySelectorAll("[data-edit]").forEach(b=> b.onclick = ()=> openEdit(b.dataset.edit));
   wrap.querySelectorAll("[data-pw]").forEach(b=> b.onclick = ()=> resetLoginPassword(b.dataset.pw));
@@ -797,6 +889,23 @@ function renderPlanners(){
 }
 
 const find = slug => DATA.items.find(p=>p.slug===slug);
+
+/* رونوشت — قبلاً باید آدرس یا رمز را دستی انتخاب می‌کردید. */
+async function copyText(btn){
+  const t = btn.dataset.copy;
+  try{
+    if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(t);
+    else {
+      const ta = document.createElement("textarea");
+      ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
+    }
+    const was = btn.textContent;
+    btn.textContent = "✓"; btn.classList.add("done");
+    setTimeout(()=>{ btn.textContent = was; btn.classList.remove("done"); }, 1400);
+  }catch(e){ /* بعضی مرورگرها اجازه نمی‌دهند — همان متن روی صفحه هست */ }
+}
 
 /* ---------- پنجره ---------- */
 function openOverlay(html){
@@ -939,7 +1048,8 @@ async function resetLoginPassword(slug){
   const r = await api("/planners/" + slug + "/password",
     { method:"POST", body: JSON.stringify({ password: typed.trim() }) });
   if(!r.ok){ say(r.data.error || "نشد.", true); return; }
-  say("رمزِ ورودِ «" + esc(p.name) + "» عوض شد:<br><code>" + esc(r.data.password) + "</code><br>" +
+  say("رمزِ ورودِ «" + esc(p.name) + "» عوض شد:<br><code>" + esc(r.data.password) + "</code>" +
+      ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
       "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
   loadPlanners();
 }
@@ -1179,7 +1289,8 @@ function setupNew(){
     name.value = ""; slug.value = ""; document.getElementById("nPass").value = "";
     paint();
     say("کارتابل ساخته شد: <b>sensacare.ir" + esc(r.data.url) + "</b><br>" +
-        "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code><br>" +
+        "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +
+        ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
         "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
     loadPlanners();
     document.querySelector('.tabs button[data-tab="list"]').click();
