@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="/icon-siamak.2.png">
+<link rel="icon" type="image/png" href="/icon-admin.2.png">
+<link rel="apple-touch-icon" href="/icon-admin.2.png">
 <script>
 try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
@@ -115,8 +116,9 @@ a{ color:var(--brass-ink); }
   width:100%; max-width:390px; text-align:center;
   animation:rise .4s cubic-bezier(.2,.8,.3,1); }
 @keyframes rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
-/* خودِ نشانِ سنسا، نه شکلک: همان چیزی که روی فروشگاه هم هست. */
-.gate-mark{ display:block; width:58px; height:auto; margin:0 auto 16px; }
+/* نشانِ SL — همان لوگویی که روی تبِ کارتابل‌ها هم هست، با رنگِ پنل. */
+.gate-mark{ display:block; width:60px; height:60px; margin:0 auto 16px;
+  border-radius:50%; box-shadow:0 5px 14px rgba(14,139,139,.28); }
 .gate-card h1{ font-size:17.5px; margin:0 0 7px; }
 .gate-card p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:0 0 18px; }
 .gate-card input{ width:100%; padding:12px 13px; margin-bottom:9px;
@@ -139,7 +141,8 @@ a{ color:var(--brass-ink); }
 /* ---------- چارچوب ---------- */
 .wrap{ max-width:1160px; margin:0 auto; padding:22px 18px 70px; }
 .top{ display:flex; align-items:center; gap:13px; margin-bottom:20px; }
-.mark{ width:40px; height:auto; flex:none; display:block; }
+.mark{ width:42px; height:42px; flex:none; display:block; border-radius:50%;
+  box-shadow:0 3px 10px rgba(14,139,139,.22); }
 .top .titles{ flex:1; min-width:0; }
 .top h1{ font-size:19px; margin:0; }
 .top .sub2{ font-size:11.5px; color:var(--ink-faint); margin:1px 0 0; }
@@ -400,7 +403,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
-    <img class="gate-mark" src="/logo.svg" alt="سنسا" width="58" height="55">
+    <img class="gate-mark" src="/icon-admin.2.png" alt="SL" width="60" height="60">
     <h1 id="gateTitle">پنل کارتابل‌ها</h1>
     <p id="gateSub">برای ادامه رمز ادمین را وارد کنید.</p>
     <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
@@ -416,7 +419,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div class="wrap" id="app" hidden>
   <div class="top">
-    <img class="mark" src="/logo.svg" alt="سنسا" width="40" height="38">
+    <img class="mark" src="/icon-admin.2.png" alt="SL" width="42" height="42">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
       <p class="sub2" id="topSub">sensacare.ir</p>
