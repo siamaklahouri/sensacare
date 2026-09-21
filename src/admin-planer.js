@@ -7,9 +7,10 @@
    نمی‌شکند: کلیدِ رمزگشاییِ آن صندوق هیچ‌وقت به سرور نمی‌رسد. برای
    اینکه ادمین بتواند بازش کند، مرورگرِ کاربر رمزش را با «کلید عمومیِ
    ادمین» می‌پیچد و همان بستهٔ پیچیده روی سرور می‌ماند. کلیدِ خصوصیِ
-   ادمین هم روی سرور است، ولی خودش با عبارتِ عبورِ ادمین رمز شده —
-   عبارتی که فقط در مرورگرِ ادمین تایپ می‌شود و هیچ‌وقت فرستاده
-   نمی‌شود. یعنی سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند. */
+   ادمین هم روی سرور است، ولی خودش با رمزِ ادمین رمز شده — رمزی که
+   برای باز کردنِ این کلید فقط در مرورگرِ ادمین تایپ می‌شود و هیچ‌وقت
+   فرستاده نمی‌شود (سرور نسخهٔ PBKDF2-شده‌اش را دارد، نه خودش). یعنی
+   سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند. */
 
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
@@ -541,16 +542,43 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     return json({ ok: true, user });
   }
 
+  /* رمزِ ادمین همان چیزی است که کلیدِ اضطراری را هم باز می‌کند، پس
+     مرورگر باید بتواند پیش از پیچیدنِ کلید مطمئن شود درست تایپش کرده —
+     وگرنه کلیدی ساخته می‌شود که هیچ‌وقت باز نمی‌شود. این مسیر فقط
+     «درست است یا نه» می‌گوید و چیزی برنمی‌گرداند. */
+  if (p === '/verify-password' && m === 'POST') {
+    const rl = await rateLimit(env, 'adminplaner-verify:' + clientIp(req), 20, 900);
+    if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    const stored = await getSetting(env, ADMIN.keys.pass, '');
+    const check = await checkPassword(String(body.password || ''), stored);
+    if (!check.ok) return bad('رمز ادمین درست نیست.', check.status === 429 ? 429 : 401);
+    return json({ ok: true });
+  }
+
   if (p === '/password' && m === 'POST') {
     const stored = await getSetting(env, ADMIN.keys.pass, '');
     const check = await checkPassword(String(body.current || ''), stored);
     if (!check.ok) return bad('رمز فعلی درست نیست.', 401);
     const next = String(body.password || '').trim();
     if (next.length < 10) return bad('رمزِ ادمین دست‌کم ۱۰ حرف باشد.');
+    /* اگر کلیدِ اضطراری هست، مرورگر آن را با رمزِ تازه دوباره پیچیده و
+       همین‌جا می‌فرستد. هر دو با هم می‌نشینند تا رمز عوض نشود و کلید
+       پشتِ رمزِ قدیمی جا نماند. */
+    if (body.priv !== undefined) {
+      if (!body.priv || !body.priv.cipher || !body.priv.salt || !body.priv.iv)
+        return bad('بستهٔ کلیدِ اضطراری ناقص است.');
+      if (!(await getSetting(env, 'vaultEscrowPriv', null)))
+        return bad('کلیدِ اضطراری‌ای روی سرور نیست.', 409);
+      await setSetting(env, 'vaultEscrowPriv', body.priv);
+    }
     await setSetting(env, ADMIN.keys.pass, await hashPassword(next));
     const gen = (await getSetting(env, ADMIN.keys.gen, 1)) + 1;
     await setSetting(env, ADMIN.keys.gen, gen);
-    await log(env, 'admin-password', '', '');
+    await log(env, 'admin-password', '',
+      body.priv ? 'کلید اضطراری هم دوباره پیچیده شد'
+        : (await getSetting(env, 'vaultEscrowPriv', null))
+          ? '⚠️ کلید اضطراری دوباره پیچیده نشد — پشتِ رمزِ قبلی ماند'
+          : '');
     /* نشستِ خودِ ادمین هم باطل شد، پس یکی تازه می‌دهیم. */
     return json({ ok: true }, 200,
       { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, 1), 1) });

@@ -967,7 +967,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      می‌پیچد و بستهٔ پیچیده را پس می‌فرستد.
 
      نتیجه‌اش این است: سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند؛
-     ادمین با عبارتِ خودش می‌تواند. */
+     ادمین با رمزِ خودش می‌تواند. */
   if (p === '/escrow-pub' && m === 'GET')
     return json({ ok: true, pub: await getSetting(env, 'vaultEscrowPub', null) });
 

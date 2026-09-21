@@ -601,17 +601,19 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
       <h2>کلید اضطراری دیتای شخصی</h2>
       <p class="sub">دیتای شخصیِ هر کاربر با رمزِ خودش قفل است و سرور کلیدش را ندارد.
         این کلید همان تورِ اضطراری است: مرورگرِ کاربر رمزش را با «کلید عمومی» می‌پیچد،
-        و باز کردنش عبارتِ عبورِ شما را می‌خواهد — عبارتی که فقط در همین مرورگر
-        تایپ می‌شود و هیچ‌وقت به سرور نمی‌رسد.</p>
+        و باز کردنش <b>رمزِ ادمینِ خودتان</b> را می‌خواهد — همان رمزی که با آن وارد
+        این پنل شدید. رمز فقط در همین مرورگر تایپ می‌شود و برای باز کردنِ کلید
+        هیچ‌وقت به سرور نمی‌رسد.</p>
       <div id="escrowState" class="hint"></div>
       <div class="row" style="margin-top:10px;">
-        <div class="fld"><label>عبارت عبور ادمین (دست‌کم ۱۲ حرف)</label>
-          <input type="password" id="ekPass" autocomplete="new-password"></div>
-        <div class="fld"><label>تکرار</label><input type="password" id="ekPass2" autocomplete="new-password"></div>
+        <div class="fld"><label>رمز ادمین</label>
+          <input type="password" id="ekPass" autocomplete="current-password"></div>
         <div><button class="btn btn-main" id="ekGo">ساختن کلید</button></div>
       </div>
-      <div class="hint">⚠️ اگر این عبارت را فراموش کنید هیچ‌کس — نه شما نه سرور — نمی‌تواند
-        بازش کند. ساختنِ کلیدِ تازه هم بسته‌های قدیمی را باز نمی‌کند.</div>
+      <div class="hint">⚠️ از این به بعد رمزِ ادمین دو کار می‌کند: هم درِ این پنل را باز
+        می‌کند، هم این کلید را. وقتی رمزِ ادمین را عوض کنید، کلید همان‌جا خودش با
+        رمزِ تازه دوباره پیچیده می‌شود. ساختنِ کلیدِ تازه اما بسته‌های قدیمی را باز
+        نمی‌کند.</div>
     </div>
   </section>
 
@@ -1172,11 +1174,12 @@ function openVaultReset(slug){
   }
   openOverlay(`
     <h2>رمز دیتای شخصی — ${esc(p.name)}</h2>
-    <p class="sub">عبارتِ عبورِ خودتان را بزنید تا بستهٔ رمزِ او باز شود. همه‌چیز
-      داخل همین مرورگر انجام می‌شود؛ نه عبارتِ شما به سرور می‌رود نه رمزِ او.
+    <p class="sub">رمزِ ادمینِ خودتان را بزنید تا بستهٔ رمزِ او باز شود. همه‌چیز
+      داخل همین مرورگر انجام می‌شود؛ نه رمزِ شما به سرور می‌رود نه رمزِ او.
       <b>محتوای صندوق دست نمی‌خورد</b> — فقط با رمزِ تازه دوباره قفل می‌شود.</p>
     <div class="row">
-      <div class="fld"><label>عبارت عبور ادمین</label><input type="password" id="vAdmin"></div>
+      <div class="fld"><label>رمز ادمین</label>
+        <input type="password" id="vAdmin" autocomplete="current-password"></div>
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="fld"><label>رمز تازهٔ کاربر (خالی = فقط رمز فعلی را نشانم بده)</label>
@@ -1201,9 +1204,40 @@ async function unwrapEscrowKey(adminPass){
   let pkcs8;
   try{
     pkcs8 = await crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(iv) }, key, unb64(cipher));
-  }catch(e){ throw new Error("عبارتِ عبور درست نیست."); }
+  }catch(e){ throw new Error("رمزِ ادمین درست نیست — یا این کلید با رمزِ قبلی ساخته شده."); }
   return crypto.subtle.importKey("pkcs8", pkcs8,
     { name:"RSA-OAEP", hash:"SHA-256" }, false, ["decrypt"]);
+}
+
+/* کلید را با رمزِ فعلی باز می‌کنیم و با رمزِ تازه دوباره می‌پیچیم؛
+   هر دو کار داخل همین مرورگر. اگر کلید با عبارتِ جداگانهٔ قدیمی ساخته
+   شده باشد، همان‌جا می‌پرسیمش تا کاربر گیر نکند. */
+async function rewrapEscrowKey(curPass, newPass){
+  const k = await api("/escrow-key");
+  if(!k.ok || !k.data.priv) throw new Error("کلیدِ اضطراری روی سرور نیست.");
+  const { salt, iv, cipher } = k.data.priv;
+  const open = async (pw)=>{
+    const key = await keyFrom(pw, unb64(salt), ["decrypt"]);
+    return crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(iv) }, key, unb64(cipher));
+  };
+  let pkcs8;
+  try{ pkcs8 = await open(curPass); }
+  catch(e){
+    const old = prompt(
+      "کلیدِ اضطراری با رمزِ فعلیِ ادمین باز نشد — یعنی با عبارتِ جداگانهٔ قبلی ساخته شده.\n\n" +
+      "همان عبارت را بزنید تا با رمزِ تازه دوباره پیچیده شود.\n" +
+      "(خالی بگذارید تا چیزی عوض نشود.)");
+    if(!old) throw new Error(
+      "رمز عوض نشد. یا عبارتِ کلید را بزنید، یا اول از همین صفحه کلیدِ تازه بسازید " +
+      "(بسته‌های قدیمی با آن باز نمی‌شوند).");
+    try{ pkcs8 = await open(old); }
+    catch(e2){ throw new Error("با آن عبارت هم باز نشد. رمز عوض نشد."); }
+  }
+  const s2 = crypto.getRandomValues(new Uint8Array(16));
+  const iv2 = crypto.getRandomValues(new Uint8Array(12));
+  const key2 = await keyFrom(newPass, s2, ["encrypt"]);
+  const c2 = await crypto.subtle.encrypt({ name:"AES-GCM", iv: iv2 }, key2, pkcs8);
+  return { salt: b64(s2), iv: b64(iv2), cipher: b64(c2) };
 }
 
 async function runVaultReset(slug){
@@ -1214,7 +1248,7 @@ async function runVaultReset(slug){
   err.textContent = ""; out.innerHTML = "";
   const adminPass = document.getElementById("vAdmin").value;
   const newPass = document.getElementById("vNew").value.trim();
-  if(!adminPass){ err.textContent = "عبارت عبور را بزنید."; return; }
+  if(!adminPass){ err.textContent = "رمز ادمین را بزنید."; return; }
   if(newPass && newPass.length < 4){ err.textContent = "رمزِ تازه دست‌کم ۴ حرف."; return; }
   go.disabled = true; go.textContent = "…";
   try{
@@ -1453,20 +1487,44 @@ function setupKeys(){
   };
 
   document.getElementById("apGo").onclick = async ()=>{
+    const btn = document.getElementById("apGo");
     const cur = document.getElementById("apCur").value;
     const np = document.getElementById("apNew").value;
     if(np !== document.getElementById("apNew2").value){ say("تکرار رمز نمی‌خواند.", true); return; }
     if(np.length < 10){ say("رمزِ ادمین دست‌کم ۱۰ حرف باشد.", true); return; }
-    const r = await api("/password", { method:"POST", body: JSON.stringify({ current: cur, password: np }) });
+
+    /* کلیدِ اضطراری پشتِ همین رمز است، پس قبل از عوض‌شدنش باید با
+       رمزِ تازه دوباره پیچیده شود — وگرنه پشتِ رمزِ قدیمی جا می‌ماند و
+       دیگر هیچ‌وقت باز نمی‌شود. */
+    let priv;
+    if(DATA.escrowReady){
+      btn.disabled = true; btn.textContent = "…";
+      try{
+        priv = await rewrapEscrowKey(cur, np);
+      }catch(ex){
+        btn.disabled = false; btn.textContent = "عوض کن";
+        say(ex.message || String(ex), true);
+        return;
+      }
+    }
+
+    btn.disabled = true; btn.textContent = "…";
+    const r = await api("/password", { method:"POST",
+      body: JSON.stringify({ current: cur, password: np, ...(priv ? { priv } : {}) }) });
+    btn.disabled = false; btn.textContent = "عوض کن";
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }
     ["apCur","apNew","apNew2"].forEach(i=> document.getElementById(i).value = "");
-    say("رمز ادمین عوض شد. بقیهٔ نشست‌ها بسته شدند.");
+    say("رمز ادمین عوض شد. بقیهٔ نشست‌ها بسته شدند." +
+        (priv ? "<br>کلیدِ اضطراری هم با رمزِ تازه دوباره پیچیده شد." : ""));
   };
 
   document.getElementById("ekGo").onclick = async ()=>{
     const pass = document.getElementById("ekPass").value;
-    if(pass.length < 12){ say("عبارتِ عبور دست‌کم ۱۲ حرف باشد.", true); return; }
-    if(pass !== document.getElementById("ekPass2").value){ say("تکرار نمی‌خواند.", true); return; }
+    if(!pass){ say("رمزِ ادمین را بزنید.", true); return; }
+    /* اول از سرور می‌پرسیم رمز درست است یا نه. اگر نپرسیم، یک اشتباهِ
+       تایپی کلیدی می‌سازد که هیچ‌وقت باز نمی‌شود. */
+    const v = await api("/verify-password", { method:"POST", body: JSON.stringify({ password: pass }) });
+    if(!v.ok){ say(v.data.error || "رمز ادمین درست نیست.", true); return; }
     if(DATA.escrowReady && !confirm(
         "کلیدِ تازه جایگزینِ کلیدِ فعلی می‌شود.\n\n" +
         "بسته‌هایی که با کلیدِ قبلی پیچیده شده‌اند دیگر باز نمی‌شوند — " +
@@ -1491,9 +1549,7 @@ function setupKeys(){
       })});
       if(!r.ok) throw new Error(r.data.error || "ذخیره نشد.");
       document.getElementById("ekPass").value = "";
-      document.getElementById("ekPass2").value = "";
-      say("کلید ساخته و ذخیره شد. عبارتِ عبور را جایی امن نگه دارید — " +
-          "بدون آن این کلید هیچ‌وقت باز نمی‌شود.");
+      say("کلید ساخته و ذخیره شد. از این به بعد با همین رمزِ ادمین باز می‌شود.");
       loadPlanners();
     }catch(ex){ say(ex.message || String(ex), true); }
     btn.disabled = false;
