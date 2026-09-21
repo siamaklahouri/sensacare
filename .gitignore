@@ -3,3 +3,7 @@ node_modules/
 .dev.vars
 .setup-tables-done
 backup-*.sql
+
+# عکس‌های آزمایشی که موقع تست ساخته می‌شوند
+a-*.png
+r-*.png
