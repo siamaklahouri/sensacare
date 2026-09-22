@@ -592,6 +592,29 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       priv: await getSetting(env, 'vaultEscrowPriv', null)
     });
 
+  /* ---- انتقالِ کلیدِ اضطراری به رمزِ ادمین ----
+     همان جفت‌کلید می‌ماند و فقط پیچشِ کلیدِ خصوصی عوض می‌شود. «pub»
+     دست نمی‌خورد، پس بسته‌های رمزِ کاربرها همه سرِ جایشان می‌مانند —
+     برعکسِ ساختنِ کلیدِ تازه که آن‌ها را از دسترس خارج می‌کند.
+
+     کلیدهایی که پیش از یکی‌شدنِ رمزها ساخته شده‌اند با عبارتِ جداگانهٔ
+     قدیمی پیچیده‌اند؛ مرورگرِ ادمین آن را باز می‌کند، با رمزِ ادمین
+     دوباره می‌پیچد و از همین مسیر می‌فرستد. */
+  if (p === '/escrow-rewrap' && m === 'POST') {
+    const rl = await rateLimit(env, 'adminplaner-rewrap:' + clientIp(req), 20, 900);
+    if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    const stored = await getSetting(env, ADMIN.keys.pass, '');
+    const check = await checkPassword(String(body.password || ''), stored);
+    if (!check.ok) return bad('رمز ادمین درست نیست.', check.status === 429 ? 429 : 401);
+    if (!body.priv || !body.priv.cipher || !body.priv.salt || !body.priv.iv)
+      return bad('بستهٔ کلیدِ اضطراری ناقص است.');
+    if (!(await getSetting(env, 'vaultEscrowPriv', null)))
+      return bad('کلیدِ اضطراری‌ای روی سرور نیست.', 409);
+    await setSetting(env, 'vaultEscrowPriv', body.priv);
+    await log(env, 'escrow-key', '', 'انتقال به رمز ادمین');
+    return json({ ok: true });
+  }
+
   if (p === '/escrow-key' && m === 'POST') {
     if (!body.pub || !body.priv || !body.priv.cipher)
       return bad('کلید ناقص است.');

@@ -615,6 +615,22 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
         رمزِ تازه دوباره پیچیده می‌شود. ساختنِ کلیدِ تازه اما بسته‌های قدیمی را باز
         نمی‌کند.</div>
     </div>
+
+    <div class="panel">
+      <h2>کلید با رمز ادمین باز نمی‌شود؟</h2>
+      <p class="sub">کلیدهایی که پیش از یکی‌شدنِ رمزها ساخته شده‌اند با «عبارت عبور ادمین»ِ
+        جداگانهٔ قدیمی قفل‌اند، نه با رمزِ ورود. همان عبارت را همین یک‌بار این‌جا بزنید تا
+        کلید به رمزِ ادمین منتقل شود. <b>جفت‌کلید عوض نمی‌شود</b>، پس رمزهای شخصیِ
+        کاربرهای فعلی از دست نمی‌رود — برعکسِ «ساختن کلید تازه».</p>
+      <div class="row">
+        <div class="fld"><label>رمز ادمین (همان رمزِ ورود)</label>
+          <input type="password" id="mgAdmin" autocomplete="current-password"></div>
+        <div class="fld"><label>عبارت عبورِ قبلی</label>
+          <input type="password" id="mgOld" autocomplete="off"></div>
+        <div><button class="btn btn-main" id="mgGo">انتقال بده</button></div>
+      </div>
+      <div class="hint" id="mgNote"></div>
+    </div>
   </section>
 
   <section id="tab-log" hidden>
@@ -1168,8 +1184,10 @@ function openVaultReset(slug){
     return;
   }
   if(!p.hasEscrow){
-    say("«" + esc(p.name) + "» هنوز رمزِ دیتای شخصی‌اش را به کلیدِ ادمین نسپرده. " +
-        "این کار خودکار انجام می‌شود، ولی فقط دفعهٔ بعد که خودش رمزش را بگذارد یا عوض کند.", true);
+    say("«" + esc(p.name) + "» هنوز رمزِ دیتای شخصی‌اش را به کلیدِ ادمین نسپرده، پس " +
+        "چیزی برای باز کردن نیست.<br>این کار خودکار است ولی فقط یک‌بار لازم دارد: " +
+        "خودش از کارتابلش برود به «دیتای شخصی» و رمزش را یک‌بار عوض کند (یا اگر " +
+        "هنوز نگذاشته، بگذارد) — از همان لحظه بستهٔ رمزش نزد شما می‌نشیند.", true);
     return;
   }
   openOverlay(`
@@ -1196,15 +1214,54 @@ function openVaultReset(slug){
   document.getElementById("vGo").onclick = ()=> runVaultReset(slug);
 }
 
-async function unwrapEscrowKey(adminPass){
+/* ---------- کلیدِ اضطراری: باز کردن، پیچیدن، انتقال ----------
+
+   کلیدهایی که پیش از یکی‌شدنِ رمزها ساخته شده‌اند با «عبارتِ عبورِ
+   ادمین»ِ جداگانهٔ قدیمی پیچیده‌اند، نه با رمزِ ورود. برای همین هر
+   جا کلید باز می‌شود، اگر رمزِ ادمین نگرفت همان یک‌بار عبارتِ قبلی
+   پرسیده و کلید از همان‌جا به رمزِ ادمین منتقل می‌شود — بعدش دیگر
+   سؤالی نیست. جفت‌کلید عوض نمی‌شود، پس بسته‌های رمزِ کاربرها همه
+   سرِ جایشان می‌مانند. */
+async function wrapPkcs8(pkcs8, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await keyFrom(pass, salt, ["encrypt"]);
+  const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, pkcs8);
+  return { salt: b64(salt), iv: b64(iv), cipher: b64(cipher) };
+}
+
+async function escrowPkcs8(adminPass, legacyPass){
   const k = await api("/escrow-key");
-  if(!k.ok || !k.data.priv) throw new Error("کلیدِ ادمین روی سرور نیست.");
+  if(!k.ok || !k.data.priv) throw new Error("کلیدِ اضطراری روی سرور نیست.");
   const { salt, iv, cipher } = k.data.priv;
-  const key = await keyFrom(adminPass, unb64(salt), ["decrypt"]);
-  let pkcs8;
-  try{
-    pkcs8 = await crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(iv) }, key, unb64(cipher));
-  }catch(e){ throw new Error("رمزِ ادمین درست نیست — یا این کلید با رمزِ قبلی ساخته شده."); }
+  const open = async (pw)=>{
+    const key = await keyFrom(pw, unb64(salt), ["decrypt"]);
+    return crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(iv) }, key, unb64(cipher));
+  };
+  try{ return { pkcs8: await open(adminPass), legacy: false }; }
+  catch(e){ /* پایین‌تر با عبارتِ قبلی امتحان می‌شود */ }
+
+  const old = legacyPass || prompt(
+    "این کلید با رمزِ ادمین باز نشد — یعنی پیش از یکی‌شدنِ رمزها، با " +
+    "«عبارت عبورِ ادمین»ِ جداگانه ساخته شده.\n\n" +
+    "همان عبارت را همین یک‌بار بزنید تا کلید به رمزِ ادمین منتقل شود.");
+  if(!old) throw new Error(
+    "کلید با رمزِ ادمین باز نمی‌شود. اگر عبارتِ قبلی را دارید، یک‌بار بزنید تا منتقل شود؛ " +
+    "وگرنه باید کلیدِ تازه بسازید — که بسته‌های رمزِ فعلی را باز نمی‌کند.");
+  try{ return { pkcs8: await open(old), legacy: true }; }
+  catch(e){ throw new Error("با آن عبارت هم باز نشد. مطمئنید همان عبارتی است که کلید با آن ساخته شد؟"); }
+}
+
+/* کلید را برای استفاده باز می‌کند؛ اگر لازم شد، در همان مسیر منتقلش هم می‌کند. */
+async function unwrapEscrowKey(adminPass, legacyPass){
+  const { pkcs8, legacy } = await escrowPkcs8(adminPass, legacyPass);
+  if(legacy){
+    const r = await api("/escrow-rewrap", { method:"POST", body: JSON.stringify({
+      password: adminPass, priv: await wrapPkcs8(pkcs8, adminPass) })});
+    if(!r.ok) throw new Error("انتقالِ کلید به رمزِ ادمین نشد: " + (r.data.error || ""));
+    DATA.escrowLegacy = false;
+    say("کلیدِ اضطراری به رمزِ ادمین منتقل شد — از این به بعد همان رمزِ ورود کافی است.");
+  }
   return crypto.subtle.importKey("pkcs8", pkcs8,
     { name:"RSA-OAEP", hash:"SHA-256" }, false, ["decrypt"]);
 }
@@ -1213,31 +1270,8 @@ async function unwrapEscrowKey(adminPass){
    هر دو کار داخل همین مرورگر. اگر کلید با عبارتِ جداگانهٔ قدیمی ساخته
    شده باشد، همان‌جا می‌پرسیمش تا کاربر گیر نکند. */
 async function rewrapEscrowKey(curPass, newPass){
-  const k = await api("/escrow-key");
-  if(!k.ok || !k.data.priv) throw new Error("کلیدِ اضطراری روی سرور نیست.");
-  const { salt, iv, cipher } = k.data.priv;
-  const open = async (pw)=>{
-    const key = await keyFrom(pw, unb64(salt), ["decrypt"]);
-    return crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(iv) }, key, unb64(cipher));
-  };
-  let pkcs8;
-  try{ pkcs8 = await open(curPass); }
-  catch(e){
-    const old = prompt(
-      "کلیدِ اضطراری با رمزِ فعلیِ ادمین باز نشد — یعنی با عبارتِ جداگانهٔ قبلی ساخته شده.\n\n" +
-      "همان عبارت را بزنید تا با رمزِ تازه دوباره پیچیده شود.\n" +
-      "(خالی بگذارید تا چیزی عوض نشود.)");
-    if(!old) throw new Error(
-      "رمز عوض نشد. یا عبارتِ کلید را بزنید، یا اول از همین صفحه کلیدِ تازه بسازید " +
-      "(بسته‌های قدیمی با آن باز نمی‌شوند).");
-    try{ pkcs8 = await open(old); }
-    catch(e2){ throw new Error("با آن عبارت هم باز نشد. رمز عوض نشد."); }
-  }
-  const s2 = crypto.getRandomValues(new Uint8Array(16));
-  const iv2 = crypto.getRandomValues(new Uint8Array(12));
-  const key2 = await keyFrom(newPass, s2, ["encrypt"]);
-  const c2 = await crypto.subtle.encrypt({ name:"AES-GCM", iv: iv2 }, key2, pkcs8);
-  return { salt: b64(s2), iv: b64(iv2), cipher: b64(c2) };
+  const { pkcs8 } = await escrowPkcs8(curPass);
+  return wrapPkcs8(pkcs8, newPass);
 }
 
 async function runVaultReset(slug){
@@ -1495,9 +1529,14 @@ function setupKeys(){
 
     /* کلیدِ اضطراری پشتِ همین رمز است، پس قبل از عوض‌شدنش باید با
        رمزِ تازه دوباره پیچیده شود — وگرنه پشتِ رمزِ قدیمی جا می‌ماند و
-       دیگر هیچ‌وقت باز نمی‌شود. */
+       دیگر هیچ‌وقت باز نمی‌شود.
+
+       بودنِ کلید را از خودِ سرور می‌پرسیم، نه از فهرستی که لحظهٔ باز
+       شدنِ صفحه بار شده: اگر کلید را در یک زبانهٔ دیگر ساخته باشید،
+       این صفحه از آن بی‌خبر است و کلید پشتِ رمزِ قدیمی جا می‌ماند. */
     let priv;
-    if(DATA.escrowReady){
+    const ek = await api("/escrow-key");
+    if(ek.ok && ek.data && ek.data.priv){
       btn.disabled = true; btn.textContent = "…";
       try{
         priv = await rewrapEscrowKey(cur, np);
@@ -1516,6 +1555,33 @@ function setupKeys(){
     ["apCur","apNew","apNew2"].forEach(i=> document.getElementById(i).value = "");
     say("رمز ادمین عوض شد. بقیهٔ نشست‌ها بسته شدند." +
         (priv ? "<br>کلیدِ اضطراری هم با رمزِ تازه دوباره پیچیده شد." : ""));
+  };
+
+  document.getElementById("mgGo").onclick = async ()=>{
+    const btn = document.getElementById("mgGo");
+    const note = document.getElementById("mgNote");
+    const adminPass = document.getElementById("mgAdmin").value;
+    const oldPass = document.getElementById("mgOld").value;
+    note.textContent = "";
+    if(!adminPass || !oldPass){ say("هر دو کادر را پر کنید.", true); return; }
+    btn.disabled = true; btn.textContent = "…";
+    try{
+      /* اگر کلید از قبل با رمزِ ادمین باز شود، همین را می‌گوییم و
+         دست به چیزی نمی‌زنیم. */
+      const { pkcs8, legacy } = await escrowPkcs8(adminPass, oldPass);
+      if(!legacy){
+        note.textContent = "این کلید از قبل با رمزِ ادمین باز می‌شود — چیزی برای انتقال نبود.";
+      }else{
+        const r = await api("/escrow-rewrap", { method:"POST", body: JSON.stringify({
+          password: adminPass, priv: await wrapPkcs8(pkcs8, adminPass) })});
+        if(!r.ok) throw new Error(r.data.error || "ذخیره نشد.");
+        note.textContent = "✅ منتقل شد. از این به بعد همان رمزِ ورودِ ادمین کافی است.";
+        say("کلیدِ اضطراری به رمزِ ادمین منتقل شد.");
+      }
+      document.getElementById("mgAdmin").value = "";
+      document.getElementById("mgOld").value = "";
+    }catch(ex){ say(ex.message || String(ex), true); }
+    btn.disabled = false; btn.textContent = "انتقال بده";
   };
 
   document.getElementById("ekGo").onclick = async ()=>{
