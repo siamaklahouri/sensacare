@@ -672,11 +672,27 @@ body.admin-mode{background:var(--dark)}
 .pd-img img{width:100%;height:100%;object-fit:contain}
 .pd-img svg{width:62%}
 .pd h2{font-size:23px;font-weight:800;line-height:1.5;margin:4px 0 6px}
-.spec{width:100%;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.spec div{display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;border-bottom:1px solid var(--line)}
-.spec div:last-child{border:none}
-.spec span:first-child{color:var(--body)}
-.spec span:last-child{font-weight:600}
+/* جدول مشخصات.
+
+   قبلاً هر سطر یک flex با justify-content:space-between بود. سه ایراد
+   داشت که روی گوشی خودشان را نشان می‌دادند:
+
+   ۱ برچسب و مقدار هیچ فاصلهٔ تضمین‌شده‌ای نداشتند، پس وقتی مقدار بلند
+     بود می‌چسبیدند و «روان‌کننده» و «سیلیکونی…» یک کلمه خوانده می‌شدند.
+   ۲ مقدارِ دوخطی وسطِ سطر می‌افتاد، نه هم‌تراز بقیه.
+   ۳ چون هر سطر عرض خودش را داشت، برچسب‌ها در یک ستون نمی‌نشستند و چشم
+     خط عمودی‌ای برای دنبال کردن نداشت.
+
+   حالا خودِ .spec شبکه است و سطرها display:contents، پس ستون برچسب
+   برای همهٔ سطرها یک عرض دارد. خط جداکننده روی هر دو خانه می‌نشیند تا
+   مثل قبل تمام عرض را بگیرد. */
+.spec{width:100%;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  display:grid;grid-template-columns:auto minmax(0,1fr);font-size:13px}
+.spec div{display:contents}
+.spec span{padding:11px 0;border-bottom:1px solid var(--line);line-height:1.75}
+.spec div:last-child span{border-bottom:none}
+.spec span:first-child{color:var(--body);white-space:nowrap;padding-inline:14px 12px}
+.spec span:last-child{font-weight:600;text-align:end;padding-inline:0 14px}
 .stockbar{font-size:12.5px;font-weight:700;margin-top:10px}
 
 /* مجله */
@@ -844,6 +860,25 @@ footer #fContact ul{margin-top:4px}
 }
 @media(max-width:640px){
   html{scroll-padding-top:118px}
+
+  /* ---- صفحهٔ کالا در گوشی ----
+     .pd تا امروز در هیچ نقطهٔ شکستی تک‌ستونی نمی‌شد و همان «1fr 1.15fr»
+     را تا عرض ۳۲۰ هم نگه می‌داشت. یعنی روی گوشی، عکس یک مربع کوچک
+     می‌شد و نام کالا و قیمت و جدول مشخصات و دکمهٔ خرید همه در ستونی
+     به عرض ۱۶۹ پیکسل جمع می‌شدند: تیتر دوخطی، قیمت قبلی ریز و درهم،
+     و در جدول مشخصات برچسب و مقدار به هم می‌چسبیدند
+     («روان‌کنندهسیلیکونی…»). اندازه‌گیری شد، حدس نیست. */
+  .pd{grid-template-columns:1fr;gap:18px}
+  /* عکسِ مربعِ تمام‌عرض روی گوشی ۳۵۸ پیکسل ارتفاع می‌گرفت و قیمت و
+     دکمهٔ خرید را می‌راند زیر خط دید. */
+  .pd-img{aspect-ratio:auto;height:215px}
+  .pd h2{font-size:21px;line-height:1.45}
+  /* قاعده‌های .old و .save پایین‌تر برای کارت‌های فهرست تنظیم شده‌اند —
+     آنجا جا تنگ است و قیمت قبلی باید برود سطر خودش. ولی بی‌دامنه‌اند و
+     به صفحهٔ کالا هم می‌رسیدند؛ آنجا حالا تمام‌عرض است و هر سه کنار هم
+     جا می‌شوند. */
+  .pd .old{display:inline;font-size:13px;margin-inline-start:9px;margin-top:0}
+  .pd .save{font-size:12.5px}
 
   /* ---- صفحهٔ اول در گوشی ----
      تنها تیتر و نمودار مسیر سفارش ۱۰۲۱ پیکسل بود و اولین کالا در ۱۶۹۶
