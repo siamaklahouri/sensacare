@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/png" href="/icon-admin.2.png">
-<link rel="apple-touch-icon" href="/icon-admin.2.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.3.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.3.png">
+<link rel="apple-touch-icon" href="/icon-sl.3.png">
 <script>
 try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
@@ -30,7 +31,11 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
 :root{
   --paper:#EDF1F6; --paper-2:#F7F9FB;
   --ink:#0B2545; --ink-soft:#43586D; --ink-faint:#8697A8;
-  --brass:#0E8B8B; --brass-deep:#0B6E6E; --brass-bg:#E2F3F2; --brass-ink:#0B6E6E;
+  /* رنگِ هویت از خودِ لوگو می‌آید: آبیِ SLTech. «btn» جدا از «brass»
+     است چون متنِ دکمه سفید است و در تمِ شب یک آبیِ روشن، متنِ سفید را
+     ناخوانا می‌کرد — این‌طور هم لینک خوانا می‌ماند هم دکمه. */
+  --brass:#1A4FA3; --brass-deep:#123E80; --brass-bg:#E4EAF7; --brass-ink:#14458F;
+  --btn:#1A4FA3; --btn-deep:#123E80;
   --green:#2F6B4F; --green-bg:#E4EFE8; --green-ink:#2F6B4F;
   --amber:#B5791B; --amber-bg:#FAF0DD; --amber-ink:#8E5E12;
   --red:#A6222B;   --red-bg:#F7E2E3;   --red-ink:#8E1D25;
@@ -41,7 +46,7 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   --sh-1:0 1px 2px rgba(11,37,69,.04), 0 2px 8px rgba(11,37,69,.05);
   --sh-2:0 2px 6px rgba(11,37,69,.06), 0 12px 32px rgba(11,37,69,.09);
   --sh-3:0 8px 24px rgba(11,37,69,.12), 0 32px 64px rgba(11,37,69,.16);
-  --glow:0 0 0 3px rgba(14,139,139,.16);
+  --glow:0 0 0 3px rgba(26,79,163,.18);
   /* رنگِ هویتِ سه نوع کارتابل. این سه با سنجهٔ کوررنگی بررسی شده‌اند:
      نزدیک‌ترین جفتشان در دید عادی ΔE ۱۹٫۶ و در پروتان ۱۲٫۸ فاصله دارد.
      جای ثابتی دارند و هیچ‌وقت چرخانده نمی‌شوند. */
@@ -53,7 +58,8 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   :root:not([data-theme="light"]){
     --paper:#0B141D; --paper-2:#101C27;
     --ink:#E7EEF4; --ink-soft:#AAB9C7; --ink-faint:#78899A;
-    --brass:#3FB6AE; --brass-deep:#2E958F; --brass-bg:#10302E; --brass-ink:#5CCCC4;
+    --brass:#6AA3FF; --brass-deep:#4C88EE; --brass-bg:#11213C; --brass-ink:#9BC4FF;
+  --btn:#2A5FBF; --btn-deep:#1D4794;
     --green:#5FB07E; --green-bg:#15301F; --green-ink:#7CC698;
     --amber:#DFA94F; --amber-bg:#382B11; --amber-ink:#EBBE72;
     --red:#E8737C;   --red-bg:#391A1D;   --red-ink:#F09099;
@@ -62,7 +68,7 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
     --sh-1:0 1px 2px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.26);
     --sh-2:0 2px 6px rgba(0,0,0,.32), 0 12px 32px rgba(0,0,0,.36);
     --sh-3:0 8px 24px rgba(0,0,0,.45), 0 32px 64px rgba(0,0,0,.5);
-    --glow:0 0 0 3px rgba(63,182,174,.2);
+    --glow:0 0 0 3px rgba(106,163,255,.22);
     /* گامِ شب از همان رنگ‌ها، ولی دوباره سنجیده — نه وارونهٔ خودکارِ روز */
     --s-it:#1FA298; --s-fin:#B8862C; --s-gen:#8B73C8;
     --s-it-bg:#10302E; --s-fin-bg:#382B11; --s-gen-bg:#221A33;
@@ -94,7 +100,7 @@ body{
   font-family:var(--font); font-size:13.5px; line-height:1.75;
   color:var(--ink);
   background:
-    radial-gradient(900px 420px at 100% -8%, rgba(14,139,139,.07), transparent 62%),
+    radial-gradient(900px 420px at 100% -8%, rgba(26,79,163,.07), transparent 62%),
     radial-gradient(760px 380px at -8% 4%, rgba(91,62,140,.06), transparent 58%),
     var(--paper);
   background-attachment:fixed;
@@ -108,7 +114,7 @@ a{ color:var(--brass-ink); }
 #gate{ position:fixed; inset:0; z-index:90; display:flex; align-items:center;
   justify-content:center; padding:20px;
   background:
-    radial-gradient(700px 360px at 50% -10%, rgba(14,139,139,.1), transparent 60%),
+    radial-gradient(700px 360px at 50% -10%, rgba(26,79,163,.10), transparent 60%),
     var(--paper); }
 #gate[hidden]{ display:none; }
 .gate-card{ background:var(--white); border:1px solid var(--line);
@@ -116,9 +122,18 @@ a{ color:var(--brass-ink); }
   width:100%; max-width:390px; text-align:center;
   animation:rise .4s cubic-bezier(.2,.8,.3,1); }
 @keyframes rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
-/* نشانِ SL — همان لوگویی که روی تبِ کارتابل‌ها هم هست، با رنگِ پنل. */
-.gate-mark{ display:block; width:60px; height:60px; margin:0 auto 16px;
-  border-radius:50%; box-shadow:0 5px 14px rgba(14,139,139,.28); }
+/* نشانِ SLTech — همان لوگوی برند، گِرد بریده تا در کنارِ متن جا بیفتد. */
+.gate-mark{ display:block; width:68px; height:68px; margin:0 auto 10px;
+  border-radius:50%; }
+/* «SLTech» به‌جای تصویر، متن است: در هر اندازه‌ای تیز می‌ماند و
+   روی کارتِ سفید هم مثل تصویرِ پس‌زمینه‌دار یک مستطیلِ تیره نمی‌سازد. */
+.brandword{ font-family:system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size:19px; font-weight:600; letter-spacing:.14em; margin:0 0 14px;
+  background:linear-gradient(180deg, var(--ink) 0%, var(--ink-soft) 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-fill-color:transparent; }
+@supports not (background-clip: text){ .brandword{ color:var(--ink); -webkit-text-fill-color:currentColor; } }
+
 .gate-card h1{ font-size:17.5px; margin:0 0 7px; }
 .gate-card p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:0 0 18px; }
 .gate-card input{ width:100%; padding:12px 13px; margin-bottom:9px;
@@ -129,11 +144,11 @@ a{ color:var(--brass-ink); }
 .gate-card input:focus{ outline:none; border-color:var(--brass);
   background:var(--white); box-shadow:var(--glow); }
 .gate-card button[type="submit"]{ width:100%; padding:12px; border:0; border-radius:var(--r);
-  background:linear-gradient(145deg, var(--brass), var(--brass-deep)); color:#fff;
+  background:linear-gradient(145deg, var(--btn), var(--btn-deep)); color:#fff;
   font-family:var(--font); font-size:14px; font-weight:700; cursor:pointer;
-  box-shadow:0 4px 12px rgba(14,139,139,.25); transition:transform .12s, box-shadow .15s; }
+  box-shadow:0 4px 12px rgba(18,62,128,.28); transition:transform .12s, box-shadow .15s; }
 .gate-card button[type="submit"]:hover{ transform:translateY(-1px);
-  box-shadow:0 6px 18px rgba(14,139,139,.32); }
+  box-shadow:0 6px 18px rgba(18,62,128,.34); }
 .gate-card button[type="submit"]:disabled{ opacity:.6; cursor:default; transform:none; }
 .gate-err{ color:var(--red-ink); font-size:12.5px; min-height:20px; margin-top:9px; }
 .gate-note{ color:var(--ink-soft); font-size:12.5px; margin-top:8px; line-height:2; }
@@ -161,7 +176,7 @@ a{ color:var(--brass-ink); }
 .top{ display:flex; align-items:center; gap:13px;
   max-width:1160px; margin:0 auto; }
 .mark{ width:42px; height:42px; flex:none; display:block; border-radius:50%;
-  box-shadow:0 3px 10px rgba(14,139,139,.22); }
+  box-shadow:0 3px 10px rgba(18,46,110,.28); }
 .top .titles{ flex:1; min-width:0; }
 .top h1{ font-size:19px; margin:0; }
 .top .sub2{ font-size:11.5px; color:var(--ink-faint); margin:1px 0 0; }
@@ -207,7 +222,7 @@ a{ color:var(--brass-ink); }
   cursor:pointer; transition:background .15s, color .15s; white-space:nowrap; }
 .tabs button:hover{ color:var(--ink); background:var(--paper-2); }
 .tabs button.active{ background:var(--brass); color:#fff; font-weight:700;
-  box-shadow:0 2px 8px rgba(14,139,139,.28); }
+  box-shadow:0 2px 8px rgba(18,62,128,.3); }
 
 /* ---------- پنل ---------- */
 .panel{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
@@ -222,11 +237,11 @@ a{ color:var(--brass-ink); }
   transition:border-color .15s, color .15s, background .15s, transform .12s; }
 .btn:hover{ border-color:var(--brass); color:var(--brass-ink); transform:translateY(-1px); }
 .btn:active{ transform:none; }
-.btn-main{ background:linear-gradient(145deg, var(--brass), var(--brass-deep));
+.btn-main{ background:linear-gradient(145deg, var(--btn), var(--btn-deep));
   border-color:transparent; color:#fff; font-weight:700;
-  box-shadow:0 3px 10px rgba(14,139,139,.24); }
+  box-shadow:0 3px 10px rgba(18,62,128,.26); }
 .btn-main:hover{ color:#fff; border-color:transparent;
-  box-shadow:0 5px 14px rgba(14,139,139,.3); }
+  box-shadow:0 5px 14px rgba(18,62,128,.32); }
 .btn-danger{ color:var(--red-ink); border-color:var(--red-bg); background:var(--red-bg); }
 .btn-danger:hover{ background:var(--red); color:#fff; border-color:var(--red); }
 .btn-off{ color:var(--amber-ink); border-color:var(--amber-bg); background:var(--amber-bg); }
@@ -471,7 +486,8 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
-    <img class="gate-mark" src="/icon-admin.2.png" alt="SL" width="60" height="60">
+    <img class="gate-mark" src="/icon-sl.3.png" alt="SLTech" width="68" height="68">
+    <div class="brandword">SLTech</div>
     <h1 id="gateTitle">ورود به کارتابل</h1>
     <p id="gateSub">نام کاربری و رمزتان را بزنید تا وارد کارتابل خودتان شوید.</p>
     <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
@@ -490,7 +506,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 
 <div class="wrap" id="app" hidden>
   <div class="topbar"><div class="top">
-    <img class="mark" src="/icon-admin.2.png" alt="SL" width="42" height="42">
+    <img class="mark" src="/icon-sl.3.png" alt="SLTech" width="42" height="42">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
       <p class="sub2" id="topSub">sensacare.ir</p>
