@@ -3669,7 +3669,12 @@ const DEFAULT_STATE = {
   /* بخش «دیتای شخصی» خالی شروع می‌شود: بار اول که بازش کنید خودتان یک
      رمز جداگانه می‌گذارید و از همان لحظه محتوایش با AES رمز می‌شود. */
   personalVault: null,
-  tasks: [],
+  /* شغلِ انتخاب‌شده اگر چک‌لیستِ خودش را داشته باشد، همان می‌نشیند —
+     مثل کارتابل عمومی. فقط برای کارتابلِ تازه: بعد از اولین ذخیره،
+     داده مالِ کاربر است و این‌جا دیگر به آن دست نمی‌زند. */
+  tasks: (window.KARTABL_JOB && Array.isArray(window.KARTABL_JOB.tasks))
+    ? JSON.parse(JSON.stringify(window.KARTABL_JOB.tasks))
+    : [],
   days: Array.from({length:25}, (_,i)=>({day:i+1, createdDate:"", main:"", meet:"", company:"", status:""})),
   monthsData: {},
   currentMonthKey: null

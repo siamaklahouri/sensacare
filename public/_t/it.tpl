@@ -1939,6 +1939,19 @@ const PRIORITY = ["بالا","متوسط","پایین"];
 const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
   || ["بکاپ‌گیری","سرورها و زیرساخت","امنیت سایبری","شبکه","پشتیبانی کاربران","لایسنس و تمدیدها","مانیتورینگ","مستندسازی","سایر"];
 
+/* گزینه‌های ستون «دسته» برای یک وظیفه.
+
+   دستهٔ خودِ وظیفه هم — حتی اگر در فهرستِ شغل نباشد — اضافه می‌شود.
+   بدون این، اگر مدیر شغلِ کاربر را عوض می‌کرد، دستهٔ وظیفه‌های قبلی از
+   فهرست می‌افتاد و مرورگر گزینهٔ اول را انتخاب‌شده نشان می‌داد: کاربر
+   می‌دید دستهٔ وظیفه‌اش بی‌آنکه دست بزند عوض شده، و اولین تغییرِ بعدی
+   همان را ذخیره می‌کرد. */
+function categoryOptions(cur){
+  const c = cur == null ? "" : String(cur);
+  const list = (c && !CATEGORIES.includes(c)) ? [c].concat(CATEGORIES) : CATEGORIES;
+  return list.map(x=>`<option value="${escapeHtml(x)}" ${c===x?"selected":""}>${escapeHtml(x)}</option>`).join("");
+}
+
 /* ---------- Resilient Chart.js loader (tries several mirrors in case one is blocked) ---------- */
 const CHART_CDN_URLS = [
   /* نسخهٔ محلی روی خودِ sensacare.ir — از داخل ایران همیشه باز می‌شود.
@@ -2961,9 +2974,7 @@ function renderChecklist(){
     <tr data-idx="${i}">
       <td>${fa(i+1)}</td>
       <td>
-        <select data-field="category">
-          ${CATEGORIES.map(c=>`<option value="${c}" ${t.category===c?"selected":""}>${c}</option>`).join("")}
-        </select>
+        <select data-field="category">${categoryOptions(t.category)}</select>
       </td>
       <td class="editable-text"><input type="text" data-field="task" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text"><input type="text" data-field="owner" value="${escapeHtml(t.owner)}"></td>
