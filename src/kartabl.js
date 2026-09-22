@@ -174,6 +174,11 @@ const FEATURE_ROUTES = [
   [/^\/escrow-pub$/, 'vault']
 ];
 
+/* نشانهٔ کلیدِ عمومیِ اضطراری: تکهٔ آخرِ modulus. نه رمز است نه
+   امضا — فقط برای اینکه بفهمیم کلید همان کلیدِ قبلی است یا عوض شده. */
+export const pubFingerprint = pub =>
+  pub && typeof pub.n === 'string' ? pub.n.slice(-24) : '';
+
 export function featureOff(panel, p) {
   if (!panel.off || !panel.off.length) return null;
   for (const [re, f] of FEATURE_ROUTES)
@@ -968,12 +973,25 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
      نتیجه‌اش این است: سرور هر دو تکه را دارد و باز هم نمی‌تواند بخواند؛
      ادمین با رمزِ خودش می‌تواند. */
-  if (p === '/escrow-pub' && m === 'GET')
-    return json({ ok: true, pub: await getSetting(env, 'vaultEscrowPub', null) });
+  /* «fp» نشانهٔ کلیدِ عمومیِ فعلی است — تکه‌ای از خودِ کلید، نه چیزی
+     محرمانه. کارش فقط این است که مرورگرِ کاربر بفهمد پاکتی که قبلاً
+     سپرده با همین کلید پیچیده شده یا با کلیدِ قبلیِ ادمین. اگر ادمین
+     کلید را عوض کرده باشد، پاکتِ قدیمی به کارِ کسی نمی‌آید و باید
+     تازه شود. */
+  if (p === '/escrow-pub' && m === 'GET') {
+    const pub = await getSetting(env, 'vaultEscrowPub', null);
+    const mine = await getSetting(env, 'escrow:' + panel.slug, null);
+    return json({ ok: true, pub, fp: pubFingerprint(pub),
+                  mine: mine ? { at: Number(mine.at) || 0, fp: String(mine.fp || '') } : null });
+  }
 
   if (p === '/escrow' && m === 'POST') {
     if (!body.bundle || !body.bundle.cipher) return bad('بستهٔ کلید ناقص است.');
-    await setSetting(env, 'escrow:' + panel.slug, body.bundle);
+    await setSetting(env, 'escrow:' + panel.slug, {
+      cipher: String(body.bundle.cipher),
+      at: Number(body.bundle.at) || Date.now(),
+      fp: String(body.bundle.fp || '').slice(0, 64)
+    });
     return json({ ok: true });
   }
 

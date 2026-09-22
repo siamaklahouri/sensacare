@@ -618,12 +618,25 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   if (p === '/escrow-key' && m === 'POST') {
     if (!body.pub || !body.priv || !body.priv.cipher)
       return bad('کلید ناقص است.');
-    if (await getSetting(env, 'vaultEscrowPub', null) && !body.replace)
+    const had = await getSetting(env, 'vaultEscrowPub', null);
+    if (had && !body.replace)
       return bad('کلید از قبل هست. برای جایگزینی باید صریح بگویید.', 409);
     await setSetting(env, 'vaultEscrowPub', body.pub);
     await setSetting(env, 'vaultEscrowPriv', body.priv);
-    await log(env, 'escrow-key', '', body.replace ? 'replace' : 'new');
-    return json({ ok: true });
+    /* پاکت‌هایی که با کلیدِ قبلی پیچیده شده‌اند با کلیدِ تازه باز
+       نمی‌شوند. نگه داشتنشان فقط پنل را دروغ‌گو می‌کرد («رمز شخصی نزد
+       شما: بله») پس همین‌جا برداشته می‌شوند. کاربر هم لازم نیست کاری
+       بکند: دفعهٔ بعد که صندوقش را باز کند، مرورگرش خودش پاکتِ تازه
+       می‌سپارد. */
+    let dropped = 0;
+    if (had) {
+      const rows = await all(env, "SELECT k FROM settings WHERE k LIKE 'escrow:%'");
+      for (const r of rows) await run(env, 'DELETE FROM settings WHERE k=?', r.k);
+      dropped = rows.length;
+    }
+    await log(env, 'escrow-key', '',
+      (body.replace ? 'replace' : 'new') + (dropped ? ` — ${dropped} پاکتِ قدیمی برداشته شد` : ''));
+    return json({ ok: true, dropped });
   }
 
   /* ---- گزارش ----

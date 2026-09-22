@@ -4878,9 +4878,31 @@ async function escrowVaultPassword(password){
       { name:"RSA-OAEP", hash:"SHA-256" }, false, ["encrypt"]);
     const buf = await crypto.subtle.encrypt({ name:"RSA-OAEP" }, pub,
       new TextEncoder().encode(password));
+    /* نشانهٔ کلید را هم می‌فرستیم تا بعداً معلوم باشد این پاکت با کدام
+       کلیدِ ادمین پیچیده شده. */
     const put = await apiCall("/escrow", { method:"POST",
-      body: JSON.stringify({ bundle: { cipher: b64FromBuf(buf), at: Date.now() } }) });
+      body: JSON.stringify({ bundle: { cipher: b64FromBuf(buf), at: Date.now(),
+                                       fp: (r.data.fp || "") } }) });
     return !!put.ok;
+  }catch(e){ return false; }
+}
+
+/* اگر ادمین کلیدِ اضطراری را عوض کرده باشد، پاکتِ قبلیِ این کاربر با
+   کلیدِ قدیمی پیچیده است و دیگر باز نمی‌شود. همان لحظه‌ای که کاربر
+   صندوقش را باز می‌کند رمز در دست است، پس بی‌سر و صدا پاکتِ تازه
+   می‌سپاریم — نه پیامی، نه کاری که کاربر باید بکند.
+
+   فقط وقتی پاکت با کلیدِ فعلی نمی‌خواند این کار انجام می‌شود، وگرنه
+   هر بار باز کردنِ صندوق یک نوشتنِ بی‌دلیل بود. */
+async function reEscrowIfStale(password){
+  if(window.KARTABL_OFFLINE) return false;
+  try{
+    const r = await apiCall("/escrow-pub");
+    if(!(r.ok && r.data && r.data.pub)) return false;
+    const fp = r.data.fp || "";
+    const mine = r.data.mine;
+    if(mine && mine.fp && fp && mine.fp === fp) return false;
+    return await escrowVaultPassword(password);
   }catch(e){ return false; }
 }
 async function createPersonalPassword(password){
@@ -4914,6 +4936,7 @@ async function tryUnlockPersonal(password){
     if(!personalVaultPlain.sections || typeof personalVaultPlain.sections !== "object") personalVaultPlain.sections = {};
     personalUnlocked = true;
     renderPersonalView();
+    reEscrowIfStale(password);
   }catch(e){
     const err = document.getElementById("personalLockError");
     if(err) err.textContent = "❌ رمز عبور اشتباه است.";
