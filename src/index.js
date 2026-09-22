@@ -1606,11 +1606,17 @@ export default {
     /* کدام سایت؟ (بالا، کنارِ siteOf، توضیح داده شده) */
     const site = siteOf(env, url.host);
 
-    /* روی دامنهٔ پنل، ریشه همان صفحهٔ ورود است. ۳۰۲ و نه ۳۰۱، تا اگر
-       روزی ریشه چیزِ دیگری شد، مرورگرها جابه‌جاییِ همیشگی را کش نکرده
-       باشند. */
-    if (site === 'panel' && m === 'GET' && (p === '/' || p === '/index.html'))
+    /* ریشهٔ دامنهٔ پنل صفحهٔ معرفیِ خودش را دارد، نه فروشگاه را. فایل‌های
+       ثابت پیش از ورکر سرو می‌شوند، پس «run_worker_first» در wrangler.toml
+       این مسیر را به این‌جا می‌رساند. */
+    if (site === 'panel' && m === 'GET' && (p === '/' || p === '/index.html')) {
+      const res = await env.ASSETS.fetch(new Request(new URL('/_t/home.tpl', req.url), req));
+      if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=300' } }));
+      /* اگر قالب نیامد، دستِ‌کم کاربر را به صفحهٔ ورود برسان */
       return Response.redirect(new URL(ADMIN_PAGE, req.url).toString(), 302);
+    }
 
     /* صفحه‌های فروشگاه روی دامنهٔ پنل جایی ندارند و برمی‌گردند خانه‌شان.
        فقط صفحه‌ها؛ فایل‌های ثابت (نشان، فونت، اسکریپت) مشترک‌اند و
