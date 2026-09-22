@@ -1,4 +1,5 @@
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
+import { handleSlUpdate, fromWeb } from './sltech-bot.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -1946,8 +1947,9 @@ export default {
       }
 
       /* هرچه تا این‌جا رسیده و «/api/» است، مالِ فروشگاه است — روی
-         دامنهٔ پنل جایی ندارد. */
-      if (site === 'panel' && p.startsWith('/api/'))
+         دامنهٔ پنل جایی ندارد. جز «/api/sl/» که خودِ همین سایت است:
+         فرمِ تماس و راه‌های تماسِ صفحهٔ اصلی از آن‌جا می‌آیند. */
+      if (site === 'panel' && p.startsWith('/api/') && !p.startsWith('/api/sl/'))
         return bad('این مسیر مالِ فروشگاه است، نه پنل.', 404);
 
       if (p === '/api/bootstrap') {
@@ -2522,6 +2524,45 @@ export default {
 
 
       /* ---------------- ربات‌ها ---------------- */
+      /* ---- ربات‌های SLTech ----
+         جدا از ربات‌های فروشگاه‌اند و توکنشان از «تنظیمات سایت» می‌آید. */
+      if (p === '/api/sl/bot/telegram' || p === '/api/sl/bot/bale') {
+        const kind = p.endsWith('telegram') ? 'telegram' : 'bale';
+        const secret = await getSetting(env, 'slBotSecret', '');
+        if (secret && url.searchParams.get('s') !== secret) return bad('forbidden', 403);
+        if (m !== 'POST') return json({ ok: true });
+        ctx.waitUntil(handleSlUpdate(env, kind, body).catch(e => console.log('slbot', e.message)));
+        return json({ ok: true });
+      }
+
+      /* راه‌های تماس برای صفحهٔ اصلی — فقط همین‌ها، نه چیزِ دیگری
+         از تنظیمات (شمارهٔ کارت و توکن این‌جا کاری ندارند). */
+      if (p === '/api/sl/site' && m === 'GET') {
+        const st = (await getSetting(env, 'sltechSite', {})) || {};
+        return json({ ok: true, site: {
+          telegram: st.telegram || '', bale: st.bale || '',
+          phone: st.phone || '', email: st.email || '',
+          plans: Array.isArray(st.plans) ? st.plans : []
+        } });
+      }
+
+      /* فرمِ تماسِ صفحهٔ اصلی */
+      if (p === '/api/sl/contact' && m === 'POST') {
+        const rl = await rateLimit(env, 'slcontact:' + clientIp(req), 6, 3600);
+        if (!rl.ok) return bad('پیام‌ها زیاد شد. یک ساعت دیگر.', 429);
+        const name = String(body.name || '').trim().slice(0, 60);
+        const contact = String(body.contact || '').trim().slice(0, 80);
+        const text = String(body.text || '').trim().slice(0, 1500);
+        if (!text) return bad('متنِ پیام خالی است.');
+        if (!contact) return bad('یک راهِ تماس بنویسید، وگرنه جوابی نمی‌شود داد.');
+        /* پیام همین‌جا ذخیره می‌شود و در پنل دیده می‌شود، چه ربات‌ها
+           بگیرندش چه نگیرند. پس «رسید» درست است حتی اگر خبرِ تلگرامی‌اش
+           نرفته باشد — وگرنه کسی که فرم را پر کرده بی‌دلیل دوباره
+           می‌فرستاد. */
+        const sent = await fromWeb(env, { name, contact, text });
+        return json({ ok: true, delivered: sent > 0 });
+      }
+
       if (p === '/api/bot/telegram' || p === '/api/bot/bale') {
         const pf = p.endsWith('telegram') ? 'telegram' : 'bale';
         const secret = await getSetting(env, 'botSecret', env.BOT_SECRET || '');

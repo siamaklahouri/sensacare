@@ -263,6 +263,26 @@ a{ color:var(--brass-ink); }
   background:var(--white); box-shadow:var(--glow); }
 .hint{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-top:8px; }
 .hint2{ font-size:11px; color:var(--ink-faint); font-weight:400; }
+/* ---------- گفتگوهای پشتیبانی ---------- */
+.thread{ border:1px solid var(--line); border-radius:var(--r); margin-bottom:12px;
+  overflow:hidden; background:var(--paper-2); }
+.thead{ display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  padding:10px 13px; background:var(--white); border-bottom:1px solid var(--line-soft);
+  font-size:13px; }
+.mbody{ padding:11px 13px; display:flex; flex-direction:column; gap:7px;
+  max-height:280px; overflow:auto; }
+.mline{ display:flex; gap:9px; align-items:baseline; font-size:13px; line-height:1.9; }
+.mline .mt{ font-size:10.5px; color:var(--ink-faint); white-space:nowrap; flex:none; }
+.mline .mx{ padding:6px 11px; border-radius:var(--r-sm); }
+.mline.in .mx{ background:var(--white); border:1px solid var(--line); }
+.mline.out{ flex-direction:row-reverse; }
+.mline.out .mx{ background:var(--brass-bg); color:var(--brass-ink); }
+.mreply{ display:flex; gap:8px; padding:10px 13px; border-top:1px solid var(--line-soft);
+  background:var(--white); }
+.mreply .rtext{ flex:1; padding:9px 11px; border:1px solid var(--line);
+  border-radius:var(--r-sm); background:var(--paper-2); color:var(--ink);
+  font-family:var(--font); font-size:13px; }
+.mreply .rtext:focus{ outline:none; border-color:var(--brass); box-shadow:var(--glow); }
 /* یک ردیفِ پلن: نام، قیمت، مدت، توضیح، و دکمهٔ برداشتن */
 .planrow{ display:grid; gap:8px; align-items:center; margin-bottom:8px;
   grid-template-columns: 1.3fr .9fr .6fr 1.6fr auto; }
@@ -533,6 +553,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     <button data-tab="list" class="active">کارتابل‌ها</button>
     <button data-tab="report">گزارش</button>
     <button data-tab="new">کارتابل تازه</button>
+    <button data-tab="msgs">پیام‌ها</button>
     <button data-tab="site">تنظیمات سایت</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
     <button data-tab="log">سیاههٔ کارها</button>
@@ -603,6 +624,15 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     </div>
   </section>
 
+  <section id="tab-msgs" hidden>
+    <div class="panel">
+      <h2>پیام‌های پشتیبانی</h2>
+      <p class="sub">هر پیامی که به ربات‌ها یا فرمِ سایت برسد این‌جاست. جواب از همین‌جا
+        هم می‌رود، هم می‌توانید در خودِ ربات روی پیام ریپلای کنید.</p>
+      <div id="msgBody" class="hint">…</div>
+    </div>
+  </section>
+
   <section id="tab-site" hidden>
     <div class="panel">
       <h2>راه‌های تماس</h2>
@@ -662,6 +692,12 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
       </div>
       <div class="hint">شناسهٔ گفتگو را از خودِ ربات می‌گیرید: یک پیام به ربات بدهید و
         بعد «پیام آزمایشی» را بزنید تا مطمئن شوید به همان‌جا می‌رسد.</div>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line-soft);">
+        <button class="btn" id="stHook">وصل کردن ربات‌ها به سایت</button>
+        <span class="hint2" id="stHookNote" style="margin-inline-start:10px;"></span>
+        <div class="hint">تا این را نزنید، پیامی که مردم به ربات می‌دهند به سایت نمی‌رسد.
+          بعد از عوض کردنِ توکن هم یک‌بار دیگر بزنیدش.</div>
+      </div>
     </div>
 
     <div style="margin:4px 0 30px;"><button class="btn btn-main" id="stSave">ذخیرهٔ تنظیمات</button></div>
@@ -946,6 +982,7 @@ function setupTabs(){
         if(sec) sec.hidden = (x !== b);
       });
       if(b.dataset.tab === "log") loadLog();
+      if(b.dataset.tab === "msgs") loadMessages();
       if(b.dataset.tab === "report") loadReport();
     });
   });
@@ -1613,6 +1650,72 @@ function setupNew(){
   };
 }
 
+/* ---------- پیام‌ها ---------- */
+const PF_NAME = { sltg:"تلگرام", slbale:"بله", slweb:"فرمِ سایت" };
+
+async function loadMessages(){
+  const box = document.getElementById("msgBody");
+  box.textContent = "…";
+  const r = await api("/messages");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  const items = r.data.items || [];
+  if(!items.length){ box.textContent = "هنوز پیامی نیامده."; return; }
+
+  /* پیام‌ها بر اساس گفتگو دسته می‌شوند، وگرنه فهرستِ درهمی می‌شد که
+     معلوم نیست کدام جواب مالِ کدام سؤال است. */
+  const threads = new Map();
+  for(const it of items){
+    const k = it.platform + "|" + it.chat_id;
+    if(!threads.has(k)) threads.set(k, { pf:it.platform, chat:it.chat_id,
+                                         name:it.name||"", phone:it.phone||"", msgs:[] });
+    const t = threads.get(k);
+    if(it.name && !t.name) t.name = it.name;
+    if(it.phone && !t.phone) t.phone = it.phone;
+    t.msgs.push(it);
+  }
+  box.innerHTML = Array.from(threads.values()).map(t=>{
+    const lines = t.msgs.slice().reverse().map(mm=>`
+      <div class="mline ${mm.dir === "in" ? "in" : "out"}">
+        <span class="mt">${esc(faDateTime(mm.created))}</span>
+        <span class="mx">${esc(mm.text || "")}</span>
+      </div>`).join("");
+    const canReply = t.pf !== "slweb";
+    return `<div class="thread">
+      <div class="thead">
+        <b>${esc(t.name || "ناشناس")}</b>
+        <span class="pill pill-builtin">${esc(PF_NAME[t.pf] || t.pf)}</span>
+        ${t.phone ? `<span class="hint2" dir="ltr">${esc(t.phone)}</span>` : ``}
+        <span class="hint2" dir="ltr">${esc(t.chat)}</span>
+      </div>
+      <div class="mbody">${lines}</div>
+      ${canReply
+        ? `<div class="mreply">
+             <input type="text" class="rtext" placeholder="جواب…" autocomplete="off">
+             <button class="btn" data-reply="${esc(t.pf)}|${esc(t.chat)}">بفرست</button>
+           </div>`
+        : `<div class="hint">این از فرمِ سایت آمده و گفتگویی ندارد — از همان راهِ تماسی که
+             گذاشته جوابش را بدهید.</div>`}
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-reply]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const [pf, chat] = btn.dataset.reply.split("|");
+      const input = btn.closest(".mreply").querySelector(".rtext");
+      const text = input.value.trim();
+      if(!text) return;
+      btn.disabled = true;
+      const r = await api("/messages/reply", { method:"POST",
+        body: JSON.stringify({ pf, chat, text }) });
+      btn.disabled = false;
+      if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+      input.value = "";
+      say("جواب رفت.");
+      loadMessages();
+    };
+  });
+}
+
 /* ---------- تنظیماتِ سایت ---------- */
 let SITE = { plans: [] };
 
@@ -1680,6 +1783,21 @@ async function setupSite(){
              : (r.data.error || "نشد."), !r.ok);
     btn.disabled = false; btn.textContent = t;
   };
+  document.getElementById("stHook").onclick = async (e)=>{
+    const btn = e.currentTarget, note = document.getElementById("stHookNote");
+    btn.disabled = true; note.textContent = "…";
+    const r = await api("/messages/hook", { method:"POST", body:"{}" });
+    btn.disabled = false;
+    if(!r.ok){ note.textContent = ""; say(r.data.error || "نشد.", true); return; }
+    const h = r.data.hooks || {};
+    const okd = ["telegram","bale"].filter(k=> h[k] && h[k].ok);
+    const bad_ = ["telegram","bale"].filter(k=> h[k] && !h[k].ok)
+      .map(k=> (k==="bale"?"بله":"تلگرام") + ": " + (h[k].error||"نشد"));
+    note.textContent = okd.length ? "✅ وصل شد: " + okd.map(k=> k==="bale"?"بله":"تلگرام").join("، ") : "";
+    say(okd.length ? "ربات‌ها وصل شدند." + (bad_.length ? "<br>" + esc(bad_.join(" — ")) : "")
+                   : esc(bad_.join(" — ") || "هیچ‌کدام وصل نشد."), !okd.length);
+  };
+
   document.getElementById("stTgTest").onclick = e => test("telegram", e.currentTarget);
   document.getElementById("stBaleTest").onclick = e => test("bale", e.currentTarget);
 

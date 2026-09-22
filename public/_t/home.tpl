@@ -184,6 +184,23 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 .final p{ margin:0 auto 22px; max-width:520px; color:rgba(255,255,255,.88); font-size:14.5px; }
 .final .btn{ background:#fff; color:var(--brand-deep); border-color:transparent; }
 .final .btn-ghost{ background:transparent; color:#fff; border-color:rgba(255,255,255,.55); }
+.ask{ max-width:560px; margin:0 auto; text-align:start; }
+.ask-row{ display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-bottom:10px; }
+@media (max-width:520px){ .ask-row{ grid-template-columns:1fr; } }
+.ask input, .ask textarea{ width:100%; padding:12px 14px; border-radius:var(--r);
+  border:1px solid rgba(255,255,255,.3); background:rgba(255,255,255,.12); color:#fff;
+  font-family:inherit; font-size:14px; }
+.ask input::placeholder, .ask textarea::placeholder{ color:rgba(255,255,255,.6); }
+.ask input:focus, .ask textarea:focus{ outline:none; border-color:#fff;
+  background:rgba(255,255,255,.18); }
+.ask textarea{ resize:vertical; line-height:1.9; }
+.ask-acts{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+.ask-note{ margin-top:10px; font-size:13px; color:rgba(255,255,255,.9); min-height:20px;
+  text-align:center; }
+.ways{ margin-top:18px; display:flex; gap:9px; justify-content:center; flex-wrap:wrap; }
+.ways a{ color:#fff; text-decoration:none; font-size:13px; padding:7px 14px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.35); }
+.ways a:hover{ background:rgba(255,255,255,.14); }
 
 footer{ padding:34px 0 46px; text-align:center; color:var(--ink-faint); font-size:12.5px; }
 footer a{ color:var(--ink-soft); text-decoration:none; }
@@ -429,11 +446,19 @@ footer .sep{ opacity:.5; margin:0 8px; }
     <div class="final">
       <h2>کارتابلِ شغلِ خودتان را بگیرید</h2>
       <p>بگویید چه کاری می‌کنید و چند نفرید؛ کارتابل با چک‌لیستِ همان شغل آماده می‌شود.</p>
-      <div class="cta" style="display:flex; gap:11px; justify-content:center; flex-wrap:wrap;">
-        <!-- ‼️ این دو لینک را با راه‌های تماسِ خودتان عوض کنید -->
-        <a class="btn" href="https://t.me/sltech_ir" target="_blank" rel="noopener">پیام در تلگرام</a>
-        <a class="btn btn-ghost" href="/login">ورود به کارتابل</a>
-      </div>
+      <form id="askForm" class="ask">
+        <div class="ask-row">
+          <input type="text" id="askName" placeholder="نام شما" autocomplete="name">
+          <input type="text" id="askContact" placeholder="تلگرام، شماره یا ایمیل" dir="ltr" autocomplete="off">
+        </div>
+        <textarea id="askText" rows="3" placeholder="چه کاری می‌کنید و چند نفرید؟"></textarea>
+        <div class="ask-acts">
+          <button class="btn" type="submit" id="askGo">بفرست</button>
+          <a class="btn btn-ghost" href="/login">ورود به کارتابل</a>
+        </div>
+        <div class="ask-note" id="askNote"></div>
+      </form>
+      <div class="ways" id="ways"></div>
     </div>
   </section>
 
@@ -463,6 +488,52 @@ footer .sep{ opacity:.5; margin:0 8px; }
     try{ localStorage.setItem("sltech:theme", dark ? "light" : "dark"); }catch(e){}
     paint();
   });
+})();
+
+/* ---------- فرمِ تماس ----------
+   پیام همان‌جا ذخیره می‌شود و در پنل دیده می‌شود؛ خبرش هم به هر دو
+   ربات می‌رود. پس «رسید» را وقتی می‌گوییم که واقعاً ثبت شده باشد. */
+document.getElementById("askForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const btn = document.getElementById("askGo");
+  const note = document.getElementById("askNote");
+  const text = document.getElementById("askText").value.trim();
+  const contact = document.getElementById("askContact").value.trim();
+  note.textContent = "";
+  if(!text){ note.textContent = "یک خط بنویسید تا بدانیم چه می‌خواهید."; return; }
+  if(!contact){ note.textContent = "یک راهِ تماس بگذارید، وگرنه جوابی نمی‌شود داد."; return; }
+  btn.disabled = true; btn.textContent = "…";
+  try{
+    const r = await fetch("/api/sl/contact", { method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ name: document.getElementById("askName").value.trim(),
+                             contact, text }) });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      document.getElementById("askForm").reset();
+      note.textContent = "✅ رسید. به‌زودی از همان راهی که گفتید جواب می‌دهیم.";
+    } else note.textContent = d.error || "نشد. کمی بعد دوباره امتحان کنید.";
+  }catch(err){ note.textContent = "نشد. اتصالتان را ببینید و دوباره بفرستید."; }
+  btn.disabled = false; btn.textContent = "بفرست";
+});
+
+/* راه‌های تماس از تنظیماتِ پنل می‌آید، نه از متنِ ثابتِ این صفحه. */
+(async function ways(){
+  try{
+    const r = await fetch("/api/sl/site");
+    const d = await r.json().catch(()=>({}));
+    const s = (d && d.site) || {};
+    const box = document.getElementById("ways");
+    const esc = t => String(t==null?"":t).replace(/[<>&"]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+    const link = (href, label)=> `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+    const at = u => String(u||"").replace(/^@/,"").replace(/^https?:\/\/[^/]+\//,"");
+    const out = [];
+    if(s.telegram) out.push(link("https://t.me/" + at(s.telegram), "تلگرام"));
+    if(s.bale)     out.push(link("https://ble.ir/" + at(s.bale), "بله"));
+    if(s.phone)    out.push(link("tel:" + s.phone, s.phone));
+    if(s.email)    out.push(link("mailto:" + s.email, s.email));
+    box.innerHTML = out.join("");
+  }catch(e){ /* نبودنش صفحه را خراب نمی‌کند */ }
 })();
 
 /* لینک‌های داخلِ صفحه نرم بروند، ولی نوارِ چسبانِ بالا رویشان نیفتد. */

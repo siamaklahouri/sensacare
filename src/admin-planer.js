@@ -19,6 +19,7 @@ import {
   handleKartabl
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
+import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -643,6 +644,36 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (!d.ok) return bad('ربات نپذیرفت: ' + (d.description || 'پاسخِ نامفهوم'), 502);
       return json({ ok: true });
     } catch (e) { return bad('به ربات نرسیدیم: ' + e.message, 502); }
+  }
+
+  /* ---- پیام‌های پشتیبانی ---- */
+  if (p === '/messages' && m === 'GET')
+    return json({ ok: true, items: await recentMessages(env, 80) });
+
+  /* جواب از داخلِ پنل — همان کاری که ریپلای در ربات می‌کند */
+  if (p === '/messages/reply' && m === 'POST') {
+    const pf = String(body.pf || '');
+    const chat = String(body.chat || '').trim();
+    const text = String(body.text || '').trim().slice(0, 2000);
+    if (!chat || !text) return bad('گفتگو یا متن خالی است.');
+    if (!Object.values(SL_PF).includes(pf))
+      return bad('این پیام از فرمِ سایت آمده و گفتگویی ندارد؛ از همان راهِ تماسِ خودش جواب بدهید.');
+    const sent = await toUser(env, pf, chat, text);
+    if (!sent) return bad('نرسید — شاید آن گفتگو بسته شده.', 502);
+    await log(env, 'reply', '', chat);
+    return json({ ok: true });
+  }
+
+  /* وب‌هوک: تا این زده نشود، ربات پیامی به سایت نمی‌فرستد */
+  if (p === '/messages/hook' && m === 'POST') {
+    let secret = await getSetting(env, 'slBotSecret', '');
+    if (!secret) { secret = newPassword(4, 6); await setSetting(env, 'slBotSecret', secret); }
+    const host = env.PANEL_HOST || env.PUBLIC_HOST || new URL(req.url).host;
+    const out = {};
+    for (const kind of ['telegram', 'bale'])
+      out[kind] = await setSlWebhook(env, kind, 'https://' + host, secret);
+    await log(env, 'bot-hook', '', Object.keys(out).filter(k => out[k].ok).join(','));
+    return json({ ok: true, hooks: out });
   }
 
   /* ---- نام کاربریِ خودِ ادمین ---- */
