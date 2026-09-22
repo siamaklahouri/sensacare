@@ -706,3 +706,26 @@ CREATE TABLE IF NOT EXISTS admin_log (
   note TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS admin_log_at ON admin_log(at DESC);
+
+-- ۳۱ | سفارش‌های کارتابل (sltech.ir)
+-- فروشگاهِ سِنسا جدول‌های خودش را دارد و این‌جا کاری با آن‌ها نداریم:
+-- سفارشِ کارتابل یک پلن است و یک خریدار، نه سبد و کرایه و تخفیف.
+-- شمارهٔ فاکتور همان کلید است، چون همان چیزی است که خریدار موقع
+-- فرستادنِ فیش می‌نویسد.
+CREATE TABLE IF NOT EXISTS sl_orders (
+  id       TEXT PRIMARY KEY,
+  created  INTEGER NOT NULL,
+  plan     TEXT NOT NULL DEFAULT '',
+  price    INTEGER NOT NULL DEFAULT 0,
+  days     INTEGER NOT NULL DEFAULT 0,
+  kind     TEXT NOT NULL DEFAULT 'gen',
+  job      TEXT NOT NULL DEFAULT '',
+  name     TEXT NOT NULL DEFAULT '',
+  contact  TEXT NOT NULL DEFAULT '',
+  seats    INTEGER NOT NULL DEFAULT 1,
+  note     TEXT NOT NULL DEFAULT '',
+  status   TEXT NOT NULL DEFAULT 'new',   -- new | paid | done | canceled
+  slug     TEXT NOT NULL DEFAULT '',      -- کارتابلی که برایش ساخته شد
+  updated  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS sl_orders_created ON sl_orders(created DESC);

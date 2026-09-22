@@ -263,6 +263,14 @@ a{ color:var(--brass-ink); }
   background:var(--white); box-shadow:var(--glow); }
 .hint{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-top:8px; }
 .hint2{ font-size:11px; color:var(--ink-faint); font-weight:400; }
+/* ---------- سفارش‌ها ---------- */
+.ordrow{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
+  margin-bottom:11px; background:var(--white); }
+.ohead{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.ono{ font-weight:700; font-size:15px; letter-spacing:.05em; color:var(--brass-ink); }
+.ordrow .acts{ display:flex; gap:8px; flex-wrap:wrap; margin-top:11px; }
+.pill-fin{ background:var(--s-fin-bg); color:var(--s-fin); }
+.pill-it{ background:var(--s-it-bg); color:var(--s-it); }
 /* ---------- گفتگوهای پشتیبانی ---------- */
 .thread{ border:1px solid var(--line); border-radius:var(--r); margin-bottom:12px;
   overflow:hidden; background:var(--paper-2); }
@@ -553,6 +561,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     <button data-tab="list" class="active">کارتابل‌ها</button>
     <button data-tab="report">گزارش</button>
     <button data-tab="new">کارتابل تازه</button>
+    <button data-tab="orders">سفارش‌ها</button>
     <button data-tab="msgs">پیام‌ها</button>
     <button data-tab="site">تنظیمات سایت</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
@@ -617,10 +626,22 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
         <div class="fld"><label>چک‌لیست آماده (اختیاری)</label><select id="nJob"></select></div>
         <div class="fld"><label>رمز ورود (خالی = خودکار)</label>
           <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off"></div>
+        <div class="fld"><label>مهلت به روز (خالی = بی‌مهلت)</label>
+          <input type="number" id="nDays" min="0" max="3650" dir="ltr" autocomplete="off"
+            placeholder="مثلاً ۳۰"></div>
       </div>
       <input type="hidden" id="nKind" value="gen">
       <div class="hint" id="nPreview"></div>
       <div style="margin-top:12px;"><button class="btn btn-main" id="nCreate">ساختن کارتابل</button></div>
+    </div>
+  </section>
+
+  <section id="tab-orders" hidden>
+    <div class="panel">
+      <h2>سفارش‌های کارتابل</h2>
+      <p class="sub">هر سفارشی که از صفحهٔ اصلی ثبت شود این‌جاست. فیشِ خریدار در
+        سربرگ «پیام‌ها» می‌آید — با همان شمارهٔ فاکتور.</p>
+      <div id="ordBody" class="hint">…</div>
     </div>
   </section>
 
@@ -983,6 +1004,7 @@ function setupTabs(){
       });
       if(b.dataset.tab === "log") loadLog();
       if(b.dataset.tab === "msgs") loadMessages();
+      if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
     });
   });
@@ -1631,12 +1653,14 @@ function setupNew(){
       job: document.getElementById("nJob").value,
       views: Array.from(document.querySelectorAll("#nViews input"))
         .filter(i=> i.checked).map(i=> i.dataset.nview),
-      password: document.getElementById("nPass").value.trim()
+      password: document.getElementById("nPass").value.trim(),
+      days: document.getElementById("nDays").value.trim()
     })});
     btn.disabled = false;
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }
     name.value = ""; slug.value = ""; document.getElementById("nPass").value = "";
     document.getElementById("nUser").value = "";
+    document.getElementById("nDays").value = "";
     paint();
     say("کارتابل ساخته شد: <b>" + esc(HOST) + esc(r.data.url) + "</b><br>" +
         "از صفحهٔ ورود (<b>" + esc(HOST) + "/login</b>) با این نام کاربری وارد می‌شود:<br>" +
@@ -1645,10 +1669,99 @@ function setupNew(){
         "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +
         ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
         "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
+    /* اگر این کارتابل از روی یک سفارش ساخته شده، همان‌جا بسته می‌شود —
+       وگرنه فهرستِ سفارش‌ها پر می‌ماند از کارهای انجام‌شده. */
+    if(PENDING_ORDER){
+      await api("/orders/" + PENDING_ORDER.id, { method:"PUT",
+        body: JSON.stringify({ status:"done", slug: r.data.slug }) });
+      PENDING_ORDER = null;
+    }
     loadPlanners();
     document.querySelector('.tabs button[data-tab="list"]').click();
   };
 }
+
+/* ---------- سفارش‌ها ---------- */
+const ORD_STATUS = {
+  new:      { label:"تازه",        cls:"pill-builtin" },
+  paid:     { label:"پرداخت شد",   cls:"pill-fin" },
+  done:     { label:"کارتابل ساخته شد", cls:"pill-it" },
+  canceled: { label:"لغو",         cls:"pill-off" }
+};
+const KIND_FA = { gen:"عمومی", it:"مدیر IT", fin:"مالی" };
+
+async function loadOrders(){
+  const box = document.getElementById("ordBody");
+  box.textContent = "…";
+  const r = await api("/orders");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  const items = r.data.items || [];
+  if(!items.length){ box.textContent = "هنوز سفارشی ثبت نشده."; return; }
+
+  box.innerHTML = items.map(o=>{
+    const st = ORD_STATUS[o.status] || ORD_STATUS.new;
+    const job = (DATA.jobs || []).find(j=> j.id === o.job);
+    return `<div class="ordrow">
+      <div class="ohead">
+        <span class="ono" dir="ltr">${esc(o.id)}</span>
+        <span class="pill ${st.cls}">${esc(st.label)}</span>
+        <span class="hint2">${esc(faDateTime(o.created))}</span>
+      </div>
+      <div class="meta">
+        <div class="m"><span>خریدار</span><span>${esc(o.name || "—")}</span></div>
+        <div class="m"><span>تماس</span><span dir="ltr">${esc(o.contact || "—")}</span></div>
+        <div class="m"><span>پلن</span><span>${esc(o.plan)}${o.seats > 1 ? " × " + fa(o.seats) : ""}</span></div>
+        <div class="m"><span>مبلغ</span><span>${fa(Number(o.price).toLocaleString("en-US"))} تومان</span></div>
+        <div class="m"><span>نوع و شغل</span><span>${esc(KIND_FA[o.kind] || o.kind)}${job ? " — " + esc(job.label) : ""}</span></div>
+        <div class="m"><span>مدت</span><span>${o.days ? fa(o.days) + " روز" : "بی‌مهلت"}</span></div>
+        ${o.slug ? `<div class="m"><span>کارتابل</span><span dir="ltr">${esc(o.slug)}</span></div>` : ``}
+      </div>
+      ${o.note ? `<div class="hint">توضیح خریدار: ${esc(o.note)}</div>` : ``}
+      <div class="acts">
+        ${o.status === "new" ? `<button class="btn" data-ost="${esc(o.id)}|paid">پرداخت شد</button>` : ``}
+        ${o.status !== "done" && o.status !== "canceled"
+          ? `<button class="btn btn-main" data-omake="${esc(o.id)}">ساختن کارتابل</button>` : ``}
+        ${o.status !== "canceled" && o.status !== "done"
+          ? `<button class="btn btn-off" data-ost="${esc(o.id)}|canceled">لغو</button>` : ``}
+      </div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-ost]").forEach(b=>{
+    b.onclick = async ()=>{
+      const [id, status] = b.dataset.ost.split("|");
+      if(status === "canceled" && !confirm("این سفارش لغو شود؟")) return;
+      b.disabled = true;
+      const r = await api("/orders/" + id, { method:"PUT", body: JSON.stringify({ status }) });
+      if(!r.ok){ b.disabled = false; say(r.data.error || "نشد.", true); return; }
+      say("وضعیت عوض شد.");
+      loadOrders();
+    };
+  });
+
+  /* «ساختن کارتابل» فرمِ سربرگِ تازه را پر می‌کند و می‌بردتان همان‌جا —
+     بعد از ساختن، خودش سفارش را «تمام‌شده» علامت می‌زند. */
+  box.querySelectorAll("[data-omake]").forEach(b=>{
+    b.onclick = ()=>{
+      const o = items.find(x=> x.id === b.dataset.omake);
+      if(!o) return;
+      PENDING_ORDER = o;
+      document.querySelector('.tabs button[data-tab="new"]').click();
+      document.getElementById("nName").value = o.name || "";
+      document.getElementById("nKind").value = o.kind || "gen";
+      const k = document.querySelector('.kind[data-kind="' + (o.kind || "gen") + '"]');
+      if(k) k.click();
+      const jb = document.getElementById("nJob");
+      if(jb && o.job) { jb.value = o.job; jb.dispatchEvent(new Event("change")); }
+      const dd = document.getElementById("nDays");
+      if(dd) dd.value = o.days || "";
+      say("فرم از روی فاکتور <b dir=\"ltr\">" + esc(o.id) + "</b> پر شد. آدرس و نام کاربری را بنویسید و بسازید.");
+    };
+  });
+}
+
+/* سفارشی که منتظرِ ساخته شدنِ کارتابلش هستیم */
+let PENDING_ORDER = null;
 
 /* ---------- پیام‌ها ---------- */
 const PF_NAME = { sltg:"تلگرام", slbale:"بله", slweb:"فرمِ سایت" };

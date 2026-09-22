@@ -1,5 +1,6 @@
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb } from './sltech-bot.js';
+import { placeOrder } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -2544,6 +2545,17 @@ export default {
           phone: st.phone || '', email: st.email || '',
           plans: Array.isArray(st.plans) ? st.plans : []
         } });
+      }
+
+      /* ثبتِ سفارشِ کارتابل */
+      if (p === '/api/sl/order' && m === 'POST') {
+        /* سقف دست‌ودل‌بازتر از تعدادِ سفارشِ واقعی است، چون فرمِ ناقص
+           هم شمرده می‌شود و کسی که دوبار اشتباه تایپ کند نباید یک
+           ساعت پشتِ در بماند. */
+        const rl = await rateLimit(env, 'slorder:' + clientIp(req), 20, 3600);
+        if (!rl.ok) return bad('سفارش‌ها زیاد شد. یک ساعت دیگر.', 429);
+        const r = await placeOrder(env, body);
+        return r.error ? bad(r.error, r.status || 400) : json(r);
       }
 
       /* فرمِ تماسِ صفحهٔ اصلی */

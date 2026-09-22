@@ -20,6 +20,7 @@ import {
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
+import { listOrders, setOrder } from './sltech-shop.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -429,6 +430,14 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const vault = cleanVault(body.vault);
     const cfg = freshConfig(slug, name, kind, job, vault.length ? vault : DEFAULT_VAULT);
     cfg.user = user;
+    /* مهلت را هم می‌شود همین‌جا گذاشت، نه اینکه اول بسازی و بعد ویرایش
+       کنی — مخصوصاً وقتی کارتابل از روی یک سفارشِ چندروزه ساخته می‌شود. */
+    if (body.days !== undefined && body.days !== null && body.days !== '') {
+      const d = Number(body.days);
+      if (!Number.isFinite(d) || d < 0 || d > 3650)
+        return bad('تعداد روز باید عددی بین ۱ تا ۳۶۵۰ باشد.');
+      if (d > 0) cfg.until = Date.now() + Math.round(d) * 86400000;
+    }
     if (views) cfg.views = views;
     const pass = String(body.password || '').trim() || newPassword();
     await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
@@ -644,6 +653,18 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (!d.ok) return bad('ربات نپذیرفت: ' + (d.description || 'پاسخِ نامفهوم'), 502);
       return json({ ok: true });
     } catch (e) { return bad('به ربات نرسیدیم: ' + e.message, 502); }
+  }
+
+  /* ---- سفارش‌ها ---- */
+  if (p === '/orders' && m === 'GET')
+    return json({ ok: true, items: await listOrders(env, 120) });
+
+  const mOrder = p.match(/^\/orders\/([A-Z0-9-]{3,40})$/);
+  if (mOrder && m === 'PUT') {
+    const r = await setOrder(env, mOrder[1], body);
+    if (r.error) return bad(r.error, r.status || 400);
+    await log(env, 'order', mOrder[1], body.status || '');
+    return json({ ok: true });
   }
 
   /* ---- پیام‌های پشتیبانی ---- */

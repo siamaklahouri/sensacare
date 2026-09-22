@@ -202,6 +202,39 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
   border:1px solid rgba(255,255,255,.35); }
 .ways a:hover{ background:rgba(255,255,255,.14); }
 
+/* ---------- پلن‌ها و سفارش ---------- */
+.plans{ display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); }
+.plan{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
+  padding:22px; text-align:center; box-shadow:var(--sh-1); }
+.plan h3{ margin:0 0 4px; font-size:17px; }
+.plan .price{ font-size:25px; font-weight:700; color:var(--brand); margin:10px 0 2px; }
+.plan .per{ font-size:12.5px; color:var(--ink-faint); }
+.plan .pnote{ font-size:13px; color:var(--ink-soft); margin:10px 0 16px; min-height:38px; }
+.order{ max-width:620px; margin:22px auto 0; }
+.order h3{ margin:0 0 14px; font-size:16px; }
+.order .ask-row{ display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-bottom:10px; }
+@media (max-width:520px){ .order .ask-row{ grid-template-columns:1fr; } }
+.order input, .order select, .order textarea{ width:100%; padding:11px 13px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--paper-2);
+  color:var(--ink); font-family:inherit; font-size:14px; }
+.order input:focus, .order select:focus, .order textarea:focus{ outline:none;
+  border-color:var(--brand); }
+.order textarea{ resize:vertical; line-height:1.9; }
+.order .ask-acts{ justify-content:flex-start; }
+.order .ask-note{ text-align:start; color:var(--ink-soft); }
+.osum{ display:flex; align-items:center; font-weight:600; color:var(--brand-ink);
+  background:var(--brand-soft); border-radius:var(--r); padding:0 14px; font-size:14px; }
+.invoice{ max-width:620px; margin:22px auto 0; }
+.invoice h3{ margin:0 0 10px; font-size:17px; }
+.invoice .no{ font-size:23px; font-weight:700; letter-spacing:.06em; color:var(--brand);
+  direction:ltr; }
+.invoice .kv{ display:flex; justify-content:space-between; gap:12px; padding:9px 0;
+  border-bottom:1px dashed var(--line); font-size:14px; }
+.invoice .kv:last-of-type{ border-bottom:0; }
+.invoice .kv b{ direction:ltr; }
+.invoice .steps2{ margin:14px 0 0; padding:0 18px 0 0; color:var(--ink-soft); font-size:13.5px; }
+.invoice .steps2 li{ margin-bottom:6px; }
+
 footer{ padding:34px 0 46px; text-align:center; color:var(--ink-faint); font-size:12.5px; }
 footer a{ color:var(--ink-soft); text-decoration:none; }
 footer a:hover{ color:var(--brand); }
@@ -231,6 +264,7 @@ footer .sep{ opacity:.5; margin:0 8px; }
     </p>
     <div class="cta">
       <a class="btn btn-main" href="#jobs">شغل‌ها را ببینم</a>
+      <a class="btn buyLink" href="#buy" hidden>پلن‌ها و قیمت</a>
       <a class="btn" href="#how">چطور شروع کنم؟</a>
     </div>
     <p class="note">بدون نصب. در مرورگر باز می‌شود — روی موبایل هم.</p>
@@ -263,8 +297,8 @@ footer .sep{ opacity:.5; margin:0 8px; }
            دست کسی بیفتد، همه‌اش را دارد.</p>
       </div>
       <div class="card pain">
-        <h3><span class="ic">💾</span> پشتیبانی در کار نیست</h3>
-        <p>آن فایل اکسل یک نسخه دارد. اگر لپ‌تاپ برود، هرچه در آن بوده هم رفته.</p>
+        <h3><span class="ic">💾</span> یک نسخه بیشتر ندارد</h3>
+        <p>آن فایل اکسل روی یک لپ‌تاپ است. اگر لپ‌تاپ برود، هرچه در آن بوده هم رفته.</p>
       </div>
       <div class="card pain">
         <h3><span class="ic">🔁</span> هر ماه از صفر</h3>
@@ -293,7 +327,7 @@ footer .sep{ opacity:.5; margin:0 8px; }
       <div class="card"><h3><span class="ic">🤖</span> دستیار هوشمند</h3>
         <p>از دادهٔ خودِ کارتابلتان می‌پرسید: «این ماه چه چیزهایی عقب است؟» و جواب می‌گیرید.</p></div>
       <div class="card"><h3><span class="ic">📘</span> راهنما و تنظیمات</h3>
-        <p>راهنمای داخلِ خودِ صفحه، و تنظیماتی مثل رمز، پشتیبان‌گیری و تم روز و شب.</p></div>
+        <p>راهنمای داخلِ خودِ صفحه، و تنظیماتی مثل رمز ورود و تم روز و شب.</p></div>
     </div>
   </section>
 
@@ -378,14 +412,49 @@ footer .sep{ opacity:.5; margin:0 8px; }
         <li><b>«دیتای شخصی» را خودِ سرور هم نمی‌تواند باز کند.</b> محتوایش در مرورگرِ
           خودتان با AES-256 رمز می‌شود و کلیدش هیچ‌وقت به سرور نمی‌رسد. اگر روزی دادهٔ
           سرور هم لو برود، آن بخش باز نمی‌شود.</li>
-        <li><b>پشتیبان خودکار، دو بار در روز.</b> یک نسخهٔ کامل به گفتگوی تلگرامی خودتان
-          می‌رود — هم فایل داده، هم اکسل، هم خودِ صفحه. هر وقت هم خواستید، دستی.</li>
+        <li><b>پشتیبان خودکار، دو بار در روز.</b> نسخهٔ کاملِ کارتابل نزد ما نگه داشته
+          می‌شود. اگر روزی چیزی پاک شد یا خراب رفت، برمی‌گردانیمش.</li>
         <li><b>تاریخچه دارد.</b> هر تغییرِ مهم نسخهٔ قبلی‌اش نگه داشته می‌شود، پس یک
           اشتباه قابل برگشت است.</li>
-        <li><b>آینهٔ اکسل روی سیستم خودتان.</b> اگر بخواهید، کارتابل با یک پوشه روی
-          کامپیوترتان هماهنگ می‌ماند و همیشه یک فایل اکسلِ به‌روز دمِ دستتان است.</li>
+
       </ul>
     </div>
+  </section>
+
+  <section id="buy" hidden>
+    <div class="sec-head">
+      <h2>پلن‌ها</h2>
+      <p>پلن را انتخاب کنید و فرم را پر. شمارهٔ فاکتور همان‌جا به شما داده می‌شود.</p>
+    </div>
+    <div class="plans" id="planList"></div>
+
+    <form class="order card" id="orderForm" hidden>
+      <h3 id="orderHead"></h3>
+      <div class="ask-row">
+        <input type="text" id="oName" placeholder="نام و نام خانوادگی" autocomplete="name">
+        <input type="text" id="oContact" placeholder="تلگرام، شماره یا ایمیل" dir="ltr" autocomplete="off">
+      </div>
+      <div class="ask-row">
+        <select id="oKind">
+          <option value="gen">کارتابل عمومی</option>
+          <option value="it">کارتابل مدیر IT</option>
+          <option value="fin">کارتابل مالی</option>
+        </select>
+        <select id="oJob"><option value="">— چک‌لیست آماده (اختیاری) —</option></select>
+      </div>
+      <div class="ask-row">
+        <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr" placeholder="چند نفر؟">
+        <div class="osum" id="oSum"></div>
+      </div>
+      <textarea id="oNote" rows="2" placeholder="توضیح (اختیاری)"></textarea>
+      <div class="ask-acts">
+        <button class="btn btn-main" type="submit" id="oGo">ثبت سفارش</button>
+        <button class="btn" type="button" id="oCancel">بی‌خیال</button>
+      </div>
+      <div class="ask-note" id="oNote2"></div>
+    </form>
+
+    <div class="card invoice" id="invoice" hidden></div>
   </section>
 
   <section id="how">
@@ -517,6 +586,119 @@ document.getElementById("askForm").addEventListener("submit", async (e)=>{
   btn.disabled = false; btn.textContent = "بفرست";
 });
 
+/* ---------- پلن‌ها و سفارش ----------
+   پلن‌ها از تنظیماتِ پنل می‌آیند. اگر پلنی تعریف نشده باشد، این بخش
+   اصلاً نشان داده نمی‌شود — بهتر از یک فهرستِ خالیِ «به‌زودی». */
+const JOB_LIST = [
+  ["hr","منابع انسانی"], ["sales","فروش و بازاریابی"], ["acc","حسابداری"],
+  ["support","پشتیبانی فنی و هلپ‌دسک"], ["ceo","مدیرعامل و مدیریت کلان"],
+  ["wh","انبار و تدارکات"], ["pm","مدیریت پروژه"], ["prod","تولید و کارخانه"],
+  ["marketing","بازاریابی دیجیتال و محتوا"], ["qc","کنترل کیفیت"],
+  ["clinic","مطب و کلینیک"], ["logistics","حمل‌ونقل و توزیع"],
+  ["procure","خرید خارجی و ترخیص"], ["retail","فروشگاه و خرده‌فروشی"],
+  ["legal","حقوقی و قراردادها"], ["office","امور اداری و دفتری"]
+];
+const faD = n => String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
+const money = n => faD(Number(n||0).toLocaleString("en-US")) + " تومان";
+const escH = t => String(t==null?"":t).replace(/[<>&"]/g,
+  c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+let PLANS = [], PICKED = null;
+
+function showPlans(plans){
+  PLANS = plans || [];
+  if(!PLANS.length) return;
+  document.getElementById("buy").hidden = false;
+  document.querySelectorAll(".buyLink").forEach(a=> a.hidden = false);
+  document.getElementById("planList").innerHTML = PLANS.map((p,i)=>`
+    <div class="plan">
+      <h3>${escH(p.name)}</h3>
+      <div class="price">${escH(money(p.price))}</div>
+      <div class="per">${p.days ? faD(p.days) + " روز" : "بی‌مهلت"}</div>
+      <div class="pnote">${escH(p.note || "")}</div>
+      <button class="btn btn-main" data-plan="${i}">انتخاب</button>
+    </div>`).join("");
+
+  const jobSel = document.getElementById("oJob");
+  JOB_LIST.forEach(([id,label])=>{
+    const o = document.createElement("option"); o.value = id; o.textContent = label;
+    jobSel.appendChild(o);
+  });
+
+  document.querySelectorAll("[data-plan]").forEach(b=>{
+    b.onclick = ()=>{
+      PICKED = PLANS[Number(b.dataset.plan)];
+      document.getElementById("invoice").hidden = true;
+      const f = document.getElementById("orderForm");
+      f.hidden = false;
+      document.getElementById("orderHead").textContent =
+        "سفارشِ پلنِ «" + PICKED.name + "»";
+      sumUp();
+      f.scrollIntoView({ behavior:"smooth", block:"center" });
+    };
+  });
+  document.getElementById("oSeats").addEventListener("input", sumUp);
+  document.getElementById("oCancel").onclick = ()=>{
+    document.getElementById("orderForm").hidden = true; PICKED = null;
+  };
+}
+
+function sumUp(){
+  if(!PICKED) return;
+  const n = Math.max(1, Math.min(200, Number(document.getElementById("oSeats").value)||1));
+  document.getElementById("oSum").textContent = money(PICKED.price * n);
+}
+
+document.getElementById("orderForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  if(!PICKED) return;
+  const note = document.getElementById("oNote2");
+  const btn = document.getElementById("oGo");
+  const g = id => document.getElementById(id).value.trim();
+  note.textContent = "";
+  if(!g("oName")){ note.textContent = "نامتان را بنویسید."; return; }
+  if(!g("oContact")){ note.textContent = "یک راهِ تماس بگذارید."; return; }
+  btn.disabled = true; btn.textContent = "…";
+  try{
+    const r = await fetch("/api/sl/order", { method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ plan: PICKED.name, name: g("oName"), contact: g("oContact"),
+        kind: g("oKind"), job: g("oJob"), seats: g("oSeats"), note: g("oNote") }) });
+    const d = await r.json().catch(()=>({}));
+    if(!(r.ok && d.ok)){ note.textContent = d.error || "نشد. کمی بعد دوباره."; }
+    else showInvoice(d);
+  }catch(err){ note.textContent = "نشد. اتصالتان را ببینید."; }
+  btn.disabled = false; btn.textContent = "ثبت سفارش";
+});
+
+function showInvoice(d){
+  document.getElementById("orderForm").hidden = true;
+  const box = document.getElementById("invoice");
+  const card = d.card
+    ? `<div class="kv"><span>شمارهٔ کارت</span><b>${escH(d.card.replace(/(\d{4})(?=\d)/g, "$1-"))}</b></div>
+       ${d.cardName ? `<div class="kv"><span>به نام</span><b>${escH(d.cardName)}</b></div>` : ""}`
+    : `<div class="kv"><span>شمارهٔ کارت</span><b>در پیام به شما داده می‌شود</b></div>`;
+  const at = u => String(u||"").replace(/^@/,"").replace(/^https?:\/\/[^/]+\//,"");
+  const ways = [];
+  if(d.telegram) ways.push(`<a href="https://t.me/${escH(at(d.telegram))}" target="_blank" rel="noopener">تلگرام</a>`);
+  if(d.bale) ways.push(`<a href="https://ble.ir/${escH(at(d.bale))}" target="_blank" rel="noopener">بله</a>`);
+  box.innerHTML = `
+    <h3>✅ سفارشتان ثبت شد</h3>
+    <div class="kv"><span>شمارهٔ فاکتور</span><span class="no">${escH(d.id)}</span></div>
+    <div class="kv"><span>پلن</span><b>${escH(d.plan)}</b></div>
+    <div class="kv"><span>مبلغ</span><b>${escH(money(d.price))}</b></div>
+    ${card}
+    <ol class="steps2">
+      <li>مبلغ را به همان کارت واریز کنید.</li>
+      <li>تصویرِ فیش را همراهِ شمارهٔ فاکتور <b>${escH(d.id)}</b> برای ما بفرستید
+          ${ways.length ? "— " + ways.join(" یا ") : ""}.</li>
+      <li>تأیید که شد، کارتابلتان ساخته می‌شود و نام کاربری و رمزش را می‌گیرید.</li>
+    </ol>
+    <p style="color:var(--ink-faint); font-size:12.5px; margin:12px 0 0;">
+      این شماره را یادداشت کنید؛ بدونش فیشتان معلوم نیست مالِ کدام سفارش است.</p>`;
+  box.hidden = false;
+  box.scrollIntoView({ behavior:"smooth", block:"center" });
+}
+
 /* راه‌های تماس از تنظیماتِ پنل می‌آید، نه از متنِ ثابتِ این صفحه. */
 (async function ways(){
   try{
@@ -533,6 +715,7 @@ document.getElementById("askForm").addEventListener("submit", async (e)=>{
     if(s.phone)    out.push(link("tel:" + s.phone, s.phone));
     if(s.email)    out.push(link("mailto:" + s.email, s.email));
     box.innerHTML = out.join("");
+    showPlans(s.plans);
   }catch(e){ /* نبودنش صفحه را خراب نمی‌کند */ }
 })();
 
