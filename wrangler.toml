@@ -36,7 +36,7 @@ SHOP_HOST = "sensacare.ir"
 # کنید (Workers → Settings → Domains & Routes → Add Custom Domain)،
 # بعد این را پر کنید و دوباره منتشر کنید. برعکسش یعنی کارتابل‌ها روی
 # دامنه‌ای ۳۰۱ می‌خورند که هنوز جواب نمی‌دهد.
-PANEL_HOST = ""
+PANEL_HOST = "sltech.ir"
 # رمز و کلیدها را با دستور secret بگذارید، نه اینجا:
 #   npx wrangler secret put ADMIN_PASS
 #   npx wrangler secret put JWT_SECRET
