@@ -593,7 +593,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
   <section id="tab-keys" hidden>
     <div class="panel">
       <h2>نام کاربری ادمین</h2>
-      <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr" class="host-here">/admin.planer</b>)
+      <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr" class="host-here">/login</b>)
         وارد این پنل می‌شوید — همان صفحه‌ای که کاربرها هم از آن وارد کارتابلِ خودشان می‌شوند.</p>
       <div class="row">
         <div class="fld"><label>نام کاربری</label>
@@ -1520,7 +1520,7 @@ function setupNew(){
     document.getElementById("nUser").value = "";
     paint();
     say("کارتابل ساخته شد: <b>" + esc(HOST) + esc(r.data.url) + "</b><br>" +
-        "از صفحهٔ ورود (<b>" + esc(HOST) + "/admin.planer</b>) با این نام کاربری وارد می‌شود:<br>" +
+        "از صفحهٔ ورود (<b>" + esc(HOST) + "/login</b>) با این نام کاربری وارد می‌شود:<br>" +
         "<code>" + esc(r.data.user) + "</code>" +
         ` <button class="copy" data-copy="${esc(r.data.user)}" title="رونوشت">⧉</button><br>` +
         "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +

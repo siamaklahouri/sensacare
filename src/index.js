@@ -1,4 +1,4 @@
-import { handleAdminPlaner, ADMIN_PAGE } from './admin-planer.js';
+import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -1785,7 +1785,7 @@ export default {
          www — و اعتبار صفحه بین دوتا نصف می‌شود. */
       const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\nDisallow: /admin.planer\n\n` +
+        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\nDisallow: /admin.planer\nDisallow: /login\n\n` +
         `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
@@ -1821,6 +1821,17 @@ export default {
     /* ---------------- صفحهٔ پنل ادمین ----------------
        با و بی اسلشِ آخر، هر دو. آدرسش نقطه دارد تا با هیچ کارتابلی
        اشتباه نشود و هیچ‌وقت هم در فهرستِ گوگل نمی‌رود. */
+    /* نشانیِ قبلیِ همین صفحه — هرجا که باشد، به «/login» می‌رود. */
+    if ((p === ADMIN_PAGE_OLD || p === ADMIN_PAGE_OLD + '/') && req.method === 'GET') {
+      const next = new URL(req.url);
+      next.pathname = ADMIN_PAGE;
+      if (site === 'shop' && env.PANEL_HOST) {
+        next.host = env.PANEL_HOST;
+        next.protocol = 'https:';
+      }
+      return Response.redirect(next.toString(), 301);
+    }
+
     if ((p === ADMIN_PAGE || p === ADMIN_PAGE + '/') && req.method === 'GET') {
       if (site === 'shop') {
         const r = toHost(env.PANEL_HOST, req.url);
