@@ -1,5 +1,48 @@
 import { handleAdminPlaner, ADMIN_PAGE } from './admin-planer.js';
 
+/* ---------- دو سایتِ جدا، یک ورکر ----------
+   فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
+   دامنهٔ خودش را دارد. با این حال هر دو از همین یک ورکر سرو می‌شوند،
+   چون داده در همان یک D1 است و دو ورکرِ جدا فقط رازها و استقرار را دو
+   تا می‌کرد بی‌آنکه چیزی را جدا کند.
+
+   پس تقسیم روی نامِ میزبان انجام می‌شود:
+   • دامنهٔ فروشگاه: مسیرهای کارتابل این‌جا نیستند و با ۳۰۱ به دامنهٔ
+     پنل می‌روند — تا نشانی‌های ذخیره‌شده و لینک‌های قبلی از کار نیفتند.
+   • دامنهٔ پنل: «/» صفحهٔ ورود است، نه فروشگاه؛ و صفحه‌های فروشگاه به
+     دامنهٔ خودشان برمی‌گردند.
+   • هر میزبانِ دیگری (localhost، *.workers.dev، پیش‌نمایش‌ها) هر دو را
+     سرو می‌کند، تا توسعه و آزمون مثل قبل کار کند. */
+const bareHost = h => String(h || '').toLowerCase()
+  .replace(/^www\./, '').replace(/:\d+$/, '');
+
+function siteOf(env, host) {
+  /* تا وقتی دامنهٔ پنل تنظیم نشده، تقسیمی در کار نیست و همه‌چیز مثل
+     قبل روی همان یک دامنه سرو می‌شود.
+
+     این شرط عمدی است، نه احتیاطِ اضافه: اگر تقسیم پیش از وصل‌شدنِ
+     دامنهٔ تازه روشن می‌شد، کارتابل‌ها روی دامنهٔ قبلی ۳۰۱ می‌خوردند
+     به دامنه‌ای که هنوز جواب نمی‌دهد — یعنی پنل یک‌شبه تاریک می‌شد.
+     پس اول دامنه وصل می‌شود، بعد این متغیر پر می‌شود. */
+  if (!env.PANEL_HOST) return 'both';
+  const h = bareHost(host);
+  if (!h) return 'both';
+  if (h === bareHost(env.PANEL_HOST)) return 'panel';
+  if (env.SHOP_HOST && h === bareHost(env.SHOP_HOST)) return 'shop';
+  return 'both';
+}
+
+/* ۳۰۱ به همان مسیر روی دامنهٔ دیگر. اگر آن دامنه تنظیم نشده باشد
+   جابه‌جایی انجام نمی‌شود و درخواست مسیرِ عادی‌اش را می‌رود — یعنی
+   نبودنِ یک متغیر سایت را از کار نمی‌اندازد. */
+function toHost(host, url) {
+  if (!host) return null;
+  const next = new URL(url);
+  next.host = host;
+  next.protocol = 'https:';
+  return Response.redirect(next.toString(), 301);
+}
+
 /* صفحه‌ای که به‌جای کارتابلِ غیرفعال نشان داده می‌شود. عمداً ساده و
    بی‌داده است: کسی که به این آدرس می‌رسد نباید چیزی جز همین بفهمد. */
 function disabledPanelPage(panel) {
@@ -1559,6 +1602,23 @@ export default {
     if (m === 'OPTIONS') return json({});
     if (env.TG_BASE) globalThis.__TGBASE = env.TG_BASE;
     if (env.BALE_BASE) globalThis.__BALEBASE = env.BALE_BASE;
+
+    /* کدام سایت؟ (بالا، کنارِ siteOf، توضیح داده شده) */
+    const site = siteOf(env, url.host);
+
+    /* روی دامنهٔ پنل، ریشه همان صفحهٔ ورود است. ۳۰۲ و نه ۳۰۱، تا اگر
+       روزی ریشه چیزِ دیگری شد، مرورگرها جابه‌جاییِ همیشگی را کش نکرده
+       باشند. */
+    if (site === 'panel' && m === 'GET' && (p === '/' || p === '/index.html'))
+      return Response.redirect(new URL(ADMIN_PAGE, req.url).toString(), 302);
+
+    /* صفحه‌های فروشگاه روی دامنهٔ پنل جایی ندارند و برمی‌گردند خانه‌شان.
+       فقط صفحه‌ها؛ فایل‌های ثابت (نشان، فونت، اسکریپت) مشترک‌اند و
+       همین‌جا سرو می‌شوند. */
+    if (site === 'panel' && m === 'GET' && /^\/(admin\/?$|p\/|a\/|s\/|c\/)/.test(p)) {
+      const r = toHost(env.SHOP_HOST, req.url);
+      if (r) return r;
+    }
     /* ---------- صفحه‌های واقعی برای گوگل ----------
        سایت تک‌صفحه‌ای است، پس بدون این، گوگل فقط یک صفحه می‌بیند و
        محصولات و مقالات جای مستقلی در نتایج ندارند. اینجا همان index.html
@@ -1762,6 +1822,10 @@ export default {
        با و بی اسلشِ آخر، هر دو. آدرسش نقطه دارد تا با هیچ کارتابلی
        اشتباه نشود و هیچ‌وقت هم در فهرستِ گوگل نمی‌رود. */
     if ((p === ADMIN_PAGE || p === ADMIN_PAGE + '/') && req.method === 'GET') {
+      if (site === 'shop') {
+        const r = toHost(env.PANEL_HOST, req.url);
+        if (r) return r;
+      }
       const res = await env.ASSETS.fetch(new Request(new URL('/_t/admin.tpl', req.url), req));
       if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
         'Content-Type': 'text/html; charset=utf-8',
@@ -1778,6 +1842,13 @@ export default {
       if (slug && !slug.includes('/') && env.DB) {
         const panel = await panelBySlug(env, slug).catch(() => null);
         if (panel) {
+          /* نشانیِ قبلیِ کارتابل روی دامنهٔ فروشگاه هنوز در مرورگرها و
+             پیام‌ها هست؛ با ۳۰۱ به دامنهٔ تازه می‌رود تا کسی به دیوار
+             نخورد. */
+          if (site === 'shop') {
+            const r = toHost(env.PANEL_HOST, req.url);
+            if (r) return r;
+          }
           /* بدون اسلشِ آخر، آدرس‌های نسبی داخل صفحه یک پله بالاتر می‌افتند */
           if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
           /* غیرفعال: داده سرِ جایش است، ولی در باز نمی‌شود. یک صفحهٔ
@@ -1831,6 +1902,13 @@ export default {
       /* کارتابل‌ها — مدیر IT و مدیر مالی. بررسی ورودشان جداست و از کوکی
          خودشان می‌آید، نه از توکن پنل فروشگاه، پس پیش از بقیهٔ مسیرها
          جواب می‌گیرند. هر کدام کوکی و رمز خودش را دارد. */
+      /* API را برنمی‌گردانیم، ۴۰۴ می‌دهیم: کوکیِ نشست به میزبان بسته
+         است، پس یک درخواستِ ریدایرکت‌شده هم بی‌فایده بود — و ۳۰۱ روی
+         POST بدنه را هم جاهایی می‌اندازد. صفحه‌ها که ریدایرکت می‌شوند،
+         خودِ درخواست‌ها هم از همان‌جا به دامنهٔ درست می‌روند. */
+      if (site === 'shop' && (p.startsWith('/api/admin.planer/') || p === '/api/admin.planer'))
+        return bad('این بخش به دامنهٔ دیگری منتقل شده.', 404);
+
       if (p.startsWith('/api/admin.planer/'))
         return handleAdminPlaner(env, req, p.slice('/api/admin.planer'.length), m, body,
           { rateLimit, clientIp });
@@ -1841,12 +1919,19 @@ export default {
         if (cut > 0) {
           const panel = await panelByApi(env, seg.slice(0, cut)).catch(() => null);
           if (panel) {
+            if (site === 'shop')
+              return bad('این کارتابل به دامنهٔ دیگری منتقل شده.', 404);
             if (panel.disabled)
               return bad('این کارتابل موقتاً غیرفعال است. با مدیر سیستم تماس بگیرید.', 403);
             return handleKartabl(env, req, panel, seg.slice(cut), m, body, { rateLimit, clientIp });
           }
         }
       }
+
+      /* هرچه تا این‌جا رسیده و «/api/» است، مالِ فروشگاه است — روی
+         دامنهٔ پنل جایی ندارد. */
+      if (site === 'panel' && p.startsWith('/api/'))
+        return bad('این مسیر مالِ فروشگاه است، نه پنل.', 404);
 
       if (p === '/api/bootstrap') {
         /* صفحهٔ اصلی مستقیم از لبهٔ کلادفلر سرو می‌شود و به این کد نمی‌رسد،

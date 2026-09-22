@@ -806,7 +806,7 @@ export async function nightlyKartablBackup(env, slot) {
     /* کارتابلِ غیرفعال پشتیبان نمی‌خواهد. حذف‌شده که اصلاً در فهرست
        نیست، چون فهرست از همان جدول خوانده می‌شود. */
     if (panel.disabled) continue;
-    const req = new Request('https://sensacare.ir' + panel.page);
+    const req = new Request('https://' + (env.PANEL_HOST || env.PUBLIC_HOST || 'sltech.ir') + panel.page);
     /* اگر یکی نرفت، آن یکی نباید قربانی شود */
     const r = await sendKartablBackup(env, req, panel, slot === 'noon' ? 'خودکار — ظهر' : 'خودکار — شبانه')
       .catch(e => ({ ok: false, error: e.message }));

@@ -5,7 +5,10 @@ compatibility_date = "2025-01-01"
 # فایل‌های سایت (index.html)
 # هشدار: این خط باید بالاتر از هر [بخش] بماند. در TOML هر کلیدی که
 # بعد از یک [بخش] بیاید داخل همان بخش حساب می‌شود، نه در سطح اصلی.
-assets = { directory = "./public", binding = "ASSETS" }
+# «run_worker_first» برای «/»: فایل‌های ثابت پیش از ورکر سرو می‌شوند،
+# پس بدون این، ریشه روی دامنهٔ پنل هم همان index.html فروشگاه می‌شد و
+# اصلاً به کد نمی‌رسید تا به صفحهٔ ورود برود.
+assets = { directory = "./public", binding = "ASSETS", run_worker_first = ["/", "/index.html"] }
 
 # هوش مصنوعی کلادفلر — برای دستیار فروشگاه.
 # کلیدی لازم ندارد؛ درخواست از خودِ ورکر می‌رود، نه از مرورگر مشتری.
@@ -23,8 +26,17 @@ ADMIN_USER = "admin"
 # آی‌دی ربات‌ها (راز نیستند) — برای ساختن لینک «ورود با تلگرام»
 TELEGRAM_BOT_USER = "sensacare_bot"
 BALE_BOT_USER = "sensacare_bot"
-# دامنه‌ای که وب‌هوک ربات روی آن ثبت می‌شود
+# دامنه‌ای که وب‌هوک ربات روی آن ثبت می‌شود (فروشگاه)
 PUBLIC_HOST = "sensacare.ir"
+# دو سایتِ جدا روی همین یک ورکر. میزبانی که این‌جا نباشد — localhost،
+# *.workers.dev، پیش‌نمایش‌ها — هر دو را سرو می‌کند.
+SHOP_HOST = "sensacare.ir"
+# تا وقتی این خالی است هیچ تقسیمی انجام نمی‌شود و همه‌چیز مثل قبل روی
+# sensacare.ir کار می‌کند. اول دامنه را در کلادفلر به همین ورکر وصل
+# کنید (Workers → Settings → Domains & Routes → Add Custom Domain)،
+# بعد این را پر کنید و دوباره منتشر کنید. برعکسش یعنی کارتابل‌ها روی
+# دامنه‌ای ۳۰۱ می‌خورند که هنوز جواب نمی‌دهد.
+PANEL_HOST = ""
 # رمز و کلیدها را با دستور secret بگذارید، نه اینجا:
 #   npx wrangler secret put ADMIN_PASS
 #   npx wrangler secret put JWT_SECRET

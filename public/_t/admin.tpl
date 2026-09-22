@@ -509,7 +509,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     <img class="mark" src="/icon-sl.3.png" alt="SLTech" width="42" height="42">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
-      <p class="sub2" id="topSub">sensacare.ir</p>
+      <p class="sub2" id="topSub"></p>
     </div>
     <button class="icon-btn" id="themeBtn" title="تم روز و شب">🌙</button>
     <button class="btn" id="logoutBtn">خروج</button>
@@ -593,7 +593,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
   <section id="tab-keys" hidden>
     <div class="panel">
       <h2>نام کاربری ادمین</h2>
-      <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr">sensacare.ir/admin.planer</b>)
+      <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr" class="host-here">/admin.planer</b>)
         وارد این پنل می‌شوید — همان صفحه‌ای که کاربرها هم از آن وارد کارتابلِ خودشان می‌شوند.</p>
       <div class="row">
         <div class="fld"><label>نام کاربری</label>
@@ -663,6 +663,15 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 <div class="ov" id="ov" hidden><div class="ov-box" id="ovBox"></div></div>
 
 <script>
+/* دامنه را از خودِ صفحه می‌خوانیم، نه از متنِ ثابت. این‌طور اگر دامنه
+   عوض شود — یا پنل روی دامنهٔ دیگری هم بالا بیاید — هر آدرسی که به
+   کاربر نشان داده یا رونوشت می‌شود خودش درست است.
+
+   جایش بالای همه‌چیز است چون «const» مثل «function» بالا نمی‌رود:
+   پایین‌تر که بنویسی، کدِ بالاتر موقع اجرا به آن نمی‌رسد. */
+const HOST = location.host;
+const ORIGIN = location.origin;
+
 /* ==========================================================================
    پنل ادمینِ کارتابل‌ها
    ========================================================================== */
@@ -715,6 +724,11 @@ async function keyFrom(pass, salt, uses){
   return crypto.subtle.deriveKey({ name:"PBKDF2", salt, iterations:150000, hash:"SHA-256" },
     base, { name:"AES-GCM", length:256 }, false, uses);
 }
+
+/* جاهایی که دامنه در خودِ HTML نوشته شده بود، همین‌جا پر می‌شوند. */
+document.querySelectorAll(".host-here").forEach(el=>{ el.textContent = HOST + el.textContent; });
+const _topSub = document.getElementById("topSub");
+if(_topSub) _topSub.textContent = HOST;
 
 /* ---------- قفل ورود ---------- */
 let needsSetup = false;
@@ -952,8 +966,8 @@ function renderPlanners(){
                 : (p.until && daysLeft(p.until) <= 7)
                   ? `<span class="pill pill-builtin">${fa(daysLeft(p.until))} روز مانده</span>` : ``}</h3>
           <div class="urlrow">
-            <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">sensacare.ir${esc(p.url)}</a>
-            <button class="copy" data-copy="https://sensacare.ir${esc(p.url)}"
+            <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(HOST)}${esc(p.url)}</a>
+            <button class="copy" data-copy="${esc(ORIGIN)}${esc(p.url)}"
               title="رونوشتِ آدرس">⧉</button>
           </div>
         </div>
@@ -1049,7 +1063,7 @@ function openEdit(slug){
   const jobs = [{id:"",label:"— بدون چک‌لیست آماده —"}].concat(DATA.jobs);
   openOverlay(`
     <h2>ویرایش «${esc(p.name)}»</h2>
-    <p class="sub">${p.builtin ? "این کارتابل هنوز در جدول نیست، پس فقط دیده می‌شود." : "sensacare.ir"+esc(p.url)}</p>
+    <p class="sub">${p.builtin ? "این کارتابل هنوز در جدول نیست، پس فقط دیده می‌شود." : esc(HOST)+esc(p.url)}</p>
     <div class="row">
       <div class="fld"><label>نام</label><input type="text" id="eName" value="${esc(p.name)}"></div>
       <div class="fld"><label>نام کاربری</label>
@@ -1474,7 +1488,7 @@ function paintNew(){
   if(!prev) return;
   const v = slug.value.trim().toLowerCase();
   prev.innerHTML = v
-    ? "آدرسش می‌شود: <b>sensacare.ir/" + esc(v) + "</b>"
+    ? "آدرسش می‌شود: <b>" + esc(HOST) + "/" + esc(v) + "</b>"
     : "آدرس فقط حروف انگلیسی کوچک، عدد و خط تیره.";
 }
 
@@ -1505,8 +1519,8 @@ function setupNew(){
     name.value = ""; slug.value = ""; document.getElementById("nPass").value = "";
     document.getElementById("nUser").value = "";
     paint();
-    say("کارتابل ساخته شد: <b>sensacare.ir" + esc(r.data.url) + "</b><br>" +
-        "از صفحهٔ ورود (<b>sensacare.ir/admin.planer</b>) با این نام کاربری وارد می‌شود:<br>" +
+    say("کارتابل ساخته شد: <b>" + esc(HOST) + esc(r.data.url) + "</b><br>" +
+        "از صفحهٔ ورود (<b>" + esc(HOST) + "/admin.planer</b>) با این نام کاربری وارد می‌شود:<br>" +
         "<code>" + esc(r.data.user) + "</code>" +
         ` <button class="copy" data-copy="${esc(r.data.user)}" title="رونوشت">⧉</button><br>` +
         "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +

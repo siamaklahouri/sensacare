@@ -1954,7 +1954,7 @@ function categoryOptions(cur){
 
 /* ---------- Resilient Chart.js loader (tries several mirrors in case one is blocked) ---------- */
 const CHART_CDN_URLS = [
-  /* نسخهٔ محلی روی خودِ sensacare.ir — از داخل ایران همیشه باز می‌شود.
+  /* نسخهٔ محلی روی خودِ همین دامنه — از داخل ایران همیشه باز می‌شود.
      سیاست امنیتی سایت script-src 'self' و cdnjs است، پس jsdelivr و
      unpkg و fastly روی این دامنه هرگز بالا نمی‌آیند و فقط خطای کنسول
      می‌سازند؛ تنها پشتیبانی که واقعاً می‌تواند کار کند cdnjs است. */
