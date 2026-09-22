@@ -753,6 +753,60 @@ export async function kartablBot(env) {
            chat: await getSetting(env, 'kartablChatId', '') };
 }
 
+/* ---------- ربات‌های SLTech ----------
+   پشتیبان و پیام‌ها به هر دو می‌روند: تلگرام و بله. تنظیماتشان از
+   همان جایی می‌آید که پنل مدیر می‌نویسد.
+
+   ربات قدیمیِ کارتابل هم اگر تنظیم باشد سرِ جایش می‌ماند، وگرنه با
+   این تغییر پشتیبانِ کسی که هنوز تنظیمات تازه را پر نکرده قطع می‌شد. */
+export const BOT_API = {
+  telegram: t => 'https://api.telegram.org/bot' + t,
+  bale: t => 'https://tapi.bale.ai/bot' + t
+};
+
+export async function siteBots(env) {
+  const st = await getSetting(env, 'sltechSite', {}) || {};
+  const out = [];
+  if (st.tgToken && st.tgChat)
+    out.push({ kind: 'telegram', token: st.tgToken, chat: String(st.tgChat) });
+  if (st.baleToken && st.baleChat)
+    out.push({ kind: 'bale', token: st.baleToken, chat: String(st.baleChat) });
+  const old = await kartablBot(env);
+  /* همان گفتگوی قبلی دوباره حساب نشود */
+  if (old.token && old.chat &&
+      !out.some(b => b.kind === 'telegram' && b.token === old.token && b.chat === String(old.chat)))
+    out.push({ kind: 'telegram', token: old.token, chat: String(old.chat) });
+  return out;
+}
+
+/* یک پیام، به هر رباتی که تنظیم است. «ok» یعنی دست‌کم به یکی رسید —
+   چون رسیدن به یکی از هیچ بهتر است و کاربر نباید بخاطر قطعیِ یکی از
+   دو ربات پشتِ در بماند. */
+export const botsReady = async env => (await siteBots(env)).length > 0;
+
+export async function botMessage(env, text) {
+  const bots = await siteBots(env);
+  /* «تنظیم نشده» با «نپذیرفت» فرق دارد: اولی ۵۰۳ است و دومی ۵۰۲،
+     و پیامشان هم به کاربر باید فرق کند. */
+  if (!bots.length) return { ok: false, configured: false,
+    error: 'هیچ رباتی تنظیم نشده. از پنل مدیر، «تنظیمات سایت» را پر کنید.' };
+  const sent = [], failed = [];
+  for (const bot of bots) {
+    const body = { chat_id: bot.chat, text: bot.kind === 'bale' ? plainText(text) : text };
+    if (bot.kind !== 'bale') body.parse_mode = 'HTML';
+    try {
+      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) sent.push(bot.kind); else failed.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
+    } catch (e) { failed.push(bot.kind + ': ' + e.message); }
+  }
+  return sent.length ? { ok: true, to: sent, failed }
+                     : { ok: false, error: failed.join(' — ') || 'هیچ رباتی نگرفت.' };
+}
+
 export async function tgMessage(token, chat, text) {
   try {
     const r = await fetch(`${TG(token)}/sendMessage`, {
@@ -767,9 +821,9 @@ export async function tgMessage(token, chat, text) {
 }
 
 export async function sendKartablBackup(env, req, panel, note = '') {
-  const { token, chat } = await kartablBot(env);
-  if (!token) return { ok: false, error: 'توکن ربات کارتابل تنظیم نشده است.' };
-  if (!chat) return { ok: false, error: 'هنوز در ربات /start نزده‌اید، پس معلوم نیست پشتیبان برای چه کسی برود.' };
+  const bots = await siteBots(env);
+  if (!bots.length) return { ok: false,
+    error: 'هیچ رباتی تنظیم نشده. از پنل مدیر، سربرگ «تنظیمات سایت»، توکن و شناسهٔ گفتگو را بگذارید.' };
 
   const { zip, name, counts, html } = await buildKartablBackup(env, req, panel);
   const own = Object.entries(counts.own).map(([k, v]) => `${faDigits(v)} ${k}`).join(' · ');
@@ -781,20 +835,35 @@ export async function sendKartablBackup(env, req, panel, note = '') {
     (counts.vault ? 'بخش شخصی رمزنگاری‌شده داخلش هست — با رمز خودش باز می‌شود.\n' : '') +
     `برای برگرداندن: صفحه را باز کن و «⬆ بازیابی» را با فایل JSON بزن.`;
 
-  const fd = new FormData();
-  fd.append('chat_id', String(chat));
-  fd.append('caption', caption);
-  fd.append('parse_mode', 'HTML');
-  fd.append('document', new Blob([zip], { type: 'application/zip' }), name);
-  try {
-    const r = await fetch(`${TG(token)}/sendDocument`, { method: 'POST', body: fd });
-    const d = await r.json().catch(() => ({}));
-    if (!d.ok) return { ok: false, error: d.description || 'تلگرام فایل را نپذیرفت.' };
-    await setSetting(env, panel.keys.last, { at: Date.now(), size: zip.length, ok: true });
-    return { ok: true, size: zip.length, name, counts };
-  } catch (e) {
-    return { ok: false, error: e.message };
+  /* به هر ربات جداگانه. اگر یکی نگرفت، آن یکی نباید قربانی شود —
+     پشتیبانی که به یک جا رسیده باشد از هیچ بهتر است. */
+  const sent = [], failed = [];
+  for (const bot of bots) {
+    const fd = new FormData();
+    fd.append('chat_id', bot.chat);
+    fd.append('caption', bot.kind === 'bale' ? plainText(caption) : caption);
+    if (bot.kind !== 'bale') fd.append('parse_mode', 'HTML');
+    fd.append('document', new Blob([zip], { type: 'application/zip' }), name);
+    try {
+      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) sent.push(bot.kind);
+      else failed.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
+    } catch (e) { failed.push(bot.kind + ': ' + e.message); }
   }
+  if (!sent.length) return { ok: false, error: failed.join(' — ') || 'هیچ رباتی نگرفت.' };
+  await setSetting(env, panel.keys.last,
+    { at: Date.now(), size: zip.length, ok: true, to: sent, failed });
+  return { ok: true, size: zip.length, name, counts, to: sent, failed };
+}
+
+/* بله تگ‌های HTML را نمی‌فهمد و خودشان را نشان می‌دهد. */
+function plainText(t) {
+  return String(t || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
 /* هر شب همراه پشتیبان فروشگاه صدا زده می‌شود — برای هر دو کارتابل */
@@ -864,19 +933,18 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     if (wait > 0)
       return bad(`همین چند دقیقه پیش رمز تازه فرستاده شد. پیام ربات را ببینید، یا ${faDigits(Math.ceil(wait / 60000))} دقیقهٔ دیگر دوباره بزنید.`, 429);
 
-    const { token, chat } = await kartablBot(env);
-    if (!token || !chat)
-      return bad('ربات تلگرام به کارتابل وصل نیست، پس جایی برای فرستادن رمز تازه نیست.', 503);
+    if (!(await botsReady(env)))
+      return bad('ربات به کارتابل وصل نیست، پس جایی برای فرستادن رمز تازه نیست.', 503);
 
     const next = newPassword();
-    const sent = await tgMessage(token, chat,
+    const sent = await botMessage(env,
       `🔑 <b>رمز تازهٔ ${panel.title}</b>\n\n` +
       `<code>${next}</code>\n\n` +
       `از همین حالا رمز قبلی کار نمی‌کند و هر دستگاهی که وارد مانده بود بیرون افتاد.\n` +
       `بعد از ورود، از «تنظیمات ← رمز ورود» به چیزی که خودتان می‌پسندید عوضش کنید.\n\n` +
       `اگر این را شما نخواسته‌اید: کسی رمز را ندارد، فقط دکمهٔ «رمز را فراموش کرده‌ام» را زده. ` +
       `همین رمز تازه را وارد کنید و عوضش کنید.`);
-    if (!sent.ok) return bad('به تلگرام نرسید، پس رمز هم عوض نشد: ' + sent.error, 502);
+    if (!sent.ok) return bad('به ربات نرسید، پس رمز هم عوض نشد: ' + sent.error, 502);
 
     await setSetting(env, panel.keys.pass, await hashPassword(next));
     await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
@@ -1010,16 +1078,15 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const code = String(body.code || '').trim();
     /* کد داخل پیامِ HTMLی تلگرام می‌نشیند، پس فقط همین حروف اجازه دارند */
     if (!/^[A-Za-z0-9-]{8,64}$/.test(code)) return bad('کد بازیابی خوانا نیست.');
-    const { token, chat } = await kartablBot(env);
-    if (!token || !chat)
-      return bad('ربات تلگرام به کارتابل وصل نیست، پس جایی برای فرستادن کد نیست.', 503);
-    const sent = await tgMessage(token, chat,
+    if (!(await botsReady(env)))
+      return bad('ربات به کارتابل وصل نیست، پس جایی برای فرستادن کد نیست.', 503);
+    const sent = await botMessage(env,
       `🔐 <b>کد بازیابیِ دیتای شخصی — ${panel.title}</b>\n\n` +
       `<code>${code}</code>\n\n` +
       `این کد جایگزینِ رمز نیست. فقط اگر رمزِ «دیتای شخصی» را فراموش کردید، ` +
       `با همین کد باز می‌شود و داده‌ها سرِ جایشان می‌مانند.\n` +
       `این پیام را پاک نکنید. اگر قبلاً کدی داشتید، آن یکی دیگر کار نمی‌کند.`);
-    if (!sent.ok) return bad('به تلگرام نرسید: ' + sent.error, 502);
+    if (!sent.ok) return bad('به ربات نرسید: ' + sent.error, 502);
     return json({ ok: true });
   }
 

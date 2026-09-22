@@ -262,6 +262,18 @@ a{ color:var(--brass-ink); }
 .fld input:focus, .fld select:focus{ outline:none; border-color:var(--brass);
   background:var(--white); box-shadow:var(--glow); }
 .hint{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-top:8px; }
+.hint2{ font-size:11px; color:var(--ink-faint); font-weight:400; }
+/* یک ردیفِ پلن: نام، قیمت، مدت، توضیح، و دکمهٔ برداشتن */
+.planrow{ display:grid; gap:8px; align-items:center; margin-bottom:8px;
+  grid-template-columns: 1.3fr .9fr .6fr 1.6fr auto; }
+@media (max-width:760px){ .planrow{ grid-template-columns:1fr 1fr; } }
+.planrow input{ width:100%; padding:9px 11px; border:1px solid var(--line);
+  border-radius:var(--r-sm); background:var(--paper-2); color:var(--ink);
+  font-family:var(--font); font-size:13px; }
+.planrow input:focus{ outline:none; border-color:var(--brass); box-shadow:var(--glow); }
+.planrow .x{ width:32px; height:32px; border-radius:var(--r-sm); border:1px solid var(--line);
+  background:var(--white); color:var(--red-ink); cursor:pointer; line-height:1; }
+.planrow .x:hover{ background:var(--red-bg); border-color:var(--red-bg); }
 .hint b{ color:var(--ink-soft); }
 
 /* ---------- کارت کارتابل ---------- */
@@ -521,6 +533,7 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
     <button data-tab="list" class="active">کارتابل‌ها</button>
     <button data-tab="report">گزارش</button>
     <button data-tab="new">کارتابل تازه</button>
+    <button data-tab="site">تنظیمات سایت</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
     <button data-tab="log">سیاههٔ کارها</button>
   </div>
@@ -588,6 +601,70 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
       <div class="hint" id="nPreview"></div>
       <div style="margin-top:12px;"><button class="btn btn-main" id="nCreate">ساختن کارتابل</button></div>
     </div>
+  </section>
+
+  <section id="tab-site" hidden>
+    <div class="panel">
+      <h2>راه‌های تماس</h2>
+      <p class="sub">همین‌ها روی صفحهٔ اصلیِ سایت می‌نشینند. هرکدام را خالی بگذارید،
+        از صفحه هم برداشته می‌شود.</p>
+      <div class="row">
+        <div class="fld"><label>تلگرام (نام کاربری یا لینک)</label>
+          <input type="text" id="stTelegram" dir="ltr" placeholder="@sltech_ir" autocomplete="off"></div>
+        <div class="fld"><label>بله (نام کاربری یا لینک)</label>
+          <input type="text" id="stBale" dir="ltr" placeholder="@sltech_ir" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="fld"><label>تلفن</label>
+          <input type="text" id="stPhone" dir="ltr" placeholder="۰۲۱…" autocomplete="off"></div>
+        <div class="fld"><label>ایمیل</label>
+          <input type="text" id="stEmail" dir="ltr" placeholder="info@sltech.ir" autocomplete="off"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>پرداخت</h2>
+      <p class="sub">شمارهٔ کارتی که برای خریدِ کارتابل اعلام می‌شود.</p>
+      <div class="row">
+        <div class="fld"><label>شمارهٔ کارت (۱۶ رقم)</label>
+          <input type="text" id="stCard" dir="ltr" inputmode="numeric" placeholder="6037…" autocomplete="off"></div>
+        <div class="fld"><label>به نام</label>
+          <input type="text" id="stCardName" placeholder="نام صاحب کارت" autocomplete="off"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>پلن‌ها و قیمت</h2>
+      <p class="sub">تا شش پلن. «مدت» همان تعداد روزی است که کارتابل باز می‌ماند —
+        صفر یعنی بی‌مهلت. پلنی که نامش خالی باشد ذخیره نمی‌شود.</p>
+      <div id="stPlans"></div>
+      <div style="margin-top:10px;"><button class="btn" id="stAddPlan">＋ پلن تازه</button></div>
+    </div>
+
+    <div class="panel">
+      <h2>ربات‌ها</h2>
+      <p class="sub">پشتیبان‌ها و پیام‌ها به هر دو ربات می‌روند. توکن یک‌طرفه ذخیره
+        می‌شود: بعد از ذخیره دیگر نشان داده نمی‌شود و فقط چهار رقمِ آخرش را می‌بینید.
+        برای برداشتنِ یک توکن، به‌جایش یک خط تیره <code>-</code> بنویسید.</p>
+      <div class="row">
+        <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
+          <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
+        <div class="fld"><label>شناسهٔ گفتگوی تلگرام</label>
+          <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸"></div>
+        <div><button class="btn" id="stTgTest">پیام آزمایشی</button></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="fld"><label>توکن بله <span id="stBaleHas" class="hint2"></span></label>
+          <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
+        <div class="fld"><label>شناسهٔ گفتگوی بله</label>
+          <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸"></div>
+        <div><button class="btn" id="stBaleTest">پیام آزمایشی</button></div>
+      </div>
+      <div class="hint">شناسهٔ گفتگو را از خودِ ربات می‌گیرید: یک پیام به ربات بدهید و
+        بعد «پیام آزمایشی» را بزنید تا مطمئن شوید به همان‌جا می‌رسد.</div>
+    </div>
+
+    <div style="margin:4px 0 30px;"><button class="btn btn-main" id="stSave">ذخیرهٔ تنظیمات</button></div>
   </section>
 
   <section id="tab-keys" hidden>
@@ -840,6 +917,7 @@ function openApp(lastLogin){
   setupTabs();
   setupNew();
   setupKeys();
+  setupSite();
   loadPlanners();
 }
 
@@ -861,8 +939,12 @@ function setupTabs(){
   document.querySelectorAll(".tabs button").forEach(b=>{
     b.addEventListener("click", ()=>{
       document.querySelectorAll(".tabs button").forEach(x=> x.classList.toggle("active", x===b));
-      ["list","report","new","keys","log"].forEach(t=>
-        document.getElementById("tab-"+t).hidden = (t !== b.dataset.tab));
+      /* فهرست از خودِ دکمه‌ها می‌آید، نه از یک آرایهٔ دستی — وگرنه هر
+         سربرگِ تازه یادش می‌رفت و بخشش باز نمی‌شد. */
+      document.querySelectorAll(".tabs button").forEach(x=>{
+        const sec = document.getElementById("tab-" + x.dataset.tab);
+        if(sec) sec.hidden = (x !== b);
+      });
       if(b.dataset.tab === "log") loadLog();
       if(b.dataset.tab === "report") loadReport();
     });
@@ -1529,6 +1611,102 @@ function setupNew(){
     loadPlanners();
     document.querySelector('.tabs button[data-tab="list"]').click();
   };
+}
+
+/* ---------- تنظیماتِ سایت ---------- */
+let SITE = { plans: [] };
+
+function planRow(pl){
+  pl = pl || { name:"", price:"", days:"", note:"" };
+  const d = document.createElement("div");
+  d.className = "planrow";
+  d.innerHTML = `
+    <input class="p-name"  type="text"   placeholder="نام پلن (لازم)" value="${esc(pl.name||"")}">
+    <input class="p-price" type="number" dir="ltr" min="0" placeholder="قیمت (تومان)" value="${pl.price ?? ""}">
+    <input class="p-days"  type="number" dir="ltr" min="0" max="3650" placeholder="روز" value="${pl.days ?? ""}">
+    <input class="p-note"  type="text"   placeholder="یک خط توضیح (اختیاری)" value="${esc(pl.note||"")}">
+    <button type="button" class="x" title="بردار">✕</button>`;
+  d.querySelector(".x").onclick = ()=> d.remove();
+  return d;
+}
+
+function renderPlans(list){
+  const box = document.getElementById("stPlans");
+  box.innerHTML = "";
+  (list && list.length ? list : [null]).forEach(pl=> box.appendChild(planRow(pl)));
+}
+
+function readPlans(){
+  return Array.from(document.querySelectorAll("#stPlans .planrow")).map(r=>({
+    name: r.querySelector(".p-name").value.trim(),
+    price: Number(r.querySelector(".p-price").value || 0),
+    days: Number(r.querySelector(".p-days").value || 0),
+    note: r.querySelector(".p-note").value.trim()
+  })).filter(p=> p.name);
+}
+
+function paintBots(bots){
+  const mark = (el, b)=>{
+    el.textContent = b && b.set ? "— گذاشته شده (…" + b.tail + ")" : "— هنوز گذاشته نشده";
+  };
+  mark(document.getElementById("stTgHas"), bots && bots.telegram);
+  mark(document.getElementById("stBaleHas"), bots && bots.bale);
+}
+
+function paintSite(d){
+  SITE = d.site || { plans: [] };
+  const v = (id, val)=>{ const el = document.getElementById(id); if(el) el.value = val || ""; };
+  v("stTelegram", SITE.telegram); v("stBale", SITE.bale);
+  v("stPhone", SITE.phone);       v("stEmail", SITE.email);
+  v("stCard", SITE.card);         v("stCardName", SITE.cardName);
+  v("stTgChat", SITE.tgChat);     v("stBaleChat", SITE.baleChat);
+  renderPlans(SITE.plans);
+  paintBots(d.bots);
+}
+
+async function setupSite(){
+  document.getElementById("stAddPlan").onclick = ()=>{
+    const box = document.getElementById("stPlans");
+    const row = planRow(null);
+    box.appendChild(row);
+    row.querySelector(".p-name").focus();
+  };
+
+  const test = async (bot, btn)=>{
+    btn.disabled = true; const t = btn.textContent; btn.textContent = "…";
+    const chat = document.getElementById(bot === "bale" ? "stBaleChat" : "stTgChat").value.trim();
+    const r = await api("/site/bot-test", { method:"POST", body: JSON.stringify({ bot, chat }) });
+    say(r.ok ? "پیام آزمایشی رفت. اگر در گفتگو دیدیدش، این ربات درست تنظیم است."
+             : (r.data.error || "نشد."), !r.ok);
+    btn.disabled = false; btn.textContent = t;
+  };
+  document.getElementById("stTgTest").onclick = e => test("telegram", e.currentTarget);
+  document.getElementById("stBaleTest").onclick = e => test("bale", e.currentTarget);
+
+  document.getElementById("stSave").onclick = async ()=>{
+    const btn = document.getElementById("stSave");
+    const g = id => document.getElementById(id).value.trim();
+    btn.disabled = true; btn.textContent = "…";
+    const r = await api("/site", { method:"PUT", body: JSON.stringify({
+      telegram: g("stTelegram"), bale: g("stBale"),
+      phone: g("stPhone"), email: g("stEmail"),
+      card: g("stCard"), cardName: g("stCardName"),
+      tgChat: g("stTgChat"), baleChat: g("stBaleChat"),
+      /* توکن فقط وقتی می‌رود که چیزی تایپ شده باشد */
+      tgToken: g("stTgToken"), baleToken: g("stBaleToken"),
+      plans: readPlans()
+    })});
+    btn.disabled = false; btn.textContent = "ذخیرهٔ تنظیمات";
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    /* کادرِ توکن خالی می‌شود تا کسی از روی صفحه نخواندش */
+    document.getElementById("stTgToken").value = "";
+    document.getElementById("stBaleToken").value = "";
+    paintSite(r.data);
+    say("تنظیمات ذخیره شد.");
+  };
+
+  const r = await api("/site");
+  if(r.ok) paintSite(r.data);
 }
 
 /* ---------- کلیدها ---------- */

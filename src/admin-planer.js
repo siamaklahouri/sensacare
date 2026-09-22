@@ -15,7 +15,7 @@
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
-  PANELS, kartablBot, tgMessage, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
+  PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
   handleKartabl
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
@@ -99,6 +99,74 @@ function cleanVault(list) {
 const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
                        { id: 'inst', type: 'inst', title: 'اقساط' }];
 
+/* ---------- تنظیماتِ سایت ---------- */
+const SITE_KEY = 'sltechSite';
+const MAX_PLANS = 6;
+
+/* آنچه بیرون می‌رود: همه‌چیز جز توکن‌ها. */
+const publicSite = st => ({
+  telegram: st.telegram || '', bale: st.bale || '',
+  phone: st.phone || '', email: st.email || '',
+  card: st.card || '', cardName: st.cardName || '',
+  /* هر ربات گفتگوی خودش را دارد: پشتیبان و پیام‌ها به هر دو می‌روند. */
+  tgChat: st.tgChat || '', baleChat: st.baleChat || '',
+  plans: Array.isArray(st.plans) ? st.plans : []
+});
+
+/* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */
+const tail = t => (typeof t === 'string' && t.length > 4) ? t.slice(-4) : '';
+const botState = st => ({
+  telegram: { set: !!st.tgToken, tail: tail(st.tgToken) },
+  bale: { set: !!st.baleToken, tail: tail(st.baleToken) }
+});
+
+function cleanSite(body, cur) {
+  const site = Object.assign({}, cur);
+  const txt = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+
+  for (const [k, n] of [['telegram', 80], ['bale', 80], ['phone', 30],
+                        ['email', 80], ['cardName', 60],
+                        ['tgChat', 40], ['baleChat', 40]])
+    if (body[k] !== undefined) site[k] = txt(body[k], n);
+
+  if (body.card !== undefined) {
+    /* فقط رقم نگه می‌داریم؛ فاصله و خط تیره‌ای که آدم وسطش می‌گذارد
+       نباید در داده بماند. */
+    const card = txt(body.card, 30).replace(/[^0-9]/g, '');
+    if (card && card.length !== 16) return { error: 'شمارهٔ کارت باید ۱۶ رقم باشد.' };
+    site.card = card;
+  }
+
+  if (body.plans !== undefined) {
+    if (!Array.isArray(body.plans)) return { error: 'فهرست پلن‌ها درست نیست.' };
+    const plans = [];
+    for (const raw of body.plans.slice(0, MAX_PLANS)) {
+      const name = txt(raw && raw.name, 40);
+      if (!name) continue;
+      const price = Number(raw.price);
+      const days = Number(raw.days);
+      if (!Number.isFinite(price) || price < 0 || price > 1e12)
+        return { error: 'قیمتِ «' + name + '» درست نیست.' };
+      if (!Number.isFinite(days) || days < 0 || days > 3650)
+        return { error: 'مدتِ «' + name + '» باید بین ۰ تا ۳۶۵۰ روز باشد.' };
+      plans.push({ name, price: Math.round(price), days: Math.round(days),
+                   note: txt(raw.note, 120) });
+    }
+    site.plans = plans;
+  }
+
+  /* توکن: خالی یعنی دست نزن، «-» یعنی پاکش کن. */
+  for (const [field, key] of [['tgToken', 'tgToken'], ['baleToken', 'baleToken']]) {
+    if (body[field] === undefined) continue;
+    const v = String(body[field]).trim();
+    if (!v) continue;
+    if (v === '-') { delete site[key]; continue; }
+    if (v.length < 20) return { error: 'توکنِ ربات کوتاه‌تر از آن است که درست باشد.' };
+    site[key] = v.slice(0, 200);
+  }
+  return { site };
+}
+
 /* ---------- سیاههٔ کارها ----------
    هر کاری که ادمین می‌کند این‌جا می‌ماند. نه برای اینکه به کسی
    گزارش برود، برای اینکه اگر فردا چیزی سرِ جایش نبود بشود فهمید
@@ -125,19 +193,18 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       return bad('رمز ادمین از قبل تنظیم شده.', 409);
     const rl = await rateLimit(env, 'adminplaner-code:' + clientIp(req), 5, 3600);
     if (!rl.ok) return bad('درخواست‌ها زیاد شد. یک ساعت دیگر.', 429);
-    const { token, chat } = await kartablBot(env);
-    if (!token || !chat)
-      return bad('ربات تلگرام وصل نیست، پس جایی برای فرستادن کد نیست.', 503);
+    if (!(await botsReady(env)))
+      return bad('ربات وصل نیست، پس جایی برای فرستادن کد نیست.', 503);
     const code = newPassword(2, 4);
     await setSetting(env, 'adminPlanerSetupCode',
       { hash: await hashPassword(code), until: Date.now() + 15 * 60 * 1000 });
-    const sent = await tgMessage(token, chat,
+    const sent = await botMessage(env,
       '🛠 <b>راه‌اندازی پنل کارتابل‌ها</b>\n\n' +
       `<code>${code}</code>\n\n` +
       'این کد تا ۱۵ دقیقه معتبر است و فقط برای گذاشتنِ رمزِ اولِ پنل به کار می‌آید. ' +
       'اگر شما این درخواست را نداده‌اید، یعنی کسی آدرس پنل را پیدا کرده — ' +
       'همین حالا خودتان رمز را بگذارید.');
-    if (!sent.ok) return bad('به تلگرام نرسید: ' + sent.error, 502);
+    if (!sent.ok) return bad('به ربات نرسید: ' + sent.error, 502);
     return json({ ok: true });
   }
 
@@ -533,6 +600,51 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   }
 
   /* ---- رمزِ خودِ ادمین ---- */
+  /* ---- تنظیماتِ سایت ----
+     چیزهایی که به کد ربطی ندارند و باید بدون انتشارِ تازه عوض شوند:
+     راه‌های تماس، شمارهٔ کارت، پلن‌ها، و توکنِ ربات‌ها.
+
+     توکن‌ها یک‌طرفه‌اند: نوشته می‌شوند ولی هیچ‌وقت برنمی‌گردند. پنل فقط
+     می‌گوید «گذاشته شده یا نه» و چهار رقمِ آخر را نشان می‌دهد تا بشود
+     تشخیص داد کدام است — وگرنه هر کسی که یک‌بار به پنل برسد می‌توانست
+     توکن را بردارد و ببرد. */
+  if (p === '/site' && m === 'GET') {
+    const st = await getSetting(env, SITE_KEY, {});
+    return json({ ok: true, site: publicSite(st), bots: botState(st) });
+  }
+
+  if (p === '/site' && m === 'PUT') {
+    const cur = await getSetting(env, SITE_KEY, {});
+    const next = cleanSite(body, cur);
+    if (next.error) return bad(next.error);
+    await setSetting(env, SITE_KEY, next.site);
+    await log(env, 'site', '', Object.keys(body || {}).join(','));
+    return json({ ok: true, site: publicSite(next.site), bots: botState(next.site) });
+  }
+
+  /* پیامِ آزمایشی، تا معلوم شود توکن درست است و ربات جواب می‌دهد */
+  if (p === '/site/bot-test' && m === 'POST') {
+    const st = await getSetting(env, SITE_KEY, {});
+    const which = body.bot === 'bale' ? 'bale' : 'telegram';
+    const token = which === 'bale' ? st.baleToken : st.tgToken;
+    const chat = String(body.chat || '').trim() ||
+                 (which === 'bale' ? st.baleChat : st.tgChat) || '';
+    if (!token) return bad('اول توکنِ این ربات را بگذارید.');
+    if (!chat) return bad('شناسهٔ گفتگو را بنویسید.');
+    const base = which === 'bale'
+      ? 'https://tapi.bale.ai/bot' + token
+      : 'https://api.telegram.org/bot' + token;
+    try {
+      const r = await fetch(base + '/sendMessage', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text: 'پیام آزمایشی از پنل SLTech — همه‌چیز درست است.' })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!d.ok) return bad('ربات نپذیرفت: ' + (d.description || 'پاسخِ نامفهوم'), 502);
+      return json({ ok: true });
+    } catch (e) { return bad('به ربات نرسیدیم: ' + e.message, 502); }
+  }
+
   /* ---- نام کاربریِ خودِ ادمین ---- */
   if (p === '/admin-user' && m === 'POST') {
     const user = String(body.user || '').trim().toLowerCase();
