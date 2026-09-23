@@ -512,6 +512,61 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
 .ov-acts{ display:flex; gap:9px; margin-top:20px;
   border-top:1px solid var(--line-soft); padding-top:16px;
   position:sticky; bottom:-24px; background:var(--white); padding-bottom:4px; }
+/* ---------- فاکتور فروش ----------
+   داخلِ همان پنجرهٔ معمولی می‌نشیند، ولی موقعِ چاپ تنها چیزی است که
+   روی کاغذ می‌رود: بقیهٔ صفحه با media print خاموش می‌شود. چون خروجی
+   را مرورگر می‌سازد، «ذخیرهٔ PDF» هم همان دکمهٔ چاپ است. */
+.ov-box.inv{ max-width:760px; }
+.invoice{ color:#111; }
+.inv-top{ display:flex; align-items:flex-start; justify-content:space-between;
+  gap:16px; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:14px; }
+.inv-top .who h3{ margin:0 0 4px; font-size:17px; letter-spacing:.02em; }
+.inv-top .who div{ font-size:11.5px; color:var(--ink-soft); line-height:1.9; }
+.inv-title{ text-align:left; }
+/* فقط عنوانِ «فاکتور فروش»، نه هر b ای که داخلِ این بلوک می‌افتد —
+   وگرنه شمارهٔ فاکتور هم هم‌قدِ عنوان می‌شد. */
+.inv-title > b{ display:block; font-size:15px; margin-bottom:4px; }
+.inv-title span{ font-size:11.5px; color:var(--ink-soft); line-height:1.9; }
+.inv-title span b{ font-size:12px; color:var(--ink); letter-spacing:.04em; }
+.inv-meta{ display:grid; grid-template-columns:1fr 1fr; gap:6px 18px;
+  margin:14px 0 16px; font-size:12.5px; }
+.inv-meta .r{ display:flex; gap:8px; }
+.inv-meta .r span:first-child{ color:var(--ink-faint); min-width:82px; }
+.inv-meta .r span:last-child{ font-weight:600; }
+table.inv-tab{ width:100%; border-collapse:collapse; font-size:12.5px; }
+table.inv-tab th{ background:var(--paper-2); color:var(--ink-soft); font-weight:700;
+  padding:9px 8px; border:1px solid var(--line); text-align:center; }
+table.inv-tab td{ padding:9px 8px; border:1px solid var(--line); text-align:center; }
+table.inv-tab td.desc{ text-align:right; }
+.inv-sum{ margin-top:14px; margin-inline-start:auto; width:min(320px,100%);
+  font-size:12.5px; }
+.inv-sum .r{ display:flex; justify-content:space-between; gap:12px; padding:6px 2px;
+  border-bottom:1px dashed var(--line); }
+.inv-sum .r.total{ border-bottom:0; border-top:2px solid var(--line); margin-top:4px;
+  padding-top:10px; font-size:14px; font-weight:800; }
+.inv-sum .r.off span:last-child{ color:var(--green-ink); }
+.inv-pay{ margin-top:18px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:var(--r); background:var(--paper-2); font-size:12px; line-height:2; }
+.inv-pay b{ font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+.inv-foot{ margin-top:16px; font-size:11px; color:var(--ink-faint); line-height:1.9;
+  border-top:1px solid var(--line-soft); padding-top:10px; }
+
+@media print{
+  /* هر چیزی جز پنجره از کاغذ برداشته می‌شود؛ خودِ پنجره هم از حالتِ
+     شناور درمی‌آید وگرنه فقط یک صفحهٔ آن چاپ می‌شد. */
+  body > *{ display:none !important; }
+  body > .ov{ display:block !important; position:static; padding:0;
+    background:none; backdrop-filter:none; animation:none; }
+  /* «.ov-box.inv» دو کلاسه است و از این قاعده قوی‌تر؛ اگر اسمش این‌جا
+     نیاید، فاکتور روی کاغذ همان ۷۶۰ پیکسل می‌ماند و گوشهٔ صفحه می‌چسبد. */
+  .ov-box, .ov-box.inv{ max-width:none; width:100%; max-height:none; overflow:visible;
+    border:0; box-shadow:none; padding:0; margin:0; animation:none; }
+  .ov-acts, .inv-noprint{ display:none !important; }
+  .invoice{ color:#000; }
+  table.inv-tab th{ background:#EFEFEF !important; -webkit-print-color-adjust:exact; }
+  @page{ margin:14mm; }
+}
+
 #loading{ position:fixed; inset:0; background:var(--paper); z-index:95;
   display:flex; align-items:center; justify-content:center;
   color:var(--ink-faint); font-size:13px; }
@@ -1207,7 +1262,9 @@ async function copyText(btn){
 
 /* ---------- پنجره ---------- */
 function openOverlay(html){
-  document.getElementById("ovBox").innerHTML = html;
+  const box = document.getElementById("ovBox");
+  box.classList.remove("inv");   /* وگرنه پنجرهٔ بعدی هم پهنِ فاکتور می‌ماند */
+  box.innerHTML = html;
   document.getElementById("ov").hidden = false;
 }
 function closeOverlay(){ document.getElementById("ov").hidden = true; }
@@ -1750,6 +1807,7 @@ async function loadOrders(){
       </div>
       ${o.note ? `<div class="hint">توضیح خریدار: ${esc(o.note)}</div>` : ``}
       <div class="acts">
+        <button class="btn" data-oinv="${esc(o.id)}">🧾 فاکتور</button>
         ${o.status === "new" ? `<button class="btn" data-ost="${esc(o.id)}|paid">پرداخت شد</button>` : ``}
         ${o.status !== "done" && o.status !== "canceled"
           ? `<button class="btn btn-main" data-omake="${esc(o.id)}">ساختن کارتابل</button>` : ``}
@@ -1758,6 +1816,13 @@ async function loadOrders(){
       </div>
     </div>`;
   }).join("");
+
+  box.querySelectorAll("[data-oinv]").forEach(b=>{
+    b.onclick = ()=>{
+      const o = items.find(x=> x.id === b.dataset.oinv);
+      if(o) openInvoice(o);
+    };
+  });
 
   box.querySelectorAll("[data-ost]").forEach(b=>{
     b.onclick = async ()=>{
@@ -1790,6 +1855,106 @@ async function loadOrders(){
       say("فرم از روی فاکتور <b dir=\"ltr\">" + esc(o.id) + "</b> پر شد. آدرس و نام کاربری را بنویسید و بسازید.");
     };
   });
+}
+
+/* ---------- فاکتور فروش ----------
+   شمارهٔ سفارش همان شمارهٔ فاکتور است؛ چیزِ تازه‌ای ساخته نمی‌شود تا
+   یک خرید دو شماره نداشته باشد. مبلغ‌ها از خودِ ردیفِ سفارش می‌آیند،
+   نه از پلن‌های امروز: اگر فردا قیمت‌ها عوض شود، فاکتورِ دیروز باید
+   همان چیزی بماند که طرف پرداخت کرده. */
+function money(n){ return fa(Number(n || 0).toLocaleString("en-US")); }
+
+async function openInvoice(o){
+  /* اگر هنوز سراغِ سربرگِ «تنظیمات سایت» نرفته‌ایم، مشخصاتِ فروشنده
+     دستمان نیست؛ همین‌جا یک بار می‌گیریمش. */
+  if(!SITE || !SITE.card){
+    const r = await api("/site");
+    if(r.ok && r.data.site) SITE = r.data.site;
+  }
+  const seats = Math.max(1, Number(o.seats || 1));
+  const unit  = Number(o.price || 0) + Number(o.discount || 0);   /* پیش از تخفیف */
+  const gross = unit;
+  const off   = Number(o.discount || 0);
+  const net   = Number(o.price || 0);
+  const ways  = [
+    SITE.phone    ? "تلفن: " + esc(SITE.phone) : "",
+    SITE.email    ? "ایمیل: " + esc(SITE.email) : "",
+    SITE.telegram ? "تلگرام: " + esc(SITE.telegram) : ""
+  ].filter(Boolean).join(" · ");
+  const job = (DATA.jobs || []).find(j=> j.id === o.job);
+  const desc = "کارتابل ماهانهٔ SLTech — " + esc(o.plan)
+             + (o.kind ? " (" + esc(KIND_FA[o.kind] || o.kind) + ")" : "")
+             + (job ? " — " + esc(job.label) : "")
+             + (o.days ? " — " + fa(o.days) + " روز" : "");
+
+  openInvoiceBox(`
+    <div class="invoice">
+      <div class="inv-top">
+        <div class="who">
+          <h3>SLTech</h3>
+          <div>${ways || "sltech.ir"}</div>
+        </div>
+        <div class="inv-title">
+          <b>فاکتور فروش</b>
+          <span>شمارهٔ فاکتور: <b dir="ltr">${esc(o.id)}</b><br>
+                تاریخ: ${esc(faDateTime(o.created))}</span>
+        </div>
+      </div>
+
+      <div class="inv-meta">
+        <div class="r"><span>خریدار</span><span>${esc(o.name || "—")}</span></div>
+        <div class="r"><span>راه تماس</span><span dir="ltr">${esc(o.contact || "—")}</span></div>
+        <div class="r"><span>وضعیت</span><span>${esc((ORD_STATUS[o.status] || ORD_STATUS.new).label)}</span></div>
+        ${o.slug ? `<div class="r"><span>آدرس کارتابل</span><span dir="ltr">${esc(o.slug)}</span></div>` : ``}
+      </div>
+
+      <table class="inv-tab">
+        <thead><tr>
+          <th style="width:34px">#</th><th>شرح</th>
+          <th style="width:60px">تعداد</th>
+          <th style="width:110px">مبلغ واحد</th>
+          <th style="width:120px">جمع</th>
+        </tr></thead>
+        <tbody><tr>
+          <td>۱</td>
+          <td class="desc">${desc}</td>
+          <td>${fa(seats)}</td>
+          <td>${money(Math.round(gross / seats))}</td>
+          <td>${money(gross)}</td>
+        </tr></tbody>
+      </table>
+
+      <div class="inv-sum">
+        <div class="r"><span>جمع کل</span><span>${money(gross)} تومان</span></div>
+        ${off ? `<div class="r off"><span>تخفیف${o.coupon ? ' (' + esc(o.coupon) + ')' : ''}</span>
+                   <span>− ${money(off)} تومان</span></div>` : ``}
+        <div class="r total"><span>مبلغ قابل پرداخت</span><span>${money(net)} تومان</span></div>
+      </div>
+
+      ${SITE.card ? `<div class="inv-pay">
+        پرداخت به شمارهٔ کارت <b dir="ltr">${esc(SITE.card)}</b>
+        ${SITE.cardName ? "به نام " + esc(SITE.cardName) : ""}
+        <br>پس از واریز، فیش را برای پشتیبانی بفرستید تا کارتابل ساخته شود.
+      </div>` : ``}
+
+      ${o.note ? `<div class="inv-foot">توضیح خریدار: ${esc(o.note)}</div>` : ``}
+      <div class="inv-foot">این فاکتور از پنل SLTech صادر شده و نیازی به مهر و امضا ندارد.</div>
+    </div>
+    <div class="ov-acts">
+      <button class="btn btn-main" id="invPrint">چاپ / ذخیرهٔ PDF</button>
+      <button class="btn" onclick="closeOverlay()">بستن</button>
+    </div>`);
+
+  const pb = document.getElementById("invPrint");
+  if(pb) pb.onclick = ()=> window.print();
+}
+
+/* همان پنجرهٔ معمولی، با یک کلاسِ اضافه که پهن‌ترش می‌کند */
+function openInvoiceBox(html){
+  const box = document.getElementById("ovBox");
+  box.classList.add("inv");
+  box.innerHTML = html;
+  document.getElementById("ov").hidden = false;
 }
 
 /* سفارشی که منتظرِ ساخته شدنِ کارتابلش هستیم */
