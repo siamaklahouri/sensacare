@@ -224,6 +224,14 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 .order .ask-note{ text-align:start; color:var(--ink-soft); }
 .osum{ display:flex; align-items:center; font-weight:600; color:var(--brand-ink);
   background:var(--brand-soft); border-radius:var(--r); padding:0 14px; font-size:14px; }
+.osum .was{ text-decoration:line-through; color:var(--ink-faint); font-weight:400;
+  margin-inline-end:8px; font-size:13px; }
+.cprow{ grid-template-columns:1fr auto !important; }
+.cpnote{ font-size:13px; margin:2px 0 10px; min-height:20px; }
+.cpnote.good{ color:#1E7A4A; }
+.cpnote.bad{ color:#A6222B; }
+:root[data-theme="dark"] .cpnote.good{ color:#5FB07E; }
+:root[data-theme="dark"] .cpnote.bad{ color:#E8737C; }
 .invoice{ max-width:620px; margin:22px auto 0; }
 .invoice h3{ margin:0 0 10px; font-size:17px; }
 .invoice .no{ font-size:23px; font-weight:700; letter-spacing:.06em; color:var(--brand);
@@ -446,6 +454,11 @@ footer .sep{ opacity:.5; margin:0 8px; }
         <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr" placeholder="چند نفر؟">
         <div class="osum" id="oSum"></div>
       </div>
+      <div class="ask-row cprow">
+        <input type="text" id="oCoupon" dir="ltr" placeholder="کد تخفیف (اگر دارید)" autocomplete="off">
+        <button class="btn" type="button" id="oCpGo">اعمال کد</button>
+      </div>
+      <div class="cpnote" id="oCpNote"></div>
       <textarea id="oNote" rows="2" placeholder="توضیح (اختیاری)"></textarea>
       <div class="ask-acts">
         <button class="btn btn-main" type="submit" id="oGo">ثبت سفارش</button>
@@ -627,6 +640,8 @@ function showPlans(plans){
   document.querySelectorAll("[data-plan]").forEach(b=>{
     b.onclick = ()=>{
       PICKED = PLANS[Number(b.dataset.plan)];
+      COUPON = null;
+      document.getElementById("oCpNote").textContent = "";
       document.getElementById("invoice").hidden = true;
       const f = document.getElementById("orderForm");
       f.hidden = false;
@@ -637,15 +652,63 @@ function showPlans(plans){
     };
   });
   document.getElementById("oSeats").addEventListener("input", sumUp);
+  document.getElementById("oCpGo").addEventListener("click", applyCoupon);
+  document.getElementById("oCoupon").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); applyCoupon(); }
+  });
   document.getElementById("oCancel").onclick = ()=>{
     document.getElementById("orderForm").hidden = true; PICKED = null;
   };
 }
 
+let COUPON = null;   /* {code, off} — فقط بعد از تأییدِ سرور پر می‌شود */
+
+function seatCount(){
+  return Math.max(1, Math.min(200, Number(document.getElementById("oSeats").value)||1));
+}
+
 function sumUp(){
   if(!PICKED) return;
-  const n = Math.max(1, Math.min(200, Number(document.getElementById("oSeats").value)||1));
-  document.getElementById("oSum").textContent = money(PICKED.price * n);
+  const full = PICKED.price * seatCount();
+  const box = document.getElementById("oSum");
+  if(COUPON && COUPON.off > 0 && COUPON.total === full){
+    box.innerHTML = `<span class="was">${escH(money(full))}</span>` + escH(money(full - COUPON.off));
+  } else {
+    /* تعداد که عوض شود، تخفیفِ قبلی دیگر مالِ این مبلغ نیست. */
+    if(COUPON && COUPON.total !== full){
+      COUPON = null;
+      const n = document.getElementById("oCpNote");
+      n.className = "cpnote"; n.textContent = "تعداد عوض شد — کد را دوباره اعمال کنید.";
+    }
+    box.textContent = money(full);
+  }
+}
+
+async function applyCoupon(){
+  if(!PICKED) return;
+  const btn = document.getElementById("oCpGo");
+  const note = document.getElementById("oCpNote");
+  const code = document.getElementById("oCoupon").value.trim();
+  note.className = "cpnote"; note.textContent = "";
+  if(!code){ COUPON = null; sumUp(); return; }
+  btn.disabled = true;
+  try{
+    const r = await fetch("/api/sl/coupon", { method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ code, plan: PICKED.name, seats: seatCount() }) });
+    const d = await r.json().catch(()=>({}));
+    if(r.ok && d.ok){
+      COUPON = { code: d.code, off: d.off, total: d.total };
+      note.className = "cpnote good";
+      note.textContent = "✅ کد اعمال شد — " + money(d.off) + " تخفیف.";
+    } else {
+      COUPON = null;
+      note.className = "cpnote bad";
+      note.textContent = d.error || "این کد کار نکرد.";
+    }
+  }catch(e){ note.className = "cpnote bad"; note.textContent = "نشد. دوباره امتحان کنید."; }
+  btn.disabled = false;
+  sumUp();
 }
 
 document.getElementById("orderForm").addEventListener("submit", async (e)=>{
@@ -662,7 +725,8 @@ document.getElementById("orderForm").addEventListener("submit", async (e)=>{
     const r = await fetch("/api/sl/order", { method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ plan: PICKED.name, name: g("oName"), contact: g("oContact"),
-        kind: g("oKind"), job: g("oJob"), seats: g("oSeats"), note: g("oNote") }) });
+        kind: g("oKind"), job: g("oJob"), seats: g("oSeats"), note: g("oNote"),
+        coupon: g("oCoupon") }) });
     const d = await r.json().catch(()=>({}));
     if(!(r.ok && d.ok)){ note.textContent = d.error || "نشد. کمی بعد دوباره."; }
     else showInvoice(d);
@@ -685,7 +749,12 @@ function showInvoice(d){
     <h3>✅ سفارشتان ثبت شد</h3>
     <div class="kv"><span>شمارهٔ فاکتور</span><span class="no">${escH(d.id)}</span></div>
     <div class="kv"><span>پلن</span><b>${escH(d.plan)}</b></div>
-    <div class="kv"><span>مبلغ</span><b>${escH(money(d.price))}</b></div>
+    ${d.discount > 0
+      ? `<div class="kv"><span>مبلغ پلن</span><b>${escH(money(d.full))}</b></div>
+         <div class="kv"><span>تخفیف (${escH(d.coupon)})</span><b>${escH(money(d.discount))}</b></div>
+         <div class="kv"><span>قابل پرداخت</span><b>${escH(money(d.price))}</b></div>`
+      : `<div class="kv"><span>مبلغ</span><b>${escH(money(d.price))}</b></div>` +
+        (d.couponError ? `<div class="kv"><span>کد تخفیف</span><b>${escH(d.couponError)}</b></div>` : ``)}
     ${card}
     <ol class="steps2">
       <li>مبلغ را به همان کارت واریز کنید.</li>

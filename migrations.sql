@@ -729,3 +729,25 @@ CREATE TABLE IF NOT EXISTS sl_orders (
   updated  INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS sl_orders_created ON sl_orders(created DESC);
+
+-- ۳۲ | کدهای تخفیفِ کارتابل
+-- جدولِ «coupons» مالِ فروشگاهِ سِنساست و همان‌جا می‌ماند: دو کسب‌وکارِ
+-- جدا، پس کدِ یکی نباید روی آن یکی کار کند.
+CREATE TABLE IF NOT EXISTS sl_coupons (
+  code    TEXT PRIMARY KEY,            -- همیشه با حروف بزرگ ذخیره می‌شود
+  kind    TEXT NOT NULL DEFAULT 'percent',  -- percent یا amount
+  value   INTEGER NOT NULL DEFAULT 0,  -- درصد، یا مبلغ به تومان
+  min_total INTEGER NOT NULL DEFAULT 0,
+  max_uses  INTEGER NOT NULL DEFAULT 0,     -- ۰ یعنی بی‌نهایت
+  used    INTEGER NOT NULL DEFAULT 0,
+  expires INTEGER NOT NULL DEFAULT 0,       -- ۰ یعنی بی‌تاریخ
+  active  INTEGER NOT NULL DEFAULT 1,
+  note    TEXT NOT NULL DEFAULT '',
+  created INTEGER NOT NULL DEFAULT 0
+);
+
+-- سفارش باید بداند با کدام کد و چقدر تخفیف بسته شده، وگرنه فردا
+-- معلوم نیست چرا مبلغش با قیمتِ پلن نمی‌خواند. این دو ستون عمداً
+-- این‌جا با ALTER اضافه نمی‌شوند: «ADD COLUMN» دوبار اجرا نمی‌شود و
+-- این فایل هر بار استقرار دوباره اجرا می‌گردد — یک خطایش کلِ استقرار
+-- را می‌خواباند. به‌جایش sltech-shop.js موقع کار خودش می‌سازدشان.

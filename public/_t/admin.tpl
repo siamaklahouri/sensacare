@@ -263,6 +263,14 @@ a{ color:var(--brass-ink); }
   background:var(--white); box-shadow:var(--glow); }
 .hint{ font-size:11.5px; color:var(--ink-faint); line-height:2; margin-top:8px; }
 .hint2{ font-size:11px; color:var(--ink-faint); font-weight:400; }
+/* ---------- جدولِ کدهای تخفیف ---------- */
+.cptab{ width:100%; border-collapse:collapse; font-size:13px; }
+.cptab th{ text-align:start; font-weight:600; color:var(--ink-soft); font-size:11.5px;
+  padding:6px 8px; border-bottom:1px solid var(--line); }
+.cptab td{ padding:8px; border-bottom:1px solid var(--line-soft); color:var(--ink); }
+.cptab tr:last-child td{ border-bottom:0; }
+.cptab tr.cpdead td{ color:var(--ink-faint); text-decoration:line-through; }
+.cptab tr.cpdead td:last-child{ text-decoration:none; }
 /* ---------- سفارش‌ها ---------- */
 .ordrow{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
   margin-bottom:11px; background:var(--white); }
@@ -690,6 +698,30 @@ td.ltr{ direction:ltr; text-align:left; color:var(--ink-soft); }
         صفر یعنی بی‌مهلت. پلنی که نامش خالی باشد ذخیره نمی‌شود.</p>
       <div id="stPlans"></div>
       <div style="margin-top:10px;"><button class="btn" id="stAddPlan">＋ پلن تازه</button></div>
+    </div>
+
+    <div class="panel">
+      <h2>کدهای تخفیف</h2>
+      <p class="sub">کد روی مبلغِ سفارش اعمال می‌شود. «درصد» از کلِ مبلغ کم می‌کند و
+        «مبلغ» عددِ ثابت. سقفِ استفاده و مهلت اختیاری‌اند — خالی یعنی بی‌حد.</p>
+      <div class="row">
+        <div class="fld"><label>کد</label>
+          <input type="text" id="cpCode" dir="ltr" placeholder="NOWRUZ" autocomplete="off"></div>
+        <div class="fld"><label>نوع</label>
+          <select id="cpKind"><option value="percent">درصد</option><option value="amount">مبلغ (تومان)</option></select></div>
+        <div class="fld"><label>مقدار</label>
+          <input type="number" id="cpValue" dir="ltr" min="1" placeholder="۲۰"></div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="fld"><label>حداقل خرید (اختیاری)</label>
+          <input type="number" id="cpMin" dir="ltr" min="0" placeholder="۰"></div>
+        <div class="fld"><label>سقف استفاده (اختیاری)</label>
+          <input type="number" id="cpMax" dir="ltr" min="0" placeholder="بی‌حد"></div>
+        <div class="fld"><label>مهلت به روز (اختیاری)</label>
+          <input type="number" id="cpDays" dir="ltr" min="0" max="3650" placeholder="بی‌مهلت"></div>
+        <div><button class="btn btn-main" id="cpSave">ثبت کد</button></div>
+      </div>
+      <div id="cpList" class="hint" style="margin-top:14px;">…</div>
     </div>
 
     <div class="panel">
@@ -1880,7 +1912,57 @@ function paintSite(d){
   paintBots(d.bots);
 }
 
+/* ---------- کدهای تخفیف ---------- */
+async function loadCoupons(){
+  const box = document.getElementById("cpList");
+  const r = await api("/coupons");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  const items = r.data.items || [];
+  if(!items.length){ box.textContent = "هنوز کدی ساخته نشده."; return; }
+  box.innerHTML = `<table class="cptab"><thead><tr>
+      <th>کد</th><th>تخفیف</th><th>حداقل</th><th>استفاده</th><th>مهلت</th><th></th>
+    </tr></thead><tbody>` + items.map(c=>{
+    const left = c.expires ? (c.expires > Date.now()
+        ? "تا " + faDateTime(c.expires) : "تمام شده") : "بی‌مهلت";
+    const uses = c.max_uses ? fa(c.used) + " از " + fa(c.max_uses) : fa(c.used);
+    return `<tr class="${(!c.active || (c.expires && c.expires < Date.now()) ||
+                          (c.max_uses && c.used >= c.max_uses)) ? "cpdead" : ""}">
+      <td dir="ltr"><b>${esc(c.code)}</b></td>
+      <td>${c.kind === "amount" ? fa(Number(c.value).toLocaleString("en-US")) + " تومان"
+                                : fa(c.value) + "٪"}</td>
+      <td>${c.min_total ? fa(Number(c.min_total).toLocaleString("en-US")) : "—"}</td>
+      <td>${uses}</td>
+      <td>${esc(left)}</td>
+      <td><button class="btn btn-danger btn-ic" data-cpdel="${esc(c.code)}" title="بردار">🗑</button></td>
+    </tr>`; }).join("") + "</tbody></table>";
+
+  box.querySelectorAll("[data-cpdel]").forEach(b=>{
+    b.onclick = async ()=>{
+      if(!confirm("کد «" + b.dataset.cpdel + "» برداشته شود؟")) return;
+      const r = await api("/coupons/" + encodeURIComponent(b.dataset.cpdel), { method:"DELETE" });
+      if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+      say("کد برداشته شد."); loadCoupons();
+    };
+  });
+}
+
 async function setupSite(){
+  document.getElementById("cpSave").onclick = async ()=>{
+    const btn = document.getElementById("cpSave");
+    const g = id => document.getElementById(id).value.trim();
+    btn.disabled = true;
+    const r = await api("/coupons", { method:"POST", body: JSON.stringify({
+      code: g("cpCode"), kind: document.getElementById("cpKind").value,
+      value: g("cpValue"), min_total: g("cpMin"), max_uses: g("cpMax"), days: g("cpDays")
+    })});
+    btn.disabled = false;
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    ["cpCode","cpValue","cpMin","cpMax","cpDays"].forEach(i=> document.getElementById(i).value = "");
+    say("کد <b dir=\"ltr\">" + esc(r.data.code) + "</b> ثبت شد.");
+    loadCoupons();
+  };
+  loadCoupons();
+
   document.getElementById("stAddPlan").onclick = ()=>{
     const box = document.getElementById("stPlans");
     const row = planRow(null);

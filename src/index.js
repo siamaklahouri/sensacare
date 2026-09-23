@@ -1,6 +1,6 @@
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb } from './sltech-bot.js';
-import { placeOrder } from './sltech-shop.js';
+import { placeOrder, checkCoupon } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -2545,6 +2545,21 @@ export default {
           phone: st.phone || '', email: st.email || '',
           plans: Array.isArray(st.plans) ? st.plans : []
         } });
+      }
+
+      /* سنجیدنِ کد تخفیف پیش از ثبت — فقط برای نشان دادنِ مبلغ.
+         حسابِ نهایی باز هم موقعِ ثبتِ سفارش روی سرور انجام می‌شود. */
+      if (p === '/api/sl/coupon' && m === 'POST') {
+        const rl = await rateLimit(env, 'slcoupon:' + clientIp(req), 30, 3600);
+        if (!rl.ok) return bad('تلاش زیاد شد. کمی بعد.', 429);
+        const st = (await getSetting(env, 'sltechSite', {})) || {};
+        const plans = Array.isArray(st.plans) ? st.plans : [];
+        const plan = plans.find(x => x.name === String(body.plan || '').trim());
+        if (!plan) return bad('این پلن را نمی‌شناسم.');
+        const seats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
+        const total = Number(plan.price || 0) * seats;
+        const r = await checkCoupon(env, body.code, total);
+        return r.error ? bad(r.error) : json({ ok: true, ...r, total });
       }
 
       /* ثبتِ سفارشِ کارتابل */

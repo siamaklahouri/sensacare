@@ -20,7 +20,7 @@ import {
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
-import { listOrders, setOrder } from './sltech-shop.js';
+import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -653,6 +653,24 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (!d.ok) return bad('ربات نپذیرفت: ' + (d.description || 'پاسخِ نامفهوم'), 502);
       return json({ ok: true });
     } catch (e) { return bad('به ربات نرسیدیم: ' + e.message, 502); }
+  }
+
+  /* ---- کدهای تخفیف ---- */
+  if (p === '/coupons' && m === 'GET')
+    return json({ ok: true, items: await listCoupons(env) });
+
+  if (p === '/coupons' && m === 'POST') {
+    const r = await saveCoupon(env, body);
+    if (r.error) return bad(r.error);
+    await log(env, 'coupon', '', r.code);
+    return json({ ok: true, code: r.code });
+  }
+
+  const mCoupon = p.match(/^\/coupons\/([A-Za-z0-9-]{2,40})$/);
+  if (mCoupon && m === 'DELETE') {
+    await dropCoupon(env, mCoupon[1]);
+    await log(env, 'coupon-del', '', mCoupon[1].toUpperCase());
+    return json({ ok: true });
   }
 
   /* ---- سفارش‌ها ---- */
