@@ -1451,8 +1451,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-title">سرورها و بکاپ</div>
       <div class="section-sub">فهرست سرورها و وضعیت بکاپ‌گیری بر اساس دیتای شما</div>
 
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshExcelBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshExcelBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="backupSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -1514,8 +1514,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin:0 0 10px;">
           روی هر روز کلیک کنید تا به‌عنوان «بررسی‌شده و موفق» علامت بخورد.
         </p>
-        <div class="toolbar" data-feat="folder" style="margin-bottom:12px;">
-          <button class="btn btn-brass" id="refreshRemoteBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+        <div class="toolbar" data-feat="xlsx" style="margin-bottom:12px;">
+          <button class="btn btn-brass" id="refreshRemoteBtn">⬆ خواندن از فایل اکسل</button>
           <span class="save-hint" id="remoteSyncStatus" style="font-size:11.5px;"></span>
         </div>
         <div id="remoteChecklistWrap"></div>
@@ -1527,8 +1527,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-title">شرکت‌ها</div>
       <div class="section-sub">تاریخچه‌ی بازدید/پشتیبانی شرکت‌ها</div>
 
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshDateBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshDateBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="dateSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -1540,8 +1540,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-title">سرویس MVPN</div>
       <div class="section-sub">فهرست خطوط سازمانی</div>
 
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshMvpnBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshMvpnBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="mvpnSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -3607,11 +3607,45 @@ async function findDbFileHandle(){
   return null;
 }
 
-async function loadDatabase(){
-  if(!dirHandle){
-    alert("اول باید به پوشه‌ی مشترک وصل شوید — از دکمه‌ی «🗂️ اتصال به پوشه روی سیستم» در نوار کناری.");
-    return;
+/* خواندنِ یک‌بارهٔ فایل، بی‌آنکه به پوشه‌ای وصل باشیم.
+   پیش از این بدونِ اتصال به پوشه اصلاً راهی برای خواندنِ اکسل نبود و
+   کاربر پشتِ یک پیامِ «اول وصل شوید» می‌ماند. حالا فایل را می‌گیرد،
+   می‌خواند، داخل کارتابل می‌نشاند و رهایش می‌کند — داده روی سرور است،
+   نه در آن فایل. */
+async function importDatabaseFromFile(){
+  if(xlsxOff()) return;
+  const file = await pickFile(".xlsx,.xls");
+  if(!file) return;
+  updateDbStatus("در حال خواندن فایل...");
+  const wb = await readWorkbook(file);
+  if(!wb){ updateDbStatus(""); return; }
+  try{
+    dbWorkbook = wb;
+    dbFileName = file.name;
+    backupData = { vm: parseServersSheet(wb) };
+    dailyLog = parseDailyLogSheet(wb);
+    companiesData = { companies: parseCompaniesSheet(wb) };
+    mvpnData = { lines: parseMvpnSheetFlat(wb) };
+    const remote = parseRemoteChecklistSheet(wb);
+    remoteBackupData = { roster: remote.roster };
+    if(remote.dates) state.remoteCheckDates = remote.dates;
+    if(remote.checks) state.remoteChecks = remote.checks;
+    /* بخشِ رمزدار عمداً از فایل خوانده نمی‌شود: کلیدش دستِ خودِ کاربر
+       است و اگر این‌جا جایگزین شود، آن‌چه باز کرده بود قفل می‌ماند. */
+    dbSyncedAt = new Date().toISOString();
+    persistDbCache();
+    scheduleSave();
+    renderServers(); renderCompanies(); renderMvpn(); renderRemoteChecklist(); renderCharts();
+    updateDbStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست.");
+  }catch(e){
+    console.error(e);
+    updateDbStatus("⚠️ فایل خوانده شد ولی ساختارش با کارتابل نمی‌خواند.");
   }
+}
+
+async function loadDatabase(){
+  /* بی‌پوشه هم باید بشود خواند — همان خواندنِ یک‌باره. */
+  if(!dirHandle) return importDatabaseFromFile();
   updateDbStatus("در حال بارگذاری کتابخانه...");
   const ok = await ensureXlsxLib();
   if(!ok){
@@ -5274,6 +5308,53 @@ function vaultGridCols(sec){
 /* جدولِ ساده و ویرایش‌پذیر — هم برای «دفتر تلفن» و هم برای جدول‌هایی
    که ادمین ستون‌هایشان را خودش تعیین کرده. ستون‌ها با شماره ذخیره
    می‌شوند نه با نام، تا عوض‌کردنِ نامِ ستون داده را گم نکند. */
+/* ---------------- خواندن از اکسل، داخلِ دیتای شخصی ----------------
+   ستون‌ها با جای‌شان می‌نشینند، نه با نامشان: ستونِ اول به ستونِ اول
+   این بخش، دومی به دومی و همین‌طور تا آخر. اگر ردیفِ اول سربرگ باشد
+   خودش کنار گذاشته می‌شود.
+
+   نکتهٔ امنیتی: این فایل هیچ‌وقت به سرور نمی‌رود. همین‌جا در مرورگر
+   خوانده می‌شود و نتیجه‌اش با کلیدِ خودتان رمز می‌شود — همان مسیری که
+   بقیهٔ دیتای شخصی می‌رود. */
+async function importVaultGridFromXlsx(sec){
+  if(xlsxOff() || !sec) return;
+  const cols = vaultGridCols(sec);
+  const file = await pickFile();
+  if(!file) return;
+  const wb = await readWorkbook(file);
+  if(!wb) return;
+
+  const rows = vaultRows(sec);
+  let added = 0, sheets = 0;
+  for(const name of wb.SheetNames){
+    const list = sheetRows(wb, name);
+    if(!list.length) continue;
+    sheets++;
+    let start = looksLikeHeader(list[0], cols) ? 1 : 0;
+    for(let i = start; i < list.length; i++){
+      const r = list[i];
+      const obj = {};
+      for(let ci = 0; ci < cols.length; ci++){
+        const v = r[ci];
+        obj["c" + ci] = v == null ? "" : String(v).trim();
+      }
+      /* اگر همهٔ ستون‌های این بخش خالی درآمدند، ردیف را نمی‌سازیم —
+         وگرنه یک فایلِ پهن‌تر، ده‌ها ردیفِ خالی اضافه می‌کند. */
+      if(Object.values(obj).every(v=> v === "")) continue;
+      rows.push(obj);
+      added++;
+    }
+  }
+  if(!added){
+    alert("چیزی برای افزودن پیدا نشد. ستون‌های فایل باید به ترتیبِ ستون‌های همین بخش باشند.");
+    return;
+  }
+  await encryptPersonalVault();
+  renderPersonalView();
+  alert("✓ " + toPersianDigits(added) + " ردیف از " + toPersianDigits(sheets) +
+        " برگه خوانده شد و رمز شد.\n\nفایل دیگر لازم نیست؛ داده داخلِ کارتابل نشست.");
+}
+
 function renderPersonalGrid(sec){
   const body = document.getElementById("personalTabBody");
   if(!body) return;
@@ -5296,8 +5377,14 @@ function renderPersonalGrid(sec){
           <tbody>${bodyHtml || `<tr><td colspan="${cols.length+1}" style="color:var(--ink-faint); font-size:12.5px; text-align:center; padding:14px;">هنوز چیزی ثبت نشده.</td></tr>`}</tbody>
         </table>
       </div>
-      <button type="button" class="btn btn-brass btn-sm" id="pgAddRow" style="margin-top:10px;">＋ افزودن ردیف</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="btn btn-brass btn-sm" id="pgAddRow">＋ افزودن ردیف</button>
+        ${xlsxOff() ? "" : '<button type="button" class="btn btn-ghost btn-sm" id="pgImportXlsx" title="ستون‌ها به ترتیب می‌نشینند">⬆ خواندن از اکسل</button>'}
+      </div>
     </div>`;
+
+  const pgImp = document.getElementById("pgImportXlsx");
+  if(pgImp) pgImp.addEventListener("click", ()=> importVaultGridFromXlsx(sec));
 
   body.querySelectorAll(".pg-cell").forEach(inp=>{
     inp.addEventListener("change", ()=>{
@@ -5360,12 +5447,12 @@ function renderPersonalCreds(){
   }).join("");
 
   body.innerHTML = `
-    <div class="cred-import-bar">
+    ${xlsxOff() ? "" : `<div class="cred-import-bar">
       <p>📥 یک فایل اکسل بارگذاری کنید که هر برگه (Sheet) آن نام یک شرکت، و ردیف‌هایش به‌ترتیب عنوان/IP/یوزرنیم/پسورد باشد — همه‌چیز فقط در همین مرورگر پردازش و بلافاصله رمزنگاری می‌شود.</p>
       <button type="button" class="btn btn-brass btn-sm" id="importCredBtn">📥 انتخاب فایل اکسل/CSV</button>
       <input type="file" id="importCredFile" accept=".xlsx,.xls,.csv" style="display:none;">
       <span class="cred-import-status" id="importCredStatus"></span>
-    </div>
+    </div>`}
     <div class="cred-toolbar" style="flex-direction:column; align-items:stretch;">
       <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap; margin-bottom:8px;">🏢 شرکت‌ها:</label>
       <div class="company-tabs" id="companyTabs">
@@ -5426,6 +5513,8 @@ function renderPersonalCreds(){
     });
   });
 
+  /* وقتی ادمین «خواندن از اکسل» را بسته، این نوار اصلاً ساخته نشده */
+  if(document.getElementById("importCredBtn")){
   document.getElementById("importCredBtn").addEventListener("click", ()=>{
     document.getElementById("importCredFile").click();
   });
@@ -5474,6 +5563,7 @@ function renderPersonalCreds(){
     }
     e.target.value = "";
   });
+  }
 }
 function onCredFieldChange(e){
   const idx = parseInt(e.target.getAttribute("data-cred-idx"));
@@ -5670,6 +5760,87 @@ function setupNoAutofill(){
       }
     }).observe(host, { childList:true, subtree:true });
   }catch(e){ /* ناظر نشد؟ همان یک بارِ اول هم بهتر از هیچ است */ }
+}
+
+/* ---------------- خواندن از اکسل ----------------
+   یک‌بار فایل را می‌خواند و داخل کارتابل می‌نشاند. بعد از آن به فایل
+   کاری ندارد — دادهٔ کارتابل روی سرور است، نه در آن فایل. این با
+   «آینهٔ اکسل روی سیستم» فرق دارد: آن یکی به یک پوشه بند می‌ماند و
+   هر تغییری را همان‌جا هم می‌نویسد.
+
+   ادمین می‌تواند این را ببندد؛ آن‌وقت نه دکمه‌ای هست نه راهی. */
+function xlsxOff(){ return featClosed("xlsx"); }
+
+/* یک انتخابگرِ فایل که خودش را جمع می‌کند. input را در صفحه نگه
+   نمی‌داریم چون یک بار مصرف است و اگر بماند، دفعهٔ بعد همان فایلِ قبلی
+   را به یاد دارد و «change» شلیک نمی‌شود. */
+function pickFile(accept){
+  return new Promise(resolve=>{
+    const el = document.createElement("input");
+    el.type = "file";
+    el.accept = accept || ".xlsx,.xls,.csv";
+    el.style.display = "none";
+    el.addEventListener("change", ()=>{
+      const f = el.files && el.files[0] ? el.files[0] : null;
+      el.remove();
+      resolve(f);
+    });
+    /* اگر کاربر پنجره را ببندد، «change» هیچ‌وقت نمی‌آید. این نگهبان
+       بعد از برگشتنِ فوکوس به صفحه، input را برمی‌دارد. */
+    window.addEventListener("focus", ()=> setTimeout(()=>{
+      if(document.body.contains(el) && !(el.files && el.files.length)){ el.remove(); resolve(null); }
+    }, 400), { once:true });
+    document.body.appendChild(el);
+    el.click();
+  });
+}
+
+/* فایل را می‌خواند و کتابِ اکسل را برمی‌گرداند. اگر کتابخانه نیامد یا
+   فایل خراب بود، پیامِ روشن می‌دهد و null برمی‌گرداند. */
+async function readWorkbook(file){
+  if(!file) return null;
+  if(typeof ensureXlsxLib === "function"){
+    const ok = await ensureXlsxLib();
+    if(!ok){ alert("کتابخانهٔ خواندن اکسل بارگذاری نشد. اینترنت را بررسی کنید."); return null; }
+  }
+  try{
+    /* CSV و xlsx دو جورند و این تفاوت یک بار ما را زمین زد:
+       xlsx یک زیپ است و متنش داخلش UTF-8 است، پس بایتِ خام درست خوانده
+       می‌شود. ولی CSV خودش یک فایلِ متنی است و اگر بایت‌بایت بدهیمش،
+       کتابخانه هر بایت را یک نویسه حساب می‌کند و «نام» می‌شود «ÙØ§Ù».
+       پس CSV را با متنِ رمزگشایی‌شده می‌دهیم، نه با بایت. */
+    const isCsv = /\.csv$/i.test(file.name || "") || /csv|text\/plain/i.test(file.type || "");
+    if(isCsv){
+      let txt = await file.text();
+      if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);   /* BOM ویندوز */
+      return XLSX.read(txt, { type:"string", raw:true });
+    }
+    const buf = await file.arrayBuffer();
+    return XLSX.read(buf, { type:"array", raw:true, cellDates:false });
+  }catch(e){
+    console.error(e);
+    alert("این فایل خوانده نشد. مطمئن شوید یک فایل اکسل یا CSV سالم است.");
+    return null;
+  }
+}
+
+/* ردیف‌های یک برگه، به شکلِ آرایه‌ای از آرایه‌ها و بدونِ ردیف‌های خالی */
+function sheetRows(wb, name){
+  const sh = wb.Sheets[name];
+  if(!sh) return [];
+  const rows = XLSX.utils.sheet_to_json(sh, { header:1, raw:true, defval:null }) || [];
+  return rows.filter(r=> r && r.some(c=> c != null && String(c).trim() !== ""));
+}
+
+/* آیا این ردیف سربرگ است؟ وقتی هیچ خانه‌ای عدد نیست و دست‌کم یکی از
+   خانه‌ها با نامِ ستونی که انتظار داریم می‌خواند. */
+function looksLikeHeader(row, cols){
+  if(!row) return false;
+  const anyNumber = row.some(c=> c != null && String(c).trim() !== "" && !isNaN(Number(c)));
+  if(anyNumber) return false;
+  const norm = s => String(s == null ? "" : s).trim().toLowerCase();
+  const want = (cols || []).map(norm);
+  return row.some(c=> c != null && want.includes(norm(c)));
 }
 
 /* ---------------- بخش‌های مشترک ----------------

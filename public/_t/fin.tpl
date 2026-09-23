@@ -1206,8 +1206,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-invoices" data-feat="view:invoices">
       <div class="section-title">سررسید اسناد دریافتنی از مشتری</div>
       <div class="section-sub">فهرست فاکتورهای صادرشده و وضعیت وصول مطالبات</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshInvoicesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshInvoicesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="invoicesSyncStatus"></span>
       </div>
       <div class="cards" id="invoiceCards"></div>
@@ -1247,8 +1247,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-payables" data-feat="view:payables">
       <div class="section-title">بدهی و پرداخت</div>
       <div class="section-sub">فهرست بدهی‌ها به تامین‌کنندگان به تفکیک پروژه</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshPayablesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshPayablesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="payablesSyncStatus"></span>
       </div>
       <div class="cards" id="payableCards"></div>
@@ -1287,8 +1287,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-payablenotes" data-feat="view:payablenotes">
       <div class="section-title">اسناد پرداختنی نزد دیگران</div>
       <div class="section-sub">چک‌ها و اسنادی که شرکت به دیگران بدهکار است</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshPayableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshPayableNotesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="payableNotesSyncStatus"></span>
       </div>
       <div class="cards" id="payableNotesCards"></div>
@@ -1325,8 +1325,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-receivablenotes" data-feat="view:receivablenotes">
       <div class="section-title">اسناد دریافتنی به نفع شرکت</div>
       <div class="section-sub">چک‌ها و اسنادی که دیگران به شرکت بدهکارند</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshReceivableNotesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshReceivableNotesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="receivableNotesSyncStatus"></span>
       </div>
       <div class="cards" id="receivableNotesCards"></div>
@@ -1363,8 +1363,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-expenses" data-feat="view:expenses">
       <div class="section-title">منابع و مصارف</div>
       <div class="section-sub">ثبت منابع (دریافت‌ها و ورودی‌های نقدی) و مصارف (هزینه‌ها و خروجی‌های نقدی)</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshExpensesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshExpensesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="expensesSyncStatus"></span>
       </div>
       <div class="cards" id="expenseCards"></div>
@@ -1404,8 +1404,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-bank" data-feat="view:bank">
       <div class="section-title">حساب‌های بانکی و نقدینگی</div>
       <div class="section-sub">فهرست حساب‌ها و موجودی هرکدام</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshBankBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshBankBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="bankSyncStatus"></span>
       </div>
       <div class="cards" id="bankCards"></div>
@@ -1436,8 +1436,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-budget" data-feat="view:budget">
       <div class="section-title">بودجه‌بندی ماهانه</div>
       <div class="section-sub">مقایسه‌ی بودجه‌ی مصوب با هزینه‌ی واقعی هر دسته</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshBudgetBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshBudgetBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="budgetSyncStatus"></span>
       </div>
       <div class="panel">
@@ -1467,8 +1467,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-parties" data-feat="view:parties">
       <div class="section-title">طرف‌حساب‌ها</div>
       <div class="section-sub">فهرست مشتریان و تامین‌کنندگان</div>
-      <div class="toolbar" data-feat="folder">
-        <button class="btn btn-brass" id="refreshPartiesBtn">🔄 بارگذاری/به‌روزرسانی از فایل دیتابیس</button>
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="refreshPartiesBtn">⬆ خواندن از فایل اکسل</button>
         <span class="save-hint" id="partiesSyncStatus"></span>
       </div>
       <div class="panel">
@@ -2476,12 +2476,44 @@ function updateAllSyncStatus(text){
   });
 }
 
-async function loadDatabase(){
-  if(!dirHandle){
-    // no folder connected yet — the refresh button itself should just connect you, not dead-end in an alert
-    await connectFolder();
-    return;
+/* خواندنِ یک‌بارهٔ فایل، بی‌آنکه به پوشه‌ای وصل باشیم.
+   پیش از این دکمه شما را می‌برد سراغِ «اتصال به پوشه»، یعنی برای یک بار
+   خواندنِ فایل هم باید یک پوشه را همیشه در اختیار صفحه می‌گذاشتید.
+   حالا فایل را می‌گیرد، می‌خواند، داخل کارتابل می‌نشاند و رهایش می‌کند —
+   داده روی سرور است، نه در آن فایل. */
+async function importDatabaseFromFile(){
+  if(xlsxOff()) return;
+  const file = await pickFile(".xlsx,.xls");
+  if(!file) return;
+  updateAllSyncStatus("در حال خواندن فایل...");
+  const wb = await readWorkbook(file);
+  if(!wb){ updateAllSyncStatus(""); return; }
+  try{
+    dbWorkbook = wb;
+    dbFileName = file.name;
+    partiesData = parsePartiesSheet(wb);
+    invoicesData = parseInvoicesSheet(wb);
+    payablesData = parsePayablesSheet(wb);
+    payableNotesData = parsePayableNotesSheet(wb);
+    receivableNotesData = parseReceivableNotesSheet(wb);
+    expensesData = parseExpensesSheet(wb);
+    bankData = parseBankSheet(wb);
+    budgetData = parseBudgetSheet(wb);
+    /* بخشِ رمزدار عمداً از فایل خوانده نمی‌شود: کلیدش دستِ خودِ کاربر
+       است و اگر این‌جا جایگزین شود، آن‌چه باز کرده بود قفل می‌ماند. */
+    persistCache();
+    scheduleSave();
+    renderEverything();
+    updateAllSyncStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست.");
+  }catch(e){
+    console.error(e);
+    updateAllSyncStatus("⚠️ فایل خوانده شد ولی ساختارش با کارتابل نمی‌خواند.");
   }
+}
+
+async function loadDatabase(){
+  /* بی‌پوشه هم باید بشود خواند — همان خواندنِ یک‌باره. */
+  if(!dirHandle) return importDatabaseFromFile();
   updateAllSyncStatus("در حال بارگذاری...");
   const ok = await ensureXlsxLib();
   if(!ok){
@@ -4501,6 +4533,87 @@ function setupNoAutofill(){
   }catch(e){ /* ناظر نشد؟ همان یک بارِ اول هم بهتر از هیچ است */ }
 }
 
+/* ---------------- خواندن از اکسل ----------------
+   یک‌بار فایل را می‌خواند و داخل کارتابل می‌نشاند. بعد از آن به فایل
+   کاری ندارد — دادهٔ کارتابل روی سرور است، نه در آن فایل. این با
+   «آینهٔ اکسل روی سیستم» فرق دارد: آن یکی به یک پوشه بند می‌ماند و
+   هر تغییری را همان‌جا هم می‌نویسد.
+
+   ادمین می‌تواند این را ببندد؛ آن‌وقت نه دکمه‌ای هست نه راهی. */
+function xlsxOff(){ return featClosed("xlsx"); }
+
+/* یک انتخابگرِ فایل که خودش را جمع می‌کند. input را در صفحه نگه
+   نمی‌داریم چون یک بار مصرف است و اگر بماند، دفعهٔ بعد همان فایلِ قبلی
+   را به یاد دارد و «change» شلیک نمی‌شود. */
+function pickFile(accept){
+  return new Promise(resolve=>{
+    const el = document.createElement("input");
+    el.type = "file";
+    el.accept = accept || ".xlsx,.xls,.csv";
+    el.style.display = "none";
+    el.addEventListener("change", ()=>{
+      const f = el.files && el.files[0] ? el.files[0] : null;
+      el.remove();
+      resolve(f);
+    });
+    /* اگر کاربر پنجره را ببندد، «change» هیچ‌وقت نمی‌آید. این نگهبان
+       بعد از برگشتنِ فوکوس به صفحه، input را برمی‌دارد. */
+    window.addEventListener("focus", ()=> setTimeout(()=>{
+      if(document.body.contains(el) && !(el.files && el.files.length)){ el.remove(); resolve(null); }
+    }, 400), { once:true });
+    document.body.appendChild(el);
+    el.click();
+  });
+}
+
+/* فایل را می‌خواند و کتابِ اکسل را برمی‌گرداند. اگر کتابخانه نیامد یا
+   فایل خراب بود، پیامِ روشن می‌دهد و null برمی‌گرداند. */
+async function readWorkbook(file){
+  if(!file) return null;
+  if(typeof ensureXlsxLib === "function"){
+    const ok = await ensureXlsxLib();
+    if(!ok){ alert("کتابخانهٔ خواندن اکسل بارگذاری نشد. اینترنت را بررسی کنید."); return null; }
+  }
+  try{
+    /* CSV و xlsx دو جورند و این تفاوت یک بار ما را زمین زد:
+       xlsx یک زیپ است و متنش داخلش UTF-8 است، پس بایتِ خام درست خوانده
+       می‌شود. ولی CSV خودش یک فایلِ متنی است و اگر بایت‌بایت بدهیمش،
+       کتابخانه هر بایت را یک نویسه حساب می‌کند و «نام» می‌شود «ÙØ§Ù».
+       پس CSV را با متنِ رمزگشایی‌شده می‌دهیم، نه با بایت. */
+    const isCsv = /\.csv$/i.test(file.name || "") || /csv|text\/plain/i.test(file.type || "");
+    if(isCsv){
+      let txt = await file.text();
+      if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);   /* BOM ویندوز */
+      return XLSX.read(txt, { type:"string", raw:true });
+    }
+    const buf = await file.arrayBuffer();
+    return XLSX.read(buf, { type:"array", raw:true, cellDates:false });
+  }catch(e){
+    console.error(e);
+    alert("این فایل خوانده نشد. مطمئن شوید یک فایل اکسل یا CSV سالم است.");
+    return null;
+  }
+}
+
+/* ردیف‌های یک برگه، به شکلِ آرایه‌ای از آرایه‌ها و بدونِ ردیف‌های خالی */
+function sheetRows(wb, name){
+  const sh = wb.Sheets[name];
+  if(!sh) return [];
+  const rows = XLSX.utils.sheet_to_json(sh, { header:1, raw:true, defval:null }) || [];
+  return rows.filter(r=> r && r.some(c=> c != null && String(c).trim() !== ""));
+}
+
+/* آیا این ردیف سربرگ است؟ وقتی هیچ خانه‌ای عدد نیست و دست‌کم یکی از
+   خانه‌ها با نامِ ستونی که انتظار داریم می‌خواند. */
+function looksLikeHeader(row, cols){
+  if(!row) return false;
+  const anyNumber = row.some(c=> c != null && String(c).trim() !== "" && !isNaN(Number(c)));
+  if(anyNumber) return false;
+  const norm = s => String(s == null ? "" : s).trim().toLowerCase();
+  const want = (cols || []).map(norm);
+  return row.some(c=> c != null && want.includes(norm(c)));
+}
+
 /* ---------------- بخش‌های مشترک ----------------
    جدول‌هایی که ادمین بین چند کارتابل مشترک کرده. کدش در یک فایلِ
    جداست (/shared.js) چون هر دو کارتابل همان را بار می‌کنند؛ اگر دو
@@ -5433,6 +5546,53 @@ function vaultGridCols(sec){
 /* جدولِ ساده و ویرایش‌پذیر — هم برای «دفتر تلفن» و هم برای جدول‌هایی
    که ادمین ستون‌هایشان را خودش تعیین کرده. ستون‌ها با شماره ذخیره
    می‌شوند نه با نام، تا عوض‌کردنِ نامِ ستون داده را گم نکند. */
+/* ---------------- خواندن از اکسل، داخلِ دیتای شخصی ----------------
+   ستون‌ها با جای‌شان می‌نشینند، نه با نامشان: ستونِ اول به ستونِ اول
+   این بخش، دومی به دومی و همین‌طور تا آخر. اگر ردیفِ اول سربرگ باشد
+   خودش کنار گذاشته می‌شود.
+
+   نکتهٔ امنیتی: این فایل هیچ‌وقت به سرور نمی‌رود. همین‌جا در مرورگر
+   خوانده می‌شود و نتیجه‌اش با کلیدِ خودتان رمز می‌شود — همان مسیری که
+   بقیهٔ دیتای شخصی می‌رود. */
+async function importVaultGridFromXlsx(sec){
+  if(xlsxOff() || !sec) return;
+  const cols = vaultGridCols(sec);
+  const file = await pickFile();
+  if(!file) return;
+  const wb = await readWorkbook(file);
+  if(!wb) return;
+
+  const rows = vaultRows(sec);
+  let added = 0, sheets = 0;
+  for(const name of wb.SheetNames){
+    const list = sheetRows(wb, name);
+    if(!list.length) continue;
+    sheets++;
+    let start = looksLikeHeader(list[0], cols) ? 1 : 0;
+    for(let i = start; i < list.length; i++){
+      const r = list[i];
+      const obj = {};
+      for(let ci = 0; ci < cols.length; ci++){
+        const v = r[ci];
+        obj["c" + ci] = v == null ? "" : String(v).trim();
+      }
+      /* اگر همهٔ ستون‌های این بخش خالی درآمدند، ردیف را نمی‌سازیم —
+         وگرنه یک فایلِ پهن‌تر، ده‌ها ردیفِ خالی اضافه می‌کند. */
+      if(Object.values(obj).every(v=> v === "")) continue;
+      rows.push(obj);
+      added++;
+    }
+  }
+  if(!added){
+    alert("چیزی برای افزودن پیدا نشد. ستون‌های فایل باید به ترتیبِ ستون‌های همین بخش باشند.");
+    return;
+  }
+  await encryptPersonalVault();
+  renderPersonalView();
+  alert("✓ " + toPersianDigits(added) + " ردیف از " + toPersianDigits(sheets) +
+        " برگه خوانده شد و رمز شد.\n\nفایل دیگر لازم نیست؛ داده داخلِ کارتابل نشست.");
+}
+
 function renderPersonalGrid(sec){
   const body = document.getElementById("personalTabBody");
   if(!body) return;
@@ -5455,8 +5615,14 @@ function renderPersonalGrid(sec){
           <tbody>${bodyHtml || `<tr><td colspan="${cols.length+1}" style="color:var(--ink-faint); font-size:12.5px; text-align:center; padding:14px;">هنوز چیزی ثبت نشده.</td></tr>`}</tbody>
         </table>
       </div>
-      <button type="button" class="btn btn-brass btn-sm" id="pgAddRow" style="margin-top:10px;">＋ افزودن ردیف</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="btn btn-brass btn-sm" id="pgAddRow">＋ افزودن ردیف</button>
+        ${xlsxOff() ? "" : '<button type="button" class="btn btn-ghost btn-sm" id="pgImportXlsx" title="ستون‌ها به ترتیب می‌نشینند">⬆ خواندن از اکسل</button>'}
+      </div>
     </div>`;
+
+  const pgImp = document.getElementById("pgImportXlsx");
+  if(pgImp) pgImp.addEventListener("click", ()=> importVaultGridFromXlsx(sec));
 
   body.querySelectorAll(".pg-cell").forEach(inp=>{
     inp.addEventListener("change", ()=>{
@@ -5519,12 +5685,12 @@ function renderPersonalCreds(){
   }).join("");
 
   body.innerHTML = `
-    <div class="cred-import-bar">
+    ${xlsxOff() ? "" : `<div class="cred-import-bar">
       <p>📥 یک فایل اکسل بارگذاری کنید که هر برگه (Sheet) آن نام یک شرکت، و ردیف‌هایش به‌ترتیب عنوان/IP/یوزرنیم/پسورد باشد — همه‌چیز فقط در همین مرورگر پردازش و بلافاصله رمزنگاری می‌شود.</p>
       <button type="button" class="btn btn-brass btn-sm" id="importCredBtn">📥 انتخاب فایل اکسل/CSV</button>
       <input type="file" id="importCredFile" accept=".xlsx,.xls,.csv" style="display:none;">
       <span class="cred-import-status" id="importCredStatus"></span>
-    </div>
+    </div>`}
     <div class="cred-toolbar" style="flex-direction:column; align-items:stretch;">
       <label style="font-size:12px; color:var(--ink-soft); white-space:nowrap; margin-bottom:8px;">🏢 شرکت‌ها:</label>
       <div class="company-tabs" id="companyTabs">
@@ -5585,6 +5751,8 @@ function renderPersonalCreds(){
     });
   });
 
+  /* وقتی ادمین «خواندن از اکسل» را بسته، این نوار اصلاً ساخته نشده */
+  if(document.getElementById("importCredBtn")){
   document.getElementById("importCredBtn").addEventListener("click", ()=>{
     document.getElementById("importCredFile").click();
   });
@@ -5633,6 +5801,7 @@ function renderPersonalCreds(){
     }
     e.target.value = "";
   });
+  }
 }
 function onCredFieldChange(e){
   const idx = parseInt(e.target.getAttribute("data-cred-idx"));
