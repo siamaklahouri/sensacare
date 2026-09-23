@@ -587,6 +587,13 @@ table.inv-tab td.desc{ text-align:right; }
 .shpick label:hover{ border-color:var(--brass); }
 .shpick input{ width:auto; margin:0; }
 .shpick .kk{ font-size:11px; color:var(--ink-faint); }
+.shlock{ display:flex; align-items:center; gap:9px; font-size:12.5px; margin-top:7px;
+  border:1px solid var(--line); border-radius:var(--r-sm); padding:9px 11px;
+  background:var(--paper-2); cursor:pointer; }
+.shlock:hover{ border-color:var(--brass); }
+.shlock input{ width:auto; margin:0; }
+.shlock input:disabled{ cursor:default; }
+.shlock:has(input:disabled){ opacity:.72; cursor:default; }
 
 #loading{ position:fixed; inset:0; background:var(--paper); z-index:95;
   display:flex; align-items:center; justify-content:center;
@@ -1930,6 +1937,11 @@ async function loadShared(){
       </div>
       <div class="shcols">${b.cols.map(c=> esc(c.t)).join(" · ")}</div>
       <div class="mem">${mem}</div>
+      <div class="mem">${
+        (b.mgrs && b.mgrs.length)
+          ? '<span class="hint2">مدیر:</span>' + b.mgrs.map(m=> '<span class="p">' + esc(m) + '</span>').join("")
+          : '<span class="p none">مدیری ندارد</span>'
+      }<span class="hint2">${b.rowlock ? "هر کس فقط ردیفِ خودش" : "همه همه‌چیز را"}</span></div>
       <div class="acts">
         <button class="btn" data-shedit="${esc(b.id)}">ویرایش</button>
         <button class="btn btn-off" data-shdel="${esc(b.id)}">حذف</button>
@@ -1955,7 +1967,7 @@ async function loadShared(){
 /* فرمِ ساخت و ویرایش. شناسه بعد از ساخته شدن قفل می‌شود، چون ردیف‌ها
    با همان شناسه به بخش وصل‌اند و عوض کردنش یعنی گم شدنشان. */
 function shForm(cur){
-  const b = cur || { id:"", title:"", type:"notes", members:[], rows:0 };
+  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -1984,10 +1996,59 @@ function shForm(cur){
           '<span class="kk" dir="ltr">' + esc(pp.slug) + '</span></label>').join("")
           : '<div class="hint">هنوز کارتابلی نیست.</div>'}
       </div></div>
+    <div class="fld"><label>مدیرِ این بخش — مسئول و مهلت را او تعیین می‌کند</label>
+      <div class="shpick" id="shMgr"></div>
+      <div class="hint">فقط از میانِ اعضا. مدیر قفلِ ردیف‌های بقیه را هم باز می‌کند،
+        وگرنه اگر کسی برود ردیف‌هایش برای همیشه دست‌نخوردنی می‌مانند.</div></div>
+    <div class="fld"><label>قفلِ مالکیت</label>
+      <label class="shlock"><input type="checkbox" id="shLock"${b.rowlock ? " checked" : ""}>
+        <span>هر کس فقط ردیفی را که خودش ساخته تغییر بدهد</span></label>
+      <div class="hint" id="shLockNote">خاموش یعنی هر عضوی هر ردیفی را عوض می‌کند —
+        برای جدولِ سرورها و شرکت‌ها معمولاً همین درست است، برای یادداشت و کار نه.</div></div>
     <div class="ov-acts">
       <button class="btn btn-main" id="shSave">ذخیره</button>
       <button class="btn" onclick="closeOverlay()">انصراف</button>
     </div>`);
+
+  /* فهرستِ مدیرها از روی همان تیک‌های عضویت ساخته می‌شود و با هر
+     تغییرشان از نو. اگر جدا بود، می‌شد کسی را مدیر کرد که عضو نیست —
+     یعنی مدیرِ بخشی که خودش نمی‌بیندش. */
+  const mgrSet = new Set(b.mgrs || []);
+  const drawMgr = ()=>{
+    const box = document.getElementById("shMgr");
+    const picked = Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value);
+    if(!picked.length){ box.innerHTML = '<div class="hint">اول عضو انتخاب کنید.</div>'; return; }
+    box.innerHTML = picked.map(sg=>{
+      const pp = planners.find(x=> x.slug === sg) || { slug:sg, name:sg };
+      return '<label><input type="checkbox" value="' + esc(sg) + '"' +
+        (mgrSet.has(sg) ? " checked" : "") + '>' +
+        '<span>' + esc(pp.name || sg) + '</span>' +
+        '<span class="kk" dir="ltr">' + esc(sg) + '</span></label>';
+    }).join("");
+    box.querySelectorAll("input").forEach(i=>{
+      i.onchange = ()=> i.checked ? mgrSet.add(i.value) : mgrSet.delete(i.value);
+    });
+  };
+  document.querySelectorAll("#shMem input").forEach(i=> i.addEventListener("change", ()=>{
+    /* کسی که از عضویت درآمد، مدیر هم نمی‌ماند */
+    if(!i.checked) mgrSet.delete(i.value);
+    drawMgr();
+  }));
+  drawMgr();
+
+  /* «کارهای تیمی» بدونِ قفل بی‌معنی است — کلِ حرفش همین است. */
+  const syncLock = ()=>{
+    const isTeam = document.getElementById("shType").value === "team";
+    const el = document.getElementById("shLock");
+    if(isTeam){ el.checked = true; el.disabled = true;
+      document.getElementById("shLockNote").textContent =
+        "در «کارهای تیمی» همیشه روشن است؛ هر ستون صاحبِ خودش را دارد."; }
+    else { el.disabled = false;
+      document.getElementById("shLockNote").textContent =
+        "خاموش یعنی هر عضوی هر ردیفی را عوض می‌کند — برای جدولِ سرورها و شرکت‌ها معمولاً همین درست است، برای یادداشت و کار نه."; }
+  };
+  document.getElementById("shType").addEventListener("change", syncLock);
+  syncLock();
 
   const showCols = ()=>{
     const t = SH_TYPES.find(x=> x.id === document.getElementById("shType").value);
@@ -2015,7 +2076,9 @@ function shForm(cur){
       id: (document.getElementById("shId").value || b.id).trim().toLowerCase(),
       title: document.getElementById("shTitle").value.trim(),
       type: document.getElementById("shType").value,
-      members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value)
+      members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
+      mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
+      rowlock: document.getElementById("shLock").checked ? 1 : 0
     };
     const btn = document.getElementById("shSave");
     btn.disabled = true;

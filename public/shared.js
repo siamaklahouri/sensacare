@@ -60,7 +60,15 @@
     "@keyframes shFresh{0%{background:var(--brass-bg)}100%{background:transparent}}",
     ".sh-empty{padding:26px 10px;text-align:center;color:var(--ink-faint);font-size:12.5px;line-height:2}",
     ".sh-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:10px}",
-    ".sh-sum{font-size:12px;color:var(--ink-soft);font-weight:600}"
+    ".sh-sum{font-size:12px;color:var(--ink-soft);font-weight:600}",
+    /* خانه‌ای که این آدم اجازه‌اش را ندارد: خوانا می‌ماند ولی معلوم است
+       که کادر نیست. خاکستریِ مرده نمی‌شود، چون محتوایش هنوز مهم است. */
+    ".sh-tab .ro{display:block;font-size:12px;padding:6px 7px;color:var(--ink-soft);",
+    "  line-height:1.8;white-space:pre-wrap;word-break:break-word;min-height:20px}",
+    ".sh-tab td.locked{background:var(--paper-2,rgba(0,0,0,.02))}",
+    ".sh-stamp{font-size:11px;color:var(--ink-faint);white-space:nowrap;padding-top:9px}",
+    ".sh-mine{font-weight:600}",
+    ".sh-kept{font-size:11.5px;color:var(--red-ink,#A6222B);line-height:1.9;margin-top:8px;min-height:19px}"
   ].join("\n");
 
   function addCss() {
@@ -92,7 +100,10 @@
     sec.className = "view"; sec.id = vid;
     sec.innerHTML =
       '<div class="section-title">' + esc(box.title) + "</div>" +
-      '<div class="section-sub">بخشِ مشترک — هر کسی که دسترسی دارد می‌تواند تغییر بدهد و تغییرِ بقیه را همین‌جا می‌بینید.</div>' +
+      '<div class="section-sub">' + (box.rowlock
+        ? "بخشِ مشترک — هر کس ردیفِ خودش را تغییر می‌دهد و ردیفِ بقیه را فقط می‌بیند."
+        : "بخشِ مشترک — هر کسی که دسترسی دارد می‌تواند تغییر بدهد و تغییرِ بقیه را همین‌جا می‌بینید.") +
+        (isMgr(box) ? " شما مدیرِ این بخش هستید." : "") + "</div>" +
       '<div class="panel">' +
         '<div class="sh-bar">' +
           '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>' +
@@ -103,13 +114,15 @@
           box.cols.map(function (c) {
             return "<th" + (c.w ? ' style="width:' + c.w + 'px"' : "") + ">" + esc(c.t) + "</th>";
           }).join("") +
-          '<th style="width:96px">آخرین تغییر</th><th style="width:40px"></th>' +
+          '<th style="width:104px">صاحب</th><th style="width:40px"></th>' +
         "</tr></thead><tbody data-shbody=\"" + esc(box.id) + "\"></tbody></table></div>" +
         '<div class="sh-empty" data-shempty="' + esc(box.id) + '" hidden>' +
           "هنوز ردیفی نیست.<br>با «＋ ردیف تازه» اولین ردیف را بسازید." +
         "</div>" +
+        '<div class="sh-kept" data-shkept="' + esc(box.id) + '"></div>' +
         '<div class="sh-note">تغییرها همان لحظه ذخیره می‌شوند؛ دکمهٔ ذخیره ندارد. ' +
           "هر چند ثانیه هم تغییرِ بقیه خودش می‌آید." +
+          (box.rowlock ? "<br>خانه‌های خاکستری مالِ شما نیستند: هر کس ردیفی را که خودش ساخته تغییر می‌دهد." : "") +
         "</div>" +
       "</div>";
     /* پاورقیِ صفحه آخرِ .content است؛ اگر همین‌طور appendChild کنیم،
@@ -132,6 +145,52 @@
     sec.querySelector("[data-shadd]").addEventListener("click", function () { addRow(box.id); });
   }
 
+  /* ---------- قاعده‌های دسترسی ----------
+     دقیقاً همان چیزی که سرور اعمال می‌کند. این‌جا فقط برای این است که
+     آدم کادرِ بی‌فایده نبیند و وسطِ تایپ نفهمد نوشته‌اش نمی‌رود.
+     حرفِ آخر مالِ سرور است؛ اگر این‌جا چیزی از قلم افتاد، آن‌جا
+     می‌گیردش. */
+  function me() { return window.KARTABL_SLUG || ""; }
+  function isMgr(box) { return (box.mgrs || []).indexOf(me()) >= 0; }
+
+  function canEdit(box, col, r) {
+    var rule = col.edit || (box.rowlock ? "owner" : "any");
+    if (rule === "never") return false;
+    if (rule === "any") return true;
+    if (isMgr(box)) return true;
+    var owner = r && r.owner;
+    if (rule === "owner") return !owner || owner === me();
+    if (rule === "mgr") return false;
+    if (rule === "doer") {
+      var who = r && r.v && r.v.who;
+      return who ? who === me() : (!owner || owner === me());
+    }
+    return false;
+  }
+
+  function canKill(box, r) {
+    if (!box.rowlock) return true;
+    var owner = r && r.owner;
+    return !owner || owner === me() || isMgr(box);
+  }
+
+  function nameOf(box, slug) {
+    if (!slug) return "";
+    var p = (box.people || []).find(function (x) { return x.slug === slug; });
+    return p ? p.name : slug;
+  }
+
+  /* تاریخِ شمسیِ لحظه‌ای که ردیف ساخته شده. عدد از سرور می‌آید و
+     این‌جا فقط خوانا می‌شود — پس کسی نمی‌تواند عقب‌وجلویش کند. */
+  function shamsi(ms) {
+    if (!ms) return "—";
+    try {
+      return new Intl.DateTimeFormat("fa-IR", {
+        year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date(ms));
+    } catch (e) { return "—"; }
+  }
+
   /* ---------- یک خانه ---------- */
   function cellHtml(col, val) {
     var v = val === undefined || val === null ? "" : val;
@@ -145,6 +204,15 @@
           return '<option value="' + esc(o) + '"' + (String(v) === o ? " selected" : "") + ">" + esc(o) + "</option>";
         }).join("") + "</select>";
     }
+    /* «مسئول» فهرستِ بسته‌ای از اعضای همین بخش است، نه یک کادرِ متن:
+       اسمِ تایپ‌شده فردا با هیچ کارتابلی جور درنمی‌آید. */
+    if (col.kind === "who") {
+      return '<select' + name + '><option value="">— کسی —</option>' +
+        (col.people || []).map(function (p) {
+          return '<option value="' + esc(p.slug) + '"' + (String(v) === p.slug ? " selected" : "") +
+                 ">" + esc(p.name) + "</option>";
+        }).join("") + "</select>";
+    }
     if (col.kind === "long")
       return "<textarea" + name + dir + ' rows="1">' + esc(v) + "</textarea>";
     if (col.kind === "money" || col.kind === "num")
@@ -155,23 +223,53 @@
     return '<input type="text"' + name + dir + ' value="' + esc(v) + '">';
   }
 
+  /* خانه‌ای که این آدم اجازه‌اش را ندارد کادر نمی‌شود. غیرفعال کردنِ
+     input هم می‌شد، ولی آن وقت متنِ بلند بریده می‌ماند و رنگش مرده
+     می‌شود؛ این‌طوری محتوا کامل و خواناست، فقط دست نمی‌خورد. */
+  function roHtml(box, col, val) {
+    var v = val === undefined || val === null || val === "" ? "—" : val;
+    if (col.kind === "money" || col.kind === "num") v = money(val || 0);
+    if (col.kind === "who") v = val ? nameOf(box, val) : "— کسی —";
+    return '<span class="ro"' + (col.ltr ? ' dir="ltr"' : "") + ">" + esc(v) + "</span>";
+  }
+
   function rowHtml(box, r) {
     return '<tr class="sh-row" data-rid="' + esc(r.rid) + '">' +
-      box.cols.map(function (c) { return "<td>" + cellHtml(c, r.v[c.k]) + "</td>"; }).join("") +
-      '<td class="who">' + esc(whoText(r)) + "</td>" +
-      '<td><button class="sh-del" title="بردار">✕</button></td>' +
+      box.cols.map(function (c) {
+        /* «تاریخ ثبت» ستونِ داده نیست: همان لحظه‌ای است که سرور ردیف را
+           ساخته. پس نه کادر دارد، نه ذخیره می‌شود. */
+        if (c.kind === "made")
+          return '<td class="locked"><span class="sh-stamp">' + esc(shamsi(r.created)) + "</span></td>";
+        var col = c.kind === "who" ? Object.assign({}, c, { people: box.people || [] }) : c;
+        return canEdit(box, c, r)
+          ? "<td>" + cellHtml(col, r.v[c.k]) + "</td>"
+          : '<td class="locked">' + roHtml(box, col, r.v[c.k]) + "</td>";
+      }).join("") +
+      '<td class="who">' + whoHtml(box, r) + "</td>" +
+      "<td>" + (canKill(box, r)
+        ? '<button class="sh-del" title="بردار">✕</button>'
+        : "") + "</td>" +
       "</tr>";
   }
 
-  function whoText(r) {
-    if (!r.updated) return "—";
-    var mine = r.by === (window.KARTABL_SLUG || "");
-    var t;
-    try {
-      t = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false })
-        .format(new Date(r.updated));
-    } catch (e) { t = ""; }
-    return (mine ? "خودم" : (r.by || "—")) + (t ? " · " + t : "");
+  /* چه کسی ردیف را ساخته، و کِی آخرین بار دست خورده. صاحبِ ردیف مهم‌تر
+     از آخرین دست‌زننده است، چون قفل به او بسته است. */
+  function whoHtml(box, r) {
+    var owner = r.owner || r.by || "";
+    var mine = owner === me();
+    var t = "";
+    if (r.updated) {
+      try {
+        t = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false })
+          .format(new Date(r.updated));
+      } catch (e) { t = ""; }
+    }
+    var label = mine ? "خودم" : (owner ? nameOf(box, owner) : "—");
+    var tip = box.rowlock && !mine && owner
+      ? ' title="این ردیف را ' + esc(nameOf(box, owner)) + ' ساخته؛ خانه‌های قفل مالِ اوست."'
+      : "";
+    return "<span" + tip + (mine ? ' class="sh-mine"' : "") + ">" + esc(label) + "</span>" +
+           (t ? "<br>" + esc(t) : "");
   }
 
   /* ---------- خواندن از سرور ---------- */
@@ -267,10 +365,14 @@
   }
 
   /* ---------- نوشتن ---------- */
+  /* فقط خانه‌هایی خوانده می‌شوند که کادر دارند — یعنی همان‌هایی که این
+     آدم اجازه‌شان را داشت. فرستادنِ بقیه هم بی‌خطر بود (سرور ردشان
+     می‌کند) ولی بی‌جهت «نوشته نشد» می‌گرفتیم. */
   function readRow(box, tr) {
     var v = {};
     for (var i = 0; i < box.cols.length; i++) {
       var c = box.cols[i];
+      if (!c.k) continue;
       var el = tr.querySelector('[data-k="' + c.k + '"]');
       if (!el) continue;
       v[c.k] = (c.kind === "money" || c.kind === "num")
@@ -307,19 +409,50 @@
     });
   }
 
+  function kept(box, list) {
+    var el = document.querySelector('[data-shkept="' + box.id + '"]');
+    if (!el) return;
+    el.textContent = (list && list.length)
+      ? "نوشته نشد: " + list.join("، ") + " — این ستون‌ها دستِ شما نیست."
+      : "";
+    if (list && list.length) setTimeout(function () {
+      if (el.textContent.indexOf("نوشته نشد") === 0) el.textContent = "";
+    }, 6000);
+  }
+
   async function pushRow(box, tr, rid) {
     var v = readRow(box, tr);
     var r = await apiCall("/shared/" + box.id + "/row", {
       method: "POST", body: JSON.stringify({ rid: rid, v: v })
     });
     var s = st(box.id);
-    if (!r.ok) { flash(tr, false); return; }
+    if (!r.ok) { flash(tr, false); kept(box, null); return; }
+    var was = s.rows[rid] || {};
     s.rows[rid] = { rid: rid, v: r.data.v || v, updated: r.data.updated,
-                    by: window.KARTABL_SLUG || "", dead: false };
+                    by: me(), dead: false,
+                    owner: r.data.owner || was.owner || me(),
+                    created: r.data.created || was.created || Date.now() };
     s.since = Math.max(s.since, r.data.updated || 0);
+
+    /* اگر سرور چیزی را نپذیرفت، همان خانه را برمی‌گردانیم سرِ مقدارِ
+       واقعی‑اش. کلِ ردیف از نو کشیده نمی‌شود چون انگشتِ کاربر همین
+       حالا داخلِ یکی از خانه‌هاست و تمرکز می‌پرید. */
+    var srv = r.data.v || {};
+    for (var i = 0; i < box.cols.length; i++) {
+      var c = box.cols[i];
+      if (!c.k) continue;
+      var el = tr.querySelector('[data-k="' + c.k + '"]');
+      if (!el || el === document.activeElement) continue;
+      var want = srv[c.k] === undefined ? "" : srv[c.k];
+      if (c.kind === "money" || c.kind === "num")
+        want = want === "" ? "" : Number(want).toLocaleString("en-US");
+      if (String(el.value) !== String(want)) { el.value = want; fit(el); }
+    }
+    kept(box, r.data.kept);
+
     var who = tr.querySelector("td.who");
-    if (who) who.textContent = whoText(s.rows[rid]);
-    flash(tr, true);
+    if (who) who.innerHTML = whoHtml(box, s.rows[rid]);
+    flash(tr, !(r.data.kept && r.data.kept.length));
     summary(box);
   }
 
@@ -344,7 +477,8 @@
     if (!body) return;
     var rid = newRid();
     var s = st(id);
-    s.rows[rid] = { rid: rid, v: {}, updated: Date.now(), by: window.KARTABL_SLUG || "", dead: false };
+    s.rows[rid] = { rid: rid, v: {}, updated: Date.now(), by: me(), dead: false,
+                    owner: me(), created: Date.now() };
     body.insertAdjacentHTML("beforeend", rowHtml(box, s.rows[rid]));
     var tr = body.querySelector('tr[data-rid="' + rid + '"]');
     wire(box, tr);

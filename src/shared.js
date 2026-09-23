@@ -61,6 +61,21 @@ export const SHARED_TYPES = [
     { k: 'pri',  t: 'اولویت',    kind: 'pick', w: 100, opts: ['بالا', 'متوسط', 'پایین'] },
     { k: 'note', t: 'یادداشت',   kind: 'long' }
   ]},
+  /* «کارهای تیمی» با بقیهٔ جدول‌ها یک فرق بنیادی دارد: هر ستون صاحبِ
+     خودش را دارد. متنِ کار دستِ کسی است که نوشته، مسئول و مهلت دستِ
+     مدیر، و تاریخِ انجام دستِ همان کسی که باید انجامش بدهد. تاریخِ ثبت
+     اصلاً ستونِ داده نیست — همان لحظه‌ای است که ردیف ساخته شده و
+     سرور نگهش داشته، پس کسی نمی‌تواند عقب‌وجلویش کند. */
+  { id: 'team', label: 'کارهای تیمی', icon: '🎯', cols: [
+    { k: 'task', t: 'کار',         kind: 'text', w: 230, edit: 'owner' },
+    { k: 'who',  t: 'مسئول',       kind: 'who',  w: 130, edit: 'mgr' },
+    {            t: 'تاریخ ثبت',   kind: 'made', w: 110, edit: 'never' },
+    { k: 'due',  t: 'مهلت',        kind: 'date', w: 115, edit: 'mgr' },
+    { k: 'done', t: 'تاریخ انجام', kind: 'date', w: 115, edit: 'doer' },
+    { k: 'stat', t: 'وضعیت',       kind: 'pick', w: 125, edit: 'doer',
+      opts: ['انجام نشده', 'در حال انجام', 'انجام شد', 'متوقف'] },
+    { k: 'note', t: 'یادداشت',     kind: 'long', edit: 'any' }
+  ]},
   { id: 'invoices', label: 'فاکتورها', icon: '🧾', cols: [
     { k: 'no',   t: 'شماره',      kind: 'text',  w: 110, ltr: true },
     { k: 'who',  t: 'مشتری',      kind: 'text',  w: 170 },
@@ -129,6 +144,18 @@ export async function ensureShared(env) {
       PRIMARY KEY (box, rid)
     )`);
     await run(env, 'CREATE INDEX IF NOT EXISTS shared_rows_box_upd ON shared_rows(box, updated)');
+    /* ستون‌هایی که بعداً اضافه شدند. هر کدام جدا، چون روی دیتابیسی که
+       یکی‌شان را دارد و آن یکی را ندارد نباید کلِ کار بخوابد. */
+    for (const q of [
+      "ALTER TABLE shared_boxes ADD COLUMN mgrs TEXT NOT NULL DEFAULT '[]'",
+      /* پیش‌فرضِ ۰ عمدی است: بخش‌هایی که از قبل ساخته شده‌اند نباید یک
+         روز صبح خودبه‌خود قفل شوند و کسی نفهمد چرا دیگر نمی‌تواند
+         ردیفِ همکارش را درست کند. بخشِ تازه با کلیدِ روشن ساخته
+         می‌شود؛ قدیمی‌ها را خودِ ادمین وقتی خواست روشن می‌کند. */
+      'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0',
+      "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''",
+      'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0'
+    ]) { try { await run(env, q); } catch (e) { /* از قبل هست */ } }
     ready = true;
   } catch (e) { /* اگر ساخته نشد، مسیرها خودشان خطا می‌دهند */ }
 }
@@ -139,14 +166,34 @@ const shapeBox = r => {
   const t = typeById(r.type);
   return { id: r.id, title: r.title, type: r.type,
            label: t ? t.label : r.type, icon: t ? t.icon : '📋',
-           cols: t ? t.cols : [], members: parseMembers(r.members), created: r.created };
+           cols: t ? t.cols : [], members: parseMembers(r.members),
+           mgrs: parseMembers(r.mgrs), rowlock: Number(r.rowlock || 0),
+           created: r.created };
 };
 
 /* ---------- خواندن ---------- */
 export async function boxesFor(env, slug) {
   await ensureShared(env);
   const rows = await all(env, 'SELECT * FROM shared_boxes ORDER BY created, id');
-  return rows.map(shapeBox).filter(b => b.members.includes(slug));
+  return withPeople(env, rows.map(shapeBox).filter(b => b.members.includes(slug)));
+}
+
+/* ستونِ «مسئول» باید اسمِ آدم‌ها را نشان بدهد نه slug را. اسم‌ها یک بار
+   خوانده می‌شوند، نه یک‌بار برای هر بخش. */
+async function withPeople(env, boxes) {
+  const need = [];
+  for (const b of boxes) for (const m of b.members) if (!need.includes(m)) need.push(m);
+  let names = {};
+  if (need.length) {
+    try {
+      const rows = await all(env,
+        `SELECT slug, name FROM planners WHERE slug IN (${need.map(() => '?').join(',')})`, ...need);
+      for (const r of rows) names[r.slug] = r.name || r.slug;
+    } catch (e) { names = {}; }
+  }
+  for (const b of boxes)
+    b.people = b.members.map(m => ({ slug: m, name: names[m] || m }));
+  return boxes;
 }
 
 export async function allBoxes(env) {
@@ -166,12 +213,16 @@ export async function getBox(env, id) {
 export async function rowsSince(env, boxId, since = 0) {
   await ensureShared(env);
   const rows = await all(env,
-    'SELECT rid, v, updated, by, dead FROM shared_rows WHERE box=? AND updated>? ORDER BY updated',
+    `SELECT rid, v, updated, by, dead, owner, created FROM shared_rows
+      WHERE box=? AND updated>? ORDER BY updated`,
     String(boxId), Number(since) || 0);
   return rows.map(r => {
     let v = {};
     try { v = JSON.parse(r.v) || {}; } catch { v = {}; }
-    return { rid: r.rid, v, updated: r.updated, by: r.by, dead: !!r.dead };
+    /* ردیف‌های قدیمی صاحب ندارند؛ «آخرین کسی که دست زد» نزدیک‌ترین
+       چیزی است که داریم و بهتر از بی‌صاحب گذاشتنشان است. */
+    return { rid: r.rid, v, updated: r.updated, by: r.by, dead: !!r.dead,
+             owner: r.owner || r.by || '', created: r.created || r.updated || 0 };
   });
 }
 
@@ -187,6 +238,7 @@ export function cleanRow(type, v) {
   if (!t) return {};
   const out = {};
   for (const c of t.cols) {
+    if (!c.k) continue;          /* ستونِ نمایشی مثل «تاریخ ثبت» داده ندارد */
     let x = v && v[c.k];
     if (x === undefined || x === null) continue;
     if (c.kind === 'num' || c.kind === 'money') {
@@ -201,33 +253,127 @@ export function cleanRow(type, v) {
 
 const RID_RE = /^[a-z0-9]{6,32}$/;
 
+/* ---------- چه کسی چه ستونی را می‌تواند عوض کند ----------
+   این‌جا روی سرور است، نه در صفحه. خانهٔ خاکستریِ مرورگر ادب است، قفل
+   نیست: هر کسی می‌تواند مستقیم به API بزند. پس صفحه هم همین را نشان
+   می‌دهد و سرور هم همین را اعمال می‌کند، و حرفِ آخر مالِ سرور است.
+
+   قاعده‌ها:
+     any    هر عضوی
+     owner  فقط کسی که ردیف را ساخته
+     mgr    فقط مدیرِ این بخش
+     doer   فقط کسی که مسئولِ این کار است (تا وقتی مسئولی نیست، سازنده)
+     never  هیچ‌کس — سرور خودش پرش می‌کند
+
+   ستونی که قاعده ندارد از کلیدِ «قفلِ مالکیت»ِ خودِ بخش پیروی می‌کند:
+   روشن یعنی فقط صاحبِ ردیف، خاموش یعنی هر عضوی. جدولِ سرورها قفل
+   نمی‌خواهد، یادداشتِ مشترک می‌خواهد. */
+const isMgr = (box, by) => !!by && (box.mgrs || []).includes(by);
+
+export function canEdit(box, col, by, row) {
+  const rule = col.edit || (box.rowlock ? 'owner' : 'any');
+  if (rule === 'never') return false;
+  if (rule === 'any') return true;
+  /* مدیر بقیهٔ قفل‌ها را باز می‌کند — وگرنه اگر کسی شرکت را ترک کند،
+     ردیف‌هایش برای همیشه دست‌نخوردنی می‌مانند. */
+  if (isMgr(box, by)) return true;
+  const owner = row && row.owner;
+  if (rule === 'owner') return !owner || owner === by;
+  if (rule === 'mgr') return false;
+  if (rule === 'doer') {
+    const who = row && row.v && row.v.who;
+    return who ? who === by : (!owner || owner === by);
+  }
+  return false;
+}
+
+/* آنچه فرستاده شده با آنچه بود ادغام می‌شود: هر خانه‌ای که این آدم
+   اجازه‌اش را ندارد، مقدارِ قبلی‌اش سرِ جایش می‌ماند. عمداً خطا
+   نمی‌دهیم و کلِ ذخیره را رد نمی‌کنیم — وگرنه یک خانهٔ قفل، نوشتنِ
+   خانه‌های مجاز را هم می‌خوابانَد. اسمِ خانه‌های ردشده برمی‌گردد تا
+   صفحه بتواند بگوید چه چیزی نوشته نشد. */
+function mergeRow(box, by, old, incoming) {
+  const t = typeById(box.type);
+  const clean = cleanRow(box.type, incoming);
+  const out = {};
+  const kept = [];
+  for (const c of (t ? t.cols : [])) {
+    if (!c.k) continue;
+    const prev = old && old.v ? old.v[c.k] : undefined;
+    const keep = () => { if (prev !== undefined) out[c.k] = prev; };
+    if (!(c.k in clean)) { keep(); continue; }
+    let x = clean[c.k];
+    /* «مسئول» باید یکی از اعضای همین بخش باشد؛ وگرنه فردا یک اسمِ
+       غریبه در ستون می‌ماند و هیچ‌کس نمی‌تواند آن ردیف را جلو ببرد. */
+    if (c.kind === 'who' && x && !(box.members || []).includes(x)) { keep(); kept.push(c.t); continue; }
+    if (!canEdit(box, c, by, old)) {
+      keep();
+      if (String(prev == null ? '' : prev) !== String(x)) kept.push(c.t);
+      continue;
+    }
+    out[c.k] = x;
+  }
+  return { v: out, kept };
+}
+
+const sameRow = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 export async function putRow(env, box, rid, v, by) {
   await ensureShared(env);
   const id = String(rid || '');
   if (!RID_RE.test(id)) return { error: 'شناسهٔ ردیف درست نیست.' };
-  const clean = cleanRow(box.type, v);
+  const me = String(by || '').slice(0, 40);
   const now = Date.now();
-  const exists = await one(env, 'SELECT rid FROM shared_rows WHERE box=? AND rid=?', box.id, id);
-  if (!exists) {
+
+  const prev = await one(env,
+    'SELECT v, owner, created, updated FROM shared_rows WHERE box=? AND rid=?', box.id, id);
+  let oldV = {};
+  if (prev) { try { oldV = JSON.parse(prev.v) || {}; } catch { oldV = {}; } }
+  const old = prev
+    ? { v: oldV, owner: prev.owner || '', created: prev.created || now }
+    : { v: {}, owner: me, created: now };
+
+  if (!prev) {
     const n = await one(env, 'SELECT COUNT(*) AS n FROM shared_rows WHERE box=? AND dead=0', box.id);
     if ((n && n.n || 0) >= MAX_ROWS) return { error: 'این جدول پر شده است.' };
   }
+
+  const m = mergeRow(box, me, old, v);
+
+  /* اگر هیچ‌چیز واقعاً عوض نشد، ننویس. وگرنه هر بار که کسی روی یک
+     خانهٔ قفل کلیک کند، updated جلو می‌رود و مرورگرِ بقیه بی‌دلیل
+     ردیف را از نو می‌کشد و وسطِ تایپشان می‌پرد. */
+  if (prev && sameRow(m.v, oldV))
+    return { ok: true, rid: id, updated: prev.updated || now, v: oldV,
+             owner: old.owner, created: old.created, kept: m.kept, noop: true };
+
   await run(env,
-    `INSERT INTO shared_rows(box,rid,v,updated,by,dead) VALUES(?,?,?,?,?,0)
+    `INSERT INTO shared_rows(box,rid,v,updated,by,dead,owner,created)
+     VALUES(?,?,?,?,?,0,?,?)
      ON CONFLICT(box,rid) DO UPDATE SET v=excluded.v, updated=excluded.updated,
                                         by=excluded.by, dead=0`,
-    box.id, id, JSON.stringify(clean), now, String(by || '').slice(0, 40));
-  return { ok: true, rid: id, updated: now, v: clean };
+    box.id, id, JSON.stringify(m.v), now, me, old.owner, old.created);
+  return { ok: true, rid: id, updated: now, v: m.v,
+           owner: old.owner, created: old.created, kept: m.kept };
 }
 
 export async function killRow(env, box, rid, by) {
   await ensureShared(env);
   const id = String(rid || '');
   if (!RID_RE.test(id)) return { error: 'شناسهٔ ردیف درست نیست.' };
+  const me = String(by || '').slice(0, 40);
+  /* برداشتن از هر ویرایشی سنگین‌تر است: چیزی که رفت برنمی‌گردد. پس
+     وقتی قفلِ مالکیت روشن است، فقط صاحبِ ردیف یا مدیر. */
+  if (box.rowlock) {
+    const r = await one(env, 'SELECT owner, by FROM shared_rows WHERE box=? AND rid=?', box.id, id);
+    const owner = r ? (r.owner || r.by || '') : '';
+    if (owner && owner !== me && !isMgr(box, me))
+      return { error: 'این ردیف را کسی دیگر ساخته؛ فقط خودش یا مدیرِ این بخش می‌تواند برش دارد.' };
+  }
   const now = Date.now();
   await run(env,
     'UPDATE shared_rows SET dead=1, updated=?, by=? WHERE box=? AND rid=?',
-    now, String(by || '').slice(0, 40), box.id, id);
+    now, me, box.id, id);
   return { ok: true, rid: id, updated: now };
 }
 
@@ -251,6 +397,17 @@ export async function saveBox(env, body, knownSlugs) {
     .filter((s, i, a) => s && a.indexOf(s) === i && knownSlugs.includes(s))
     .slice(0, 50);
 
+  /* مدیر باید خودش عضو باشد؛ مدیری که بخش را نمی‌بیند مدیرِ چیزی نیست
+     و فقط یک اسمِ گمراه‌کننده در تنظیمات می‌ماند. */
+  const mgrs = (Array.isArray(body.mgrs) ? body.mgrs : [])
+    .map(x => String(x || '').trim().toLowerCase())
+    .filter((x, i, a) => x && a.indexOf(x) === i && members.includes(x))
+    .slice(0, 10);
+
+  /* نوعِ «کارهای تیمی» بدونِ قفل بی‌معنی است: کلِ حرفش این است که کارِ
+     هر کس دستِ خودش باشد. پس کلید برایش همیشه روشن. */
+  const rowlock = type === 'team' ? 1 : (body.rowlock ? 1 : 0);
+
   const cur = await one(env, 'SELECT id, type FROM shared_boxes WHERE id=?', id);
   /* عوض کردنِ نوعِ یک جدولِ پر یعنی ستون‌هایش دیگر نمی‌خوانند و داده
      بی‌صدا ناپدید می‌شود. جلویش گرفته می‌شود. */
@@ -261,10 +418,12 @@ export async function saveBox(env, body, knownSlugs) {
   }
 
   await run(env,
-    `INSERT INTO shared_boxes(id,title,type,members,created) VALUES(?,?,?,?,?)
+    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock)
+     VALUES(?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET title=excluded.title, type=excluded.type,
-                                   members=excluded.members`,
-    id, title, type, JSON.stringify(members), Date.now());
+                                   members=excluded.members, mgrs=excluded.mgrs,
+                                   rowlock=excluded.rowlock`,
+    id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock);
   return { ok: true, id, created: !cur };
 }
 

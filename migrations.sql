@@ -769,7 +769,9 @@ CREATE TABLE IF NOT EXISTS shared_boxes (
   title   TEXT NOT NULL DEFAULT '',
   type    TEXT NOT NULL DEFAULT 'notes',
   members TEXT NOT NULL DEFAULT '[]',   -- آرایهٔ JSON از slugِ کارتابل‌ها
-  created INTEGER NOT NULL DEFAULT 0
+  created INTEGER NOT NULL DEFAULT 0,
+  mgrs    TEXT NOT NULL DEFAULT '[]',   -- مدیرهای این بخش (زیرمجموعهٔ اعضا)
+  rowlock INTEGER NOT NULL DEFAULT 0    -- ۱ یعنی هر کس فقط ردیفِ خودش
 );
 
 CREATE TABLE IF NOT EXISTS shared_rows (
@@ -779,8 +781,18 @@ CREATE TABLE IF NOT EXISTS shared_rows (
   updated INTEGER NOT NULL DEFAULT 0,
   by      TEXT NOT NULL DEFAULT '',     -- کدام کارتابل آخرین بار دست زد
   dead    INTEGER NOT NULL DEFAULT 0,
+  owner   TEXT NOT NULL DEFAULT '',     -- کدام کارتابل ساخته‌اش؛ قفل به این بسته است
+  created INTEGER NOT NULL DEFAULT 0,   -- تاریخِ ثبت؛ ستونِ داده نیست که کسی عوضش کند
   PRIMARY KEY (box, rid)
 );
+
+-- ۳۴ | صاحبِ ردیف و مدیرِ بخش
+-- چهار ستونِ بالا بعداً اضافه شدند. این‌جا ALTER TABLE نمی‌آید چون این
+-- فایل هر بار موقع استقرار اجرا می‌شود و بارِ دوم کلِ استقرار را
+-- می‌خواباند. به‌جایش ensureShared در src/shared.js اولین باری که
+-- درخواستی برسد خودش اضافه‌شان می‌کند — همان‌جا داخلِ try، پس اگر از
+-- قبل باشند چیزی نمی‌شکند. روی یک دیتابیسِ نو، همین CREATE بالا
+-- کارشان را کرده و آن ALTERها بی‌صدا رد می‌شوند.
 
 -- پرسشِ همیشگیِ صفحه «از این لحظه به بعد چه عوض شده؟» است، پس همین
 -- دو ستون با هم ایندکس می‌شوند.
