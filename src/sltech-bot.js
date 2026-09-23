@@ -24,6 +24,11 @@ const LABEL = { telegram: 'تلگرام', bale: 'بله' };
 const esc = t => String(t == null ? '' : t)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/* «—» یا «-» یا «...» راهِ تماس نیست. اگر در آنچه کاربر نوشته هیچ حرف و
+   رقمی نباشد، چیزی برای تماس گرفتن وجود ندارد و نباید وانمود کنیم هست —
+   وگرنه پیام می‌گوید «از همین راه جواب بده» و یک خط تیره نشان می‌دهد. */
+const hasContact = t => /[\p{L}\p{N}]/u.test(String(t || ''));
+
 const plain = t => String(t || '')
   .replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[a-z][^>]*>/gi, '')
   .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<')
@@ -62,7 +67,7 @@ export async function toAdmin(env, from, text, note = '') {
 
   const head = `💬 <b>پیام تازه — SLTech</b>${note ? ' · ' + esc(note) : ''}\n` +
     `از: ${esc(from.name || 'ناشناس')}` +
-    `${from.phone ? ` — <code>${esc(from.phone)}</code>` : ''}` +
+    `${hasContact(from.phone) ? ` — <code>${esc(from.phone)}</code>` : ''}` +
     ` (${LABEL[KIND_OF[from.pf]] || 'وب'})\n` +
     `گفتگو: <code>${esc(String(from.chat))}</code>\n\n`;
   /* پیامِ فرمِ سایت را نباید با «ریپلای کن» تمام کرد؛ ریپلای برایش
@@ -97,7 +102,8 @@ async function webContact(env, chat) {
       `SELECT name, phone FROM support_msgs
         WHERE platform='slweb' AND chat_id=? AND dir='in'
         ORDER BY created DESC LIMIT 1`, String(chat));
-    return r ? { name: r.name || '', contact: r.phone || '' } : null;
+    return r ? { name: r.name || '',
+                 contact: hasContact(r.phone) ? r.phone : '' } : null;
   } catch (e) { return null; }
 }
 
