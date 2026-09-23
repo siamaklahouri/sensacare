@@ -5736,6 +5736,21 @@ function markNoAutofill(root){
   (root || document).querySelectorAll(sel).forEach(el=>{
     if(el.dataset.naf) return;
     el.dataset.naf = "1";
+    /* ردیفِ «＋» و ردیفِ جست‌وجو همیشه باید خالی شروع شوند. این‌ها را
+       علامت می‌زنیم تا اگر مرورگر چیزی داخلشان ریخت، برداشته شود.
+
+       چرا این لایه لازم است؟ چون کروم وقتی برای این دامنه رمزِ
+       ذخیره‌شده دارد، autocomplete=off را روی کادرهایی که خودش «نام
+       کاربری» تشخیص می‌دهد نادیده می‌گیرد — و همین ستونِ «داخلی» در
+       جدول MVPN را «admin» می‌کرد.
+
+       عمداً فقط همین‌ها: سه ورودیِ دیگر در صفحه هست (یادآور و ابزار
+       تاریخ) که خودِ کد مقدارشان را می‌گذارد، و پاک کردنِ کورکورانه
+       آن‌ها را خراب می‌کرد. */
+    if(el.tagName === "INPUT" && el.closest(".add-row, .filter-row, .visit-add-bar")){
+      el.dataset.mtEmpty = "1";
+      el.value = "";
+    }
     el.setAttribute("autocomplete", "off");
     el.setAttribute("autocorrect", "off");
     el.setAttribute("autocapitalize", "off");
@@ -5746,9 +5761,31 @@ function markNoAutofill(root){
   });
 }
 
+/* کروم معمولاً بعد از ساخته‌شدنِ ورودی پُرش می‌کند، پس یک بار پاک
+   کردن کافی نیست. چند بار سر می‌زنیم — ولی هیچ‌وقت به کادری که همین
+   حالا زیرِ دستِ کاربر است دست نمی‌زنیم. */
+function scrubAutofilled(){
+  document.querySelectorAll('[data-mt-empty="1"]').forEach(el=>{
+    if(el === document.activeElement) return;
+    if(el.value !== "") el.value = "";
+  });
+}
+function scrubSoon(){
+  requestAnimationFrame(scrubAutofilled);
+  setTimeout(scrubAutofilled, 400);
+  setTimeout(scrubAutofilled, 1200);
+}
+
 function setupNoAutofill(){
   const host = document.querySelector(".content") || document.body;
   markNoAutofill(host);
+  scrubSoon();
+  /* وقتی کاربر خودش چیزی تایپ کرد، دیگر نگهبانی لازم نیست */
+  host.addEventListener("input", e=>{
+    const t = e.target;
+    if(t && t.dataset && t.dataset.mtEmpty && e.isTrusted && t === document.activeElement)
+      delete t.dataset.mtEmpty;
+  }, true);
   try{
     new MutationObserver(muts=>{
       for(const m of muts){
@@ -5756,6 +5793,7 @@ function setupNoAutofill(){
           if(n.nodeType !== 1) continue;
           markNoAutofill(n);
           if(n.matches && n.matches("input, textarea")) markNoAutofill(n.parentNode || host);
+          scrubSoon();
         }
       }
     }).observe(host, { childList:true, subtree:true });
