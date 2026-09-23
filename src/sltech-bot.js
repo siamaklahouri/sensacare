@@ -65,8 +65,13 @@ export async function toAdmin(env, from, text, note = '') {
     `${from.phone ? ` — <code>${esc(from.phone)}</code>` : ''}` +
     ` (${LABEL[KIND_OF[from.pf]] || 'وب'})\n` +
     `گفتگو: <code>${esc(String(from.chat))}</code>\n\n`;
-  const foot = `\n\n↩️ روی همین پیام ریپلای کن تا جوابت برایش برود.\n` +
-    `یا بنویس: <code>/reply ${esc(String(from.chat))} متن جواب</code>`;
+  /* پیامِ فرمِ سایت را نباید با «ریپلای کن» تمام کرد؛ ریپلای برایش
+     کار نمی‌کند و آدم را سرِ کار می‌گذارد. */
+  const foot = from.pf === 'slweb'
+    ? `\n\n📄 این از فرمِ سایت آمده و گفتگوی تلگرامی ندارد.\n` +
+      `جواب را از همان راهِ تماسِ بالا بفرست — ریپلای این‌جا به جایی نمی‌رسد.`
+    : `\n\n↩️ روی همین پیام ریپلای کن تا جوابت برایش برود.\n` +
+      `یا بنویس: <code>/reply ${esc(String(from.chat))} متن جواب</code>`;
 
   let sent = 0;
   for (const kind of ['telegram', 'bale']) {
@@ -82,6 +87,18 @@ export async function toAdmin(env, from, text, note = '') {
       SL_PF[kind], String(admin), String(mid), from.pf, String(from.chat), Date.now());
   }
   return sent;
+}
+
+/* کسی که فرمِ سایت را پر کرده گفتگویی ندارد؛ راهِ تماسش همان چیزی
+   است که خودش نوشته و کنارِ پیام ذخیره شده. */
+async function webContact(env, chat) {
+  try {
+    const r = await one(env,
+      `SELECT name, phone FROM support_msgs
+        WHERE platform='slweb' AND chat_id=? AND dir='in'
+        ORDER BY created DESC LIMIT 1`, String(chat));
+    return r ? { name: r.name || '', contact: r.phone || '' } : null;
+  } catch (e) { return null; }
 }
 
 /* ---------- جوابِ مدیر به کاربر ---------- */
@@ -116,9 +133,26 @@ export async function handleSlUpdate(env, kind, update) {
         'SELECT * FROM support_relay WHERE platform=? AND admin_chat=? AND message_id=?',
         pf, chat, String(rep));
       if (row) {
+        /* پیامِ فرمِ سایت اصلاً گفتگو ندارد که جواب به آن برود. قبلاً
+           همان «شاید آن گفتگو بسته شده» را می‌گفت، که گمراه‌کننده بود:
+           آدم دنبالِ خرابی می‌گشت، در حالی که چیزی خراب نبود. حالا
+           صریح می‌گوید چرا، و راهِ تماسِ خودِ طرف را هم می‌دهد. */
+        if (row.cust_platform === 'slweb') {
+          const w = await webContact(env, row.cust_chat);
+          await slSend(env, kind, { chat_id: chat, parse_mode: 'HTML',
+            text: '📄 <b>این پیام از فرمِ سایت آمده، نه از گفتگوی تلگرام.</b>\n\n' +
+                  'پس جوابی که این‌جا بنویسی جایی نمی‌رود — چون فرستنده‌اش ' +
+                  'اصلاً گفتگویی با این ربات ندارد.\n\n' +
+                  (w && w.contact
+                    ? 'از همین راهی که خودش گذاشته جواب بده:\n' +
+                      (w.name ? esc(w.name) + ' — ' : '') + '<code>' + esc(w.contact) + '</code>'
+                    : 'راهِ تماسی هم همراهش نبود؛ در پنل، بخشِ «پیام‌ها» را ببین.') });
+          return;
+        }
         const okSent = await toUser(env, row.cust_platform, row.cust_chat, text);
         await slSend(env, kind, { chat_id: chat,
-          text: okSent ? '✅ جوابت رفت.' : '⚠️ نرسید — شاید آن گفتگو بسته شده.' });
+          text: okSent ? '✅ جوابت رفت.'
+                       : '⚠️ نرسید. شاید طرف ربات را بلاک کرده یا گفتگو را پاک کرده.' });
         return;
       }
     }
@@ -128,6 +162,14 @@ export async function handleSlUpdate(env, kind, update) {
       const row = await one(env,
         'SELECT * FROM support_relay WHERE cust_chat=? ORDER BY created DESC LIMIT 1', mm[1]);
       const custPf = row ? row.cust_platform : pf;
+      if (custPf === 'slweb') {
+        const w = await webContact(env, mm[1]);
+        await slSend(env, kind, { chat_id: chat, parse_mode: 'HTML',
+          text: '📄 <b>آن پیام از فرمِ سایت آمده و گفتگوی تلگرامی ندارد.</b>\n\n' +
+                (w && w.contact ? 'راهِ تماسش: <code>' + esc(w.contact) + '</code>'
+                                : 'راهِ تماسی همراهش نبود؛ در پنل ببین.') });
+        return;
+      }
       const okSent = await toUser(env, custPf, mm[1], mm[2]);
       await slSend(env, kind, { chat_id: chat,
         text: okSent ? '✅ جوابت رفت.' : '⚠️ نرسید. شناسهٔ گفتگو را درست نوشتی؟' });
