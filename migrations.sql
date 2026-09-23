@@ -797,3 +797,31 @@ CREATE TABLE IF NOT EXISTS shared_rows (
 -- پرسشِ همیشگیِ صفحه «از این لحظه به بعد چه عوض شده؟» است، پس همین
 -- دو ستون با هم ایندکس می‌شوند.
 CREATE INDEX IF NOT EXISTS shared_rows_box_upd ON shared_rows(box, updated);
+
+-- ۳۵ | گروه‌های سازمانی
+-- بخشِ مشترک تا حالا فهرستی از اسم‌ها بود: برای هر جدول باید تک‌تک
+-- کارتابل‌ها تیک می‌خوردند، و با آمدن و رفتنِ هر نفر باید همهٔ جدول‌ها
+-- دستی گشته می‌شد.
+--
+-- گروه همان فهرست است، ولی یک بار. «احیا › مالی» یک جا تعریف می‌شود و
+-- جدول‌ها به آن وصل می‌شوند. parent خالی یعنی ریشه — با همین یک ستون
+-- هر عمقی از زیرمجموعه ساخته می‌شود.
+--
+-- ارث‌بری عمداً نیست: عضوِ «احیا» جدول‌های «مالی» را نمی‌بیند مگر عضوِ
+-- مالی هم باشد. بعدِ سه لایه ارث‌بری، هیچ‌کس نمی‌تواند بگوید چه کسی چه
+-- چیزی را می‌بیند.
+CREATE TABLE IF NOT EXISTS orgs (
+  id      TEXT PRIMARY KEY,
+  name    TEXT NOT NULL DEFAULT '',
+  parent  TEXT NOT NULL DEFAULT '',   -- خالی یعنی ریشه
+  created INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS org_members (
+  org  TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  PRIMARY KEY (org, slug)
+);
+
+-- پرسشِ هر ورود «این کارتابل عضوِ کدام گروه‌هاست؟» است.
+CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug);

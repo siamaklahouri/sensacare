@@ -253,6 +253,9 @@ a{ color:var(--brass-ink); }
 /* ---------- کادرها ---------- */
 .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
 .fld{ display:flex; flex-direction:column; gap:6px; min-width:150px; flex:1; }
+/* بدونِ این، صفتِ hidden روی .fld بی‌اثر است: display:flex بر
+   display:none ِ مرورگر می‌چربد و کادر پنهان‌شده همچنان دیده می‌شود. */
+.fld[hidden]{ display:none; }
 .fld label{ font-size:11.5px; color:var(--ink-soft); font-weight:500; }
 .fld input, .fld select{ padding:10px 11px; border:1px solid var(--line);
   border-radius:var(--r-sm); font-family:var(--font); font-size:13px;
@@ -567,6 +570,21 @@ table.inv-tab td.desc{ text-align:right; }
   @page{ margin:14mm; }
 }
 
+/* ---------- سازمان ----------
+   همان قابِ بخش‌های مشترک، فقط با تورفتگی که عمق را نشان بدهد. خطِ
+   عمودیِ سمتِ شروع، زیرمجموعه بودن را از یک نگاه معلوم می‌کند. */
+.orgrow{ border:1px solid var(--line); border-radius:var(--r); padding:13px 15px;
+  margin-bottom:9px; background:var(--paper-2); }
+.orgrow .h{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:6px; }
+.orgrow .h b{ font-size:14px; }
+.orgrow .h .ic{ font-size:16px; }
+.orgrow .h .branch{ color:var(--ink-faint); font-size:15px; }
+.orgrow .mem{ display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+.orgrow .mem .p{ font-size:11.5px; background:var(--white); border:1px solid var(--line);
+  border-radius:999px; padding:3px 10px; color:var(--ink-soft); }
+.orgrow .mem .none{ color:var(--amber-ink); border-color:var(--amber); background:var(--amber-bg); }
+.orgrow .acts{ display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; }
+
 /* ---------- بخش‌های مشترک ---------- */
 .shbox{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
   margin-bottom:11px; background:var(--paper-2); }
@@ -654,6 +672,7 @@ table.inv-tab td.desc{ text-align:right; }
     <button data-tab="new">کارتابل تازه</button>
     <button data-tab="orders">سفارش‌ها</button>
     <button data-tab="msgs">پیام‌ها</button>
+    <button data-tab="orgs">سازمان</button>
     <button data-tab="shared">بخش‌های مشترک</button>
     <button data-tab="site">تنظیمات سایت</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
@@ -743,6 +762,23 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">هر پیامی که به ربات‌ها یا فرمِ سایت برسد این‌جاست. جواب از همین‌جا
         هم می‌رود، هم می‌توانید در خودِ ربات روی پیام ریپلای کنید.</p>
       <div id="msgBody" class="hint">…</div>
+    </div>
+  </section>
+
+  <section id="tab-orgs" hidden>
+    <div class="panel">
+      <h2>سازمان</h2>
+      <p class="sub">شرکت و بخش‌هایش را این‌جا تعریف کنید و آدم‌ها را داخلشان بگذارید.
+        بعد بخش‌های مشترک به‌جای فهرستِ اسم، به یک گروه وصل می‌شوند: هر کس را به
+        «مالی» اضافه کنید همان لحظه همهٔ جدول‌های مالی را می‌گیرد، و هر کس را
+        بردارید دستش از همه‌شان کوتاه می‌شود.</p>
+      <p class="sub">عضوِ «احیا» جدول‌های «مالی» را نمی‌بیند مگر عضوِ مالی هم باشد.
+        عمدی است: با ارث‌بریِ خودکار، بعدِ سه لایه دیگر معلوم نیست چه کسی چه چیزی
+        را می‌بیند.</p>
+      <div id="orgTree" class="hint">…</div>
+      <div class="ov-acts" style="position:static; border-top:0; padding-top:14px;">
+        <button class="btn btn-main" id="orgNew">＋ گروه تازه</button>
+      </div>
     </div>
   </section>
 
@@ -1139,10 +1175,13 @@ function setupTabs(){
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
       if(b.dataset.tab === "shared") loadShared();
+      if(b.dataset.tab === "orgs") loadOrgs();
     });
   });
   const shn = document.getElementById("shNew");
   if(shn) shn.addEventListener("click", ()=> shForm(null));
+  const ogn = document.getElementById("orgNew");
+  if(ogn) ogn.addEventListener("click", ()=> orgForm(null));
   const fx = document.getElementById("find");
   if(fx) fx.addEventListener("input", ()=>{ findText = fx.value; renderPlanners(); });
   document.getElementById("logoutBtn").addEventListener("click", async ()=>{
@@ -1909,6 +1948,122 @@ async function loadOrders(){
    ادمین می‌سازدشان و تعیین می‌کند کدام کارتابل‌ها عضو باشند. دادهٔ
    داخلشان این‌جا دیده نمی‌شود — فقط شمارِ ردیف‌ها، تا معلوم باشد کدام
    بخش خالی مانده. */
+/* ---------- سازمان ----------
+   درخت در حافظه ساخته می‌شود، نه با پرسشِ بازگشتی: فهرست چند ده تاست
+   و یک بار خواندن از ده بار پرسیدن ارزان‌تر و ساده‌تر است. */
+let ORGS = [];
+
+async function loadOrgs(){
+  const box = document.getElementById("orgTree");
+  box.textContent = "…";
+  const r = await api("/orgs");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  ORGS = r.data.items || [];
+  if(!ORGS.length){
+    box.innerHTML = '<div class="hint">هنوز گروهی ساخته نشده. ' +
+      'با دکمهٔ پایین شرکت را بسازید، بعد بخش‌هایش را زیرش.</div>';
+    return;
+  }
+  const kids = {};
+  ORGS.forEach(o=> (kids[o.parent || ""] = kids[o.parent || ""] || []).push(o));
+  const draw = (pid, depth)=> (kids[pid] || []).map(o=>{
+    const mem = o.members.length
+      ? o.members.map(m=>{
+          const pp = (DATA.items || []).find(x=> x.slug === m);
+          return '<span class="p">' + esc(pp ? (pp.name || m) : m) + '</span>';
+        }).join("")
+      : '<span class="p none">هنوز کسی داخلش نیست</span>';
+    return '<div class="orgrow" style="margin-inline-start:' + (depth * 22) + 'px">' +
+      '<div class="h">' + (depth ? '<span class="branch">└</span>' : '<span class="ic">🏢</span>') +
+        '<b>' + esc(o.name) + '</b>' +
+        '<span class="hint2">' + fa(o.members.length) + ' نفر</span>' +
+        (o.boxes ? '<span class="hint2">' + fa(o.boxes) + ' بخش مشترک</span>' : '') +
+      '</div>' +
+      '<div class="mem">' + mem + '</div>' +
+      '<div class="acts">' +
+        '<button class="btn" data-ogedit="' + esc(o.id) + '">ویرایش</button>' +
+        '<button class="btn" data-ogkid="' + esc(o.id) + '">＋ زیرمجموعه</button>' +
+        '<button class="btn btn-off" data-ogdel="' + esc(o.id) + '">حذف</button>' +
+      '</div></div>' + draw(o.id, depth + 1);
+  }).join("");
+  box.innerHTML = draw("", 0);
+
+  box.querySelectorAll("[data-ogedit]").forEach(b=>{
+    b.onclick = ()=> orgForm(ORGS.find(o=> o.id === b.dataset.ogedit));
+  });
+  box.querySelectorAll("[data-ogkid]").forEach(b=>{
+    b.onclick = ()=> orgForm(null, b.dataset.ogkid);
+  });
+  box.querySelectorAll("[data-ogdel]").forEach(b=>{
+    b.onclick = async ()=>{
+      const o = ORGS.find(x=> x.id === b.dataset.ogdel);
+      if(!confirm("«" + o.name + "» پاک شود؟ خودِ کارتابل‌ها دست نمی‌خورند؛ فقط این گروه.")) return;
+      b.disabled = true;
+      const r = await api("/orgs/" + o.id, { method:"DELETE" });
+      if(!r.ok){ b.disabled = false; say(r.data.error || "نشد.", true); return; }
+      say("برداشته شد."); loadOrgs();
+    };
+  });
+}
+
+/* فرمِ گروه. «بالادست» فهرستِ بقیهٔ گروه‌هاست منهای خودش و زیرمجموعه‌هایش
+   — وگرنه می‌شد گروهی را زیرِ بچهٔ خودش برد و درخت به خودش برمی‌گشت. */
+function orgForm(cur, parentId){
+  const o = cur || { id:"", name:"", parent: parentId || "", members:[] };
+  const isNew = !cur;
+  const under = (id)=>{
+    const out = [id];
+    for(let i=0;i<out.length;i++)
+      ORGS.filter(x=> x.parent === out[i]).forEach(x=> out.push(x.id));
+    return out;
+  };
+  const banned = isNew ? [] : under(o.id);
+  const planners = (DATA.items || []);
+  openOverlay(`
+    <h2>${isNew ? "گروه تازه" : "ویرایش «" + esc(o.name) + "»"}</h2>
+    <p class="sub">یک شرکت یا بخش. آدم‌هایی که این‌جا می‌گذارید، هر بخشِ مشترکی که
+       به این گروه وصل باشد را می‌بینند.</p>
+    <div class="fld"><label>نام</label>
+      <input type="text" id="ogName" maxlength="60" value="${esc(o.name)}"
+             placeholder="مثلاً: احیا  یا  مالی"></div>
+    <div class="fld"><label>زیرمجموعهٔ کدام گروه؟</label>
+      <select id="ogParent">
+        <option value="">— هیچ‌کدام (خودش یک شرکت است) —</option>
+        ${ORGS.filter(x=> banned.indexOf(x.id) < 0).map(x=>
+          '<option value="' + esc(x.id) + '"' + (x.id === o.parent ? " selected" : "") +
+          ">" + esc(x.path) + "</option>").join("")}
+      </select></div>
+    <div class="fld"><label>چه کسانی داخلش باشند</label>
+      <div class="shpick" id="ogMem">
+        ${planners.length ? planners.map(pp=>
+          '<label><input type="checkbox" value="' + esc(pp.slug) + '"' +
+          (o.members.indexOf(pp.slug) >= 0 ? " checked" : "") + '>' +
+          '<span>' + esc(pp.name || pp.slug) + '</span>' +
+          '<span class="kk" dir="ltr">' + esc(pp.slug) + '</span></label>').join("")
+          : '<div class="hint">هنوز کارتابلی نیست.</div>'}
+      </div></div>
+    <div class="ov-acts">
+      <button class="btn btn-main" id="ogSave">ذخیره</button>
+      <button class="btn" onclick="closeOverlay()">انصراف</button>
+    </div>`);
+
+  document.getElementById("ogSave").onclick = async ()=>{
+    const body = {
+      id: o.id,
+      name: document.getElementById("ogName").value.trim(),
+      parent: document.getElementById("ogParent").value,
+      members: Array.from(document.querySelectorAll("#ogMem input:checked")).map(i=> i.value)
+    };
+    const btn = document.getElementById("ogSave");
+    btn.disabled = true;
+    const r = await api("/orgs", { method:"POST", body: JSON.stringify(body) });
+    if(!r.ok){ btn.disabled = false; say(r.data.error || "نشد.", true); return; }
+    closeOverlay();
+    say(r.data.created ? "ساخته شد." : "ذخیره شد.");
+    loadOrgs();
+  };
+}
+
 let SH_TYPES = [];
 
 async function loadShared(){
@@ -1936,7 +2091,9 @@ async function loadShared(){
         <span class="hint2" dir="ltr">${esc(b.id)}</span>
       </div>
       <div class="shcols">${b.cols.map(c=> esc(c.t)).join(" · ")}</div>
-      <div class="mem">${mem}</div>
+      <div class="mem">${b.org
+        ? '<span class="hint2">گروه:</span><span class="p">' + esc(b.orgPath || b.org) + '</span>' + mem
+        : mem}</div>
       <div class="mem">${
         (b.mgrs && b.mgrs.length)
           ? '<span class="hint2">مدیر:</span>' + b.mgrs.map(m=> '<span class="p">' + esc(m) + '</span>').join("")
@@ -1967,7 +2124,7 @@ async function loadShared(){
 /* فرمِ ساخت و ویرایش. شناسه بعد از ساخته شدن قفل می‌شود، چون ردیف‌ها
    با همان شناسه به بخش وصل‌اند و عوض کردنش یعنی گم شدنشان. */
 function shForm(cur){
-  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, rows:0 };
+  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"", rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -1987,7 +2144,18 @@ function shForm(cur){
             "</option>").join("")}
       </select>
       <div class="shcols" id="shCols"></div></div>
-    <div class="fld"><label>کدام کارتابل‌ها عضو باشند</label>
+    <div class="fld"><label>اعضا از کجا بیایند</label>
+      <select id="shSrc">
+        <option value="list">فهرستِ دستیِ کارتابل‌ها</option>
+        <option value="org">یک گروهِ سازمانی</option>
+      </select>
+      <div class="hint">با گروه، هر کس را به گروه اضافه کنید خودش این بخش را
+        می‌گیرد و هر کس را بردارید دستش کوتاه می‌شود — دیگر لازم نیست این‌جا
+        بیایید.</div></div>
+    <div class="fld" id="shOrgWrap" hidden><label>کدام گروه</label>
+      <select id="shOrg"><option value="">— انتخاب کنید —</option></select>
+      <div class="hint" id="shOrgWho"></div></div>
+    <div class="fld" id="shMemWrap"><label>کدام کارتابل‌ها عضو باشند</label>
       <div class="shpick" id="shMem">
         ${planners.length ? planners.map(pp=>
           '<label><input type="checkbox" value="' + esc(pp.slug) + '"' +
@@ -2010,13 +2178,54 @@ function shForm(cur){
       <button class="btn" onclick="closeOverlay()">انصراف</button>
     </div>`);
 
-  /* فهرستِ مدیرها از روی همان تیک‌های عضویت ساخته می‌شود و با هر
-     تغییرشان از نو. اگر جدا بود، می‌شد کسی را مدیر کرد که عضو نیست —
-     یعنی مدیرِ بخشی که خودش نمی‌بیندش. */
+  /* گروه‌ها ممکن است هنوز خوانده نشده باشند (اگر کاربر مستقیم آمده
+     سراغِ این سربرگ). یک بار می‌خوانیم و کشویی را پر می‌کنیم. */
+  const fillOrgs = async ()=>{
+    if(!ORGS.length){
+      const r = await api("/orgs");
+      if(r.ok) ORGS = r.data.items || [];
+    }
+    const sel = document.getElementById("shOrg");
+    sel.innerHTML = '<option value="">— انتخاب کنید —</option>' +
+      ORGS.map(x=> '<option value="' + esc(x.id) + '"' + (x.id === b.org ? " selected" : "") +
+        ">" + esc(x.path) + " (" + fa(x.members.length) + " نفر)</option>").join("");
+    if(!ORGS.length)
+      document.getElementById("shOrgWho").textContent =
+        "هنوز گروهی ساخته نشده — سربرگِ «سازمان».";
+    syncSrc();
+  };
+
+  /* فهرستِ مدیرها از روی اعضای مؤثر ساخته می‌شود و با هر تغییرشان از
+     نو. اگر جدا بود، می‌شد کسی را مدیر کرد که عضو نیست — یعنی مدیرِ
+     بخشی که خودش نمی‌بیندش. */
   const mgrSet = new Set(b.mgrs || []);
+  const effMembers = ()=>{
+    if(document.getElementById("shSrc").value === "org"){
+      const o = ORGS.find(x=> x.id === document.getElementById("shOrg").value);
+      return o ? o.members.slice() : [];
+    }
+    return Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value);
+  };
+  const syncSrc = ()=>{
+    const byOrg = document.getElementById("shSrc").value === "org";
+    document.getElementById("shOrgWrap").hidden = !byOrg;
+    document.getElementById("shMemWrap").hidden = byOrg;
+    if(byOrg){
+      const o = ORGS.find(x=> x.id === document.getElementById("shOrg").value);
+      document.getElementById("shOrgWho").textContent = o
+        ? (o.members.length
+            ? "الان: " + o.members.map(m=>{
+                const pp = planners.find(x=> x.slug === m);
+                return pp ? (pp.name || m) : m;
+              }).join("، ")
+            : "این گروه هنوز عضوی ندارد — کسی این بخش را نمی‌بیند.")
+        : (ORGS.length ? "" : "هنوز گروهی ساخته نشده — سربرگِ «سازمان».");
+    }
+    drawMgr();
+  };
   const drawMgr = ()=>{
     const box = document.getElementById("shMgr");
-    const picked = Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value);
+    const picked = effMembers();
     if(!picked.length){ box.innerHTML = '<div class="hint">اول عضو انتخاب کنید.</div>'; return; }
     box.innerHTML = picked.map(sg=>{
       const pp = planners.find(x=> x.slug === sg) || { slug:sg, name:sg };
@@ -2034,7 +2243,10 @@ function shForm(cur){
     if(!i.checked) mgrSet.delete(i.value);
     drawMgr();
   }));
-  drawMgr();
+  document.getElementById("shSrc").value = b.org ? "org" : "list";
+  document.getElementById("shSrc").addEventListener("change", syncSrc);
+  document.getElementById("shOrg").addEventListener("change", syncSrc);
+  fillOrgs();
 
   /* «کارهای تیمی» بدونِ قفل بی‌معنی است — کلِ حرفش همین است. */
   const syncLock = ()=>{
@@ -2076,6 +2288,8 @@ function shForm(cur){
       id: (document.getElementById("shId").value || b.id).trim().toLowerCase(),
       title: document.getElementById("shTitle").value.trim(),
       type: document.getElementById("shType").value,
+      org: document.getElementById("shSrc").value === "org"
+             ? document.getElementById("shOrg").value : "",
       members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
       rowlock: document.getElementById("shLock").checked ? 1 : 0

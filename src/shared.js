@@ -21,6 +21,8 @@
 /* عمداً از kartabl.js چیزی وارد نمی‌شود: آن فایل خودش این‌جا را وارد
    می‌کند و حلقهٔ import، هرچند در ESM معمولاً کار می‌کند، یک روز سرِ
    ترتیبِ ارزیابی ما را زمین می‌زند. سه خطِ زیر همان سه‌تاست. */
+import { orgList, orgsOf, pathOf } from './orgs.js';
+
 const all = async (env, sql, ...b) => (await env.DB.prepare(sql).bind(...b).all()).results || [];
 const one = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).first();
 const run = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).run();
@@ -154,7 +156,8 @@ export async function ensureShared(env) {
          می‌شود؛ قدیمی‌ها را خودِ ادمین وقتی خواست روشن می‌کند. */
       'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0',
       "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''",
-      'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0'
+      'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0',
+      "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''"
     ]) { try { await run(env, q); } catch (e) { /* از قبل هست */ } }
     ready = true;
   } catch (e) { /* اگر ساخته نشد، مسیرها خودشان خطا می‌دهند */ }
@@ -168,14 +171,36 @@ const shapeBox = r => {
            label: t ? t.label : r.type, icon: t ? t.icon : '📋',
            cols: t ? t.cols : [], members: parseMembers(r.members),
            mgrs: parseMembers(r.mgrs), rowlock: Number(r.rowlock || 0),
-           created: r.created };
+           org: r.org || '', orgPath: '', created: r.created };
 };
 
-/* ---------- خواندن ---------- */
+/* ---------- خواندن ----------
+   بخشی که به گروه وصل است فهرستِ اعضای خودش را ندارد؛ اعضایش همان
+   اعضای گروه‌اند. این‌جا جایگزین می‌شود تا بقیهٔ کد — قفل، مدیر، فهرستِ
+   مسئول — فرقی بین این دو نبیند. */
+async function withOrgs(env, boxes) {
+  if (!boxes.some(b => b.org)) return boxes;
+  const list = await orgList(env);
+  const by = {};
+  for (const o of list) by[o.id] = o;
+  for (const b of boxes) {
+    if (!b.org) continue;
+    const o = by[b.org];
+    /* گروهی که پاک شده: بخش بی‌عضو می‌ماند، نه اینکه ناگهان مالِ همه
+       شود. ادمین در پنل می‌بیند که کسی نمی‌بیندش. */
+    b.members = o ? o.members.slice() : [];
+    b.orgPath = o ? pathOf(list, o.id) : '';
+    b.mgrs = b.mgrs.filter(m => b.members.includes(m));
+  }
+  return boxes;
+}
+
 export async function boxesFor(env, slug) {
   await ensureShared(env);
   const rows = await all(env, 'SELECT * FROM shared_boxes ORDER BY created, id');
-  return withPeople(env, rows.map(shapeBox).filter(b => b.members.includes(slug)));
+  const mine = await orgsOf(env, slug);
+  const boxes = await withOrgs(env, rows.map(shapeBox));
+  return withPeople(env, boxes.filter(b => b.org ? mine.includes(b.org) : b.members.includes(slug)));
 }
 
 /* ستونِ «مسئول» باید اسمِ آدم‌ها را نشان بدهد نه slug را. اسم‌ها یک بار
@@ -198,13 +223,15 @@ async function withPeople(env, boxes) {
 
 export async function allBoxes(env) {
   await ensureShared(env);
-  return (await all(env, 'SELECT * FROM shared_boxes ORDER BY created, id')).map(shapeBox);
+  const rows = await all(env, 'SELECT * FROM shared_boxes ORDER BY created, id');
+  return withOrgs(env, rows.map(shapeBox));
 }
 
 export async function getBox(env, id) {
   await ensureShared(env);
   const r = await one(env, 'SELECT * FROM shared_boxes WHERE id=?', String(id || ''));
-  return r ? shapeBox(r) : null;
+  if (!r) return null;
+  return (await withOrgs(env, [shapeBox(r)]))[0];
 }
 
 /* «since» یعنی: از این لحظه به بعد چه چیزی عوض شده؟ صفحه همین را هر
@@ -390,18 +417,30 @@ export async function saveBox(env, body, knownSlugs) {
   const type = String(body.type || '');
   if (!typeById(type)) return { error: 'این نوع جدول را نمی‌شناسم.' };
 
+  /* دو راهِ عضویت، و هم‌زمان نمی‌شوند: یا فهرستِ دستیِ اسم‌ها، یا یک
+     گروه. اگر هر دو بود، فردا معلوم نبود کدام حرفِ آخر را می‌زند. */
+  const org = String(body.org || '').trim();
+  if (org && !/^[a-z0-9]{6,16}$/.test(org)) return { error: 'گروه درست نیست.' };
+  if (org) {
+    const o = await one(env, 'SELECT id FROM orgs WHERE id=?', org).catch(() => null);
+    if (!o) return { error: 'این گروه پیدا نشد.' };
+  }
+
   /* فقط کارتابل‌هایی که واقعاً هستند؛ وگرنه فردا یک اسمِ غلط در
      فهرستِ اعضا می‌ماند و کسی نمی‌فهمد چرا آن یکی بخش را نمی‌بیند. */
-  const members = (Array.isArray(body.members) ? body.members : [])
+  const members = org ? [] : (Array.isArray(body.members) ? body.members : [])
     .map(s => String(s || '').trim().toLowerCase())
     .filter((s, i, a) => s && a.indexOf(s) === i && knownSlugs.includes(s))
     .slice(0, 50);
 
   /* مدیر باید خودش عضو باشد؛ مدیری که بخش را نمی‌بیند مدیرِ چیزی نیست
      و فقط یک اسمِ گمراه‌کننده در تنظیمات می‌ماند. */
+  const eff = org
+    ? (await all(env, 'SELECT slug FROM org_members WHERE org=?', org)).map(r => r.slug)
+    : members;
   const mgrs = (Array.isArray(body.mgrs) ? body.mgrs : [])
     .map(x => String(x || '').trim().toLowerCase())
-    .filter((x, i, a) => x && a.indexOf(x) === i && members.includes(x))
+    .filter((x, i, a) => x && a.indexOf(x) === i && eff.includes(x))
     .slice(0, 10);
 
   /* نوعِ «کارهای تیمی» بدونِ قفل بی‌معنی است: کلِ حرفش این است که کارِ
@@ -418,12 +457,12 @@ export async function saveBox(env, body, knownSlugs) {
   }
 
   await run(env,
-    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock)
-     VALUES(?,?,?,?,?,?,?)
+    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org)
+     VALUES(?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET title=excluded.title, type=excluded.type,
                                    members=excluded.members, mgrs=excluded.mgrs,
-                                   rowlock=excluded.rowlock`,
-    id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock);
+                                   rowlock=excluded.rowlock, org=excluded.org`,
+    id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock, org);
   return { ok: true, id, created: !cur };
 }
 

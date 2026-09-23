@@ -68,7 +68,12 @@
     ".sh-tab td.locked{background:var(--paper-2,rgba(0,0,0,.02))}",
     ".sh-stamp{font-size:11px;color:var(--ink-faint);white-space:nowrap;padding-top:9px}",
     ".sh-mine{font-weight:600}",
-    ".sh-kept{font-size:11.5px;color:var(--red-ink,#A6222B);line-height:1.9;margin-top:8px;min-height:19px}"
+    ".sh-kept{font-size:11.5px;color:var(--red-ink,#A6222B);line-height:1.9;margin-top:8px;min-height:19px}",
+    /* سرفصلِ گروه در نوار کنار. دکمه نیست، پس نه hover دارد نه کلیک —
+       وگرنه آدم رویش می‌زند و انتظار دارد چیزی باز شود. */
+    ".sh-org{font-size:10.5px;letter-spacing:.02em;color:var(--ink-faint);",
+    "  padding:12px 10px 5px;margin-top:4px;border-top:1px solid var(--card-border,rgba(11,37,69,.08));",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
   ].join("\n");
 
   function addCss() {
@@ -94,7 +99,30 @@
     /* پیش از دکمه‌های عمومی (راهنما و تنظیمات) بنشیند تا قاطیِ آن‌ها نشود */
     var before = nav.querySelector('.navbtn[data-view="guide"]')
               || nav.querySelector('.navbtn[data-view="settings"]');
-    nav.insertBefore(btn, before || null);
+    /* بخش‌هایی که به یک گروه وصل‌اند زیرِ نامِ همان گروه جمع می‌شوند.
+       سرفصل فقط یک بار، پیش از اولین بخشِ آن گروه. بخش‌های بی‌گروه
+       دقیقاً همان‌جا که بودند می‌مانند. */
+    if (box.orgPath) {
+      var key = "org-" + box.org;
+      if (!nav.querySelector('[data-shorg="' + key + '"]')) {
+        var head = document.createElement("div");
+        head.className = "sh-org";
+        head.setAttribute("data-shorg", key);
+        head.textContent = box.orgPath;
+        head.title = box.orgPath;
+        nav.insertBefore(head, before || null);
+      }
+      /* بعد از سرفصلِ خودش، نه ته فهرست */
+      var last = nav.querySelector('[data-shorg="' + key + '"]');
+      var cur = last;
+      while (cur.nextElementSibling &&
+             cur.nextElementSibling.classList.contains("navbtn") &&
+             String(cur.nextElementSibling.getAttribute("data-view") || "").indexOf("shared-") === 0)
+        cur = cur.nextElementSibling;
+      nav.insertBefore(btn, cur.nextSibling);
+    } else {
+      nav.insertBefore(btn, before || null);
+    }
 
     var sec = document.createElement("section");
     sec.className = "view"; sec.id = vid;
@@ -537,7 +565,16 @@
       BOXES = r.data.boxes || [];
       if (!BOXES.length) return;
       addCss();
-      for (var i = 0; i < BOXES.length; i++) mount(BOXES[i]);
+      /* اول بخش‌های بی‌گروه، بعد گروه‌به‌گروه. ترتیبِ سوار شدن همان
+         ترتیبِ نوار کنار است، پس اگر مرتب نمی‌شد، یک بخشِ بی‌گروه
+         می‌افتاد زیرِ سرفصلِ گروهِ قبلی و مالِ آن به نظر می‌رسید. */
+      var order = BOXES.slice().sort(function (a, b) {
+        var ao = a.orgPath || "", bo = b.orgPath || "";
+        if (!ao && bo) return -1;
+        if (ao && !bo) return 1;
+        return ao === bo ? 0 : (ao < bo ? -1 : 1);
+      });
+      for (var i = 0; i < order.length; i++) mount(order[i]);
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }
   };
 })();
