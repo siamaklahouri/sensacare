@@ -354,7 +354,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .personal-tabs button.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .btn-lock-now{
-    border:1px solid #E9A5A5; background:#FDEAEA; color:var(--red-ink); border-radius:9px; padding:8px 14px;
+    border:1px solid var(--red); background:var(--red-bg); color:var(--red-ink); border-radius:9px; padding:8px 14px;
     font-size:12px; cursor:pointer; font-family:var(--font-body); font-weight:600;
   }
 
@@ -386,7 +386,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .inst-note{ font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; line-height:1.8; }
   .inst-card{
-    border:1px solid var(--card-border); border-radius:12px; padding:16px; margin-bottom:14px; background:#FCFBF7;
+    border:1px solid var(--card-border); border-radius:12px; padding:16px; margin-bottom:14px; background:var(--paper);
   }
   .inst-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .inst-card-head h4{ margin:0; font-family:var(--font-display); font-size:14.5px; color:var(--ink); }
@@ -394,13 +394,13 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .inst-summary b{ color:var(--ink); }
   table.inst-schedule{ width:100%; border-collapse:collapse; font-size:12px; }
   table.inst-schedule th{ text-align:center; padding:6px 4px; color:var(--ink-soft); border-bottom:1px solid var(--card-border); background:transparent; position:static; }
-  table.inst-schedule td{ text-align:center; padding:6px 4px; border-bottom:1px solid #F0EDE4; }
+  table.inst-schedule td{ text-align:center; padding:6px 4px; border-bottom:1px solid var(--card-border); }
   table.inst-schedule tr.paid td{ color:var(--ink-faint); text-decoration:line-through; }
   .inst-pay-toggle{
     border:1px solid var(--card-border); background:var(--white); border-radius:6px; padding:3px 10px; font-size:11px;
     cursor:pointer; font-family:var(--font-body);
   }
-  .inst-pay-toggle.paid{ background:#E4F3E4; border-color:#9FCF9F; color:#2E7D32; }
+  .inst-pay-toggle.paid{ background:var(--green-bg); border-color:var(--green); color:var(--green-ink); }
 
   .cred-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .company-tabs{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -412,11 +412,11 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .company-tab-btn.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
   .company-tab-btn .cnt{ opacity:.7; font-size:11px; }
   .cred-import-bar{
-    display:flex; align-items:center; gap:8px; padding:10px 12px; background:#F4F0E4; border:1px solid var(--card-border);
+    display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--paper); border:1px solid var(--card-border);
     border-radius:9px; margin-bottom:14px; flex-wrap:wrap;
   }
   .cred-import-bar p{ margin:0; font-size:11px; color:var(--ink-soft); line-height:1.8; flex:1; min-width:200px; }
-  .cred-import-status{ font-size:11.5px; font-weight:600; color:#2E7D32; }
+  .cred-import-status{ font-size:11.5px; font-weight:600; color:var(--green-ink); }
 
   .sidebar-foot{
     flex:0 0 auto; margin-top:12px; padding-top:14px;
@@ -565,7 +565,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .dt-row select:focus, .dt-row input:focus{ outline:none; border-color:var(--brass); }
   .dt-result{
-    margin-top:14px; padding:12px 14px; background:#F9F6EC; border:1px solid var(--card-border); border-radius:10px;
+    margin-top:14px; padding:12px 14px; background:var(--paper); border:1px solid var(--card-border); border-radius:10px;
     font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--ink); text-align:center; min-height:20px;
   }
   .dt-diff-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
@@ -663,7 +663,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .edit-toggle-wrap{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); user-select:none; white-space:nowrap; }
   .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
   .edit-switch input{ opacity:0; width:0; height:0; }
-  .edit-switch .track{ position:absolute; inset:0; background:#c9c2b3; border-radius:999px; transition:.18s; cursor:pointer; }
+  .edit-switch .track{ position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.18s; cursor:pointer; }
   .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:var(--white); border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
   .edit-switch input:checked + .track{ background:var(--red); }
   .edit-switch input:checked + .track::before{ transform:translateX(-12px); }
@@ -718,9 +718,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .editable-cell[data-field="enteredBy"]:not(:empty){
     font-size:11px; color:var(--brass-ink); font-weight:600;
   }
-  .add-row input, .add-row select{ background:#fbf9f3; border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
+  .add-row input, .add-row select{ background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
   .add-row input:focus, .add-row select:focus{ outline:2px solid var(--brass); }
-  .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:#fbf9f3; border:1px solid var(--line); border-radius:8px; flex-wrap:wrap; }
+  .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:var(--paper); border:1px solid var(--line); border-radius:8px; flex-wrap:wrap; }
   .visit-add-bar input, .visit-add-bar select{ background:var(--white); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
   .visit-add-bar input:focus, .visit-add-bar select:focus{ outline:none; border-color:var(--brass); }
   .editable-text input{ width:100%; box-sizing:border-box; border:1px solid transparent; background:transparent; font-family:inherit; font-size:12px; padding:4px 5px; border-radius:5px; }
@@ -4232,13 +4232,31 @@ function renderCards(){
 
    خطِ بینِ تکه‌ها همرنگِ خودِ کارت است، نه سفیدِ ثابت — وگرنه در تمِ شب
    مثل یک قابِ روشن می‌زد بیرون. */
+/* دو دسته رنگ، و کارشان فرق دارد:
+   • done/doing/todo/bad/none «وضعیت»اند — معنایشان ثابت است و هیچ‌وقت
+     برای «سریِ چهارم» قرض داده نمی‌شوند.
+   • cat «هویت»‌اند: وقتی برش‌ها یا ستون‌ها فقط با هم فرق دارند، نه
+     خوب و بد. ترتیبشان ثابت است و هیچ‌وقت چرخانده نمی‌شود، وگرنه با
+     عوض شدنِ یک فیلتر رنگِ بقیه هم عوض می‌شود.
+
+   هر دو ستون با سنجهٔ کوررنگی بررسی شده‌اند و هر پنج آزمون را پاس
+   می‌کنند (باندِ روشنایی، کفِ اشباع، جدایی در پروتان/دوتان/تریتان،
+   کفِ دیدِ عادی، و کنتراست با سطح). بدترین جفتِ همسایه در روز
+   ΔE ۱۲٫۸ و در شب ΔE ۱۰٫۳ است. دست بردن در یکی از این هگزها یعنی
+   باید دوباره سنجیده شود.
+
+   رنگ‌های شب «وارونهٔ» روز نیستند؛ جداگانه روی سطحِ تیره انتخاب
+   شده‌اند. مقدارهای قبلیِ شب برای «متن» ساخته شده بودند و برای پر
+   کردنِ نمودار از باندِ مجاز روشن‌تر بودند. */
 function chartTone(){
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
   return dark
     ? { done:"#46976A", doing:"#5A8FE8", todo:"#B07F26", none:"#3A4653",
-        bad:"#B0524F", surface:"#121E29" }
+        bad:"#B0524F", surface:"#121E29",
+        cat:["#4A85E0","#B8821F","#1FA298","#8B6FC4","#D25B65"] }
     : { done:"#1E7A4A", doing:"#1A4FA3", todo:"#B5791B", none:"#CFD7E0",
-        bad:"#A6222B", surface:"#FFFFFF" };
+        bad:"#A6222B", surface:"#FFFFFF",
+        cat:["#1A4FA3","#B5791B","#0A8F88","#6E45B0","#A6222B"] };
 }
 /* کمی روشن‌تر برای وقتی موشواره رویش می‌رود */
 function chartHover(list){ return list.map(c=> c + "D9"); }
@@ -4258,14 +4276,15 @@ async function renderCharts(){
   (function(){
     const s = computeChecklistStats();
     charts.checklistStatus = new Chart(document.getElementById("chartChecklistStatus"), {
-      type:"pie",
+      type:"doughnut",
       data:{ labels:["انجام شد","در حال انجام","انجام نشده"], datasets:[{
         data:[s.done, s.doing, s.todo],
-        backgroundColor:["#3C7A3E","#0F6E63","#C08A1E"],
-        hoverBackgroundColor:["#4F9A52","#14897A","#DC9F27"], borderColor:"#fff", borderWidth:2, hoverOffset:12
+        backgroundColor:[chartTone().done, chartTone().doing, chartTone().todo],
+        hoverBackgroundColor:chartHover([chartTone().done, chartTone().doing, chartTone().todo]),
+        borderColor:chartTone().surface, borderWidth:2, hoverOffset:12
       }] },
       options:{
-        layout:{padding:14},
+        layout:{padding:14}, cutout:"58%",
         plugins:{ legend:{position:"bottom", labels:{font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}}},
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+ctx.label+": "+fa(ctx.parsed)} } },
         animation:{animateScale:true}, onHover:chartHoverCursor,
@@ -4284,14 +4303,15 @@ async function renderCharts(){
   (function(){
     const d = computeDailyStats();
     charts.dailyStatus = new Chart(document.getElementById("chartDailyStatus"), {
-      type:"pie",
+      type:"doughnut",
       data:{ labels:["انجام شد","در حال انجام","انجام نشده","بدون وضعیت"], datasets:[{
         data:[d.doneDays, d.doingDays, d.todoDays, d.emptyDays],
-        backgroundColor:["#3C7A3E","#0F6E63","#C08A1E","#D8D2C0"],
-        hoverBackgroundColor:["#4F9A52","#14897A","#DC9F27","#C4BCA4"], borderColor:"#fff", borderWidth:2, hoverOffset:12
+        backgroundColor:[chartTone().done, chartTone().doing, chartTone().todo, chartTone().none],
+        hoverBackgroundColor:chartHover([chartTone().done, chartTone().doing, chartTone().todo, chartTone().none]),
+        borderColor:chartTone().surface, borderWidth:2, hoverOffset:12
       }] },
       options:{
-        layout:{padding:14},
+        layout:{padding:14}, cutout:"58%",
         plugins:{ legend:{position:"bottom", labels:{font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}}},
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+ctx.label+": "+fa(ctx.parsed)+" روز"} } },
         animation:{animateScale:true}, onHover:chartHoverCursor,
@@ -4310,13 +4330,14 @@ async function renderCharts(){
   (function(){
     const counts = INVOICE_STATUS.map(s=> invoicesData.filter(i=>i.status===s).length);
     charts.invoiceStatus = new Chart(document.getElementById("chartInvoiceStatus"), {
-      type:"pie",
+      type:"doughnut",
       data:{ labels:INVOICE_STATUS, datasets:[{
-        data:counts, backgroundColor:["#3C7A3E","#C08A1E","#C42E37"],
-        hoverBackgroundColor:["#4F9A52","#DC9F27","#DC4048"], borderColor:"#fff", borderWidth:2, hoverOffset:12
+        data:counts, backgroundColor:[chartTone().done, chartTone().todo, chartTone().bad],
+        hoverBackgroundColor:chartHover([chartTone().done, chartTone().todo, chartTone().bad]),
+        borderColor:chartTone().surface, borderWidth:2, hoverOffset:12
       }] },
       options:{
-        layout:{padding:14},
+        layout:{padding:14}, cutout:"58%",
         plugins:{ legend:{position:"bottom", labels:{font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}}},
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+ctx.label+": "+fa(ctx.parsed)} } },
         animation:{animateScale:true}, onHover:chartHoverCursor,
@@ -4335,7 +4356,7 @@ async function renderCharts(){
     const sums = projects.map(pr=> payablesData.filter(p=>(p.project||"بدون پروژه")===pr).reduce((s,p)=>s+(p.amount||0),0));
     charts.payableStatus = new Chart(document.getElementById("chartPayableStatus"), {
       type:"bar",
-      data:{ labels:projects, datasets:[{ data:sums, backgroundColor:"#C42E37", hoverBackgroundColor:"#DC4048", borderRadius:4 }] },
+      data:{ labels:projects, datasets:[{ data:sums, backgroundColor:chartTone().cat[0], hoverBackgroundColor:chartHover([chartTone().cat[0]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
@@ -4356,7 +4377,7 @@ async function renderCharts(){
     const sums = cats.map(c=> expensesData.filter(e=>e.category===c).reduce((s,e)=>s+(e.amount||0),0));
     charts.expenseCategory = new Chart(document.getElementById("chartExpenseCategory"), {
       type:"bar",
-      data:{ labels:cats, datasets:[{ data:sums, backgroundColor:"#B8862B", hoverBackgroundColor:"#D69A2B", borderRadius:4 }] },
+      data:{ labels:cats, datasets:[{ data:sums, backgroundColor:chartTone().cat[1], hoverBackgroundColor:chartHover([chartTone().cat[1]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
@@ -4379,8 +4400,8 @@ async function renderCharts(){
     charts.budgetVsActual = new Chart(document.getElementById("chartBudgetVsActual"), {
       type:"bar",
       data:{ labels:cats, datasets:[
-        { label:"بودجه", data:budgetSums, backgroundColor:"#2A5C8A", borderRadius:4 },
-        { label:"هزینه‌ی واقعی", data:actualSums, backgroundColor:"#C42E37", borderRadius:4 }
+        { label:"بودجه", data:budgetSums, backgroundColor:chartTone().cat[0], borderRadius:4 },
+        { label:"هزینه‌ی واقعی", data:actualSums, backgroundColor:chartTone().cat[1], borderRadius:4 }
       ] },
       options:{
         plugins:{ legend:{position:"bottom", labels:{font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}}},
@@ -4394,7 +4415,7 @@ async function renderCharts(){
   (function(){
     charts.bankBalances = new Chart(document.getElementById("chartBankBalances"), {
       type:"bar",
-      data:{ labels:bankData.map(b=>b.accountName), datasets:[{ data:bankData.map(b=>b.balance||0), backgroundColor:"#128075", hoverBackgroundColor:"#14897A", borderRadius:4 }] },
+      data:{ labels:bankData.map(b=>b.accountName), datasets:[{ data:bankData.map(b=>b.balance||0), backgroundColor:chartTone().cat[2], hoverBackgroundColor:chartHover([chartTone().cat[2]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
@@ -4412,7 +4433,7 @@ async function renderCharts(){
     const paired = Object.entries(byCustomer).map(([customer,remaining])=>({customer,remaining})).sort((a,b)=>b.remaining-a.remaining).slice(0,8);
     charts.topDebtors = new Chart(document.getElementById("chartTopDebtors"), {
       type:"bar",
-      data:{ labels:paired.map(p=>p.customer), datasets:[{ data:paired.map(p=>p.remaining), backgroundColor:"#5B3E8C", hoverBackgroundColor:"#7A55B5", borderRadius:4 }] },
+      data:{ labels:paired.map(p=>p.customer), datasets:[{ data:paired.map(p=>p.remaining), backgroundColor:chartTone().cat[3], hoverBackgroundColor:chartHover([chartTone().cat[3]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
