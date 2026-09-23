@@ -68,9 +68,29 @@ ${B}╭────────────────────────�
 
   /* ---------- ۱ بررسی توکن ---------- */
   step(1, 'بررسی توکن');
-  const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-  if (!TOKEN)
+  const RAW_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+  if (!RAW_TOKEN)
     die('CLOUDFLARE_API_TOKEN تنظیم نشده است. راهنمای-توکن-کلادفلر.md را بخوانید.');
+
+  /* فاصله و خطِ نوِ چسبیده به توکن، هنگام کپی‌کردن خیلی راحت جا می‌افتد و
+     کلادفلر آن را یک توکنِ دیگر حساب می‌کند. اینجا برداشته می‌شود و چون
+     wrangler هم از همین متغیر می‌خواند، تمیزشده را برمی‌گردانیم سرِ جایش. */
+  const TOKEN = RAW_TOKEN.trim();
+  process.env.CLOUDFLARE_API_TOKEN = TOKEN;
+  if (TOKEN !== RAW_TOKEN)
+    warn('دورِ توکن فاصله یا خطِ نو بود؛ برداشته شد.');
+
+  /* گزارشِ «شکلِ» توکن — بدون اینکه هیچ تکه‌ای از خودش چاپ شود.
+     وقتی توکن پذیرفته نمی‌شود، این می‌گوید مشکل از کپی‌کردن است یا از
+     خودِ توکن. هیچ‌کدام از این‌ها توکن را لو نمی‌دهد. */
+  const shape = () => {
+    info(`طولِ توکن: ${TOKEN.length} نویسه` +
+         (TOKEN.length === RAW_TOKEN.length ? '' : ` (پیش از پاک‌سازی ${RAW_TOKEN.length})`));
+    info('فقط نویسه‌های مجاز (حرف، رقم، _ و -): ' +
+         (/^[A-Za-z0-9_-]+$/.test(TOKEN) ? 'بله' : 'نه — چیزی غیرمجاز داخلش هست'));
+    info('شکلِ متداولِ توکنِ کلادفلر (۴۰ نویسه) دارد: ' +
+         (TOKEN.length === 40 ? 'بله' : 'نه'));
+  };
 
   const CF = 'https://api.cloudflare.com/client/v4';
   const cf = async path => {
@@ -82,8 +102,12 @@ ${B}╭────────────────────────�
   const v = await cf('/user/tokens/verify');
   if (!v.success) {
     err('توکن پذیرفته نشد: ' + cfErrors(v));
+    shape();
     info('اگر code برابر 1000 / 6003 / 6111 است: توکن ناقص یا غلط کپی شده — دوباره کپی کنید.');
     info('اگر code برابر 9109 است: توکن منقضی یا غیرفعال است — یکی جدید بسازید.');
+    info('یادآوری: بعد از Roll کردنِ توکن، رشتهٔ تازه باید در');
+    info('GitHub ← Settings ← Secrets and variables ← Actions ← CLOUDFLARE_API_TOKEN');
+    info('هم به‌روز شود؛ وگرنه اینجا همان رشتهٔ باطل‌شده می‌رسد.');
     process.exit(1);
   }
   ok('توکن سالم است' + (v.result && v.result.status ? ` (${v.result.status})` : ''));
