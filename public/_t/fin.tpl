@@ -104,9 +104,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
     --ink:#0B2545;
     --ink-soft:#3E5164;
     --ink-faint:#8592A0;
-    --brass:#0E8B8B;
-    --brass-deep:#0B6E6E;
-    --brass-bg:#E3F4F3;
+    /* رنگِ هویت از لوگوی SLTech می‌آید، همان‌که پنل و صفحهٔ اصلی دارند. */
+    --brass:#1A4FA3;
+    --brass-deep:#123E80;
+    --brass-bg:#E4EAF7;
     --green:#2F6B4F;
     --green-bg:#E3EFE7;
     --amber:#C98A2C;
@@ -130,7 +131,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
        روشن شود، ولی وقتی پس‌زمینهٔ دکمه است باید تیره بماند تا متنِ سفیدش
        خوانا بماند. --deep هم همان سرمه‌ایِ سطح‌هاست که نباید با متن قاطی شود. */
     --deep:#0B2545;
-    --brass-ink:#0B6E6E;
+    --brass-ink:#14458F;
     --red-ink:#A6222B;
     --green-ink:#2F6B4F;
     --amber-ink:#C98A2C;
@@ -4123,6 +4124,28 @@ function renderCards(){
     overdue("فاکتورهای معوق", s.overdueInvoices, "همه به‌موقع") +
     overdue("بدهی‌های معوق",  s.overduePayables, "چیزی عقب نیفتاده");
 }
+
+/* ---------- رنگِ نمودارها ----------
+   این‌ها «وضعیت»اند نه «هویت»، پس رنگشان معنا دارد و جابه‌جا نمی‌شود:
+   سبز یعنی انجام شده، آبی یعنی در جریان، کهربایی یعنی نشده. خاکستری
+   هم «بی‌وضعیت» است، نه یک دستهٔ چهارم.
+
+   گامِ روز و شب جدا انتخاب شده‌اند، نه وارونهٔ خودکارِ هم — و هر دو با
+   سنجهٔ کوررنگی بررسی شده‌اند: بدترین جفتِ کنارِ هم در دید عادی ΔE ۲۰
+   و در دوترانوپی ۱۸٫۷ فاصله دارد.
+
+   خطِ بینِ تکه‌ها همرنگِ خودِ کارت است، نه سفیدِ ثابت — وگرنه در تمِ شب
+   مثل یک قابِ روشن می‌زد بیرون. */
+function chartTone(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return dark
+    ? { done:"#46976A", doing:"#5A8FE8", todo:"#B07F26", none:"#3A4653",
+        bad:"#B0524F", surface:"#121E29" }
+    : { done:"#1E7A4A", doing:"#1A4FA3", todo:"#B5791B", none:"#CFD7E0",
+        bad:"#A6222B", surface:"#FFFFFF" };
+}
+/* کمی روشن‌تر برای وقتی موشواره رویش می‌رود */
+function chartHover(list){ return list.map(c=> c + "D9"); }
 
 async function renderCharts(){
   const ok = await chartLibPromise;

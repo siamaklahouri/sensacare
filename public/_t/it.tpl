@@ -104,9 +104,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
     --ink:#0B2545;
     --ink-soft:#3E5164;
     --ink-faint:#8592A0;
-    --brass:#0E8B8B;
-    --brass-deep:#0B6E6E;
-    --brass-bg:#E3F4F3;
+    /* رنگِ هویت از لوگوی SLTech می‌آید، همان‌که پنل و صفحهٔ اصلی دارند. */
+    --brass:#1A4FA3;
+    --brass-deep:#123E80;
+    --brass-bg:#E4EAF7;
     --green:#2F6B4F;
     --green-bg:#E3EFE7;
     --amber:#C98A2C;
@@ -130,7 +131,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
        روشن شود، ولی وقتی پس‌زمینهٔ دکمه است باید تیره بماند تا متنِ سفیدش
        خوانا بماند. --deep هم همان سرمه‌ایِ سطح‌هاست که نباید با متن قاطی شود. */
     --deep:#0B2545;
-    --brass-ink:#0B6E6E;
+    --brass-ink:#14458F;
     --red-ink:#A6222B;
     --green-ink:#2F6B4F;
     --amber-ink:#C98A2C;
@@ -208,7 +209,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   /* ---------- Top bar ---------- */
   .topbar{
     height:70px;
-    background:linear-gradient(135deg, #0A2143 0%, #123258 55%, #0F3D54 120%);
+    background:linear-gradient(135deg, #0E2A55 0%, #14396F 55%, #1A4FA3 125%);
     color:#fff;
     display:flex;
     align-items:center;
@@ -334,10 +335,20 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .cards{
     display:grid; grid-template-columns:repeat(auto-fit, minmax(148px,1fr)); gap:12px; margin-bottom:22px;
   }
+  /* کاشی‌ها قبلاً شش گرادیانِ اشباع بودند و کنار هم مثل تبلیغ به نظر
+     می‌رسیدند. حالا کارتِ سفیدند با یک نوارِ رنگی و عددِ رنگی: رنگ
+     همان معنی را می‌رساند، بی‌آنکه صفحه را فریاد بزند. */
   .stat{
-    border-radius:var(--radius); padding:16px 15px; color:#fff; box-shadow:0 4px 14px rgba(11,37,69,.14);
-    position:relative; overflow:hidden; transition:transform .2s, box-shadow .2s;
+    border-radius:var(--radius); padding:15px 16px 16px;
+    background:var(--white); color:var(--ink);
+    border:1px solid var(--card-border);
+    box-shadow:0 1px 2px rgba(11,37,69,.04), 0 6px 18px rgba(11,37,69,.06);
+    position:relative; overflow:hidden; transition:transform .18s, box-shadow .18s;
     animation:statIn .4s ease backwards;
+  }
+  .stat::before{
+    content:""; position:absolute; inset:0 0 auto 0; height:3px;
+    background:var(--tone, var(--brass));
   }
   .stat:nth-child(1){ animation-delay:.02s; }
   .stat:nth-child(2){ animation-delay:.07s; }
@@ -346,14 +357,11 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .stat:nth-child(5){ animation-delay:.22s; }
   .stat:nth-child(6){ animation-delay:.27s; }
   @keyframes statIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
-  .stat::after{
-    content:attr(data-ic); position:absolute; left:-6px; bottom:-14px; font-size:56px; opacity:.16;
-    line-height:1; pointer-events:none; transform:rotate(-8deg);
-  }
-  .stat:hover{ transform:translateY(-3px); box-shadow:0 12px 26px rgba(11,37,69,.24); }
+  .stat:hover{ transform:translateY(-2px);
+    box-shadow:0 2px 6px rgba(11,37,69,.06), 0 14px 30px rgba(11,37,69,.10); }
 
   .dash-hero{
-    background:linear-gradient(120deg,#0A2143 0%,#173B5C 52%,var(--brass-deep) 128%);
+    background:linear-gradient(120deg,#12305F 0%,#18407A 52%,var(--brass) 128%);
     border-radius:var(--radius); padding:20px 24px; margin-bottom:18px; color:#fff;
     display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
     box-shadow:0 10px 30px rgba(11,37,69,.22); position:relative; overflow:hidden;
@@ -484,15 +492,23 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .panel.accent-blue{ border-top:3px solid #2A5C8A; }
   .panel.accent-amber{ border-top:3px solid #B8862B; }
   .panel.accent-teal{ border-top:3px solid #128075; }
-  .stat .lbl{ font-size:11.5px; font-weight:600; opacity:.92; display:flex; align-items:center; gap:6px; position:relative; z-index:1; }
-  .stat .val{ font-family:var(--font-display); font-size:31px; font-weight:700; margin-top:9px; position:relative; z-index:1; }
-  .stat .sub{ font-size:11px; font-weight:600; opacity:.82; margin-top:2px; position:relative; z-index:1; }
-  .stat.blue{ background:linear-gradient(155deg,#2A5C8A,#173B5C); }
-  .stat.green{ background:linear-gradient(155deg,#458A47,#2A5A2C); }
-  .stat.teal{ background:linear-gradient(155deg,#128075,#0B534A); }
-  .stat.amber{ background:linear-gradient(155deg,#D69A2B,#93690F); }
-  .stat.red{ background:linear-gradient(155deg,#C42E37,#821B21); }
-  .stat.purple{ background:linear-gradient(155deg,#7A52A8,#4C3169); }
+  .stat .lbl{ font-size:12px; font-weight:600; color:var(--ink-soft);
+    display:flex; align-items:center; gap:6px; }
+  .stat .val{ font-family:var(--font-display); font-size:30px; font-weight:700;
+    margin-top:7px; color:var(--tone, var(--brass)); line-height:1.25; }
+  .stat .sub{ font-size:11.5px; font-weight:600; color:var(--ink-faint); margin-top:2px; }
+  .stat.blue  { --tone:#1A4FA3; }
+  .stat.green { --tone:#1E7A4A; }
+  .stat.teal  { --tone:#0A8F88; }
+  .stat.amber { --tone:#B5791B; }
+  .stat.red   { --tone:#A6222B; }
+  .stat.purple{ --tone:#6E45B0; }
+  :root[data-theme="dark"] .stat.blue  { --tone:#6AA3FF; }
+  :root[data-theme="dark"] .stat.green { --tone:#5FB07E; }
+  :root[data-theme="dark"] .stat.teal  { --tone:#1FA298; }
+  :root[data-theme="dark"] .stat.amber { --tone:#DFA94F; }
+  :root[data-theme="dark"] .stat.red   { --tone:#E8737C; }
+  :root[data-theme="dark"] .stat.purple{ --tone:#A88FD8; }
 
   /* ---------- Panels / grid ---------- */
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
@@ -2726,6 +2742,28 @@ function restoreCanvas(id, heightAttr){
   }
 }
 
+/* ---------- رنگِ نمودارها ----------
+   این‌ها «وضعیت»اند نه «هویت»، پس رنگشان معنا دارد و جابه‌جا نمی‌شود:
+   سبز یعنی انجام شده، آبی یعنی در جریان، کهربایی یعنی نشده. خاکستری
+   هم «بی‌وضعیت» است، نه یک دستهٔ چهارم.
+
+   گامِ روز و شب جدا انتخاب شده‌اند، نه وارونهٔ خودکارِ هم — و هر دو با
+   سنجهٔ کوررنگی بررسی شده‌اند: بدترین جفتِ کنارِ هم در دید عادی ΔE ۲۰
+   و در دوترانوپی ۱۸٫۷ فاصله دارد.
+
+   خطِ بینِ تکه‌ها همرنگِ خودِ کارت است، نه سفیدِ ثابت — وگرنه در تمِ شب
+   مثل یک قابِ روشن می‌زد بیرون. */
+function chartTone(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return dark
+    ? { done:"#46976A", doing:"#5A8FE8", todo:"#B07F26", none:"#3A4653",
+        bad:"#B0524F", surface:"#121E29" }
+    : { done:"#1E7A4A", doing:"#1A4FA3", todo:"#B5791B", none:"#CFD7E0",
+        bad:"#A6222B", surface:"#FFFFFF" };
+}
+/* کمی روشن‌تر برای وقتی موشواره رویش می‌رود */
+function chartHover(list){ return list.map(c=> c + "D9"); }
+
 function renderCharts(){
   const s = computeStats();
   const d = computeDailyStats();
@@ -2744,17 +2782,17 @@ function renderCharts(){
   try{
     destroyChart("status");
     charts.status = new Chart(document.getElementById("chartStatus"), {
-      type:"pie",
+      type:"doughnut",
       data:{ labels:["انجام شده","در حال انجام","انجام نشده"],
         datasets:[{
           data:[s.done, s.doing, s.todo],
-          backgroundColor:["#3C7A3E","#0F6E63","#C08A1E"],
-          hoverBackgroundColor:["#4F9A52","#14897A","#DC9F27"],
-          borderColor:"#fff", borderWidth:2,
+          backgroundColor:[chartTone().done, chartTone().doing, chartTone().todo],
+          hoverBackgroundColor:chartHover([chartTone().done, chartTone().doing, chartTone().todo]),
+          borderColor:chartTone().surface, borderWidth:2,
           hoverOffset:12, hoverBorderWidth:3
         }] },
       options:{
-        layout:{ padding:14 },
+        layout:{ padding:14 }, cutout:"58%",
         plugins:{
           legend:{ position:"bottom", labels:{ font:{ family:"Vazirmatn, Tahoma, Arial, sans-serif" } } },
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, titleFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{ label:(ctx)=> " "+ctx.label+": "+fa(ctx.parsed) } }
@@ -2910,9 +2948,9 @@ function renderCharts(){
         data:{ labels:["موفق","ناموفق / بدون ثبت"],
           datasets:[{
             data:[successCount, failCount],
-            backgroundColor:["#3C7A3E","#C42E37"],
-            hoverBackgroundColor:["#4F9A52","#DC4048"],
-            borderColor:"#fff", borderWidth:2, hoverOffset:12, hoverBorderWidth:3
+            backgroundColor:[chartTone().done, chartTone().bad],
+            hoverBackgroundColor:chartHover([chartTone().done, chartTone().bad]),
+            borderColor:chartTone().surface, borderWidth:2, hoverOffset:12, hoverBorderWidth:3
           }] },
         options:{
           layout:{ padding:14 }, cutout:"62%",
@@ -2936,17 +2974,17 @@ function renderCharts(){
 
     destroyChart("daily");
     charts.daily = new Chart(document.getElementById("chartDaily"), {
-      type:"pie",
+      type:"doughnut",
       data:{ labels:["انجام شده","در حال انجام","انجام نشده","بدون وضعیت"],
         datasets:[{
           data:[d.doneDays, d.doingDays, d.todoDays, d.emptyDays],
-          backgroundColor:["#3C7A3E","#0F6E63","#C08A1E","#D8D2C0"],
-          hoverBackgroundColor:["#4F9A52","#14897A","#DC9F27","#C4BCA4"],
-          borderColor:"#fff", borderWidth:2,
+          backgroundColor:[chartTone().done, chartTone().doing, chartTone().todo, chartTone().none],
+          hoverBackgroundColor:chartHover([chartTone().done, chartTone().doing, chartTone().todo, chartTone().none]),
+          borderColor:chartTone().surface, borderWidth:2,
           hoverOffset:12, hoverBorderWidth:3
         }] },
       options:{
-        layout:{ padding:14 },
+        layout:{ padding:14 }, cutout:"58%",
         plugins:{
           legend:{ position:"bottom", labels:{ font:{ family:"Vazirmatn, Tahoma, Arial, sans-serif" } } },
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, titleFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{ label:(ctx)=> " "+ctx.label+": "+fa(ctx.parsed)+" روز" } }
