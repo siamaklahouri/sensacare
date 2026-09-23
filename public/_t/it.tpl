@@ -797,8 +797,19 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .btn-brass:hover{ box-shadow:0 6px 16px rgba(14,139,139,.42); transform:translateY(-1px); }
   .btn-ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--card-border); }
   .btn-ghost:hover{ border-color:var(--brass); color:var(--brass-ink); background:var(--brass-bg); }
-  .btn-del{ background:transparent; color:var(--red-ink); border:1px solid transparent; cursor:pointer; font-size:15px; padding:5px 8px; border-radius:6px; transition:all .12s; }
-  .btn-del:hover{ background:rgba(166,34,43,0.1); border-color:var(--red); transform:scale(1.05); }
+  /* دکمهٔ حذف قبلاً همیشه قرمز بود و روی hover هم بزرگ می‌شد — در یک
+     جدولِ چهل ردیفی، چهل لکهٔ قرمزِ جهنده. حالا تا دست رویش نرود خاکستریِ
+     آرام است و فقط همان لحظه قرمز می‌شود. */
+  .btn-del{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; padding:0; box-sizing:border-box;
+    background:transparent; border:1px solid transparent; border-radius:8px;
+    color:var(--ink-faint); font-size:13px; line-height:1; cursor:pointer;
+    transition:background .14s, color .14s;
+  }
+  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); }
+  .btn-del:active{ transform:scale(.94); }
+  .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
   .btn-del[disabled]{ display:none; }
   .del-toggle-wrap, .edit-toggle-wrap{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); user-select:none; white-space:nowrap; }
   .del-switch, .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
@@ -1904,7 +1915,20 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
        معلق ماند و صفحه پشتِ قفل برای همیشه روی «در حال بارگذاری» ماند. */
     letMeIn(false);
   }
-  function closeGate(){ screenEl.hidden = true; }
+  /* بستن یعنی برداشتن از صفحه، نه فقط پنهان کردن.
+     دلیلش یک ایرادِ واقعی بود: تا وقتی این فرم در صفحه می‌ماند، مرورگر
+     یک «کادرِ رمز» می‌بیند و دنبالِ کادرِ نام کاربری کنارش می‌گردد؛
+     نزدیک‌ترین ورودیِ متنیِ صفحه را برمی‌دارد و نام کاربریِ ذخیره‌شده
+     («admin») را داخلش می‌ریزد. نتیجه این شد که ستونِ «داخلی» در
+     جدولِ MVPN خودبه‌خود «admin» می‌گرفت.
+     بعد از ورودِ موفق صفحه همیشه reload می‌شود، پس این فرم دیگر لازم
+     نیست و برداشتنش چیزی را خراب نمی‌کند. */
+  function closeGate(){
+    screenEl.hidden = true;
+    /* خودِ گره می‌ماند (جاهایی به وجودش تکیه شده) ولی محتوایش می‌رود:
+       کادرِ رمز باید از صفحه برود، نه فقط پنهان شود. */
+    try{ screenEl.innerHTML = ""; }catch(e){}
+  }
 
   if(window.KARTABL_OFFLINE){
     /* نسخهٔ داخل فایل پشتیبان: سروری در کار نیست، پس نه قفل معنا دارد
@@ -3091,7 +3115,7 @@ function renderChecklist(){
         </select>
       </td>
       <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
-      <td><button class="btn-del" data-del="${i}" title="حذف">🗑️</button></td>
+      <td><button class="btn-del" data-del="${i}" title="حذف">✕</button></td>
     </tr>
   `).join("");
 
@@ -4509,10 +4533,19 @@ function setupCompanies(){
 
 /* ---------------- Rendering: MVPN ---------------- */
 
+/* ترتیبِ این دو شرط مهم است و یک بار اشتباه بود.
+   مرحلهٔ واقعیِ یکی از خط‌ها این است:
+     «حذف شود-از شرکت دیگه براشون فعال شده»
+   چون «فعال شده» اول بررسی می‌شد، این خط سبزِ «فعال» می‌گرفت و در
+   کارتِ بالا هم جزوِ فعال‌ها شمرده می‌شد — یعنی کل ۳۹، فعال ۳۹ و
+   حذف‌شونده ۱، که با هم نمی‌خواند. «حذف» حرفِ آخر را می‌زند. */
+function mvpnIsRemoved(stage){ return String(stage||"").includes("حذف"); }
+function mvpnIsActive(stage){
+  return !mvpnIsRemoved(stage) && String(stage||"").includes("فعال شده");
+}
 function stageBadgeClass(stage){
-  const s = String(stage||"");
-  if(s.includes("فعال شده")) return "done";
-  if(s.includes("حذف")) return "todo";
+  if(mvpnIsRemoved(stage)) return "todo";
+  if(mvpnIsActive(stage))  return "done";
   return "doing";
 }
 
@@ -4540,8 +4573,8 @@ function renderMvpn(){
   if(mvToggle) mvToggle.checked = !!editMode.mvpn;
 
   const all = (mvpnData && mvpnData.lines) || [];
-  const activeCount = all.filter(l=>String(l.stage).includes("فعال شده")).length;
-  const removeCount = all.filter(l=>String(l.stage).includes("حذف")).length;
+  const activeCount = all.filter(l=> mvpnIsActive(l.stage)).length;
+  const removeCount = all.filter(l=> mvpnIsRemoved(l.stage)).length;
 
   cardsWrap.innerHTML = `
     <div class="stat blue"><div class="lbl">📱 کل خطوط</div><div class="val">${fa(all.length)}</div></div>
@@ -5571,6 +5604,44 @@ function renderAll(){
   renderRemindersBanner();
 }
 
+/* ---------------- جلوی تکمیلِ خودکارِ مرورگر ----------------
+   کادرِ رمزِ صفحهٔ ورود که برداشته شد، ریشهٔ ماجرا خشکید. این لایهٔ دوم
+   است برای مرورگرها و افزونه‌های مدیریتِ رمز که با حدس‌های خودشان کار
+   می‌کنند: هیچ خانهٔ جدولی نباید پیشنهادِ «نام کاربری» بگیرد.
+
+   جدول‌ها مدام با innerHTML از نو ساخته می‌شوند، پس یک بار نشانه‌گذاری
+   کافی نیست و یک ناظر هم لازم است. */
+function markNoAutofill(root){
+  const sel = 'input[type="text"], input[type="search"], input:not([type]), textarea';
+  (root || document).querySelectorAll(sel).forEach(el=>{
+    if(el.dataset.naf) return;
+    el.dataset.naf = "1";
+    el.setAttribute("autocomplete", "off");
+    el.setAttribute("autocorrect", "off");
+    el.setAttribute("autocapitalize", "off");
+    el.setAttribute("spellcheck", "false");
+    el.setAttribute("data-lpignore", "true");   /* LastPass */
+    el.setAttribute("data-1p-ignore", "");      /* 1Password */
+    el.setAttribute("data-form-type", "other"); /* Dashlane */
+  });
+}
+
+function setupNoAutofill(){
+  const host = document.querySelector(".content") || document.body;
+  markNoAutofill(host);
+  try{
+    new MutationObserver(muts=>{
+      for(const m of muts){
+        for(const n of m.addedNodes){
+          if(n.nodeType !== 1) continue;
+          markNoAutofill(n);
+          if(n.matches && n.matches("input, textarea")) markNoAutofill(n.parentNode || host);
+        }
+      }
+    }).observe(host, { childList:true, subtree:true });
+  }catch(e){ /* ناظر نشد؟ همان یک بارِ اول هم بهتر از هیچ است */ }
+}
+
 /* ---------------- بخش‌های مشترک ----------------
    جدول‌هایی که ادمین بین چند کارتابل مشترک کرده. کدش در یک فایلِ
    جداست (/shared.js) چون هر دو کارتابل همان را بار می‌کنند؛ اگر دو
@@ -6319,7 +6390,7 @@ async function init(){
      setupAiSettings, showLastLogin, showExpiryWarning, setupBackup, setupServers, setupCompanies,
      setupMvpn, setupRemote, setupChartModal, setupDateTools, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
-     renderPersonalView, setupShared, requestNotifyPermission, checkAndFireReminders
+     renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

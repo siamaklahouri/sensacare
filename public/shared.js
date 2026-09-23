@@ -49,8 +49,13 @@
     ".sh-tab td{padding:3px 4px;vertical-align:top}",
     ".sh-tab td.who{font-size:10.5px;color:var(--ink-faint);white-space:nowrap;padding-top:10px}",
     ".sh-tab textarea{min-height:32px;line-height:1.8;overflow:hidden}",
-    ".sh-del{border:0;background:none;cursor:pointer;font-size:14px;opacity:.45;padding:6px}",
-    ".sh-del:hover{opacity:1}",
+    /* هم‌شکلِ دکمهٔ حذفِ بقیهٔ جدول‌های کارتابل: تا دست رویش نرود آرام است */
+    ".sh-del{display:inline-flex;align-items:center;justify-content:center;",
+    "  width:28px;height:28px;padding:0;box-sizing:border-box;background:transparent;",
+    "  border:1px solid transparent;border-radius:8px;color:var(--ink-faint);",
+    "  font-size:13px;line-height:1;cursor:pointer;transition:background .14s,color .14s}",
+    ".sh-del:hover{background:var(--red-bg,#F6E1E2);color:var(--red-ink,#A6222B)}",
+    ".sh-del:active{transform:scale(.94)}",
     ".sh-row.fresh{animation:shFresh 2.2s ease}",
     "@keyframes shFresh{0%{background:var(--brass-bg)}100%{background:transparent}}",
     ".sh-empty{padding:26px 10px;text-align:center;color:var(--ink-faint);font-size:12.5px;line-height:2}",
@@ -131,7 +136,9 @@
   function cellHtml(col, val) {
     var v = val === undefined || val === null ? "" : val;
     var dir = col.ltr ? ' dir="ltr"' : "";
-    var name = ' data-k="' + esc(col.k) + '"';
+    /* مثل بقیهٔ جدول‌های کارتابل: هیچ خانه‌ای پیشنهادِ «نام کاربری» نگیرد */
+    var name = ' data-k="' + esc(col.k) + '" autocomplete="off" spellcheck="false"' +
+               ' data-lpignore="true" data-1p-ignore data-form-type="other"';
     if (col.kind === "pick") {
       return '<select' + name + '><option value=""></option>' +
         col.opts.map(function (o) {
@@ -152,7 +159,7 @@
     return '<tr class="sh-row" data-rid="' + esc(r.rid) + '">' +
       box.cols.map(function (c) { return "<td>" + cellHtml(c, r.v[c.k]) + "</td>"; }).join("") +
       '<td class="who">' + esc(whoText(r)) + "</td>" +
-      '<td><button class="sh-del" title="بردار">🗑</button></td>' +
+      '<td><button class="sh-del" title="بردار">✕</button></td>' +
       "</tr>";
   }
 
