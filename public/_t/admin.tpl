@@ -567,6 +567,27 @@ table.inv-tab td.desc{ text-align:right; }
   @page{ margin:14mm; }
 }
 
+/* ---------- بخش‌های مشترک ---------- */
+.shbox{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
+  margin-bottom:11px; background:var(--paper-2); }
+.shbox .h{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:8px; }
+.shbox .h b{ font-size:14px; }
+.shbox .h .ic{ font-size:16px; }
+.shbox .mem{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.shbox .mem .p{ font-size:11.5px; background:var(--white); border:1px solid var(--line);
+  border-radius:999px; padding:3px 10px; color:var(--ink-soft); }
+.shbox .mem .none{ color:var(--amber-ink); border-color:var(--amber); background:var(--amber-bg); }
+.shbox .acts{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.shcols{ font-size:11.5px; color:var(--ink-faint); line-height:1.9; }
+.shpick{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:7px;
+  margin-top:7px; }
+.shpick label{ display:flex; align-items:center; gap:8px; font-size:12.5px;
+  border:1px solid var(--line); border-radius:var(--r-sm); padding:8px 10px;
+  background:var(--paper-2); cursor:pointer; }
+.shpick label:hover{ border-color:var(--brass); }
+.shpick input{ width:auto; margin:0; }
+.shpick .kk{ font-size:11px; color:var(--ink-faint); }
+
 #loading{ position:fixed; inset:0; background:var(--paper); z-index:95;
   display:flex; align-items:center; justify-content:center;
   color:var(--ink-faint); font-size:13px; }
@@ -626,6 +647,7 @@ table.inv-tab td.desc{ text-align:right; }
     <button data-tab="new">کارتابل تازه</button>
     <button data-tab="orders">سفارش‌ها</button>
     <button data-tab="msgs">پیام‌ها</button>
+    <button data-tab="shared">بخش‌های مشترک</button>
     <button data-tab="site">تنظیمات سایت</button>
     <button data-tab="keys">کلیدها و رمز ادمین</button>
     <button data-tab="log">سیاههٔ کارها</button>
@@ -714,6 +736,22 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">هر پیامی که به ربات‌ها یا فرمِ سایت برسد این‌جاست. جواب از همین‌جا
         هم می‌رود، هم می‌توانید در خودِ ربات روی پیام ریپلای کنید.</p>
       <div id="msgBody" class="hint">…</div>
+    </div>
+  </section>
+
+  <section id="tab-shared" hidden>
+    <div class="panel">
+      <h2>بخش‌های مشترک</h2>
+      <p class="sub">یک جدول که چند کارتابل با هم دارند و هرکدام می‌توانند عوضش کنند —
+        مثلاً فهرستِ شرکت‌ها که هم سیامک و هم علی رویش کار می‌کنند. هر تغییری که یکی
+        بدهد، چند ثانیه بعد برای بقیه هم دیده می‌شود.</p>
+      <p class="sub">«دیتای شخصی» این‌جا نیست و نمی‌تواند باشد: محتوایش با کلیدِ خودِ
+        کاربر در مرورگر رمز می‌شود و سرور اصلاً نمی‌بیندش. مشترک کردنش یعنی پخش کردنِ
+        آن کلید بین چند نفر.</p>
+      <div id="shList" class="hint">…</div>
+      <div class="ov-acts" style="position:static; border-top:0; padding-top:14px;">
+        <button class="btn btn-main" id="shNew">＋ بخش مشترک تازه</button>
+      </div>
     </div>
   </section>
 
@@ -1093,8 +1131,11 @@ function setupTabs(){
       if(b.dataset.tab === "msgs") loadMessages();
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
+      if(b.dataset.tab === "shared") loadShared();
     });
   });
+  const shn = document.getElementById("shNew");
+  if(shn) shn.addEventListener("click", ()=> shForm(null));
   const fx = document.getElementById("find");
   if(fx) fx.addEventListener("input", ()=>{ findText = fx.value; renderPlanners(); });
   document.getElementById("logoutBtn").addEventListener("click", async ()=>{
@@ -1855,6 +1896,135 @@ async function loadOrders(){
       say("فرم از روی فاکتور <b dir=\"ltr\">" + esc(o.id) + "</b> پر شد. آدرس و نام کاربری را بنویسید و بسازید.");
     };
   });
+}
+
+/* ---------- بخش‌های مشترک ----------
+   ادمین می‌سازدشان و تعیین می‌کند کدام کارتابل‌ها عضو باشند. دادهٔ
+   داخلشان این‌جا دیده نمی‌شود — فقط شمارِ ردیف‌ها، تا معلوم باشد کدام
+   بخش خالی مانده. */
+let SH_TYPES = [];
+
+async function loadShared(){
+  const box = document.getElementById("shList");
+  box.textContent = "…";
+  const r = await api("/shared-boxes");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  SH_TYPES = r.data.types || [];
+  const items = r.data.items || [];
+  if(!items.length){
+    box.innerHTML = '<div class="hint">هنوز بخشِ مشترکی ساخته نشده. ' +
+      'با دکمهٔ پایین اولی را بسازید.</div>';
+    return;
+  }
+  box.innerHTML = items.map(b=>{
+    const mem = b.members.length
+      ? b.members.map(m=> '<span class="p">' + esc(m) + '</span>').join("")
+      : '<span class="p none">هیچ کارتابلی عضو نیست — کسی این بخش را نمی‌بیند</span>';
+    return `<div class="shbox">
+      <div class="h">
+        <span class="ic">${esc(b.icon)}</span>
+        <b>${esc(b.title)}</b>
+        <span class="pill pill-builtin">${esc(b.label)}</span>
+        <span class="hint2">${fa(b.rows)} ردیف</span>
+        <span class="hint2" dir="ltr">${esc(b.id)}</span>
+      </div>
+      <div class="shcols">${b.cols.map(c=> esc(c.t)).join(" · ")}</div>
+      <div class="mem">${mem}</div>
+      <div class="acts">
+        <button class="btn" data-shedit="${esc(b.id)}">ویرایش</button>
+        <button class="btn btn-off" data-shdel="${esc(b.id)}">حذف</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-shedit]").forEach(btn=>{
+    btn.onclick = ()=> shForm(items.find(x=> x.id === btn.dataset.shedit));
+  });
+  box.querySelectorAll("[data-shdel]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const b = items.find(x=> x.id === btn.dataset.shdel);
+      if(!confirm("«" + b.title + "» و همهٔ " + b.rows + " ردیفش برای همیشه پاک شود؟ این کار برگشت ندارد.")) return;
+      btn.disabled = true;
+      const r = await api("/shared-boxes/" + b.id, { method:"DELETE" });
+      if(!r.ok){ btn.disabled = false; say(r.data.error || "نشد.", true); return; }
+      say("برداشته شد."); loadShared();
+    };
+  });
+}
+
+/* فرمِ ساخت و ویرایش. شناسه بعد از ساخته شدن قفل می‌شود، چون ردیف‌ها
+   با همان شناسه به بخش وصل‌اند و عوض کردنش یعنی گم شدنشان. */
+function shForm(cur){
+  const b = cur || { id:"", title:"", type:"notes", members:[], rows:0 };
+  const isNew = !cur;
+  const planners = (DATA.items || []);
+  openOverlay(`
+    <h2>${isNew ? "بخش مشترک تازه" : "ویرایش «" + esc(b.title) + "»"}</h2>
+    <p class="sub">یک جدول که چند کارتابل با هم دارند. هر عضوی می‌تواند ردیف اضافه،
+       ویرایش یا حذف کند و بقیه چند ثانیه بعد می‌بینند.</p>
+    <div class="fld"><label>عنوان — همین در نوار کنارِ کارتابل‌ها دیده می‌شود</label>
+      <input type="text" id="shTitle" maxlength="60" value="${esc(b.title)}"
+             placeholder="مثلاً: شرکت‌های مشترک"></div>
+    <div class="fld"><label>شناسه (انگلیسی، بعداً عوض نمی‌شود)</label>
+      <input type="text" id="shId" dir="ltr" maxlength="31" value="${esc(b.id)}"
+             placeholder="shared-companies" ${isNew ? "" : "disabled"}></div>
+    <div class="fld"><label>نوع جدول${(!isNew && b.rows) ? " — چون داده دارد عوض نمی‌شود" : ""}</label>
+      <select id="shType" ${(!isNew && b.rows) ? "disabled" : ""}>
+        ${SH_TYPES.map(t=> '<option value="' + esc(t.id) + '"' +
+            (t.id === b.type ? " selected" : "") + ">" + esc(t.icon) + " " + esc(t.label) +
+            "</option>").join("")}
+      </select>
+      <div class="shcols" id="shCols"></div></div>
+    <div class="fld"><label>کدام کارتابل‌ها عضو باشند</label>
+      <div class="shpick" id="shMem">
+        ${planners.length ? planners.map(pp=>
+          '<label><input type="checkbox" value="' + esc(pp.slug) + '"' +
+          (b.members.includes(pp.slug) ? " checked" : "") + '>' +
+          '<span>' + esc(pp.name || pp.slug) + '</span>' +
+          '<span class="kk" dir="ltr">' + esc(pp.slug) + '</span></label>').join("")
+          : '<div class="hint">هنوز کارتابلی نیست.</div>'}
+      </div></div>
+    <div class="ov-acts">
+      <button class="btn btn-main" id="shSave">ذخیره</button>
+      <button class="btn" onclick="closeOverlay()">انصراف</button>
+    </div>`);
+
+  const showCols = ()=>{
+    const t = SH_TYPES.find(x=> x.id === document.getElementById("shType").value);
+    document.getElementById("shCols").textContent = t ? "ستون‌ها: " + t.cols.join(" · ") : "";
+  };
+  document.getElementById("shType").addEventListener("change", showCols);
+  showCols();
+
+  /* از روی نوعِ جدول یک شناسهٔ پیشنهادی می‌سازیم تا کسی مجبور نباشد
+     خودش اسمِ انگلیسی دربیاورد. فقط تا وقتی دست نخورده باشد. */
+  if(isNew){
+    const idEl = document.getElementById("shId");
+    let touched = false;
+    idEl.addEventListener("input", ()=> touched = true);
+    const suggest = ()=>{
+      if(touched) return;
+      idEl.value = document.getElementById("shType").value + "-" + String(Date.now()).slice(-4);
+    };
+    document.getElementById("shTitle").addEventListener("input", suggest);
+    document.getElementById("shType").addEventListener("change", suggest);
+  }
+
+  document.getElementById("shSave").onclick = async ()=>{
+    const body = {
+      id: (document.getElementById("shId").value || b.id).trim().toLowerCase(),
+      title: document.getElementById("shTitle").value.trim(),
+      type: document.getElementById("shType").value,
+      members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value)
+    };
+    const btn = document.getElementById("shSave");
+    btn.disabled = true;
+    const r = await api("/shared-boxes", { method:"POST", body: JSON.stringify(body) });
+    if(!r.ok){ btn.disabled = false; say(r.data.error || "نشد.", true); return; }
+    closeOverlay();
+    say(r.data.created ? "ساخته شد." : "ذخیره شد.");
+    loadShared();
+  };
 }
 
 /* ---------- فاکتور فروش ----------

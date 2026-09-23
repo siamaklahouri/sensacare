@@ -17,6 +17,7 @@ try{ if(localStorage.getItem("{{STORE}}" + ":theme") === "dark")
 window.KARTABL_JOB = {{JOBSEED}};
 /* بخش‌های «دیتای شخصی» که ادمین برای این کاربر باز گذاشته. */
 window.KARTABL_VAULT = {{VAULTSECS}};
+window.KARTABL_SLUG  = "{{SLUG}}";
 /* بخش‌هایی که ادمین برای این کاربر بسته است. */
 window.KARTABL_OFF = {{FEATOFF}};
 /* تاریخِ پایانِ مهلت. صفر یعنی بی‌مهلت. */
@@ -4417,6 +4418,22 @@ function renderEverything(){
   renderBudget();
 }
 
+/* ---------------- بخش‌های مشترک ----------------
+   جدول‌هایی که ادمین بین چند کارتابل مشترک کرده. کدش در یک فایلِ
+   جداست (/shared.js) چون هر دو کارتابل همان را بار می‌کنند؛ اگر دو
+   نسخه می‌شد، فردا یکی‌شان عوض می‌شد و آن یکی نه.
+   فقط بعد از ورود بار می‌شود: پیش از آن هر درخواستی یک ۴۰۱ است. */
+function setupShared(){
+  if(!signedIn) return;
+  if(document.getElementById("sharedJs")) { if(window.initSharedBoxes) window.initSharedBoxes(); return; }
+  const el = document.createElement("script");
+  el.id = "sharedJs";
+  el.src = "/shared.js";
+  el.onload = ()=>{ if(window.initSharedBoxes) window.initSharedBoxes(); };
+  el.onerror = ()=>{ console.warn("بخش‌های مشترک بار نشد."); };
+  document.head.appendChild(el);
+}
+
 /* ================= Navigation & init ================= */
 function setupNav(){
   document.querySelectorAll(".navbtn").forEach(btn=>{
@@ -5961,7 +5978,7 @@ async function init(){
      setupAiSettings, showLastLogin, showExpiryWarning, renderPersonalView,
      ()=>{ const cf = document.getElementById("connectFolderBtn");
            if(cf) cf.addEventListener("click", connectFolder); },
-     renderEverything
+     renderEverything, setupShared
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+(fn.name||"")+":", e); } });
   }catch(e){
     console.error("خطا در راه‌اندازی کارتابل مالی:", e);

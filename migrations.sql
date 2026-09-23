@@ -751,3 +751,37 @@ CREATE TABLE IF NOT EXISTS sl_coupons (
 -- این‌جا با ALTER اضافه نمی‌شوند: «ADD COLUMN» دوبار اجرا نمی‌شود و
 -- این فایل هر بار استقرار دوباره اجرا می‌گردد — یک خطایش کلِ استقرار
 -- را می‌خواباند. به‌جایش sltech-shop.js موقع کار خودش می‌سازدشان.
+
+-- ۳۳ | بخش‌های مشترک بین چند کارتابل
+-- دادهٔ هر کارتابل تا حالا مالِ خودش بود. این دو جدول برای چیزهایی است
+-- که چند کارتابل با هم دارند و هر کدام می‌توانند عوضش کنند.
+--
+-- چرا ردیف‌به‌ردیف و نه یک تکهٔ JSON مثل بقیه؟ بقیهٔ داده‌ها یک صاحب
+-- دارند و «آخرین نوشته برنده» مشکلی نمی‌سازد. این‌جا دو نفر هم‌زمان
+-- باز کرده‌اند؛ اگر کلِ جدول را بفرستند، آن‌که دیرتر ذخیره کرده کارِ
+-- اولی را پاک می‌کند.
+--
+-- «dead» یعنی حذفِ نرم: اگر ردیف را واقعاً پاک کنیم، مرورگرِ آن یکی که
+-- هر چند ثانیه «از فلان لحظه چه چیزی عوض شده؟» می‌پرسد هیچ‌وقت نمی‌فهمد
+-- ردیف رفته است.
+CREATE TABLE IF NOT EXISTS shared_boxes (
+  id      TEXT PRIMARY KEY,
+  title   TEXT NOT NULL DEFAULT '',
+  type    TEXT NOT NULL DEFAULT 'notes',
+  members TEXT NOT NULL DEFAULT '[]',   -- آرایهٔ JSON از slugِ کارتابل‌ها
+  created INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS shared_rows (
+  box     TEXT NOT NULL,
+  rid     TEXT NOT NULL,
+  v       TEXT NOT NULL DEFAULT '{}',
+  updated INTEGER NOT NULL DEFAULT 0,
+  by      TEXT NOT NULL DEFAULT '',     -- کدام کارتابل آخرین بار دست زد
+  dead    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (box, rid)
+);
+
+-- پرسشِ همیشگیِ صفحه «از این لحظه به بعد چه عوض شده؟» است، پس همین
+-- دو ستون با هم ایندکس می‌شوند.
+CREATE INDEX IF NOT EXISTS shared_rows_box_upd ON shared_rows(box, updated);

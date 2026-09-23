@@ -21,6 +21,7 @@ import {
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
+import { SHARED_TYPES, allBoxes, saveBox, dropBox, boxCounts } from './shared.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -682,6 +683,33 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const r = await setOrder(env, mOrder[1], body);
     if (r.error) return bad(r.error, r.status || 400);
     await log(env, 'order', mOrder[1], body.status || '');
+    return json({ ok: true });
+  }
+
+  /* ---- بخش‌های مشترک ----
+     ادمین می‌سازدشان و تعیین می‌کند کدام کارتابل‌ها عضو باشند. خودِ
+     دادهٔ داخلشان از این‌جا دیده نمی‌شود؛ فقط شمارِ ردیف‌ها، تا معلوم
+     باشد کدام بخش خالی است و کدام پر. */
+  if (p === '/shared-boxes' && m === 'GET') {
+    const [boxes, counts] = await Promise.all([allBoxes(env), boxCounts(env)]);
+    return json({ ok: true,
+      items: boxes.map(b => Object.assign({}, b, { rows: counts[b.id] || 0 })),
+      types: SHARED_TYPES.map(t => ({ id: t.id, label: t.label, icon: t.icon,
+                                      cols: t.cols.map(c => c.t) })) });
+  }
+
+  if (p === '/shared-boxes' && m === 'POST') {
+    const slugs = (await all(env, 'SELECT slug FROM planners')).map(r => r.slug);
+    const r = await saveBox(env, body, slugs);
+    if (r.error) return bad(r.error);
+    await log(env, 'shared-box', r.id, (body.members || []).join(','));
+    return json({ ok: true, id: r.id, created: r.created });
+  }
+
+  const mBox = p.match(/^\/shared-boxes\/([a-z0-9][a-z0-9-]{1,30})$/);
+  if (mBox && m === 'DELETE') {
+    await dropBox(env, mBox[1]);
+    await log(env, 'shared-box-del', mBox[1], '');
     return json({ ok: true });
   }
 

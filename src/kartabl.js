@@ -18,6 +18,7 @@ import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from '.
 import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
+import { boxesFor, getBox, rowsSince, putRow, killRow } from './shared.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -304,6 +305,9 @@ export async function renderPanelPage(env, req, panel) {
   html = html.replaceAll('{{VAULTSECS}}', vaultSeed(panel.vault));
   html = html.replaceAll('{{FEATOFF}}', JSON.stringify(panel.off || []).replace(/</g, '\\u003c'));
   html = html.replaceAll('{{UNTIL}}', String(Number(panel.until) || 0));
+  /* نامِ خودِ کارتابل، برای ستونِ «آخرین تغییر» در بخش‌های مشترک:
+     صفحه باید بفهمد کدام ردیف را خودش عوض کرده و کدام را آن یکی. */
+  html = html.replaceAll('{{SLUG}}', esc(panel.id));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],
@@ -966,6 +970,39 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   {
     const f = featureOff(panel, p);
     if (f) return bad('این بخش برای شما بسته است. با مدیر سیستم تماس بگیرید.', 403);
+  }
+
+  /* ---------- بخش‌های مشترک ----------
+     این‌ها دادهٔ این کارتابل نیستند؛ جدول‌هایی‌اند که ادمین بین چند
+     کارتابل مشترک کرده. عضویت هر بار از سرور خوانده می‌شود، نه از
+     چیزی که مرورگر ادعا می‌کند: اگر فردا ادمین کسی را بردارد، همان
+     لحظه دستش کوتاه می‌شود.
+
+     این مسیرها زیرِ featureOff نمی‌افتند، چون بخشِ مشترک اصلاً در
+     فهرستِ بخش‌های همین کارتابل نیست که بشود خاموشش کرد؛ اگر عضو
+     نباشی، عضو نیستی و همین. */
+  if (p === '/shared' && m === 'GET')
+    return json({ boxes: await boxesFor(env, panel.id) });
+
+  const mShared = p.match(/^\/shared\/([a-z0-9][a-z0-9-]{1,30})(\/row|\/del)?$/);
+  if (mShared) {
+    const box = await getBox(env, mShared[1]);
+    if (!box || !box.members.includes(panel.id))
+      return bad('این بخش مالِ شما نیست.', 404);
+
+    if (!mShared[2] && m === 'GET') {
+      const since = Math.max(0, parseInt(new URL(req.url).searchParams.get('since'), 10) || 0);
+      return json({ rows: await rowsSince(env, box.id, since), now: Date.now(),
+                    title: box.title, type: box.type, cols: box.cols });
+    }
+    if (mShared[2] === '/row' && m === 'POST') {
+      const r = await putRow(env, box, body.rid, body.v, panel.id);
+      return r.error ? bad(r.error) : json(r);
+    }
+    if (mShared[2] === '/del' && m === 'POST') {
+      const r = await killRow(env, box, body.rid, panel.id);
+      return r.error ? bad(r.error) : json(r);
+    }
   }
 
   if (p === '/state' && m === 'GET') {
