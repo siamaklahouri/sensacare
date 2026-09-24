@@ -166,6 +166,28 @@ function botHealthBox(){
       آخرین بررسی: ${esc(when)}</p></div>`;
 }
 
+/* وضعیت آخرین پشتیبان.
+
+   پشتیبان هر شب ساخته می‌شود ولی اگر جایی برای فرستادنش نباشد، تا
+   دیروز بی‌صدا هیچ‌کاری نمی‌کرد. حالا اگر نرفته باشد، همین بالای
+   داشبورد می‌گوید چرا و چه باید کرد. */
+function backupBox(){
+  const b = settings.backupLast;
+  if(!b) return `<div class="box" style="border:1px solid var(--red);background:#FFF1F4">
+    <h3 style="color:var(--red)">پشتیبان: هنوز گزارشی نیست</h3>
+    <p class="hint">یا هنوز نوبت شبانه نرسیده، یا کار شبانه اصلاً اجرا نشده.
+      اگر یک روز کامل گذشته و باز هم این پیام هست، یعنی زمان‌بندی اجرا نمی‌شود.</p></div>`;
+  const when = new Date(b.at).toLocaleString('fa-IR');
+  if(b.ok) return `<div class="box"><h3>پشتیبان روزانه</h3>
+    <p style="font-size:13.5px;margin:6px 0">آخرین بار <b>${esc(when)}</b> فرستاده شد
+      — ${fa(Math.round((b.size||0)/1024))} کیلوبایت، به ${fa(b.sentOk||0)} گفتگو.</p></div>`;
+  return `<div class="box" style="border:1px solid var(--red);background:#FFF1F4">
+    <h3 style="color:var(--red)">پشتیبان فرستاده نشد</h3>
+    <p style="font-size:13.5px;margin:6px 0">${esc(b.why||'دلیلش معلوم نیست')}</p>
+    <p class="hint">فایل ساخته شد (${fa(Math.round((b.size||0)/1024))} کیلوبایت) ولی به دست کسی نرسید.
+      آخرین تلاش: ${esc(when)}</p></div>`;
+}
+
 function repDash(){
   const n=orders.length, rev=orders.reduce((s,o)=>s+o.total,0);
   const items=orders.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.q,0),0);
@@ -184,6 +206,7 @@ function repDash(){
   const mx=o=>Math.max(1,...Object.values(o));
   C.innerHTML=`
   ${botHealthBox()}
+  ${backupBox()}
   <div class="stats">
     <div class="stat"><b>${fa(n)}</b>سفارش ثبت‌شده</div>
     <div class="stat"><b>${money(rev)}</b>فروش کل</div>
@@ -763,7 +786,6 @@ function artEditor(a){
   };
   $('artEd').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function allPages(){ return pages.length&&pages[0].body!==undefined?pages:LOCAL_PAGES }
 function paintPages(){
   const list=LOCAL_PAGES.map(lp=>{
     const stored=(pages||[]).find(p=>p.slug===lp.slug);

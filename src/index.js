@@ -478,6 +478,24 @@ async function runBackup(env) {
     `این فایل کل فروشگاه است. جای امنی نگهش دار.`;
   const sent = await fileToAdmins(env, bytes, `sensa-backup-${stamp}.json`, caption);
   const okCount = sent.filter(x => x.ok).length;
+
+  /* نتیجه همیشه ثبت می‌شود، چه رفته باشد چه نه.
+
+     پیش از این اگر هیچ گفتگوی مدیری ثبت نشده بود یا توکنی نبود،
+     fileToAdmins یک آرایهٔ خالی برمی‌گرداند و شرطِ هشدار پایین
+     (sent.length) هم برقرار نمی‌شد — یعنی پشتیبان هر شب ساخته می‌شد،
+     هیچ‌جا نمی‌رفت، و هیچ ردی هم از خودش باقی نمی‌گذاشت. تنها راهِ
+     فهمیدنش این بود که کسی خودش متوجه نرسیدن فایل شود.
+
+     حالا نتیجه در تنظیمات می‌نشیند و پنل نشانش می‌دهد. */
+  const why = !sent.length
+    ? 'هیچ گفتگوی مدیری ثبت نشده — در ربات «/admin رمزعبور» را بفرستید'
+    : (okCount ? '' : (sent.find(x => x.error)?.error || 'ارسال ناموفق'));
+  await setSetting(env, 'backupLast', {
+    at: Date.now(), ok: okCount > 0, size: bytes.length,
+    tried: sent.length, sentOk: okCount, why
+  }).catch(() => {});
+
   if (!okCount && sent.length)
     await notifyAdmins(env, '⚠️ پشتیبان روزانه ساخته شد ولی فرستاده نشد.');
   return { size: bytes.length, sent };
@@ -2670,6 +2688,7 @@ export default {
             shipZones: await getSetting(env, 'shipZones', { z1: 250000, z2: 320000, z3: 400000 }),
               trust: await getSetting(env, 'trust', {}),
               botHealth: await getSetting(env, 'botHealth', null),
+              backupLast: await getSetting(env, 'backupLast', null),
               gscToken: await getSetting(env, 'gscToken', ''),
               /* هر پیام مدیر به همهٔ این گفتگوها می‌رود. اگر دو تا باشد،
                  هر چیزی دو بار می‌رسد — پس باید دیده شود. */
