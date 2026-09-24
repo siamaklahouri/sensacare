@@ -786,7 +786,6 @@ function artEditor(a){
   };
   $('artEd').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function allPages(){ return pages.length&&pages[0].body!==undefined?pages:LOCAL_PAGES }
 function paintPages(){
   const list=LOCAL_PAGES.map(lp=>{
     const stored=(pages||[]).find(p=>p.slug===lp.slug);
