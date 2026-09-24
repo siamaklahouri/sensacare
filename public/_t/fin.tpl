@@ -214,17 +214,6 @@ window.KARTABL_UNTIL = {{UNTIL}};
     color:var(--ink); border-radius:9px; padding:7px 10px; width:88px; text-align:center;
   }
   .period input::placeholder{ color:var(--ink-faint); }
-  /* پنجرهٔ ماه در این قالب مارک‌آپ داشت ولی شیوه‌نامه نه، پس بی‌قواره
-     باز می‌شد. همان چیزی که کارتابل فنی دارد. */
-  .new-month-panel{
-    display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap;
-    padding:10px 32px; background:var(--paper-deep); border-bottom:1px solid var(--card-border);
-  }
-  .new-month-panel input{
-    font-family:var(--font-body); font-size:12.5px; background:var(--white); border:1px solid var(--card-border);
-    color:var(--ink); border-radius:7px; padding:6px 10px; width:130px; text-align:center;
-  }
-  /* یک پنجره دو کار می‌کند، پس باید بگوید کدام کار را دارد می‌کند */
   /* جدول‌های دیتای شخصی: پهنای ستون از colgroup می‌آید، پس باید
      table-layout ثابت باشد. width:max-content می‌گذارد جدول از قاب
      پهن‌تر شود و tbl-wrap اسکرولِ افقی بدهد — بهتر از فشرده شدنِ
@@ -247,9 +236,82 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .hist-row .hw{ font-weight:700; color:var(--ink-soft); min-width:90px; }
   .hist-row .ht{ color:var(--ink-faint); white-space:nowrap; }
   .hist-row .hs{ color:var(--ink-soft); flex:1; min-width:140px; line-height:1.8; }
-  .new-month-panel .mp-title{
-    font-size:12px; color:var(--ink-soft); font-weight:600; margin-inline-end:auto;
+  /* دکمهٔ ماه — سه کنترلِ پیشین (انتخاب، ساختن، تغییرِ نام) در یکی.
+     نوار بالا جای دیدن است نه جای تصمیم‌گیری، پس دکمه فقط نامِ ماهِ
+     جاری را می‌گوید و بقیهٔ کارها داخلِ پنجره‌اش می‌افتد. */
+  .month-btn{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:var(--font-body); font-size:13px; font-weight:600;
+    background:var(--white); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:999px; padding:7px 14px; cursor:pointer; white-space:nowrap;
+    transition:border-color .15s, box-shadow .15s;
   }
+  .month-btn:hover{ border-color:var(--brass); }
+  .month-btn.on{ border-color:var(--brass); box-shadow:0 0 0 3px var(--brass-bg); }
+  .month-btn .ic{ font-size:14px; line-height:1; }
+  .month-btn .caret{ font-size:10px; color:var(--ink-faint); }
+  .topbar-date{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+
+  /* پنجرهٔ ماه‌ها */
+  .mpop{
+    position:fixed; inset:0; z-index:90; display:flex; align-items:flex-start;
+    justify-content:center; padding:76px 16px 16px;
+    background:rgba(11,37,69,.28); backdrop-filter:blur(2px);
+  }
+  .mpop[hidden]{ display:none; }
+  .mpop-card{
+    width:100%; max-width:392px; background:var(--white);
+    border:1px solid var(--card-border); border-radius:16px;
+    box-shadow:0 18px 48px rgba(11,37,69,.22); padding:16px 18px 18px;
+    max-height:calc(100vh - 110px); overflow:auto;
+  }
+  .mpop-h{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:14px; font-weight:700; color:var(--ink); margin-bottom:12px;
+  }
+  .mpop-x{
+    background:transparent; border:0; color:var(--ink-faint); font-size:14px;
+    cursor:pointer; padding:4px 7px; border-radius:7px; line-height:1;
+  }
+  .mpop-x:hover{ background:var(--paper-2); color:var(--ink); }
+  .mpop-list{ display:flex; flex-direction:column; gap:3px; }
+  .mpop-empty{ font-size:12.5px; color:var(--ink-faint); padding:10px 2px; line-height:1.9; }
+  .mrow{
+    display:flex; align-items:center; gap:4px;
+    border:1px solid transparent; border-radius:10px;
+  }
+  .mrow:hover{ background:var(--paper-2); }
+  .mrow.on{ background:var(--brass-bg); border-color:var(--brass); }
+  .mrow .nm{
+    flex:1; min-width:0; background:transparent; border:0; cursor:pointer;
+    font-family:var(--font-body); font-size:13px; font-weight:600; color:var(--ink);
+    text-align:start; padding:9px 10px; border-radius:10px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .mrow .ed{
+    background:transparent; border:0; color:var(--ink-faint); font-size:12.5px;
+    cursor:pointer; padding:6px 8px; border-radius:8px; line-height:1; flex:none;
+  }
+  .mrow .ed:hover{ background:var(--white); color:var(--brass); }
+  .mrow .ed.ok{ color:var(--green,#2F6B4F); }
+  /* تغییرِ نام همان‌جا در ردیفِ خودش انجام می‌شود؛ پنجرهٔ تازه‌ای باز
+     نمی‌شود، چون آدم همان لحظه دارد به فهرستِ ماه‌ها نگاه می‌کند. */
+  .mrow input{
+    min-width:0; font-family:var(--font-body); font-size:12.5px;
+    background:var(--white); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:8px; padding:6px 9px; box-sizing:border-box;
+  }
+  .mrow .me-n{ flex:1; }
+  .mrow .me-y{ width:74px; flex:none; text-align:center; }
+  .mpop-new{ margin-top:14px; padding-top:13px; border-top:1px solid var(--card-border); }
+  .mpop-sub{ font-size:11.5px; color:var(--ink-faint); font-weight:700; margin-bottom:8px; }
+  .mpop-row{ display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+  .mpop-row input{
+    flex:1; min-width:96px; font-family:var(--font-body); font-size:12.5px;
+    background:var(--white); border:1px solid var(--card-border); color:var(--ink);
+    border-radius:8px; padding:7px 10px; box-sizing:border-box;
+  }
+  .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
 
   /* ---------- Live clock (stable width, no layout shift) ---------- */
@@ -1086,23 +1148,33 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <div class="lc-time" id="lcTime">--:--:--</div>
     <div class="lc-date" id="lcDate">در حال بارگذاری...</div>
   </div>
+  <!-- سه کنترلِ ماه (انتخاب، ساختن، تغییر نام) یکی شدند: یک دکمه که
+       نامِ ماهِ جاری را نشان می‌دهد و با زدنش پنجرهٔ ماه‌ها باز می‌شود.
+       نوارِ بالا جای تصمیم گرفتن نیست، جای دیدن است. -->
   <div class="period">
-    <label>ماه</label>
-    <select id="monthSelector"></select>
-    <button class="btn btn-brass btn-sm" id="newMonthBtn">＋ ماه جدید</button>
-    <button class="btn btn-ghost btn-sm" id="renameMonthBtn" title="نام همین ماه را درست کن">✎ نام ماه</button>
+    <button type="button" class="month-btn" id="monthBtn" title="ماه‌ها">
+      <span class="ic">🗓</span><span id="monthBtnLabel">—</span><span class="caret">▾</span>
+    </button>
     <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   </div>
 </div>
 
-<!-- یک پنجره برای هر دو کار: ساختنِ ماه تازه و درست کردنِ نامِ همین ماه.
-     دو پنجرهٔ جدا یعنی دو مارک‌آپ و دو شیوه‌نامه که باید هم‌قدم بمانند. -->
-<div class="new-month-panel" id="newMonthPanel" style="display:none;">
-  <span class="mp-title" id="monthPanelTitle"></span>
-  <input id="newMonthName" type="text" placeholder="نام ماه، مثلاً آبان">
-  <input id="newMonthYear" type="text" placeholder="سال، مثلاً ۱۴۰۴">
-  <button class="btn btn-brass btn-sm" id="confirmNewMonthBtn">شروع این ماه</button>
-  <button class="btn btn-ghost btn-sm" id="cancelNewMonthBtn">انصراف</button>
+<!-- پنجرهٔ ماه‌ها: رفتن به یک ماه، تغییر نامش، و ساختنِ ماهِ تازه —
+     همه یک جا. پیش از این سه کنترلِ جدا در نوارِ بالا بودند. -->
+<div class="mpop" id="monthPop" hidden>
+  <div class="mpop-card" role="dialog" aria-label="ماه‌ها">
+    <div class="mpop-h">ماه‌ها<button type="button" class="mpop-x" id="monthPopX" title="بستن">✕</button></div>
+    <div class="mpop-list" id="monthPopList"></div>
+    <div class="mpop-new">
+      <div class="mpop-sub">ماه تازه</div>
+      <div class="mpop-row">
+        <input id="newMonthName" type="text" placeholder="نام ماه، مثلاً آبان">
+        <input id="newMonthYear" type="text" placeholder="سال، مثلاً ۱۴۰۴">
+        <button type="button" class="btn btn-brass btn-sm" id="confirmNewMonthBtn">بساز و برو</button>
+      </div>
+      <div class="mpop-note" id="monthPopNote"></div>
+    </div>
+  </div>
 </div>
 
 <div class="shell">
@@ -4070,73 +4142,109 @@ function renameMonth(oldKey, monthName, year){
   afterMonthChange();
   return true;
 }
+/* پنجرهٔ ماه‌ها جای سه کنترلِ پیشینِ نوارِ بالا را گرفته: نامِ ماهِ جاری
+   روی دکمه می‌نشیند، و رفتن به ماهی دیگر، تغییرِ نامش و ساختنِ ماهِ تازه
+   همه داخلِ پنجره‌اند. MP_EDIT کلیدِ ماهی است که همین حالا دارد نامش عوض
+   می‌شود — تغییرِ نام در ردیفِ خودش انجام می‌شود، نه در پنجره‌ای دیگر. */
+let MP_EDIT = null;
 function renderMonthSelector(){
-  const sel = document.getElementById("monthSelector");
-  if(!sel) return;
+  const lab = document.getElementById("monthBtnLabel");
+  if(lab) lab.textContent = state.currentMonthKey ? monthLabelOf(state.currentMonthKey) : "—";
+  const list = document.getElementById("monthPopList");
+  if(!list) return;
   const keys = Object.keys(state.monthsData||{});
-  sel.innerHTML = keys.map(k=> `<option value="${escapeHtml(k)}" ${k===state.currentMonthKey?"selected":""}>${escapeHtml(monthLabelOf(k))}</option>`).join("");
+  if(MP_EDIT && !state.monthsData[MP_EDIT]) MP_EDIT = null;
+  list.innerHTML = keys.length ? keys.map(k=>{
+    const p = String(k).split("|");
+    if(k === MP_EDIT){
+      return `<div class="mrow on">`+
+        `<input class="me-n" value="${escapeHtml(p[1]||"")}" placeholder="نام ماه">`+
+        `<input class="me-y" value="${escapeHtml(p[0]||"")}" placeholder="سال">`+
+        `<button type="button" class="ed ok" data-ok="${escapeHtml(k)}" title="ثبت">✓</button>`+
+        `<button type="button" class="ed" data-cancel="1" title="بی‌خیال">✕</button>`+
+      `</div>`;
+    }
+    return `<div class="mrow${k===state.currentMonthKey?" on":""}">`+
+      `<button type="button" class="nm" data-go="${escapeHtml(k)}">${escapeHtml(monthLabelOf(k))}</button>`+
+      `<button type="button" class="ed" data-ren="${escapeHtml(k)}" title="تغییر نام">✎</button>`+
+    `</div>`;
+  }).join("") : `<div class="mpop-empty">هنوز ماهی ساخته نشده. از همین پایین یکی بساز.</div>`;
 }
 function setupMeta(){
-  const sel = document.getElementById("monthSelector");
-  if(sel) sel.addEventListener("change", ()=>{
-    const key = sel.value;
-    const [year, month] = key.split("|");
-    switchToMonth(month, year);
-  });
-  const panel = document.getElementById("newMonthPanel");
+  const btn = document.getElementById("monthBtn");
+  const pop = document.getElementById("monthPop");
+  if(!btn || !pop) return;
+  const list = document.getElementById("monthPopList");
   const nameEl = document.getElementById("newMonthName");
   const yearEl = document.getElementById("newMonthYear");
-  const titleEl = document.getElementById("monthPanelTitle");
   const okEl = document.getElementById("confirmNewMonthBtn");
-  /* حالتِ پنجره — «new» یا «rename». کلیدی که موقع باز شدن جاری بوده
-     نگه داشته می‌شود، وگرنه اگر وسطِ کار ماه عوض شود نامِ ماهِ دیگری
-     درست می‌شد. */
-  let mpMode = "new", mpKey = null;
-  const openPanel = (mode)=>{
-    mpMode = mode;
-    mpKey = state.currentMonthKey || null;
-    if(mode === "rename"){
-      const parts = String(mpKey||"").split("|");
-      titleEl.textContent = "نامِ این ماه را درست کن:";
-      nameEl.value = parts[1] || "";
-      yearEl.value = parts[0] || "";
-      okEl.textContent = "ثبت نام تازه";
-    } else {
-      titleEl.textContent = "ماه تازه:";
-      nameEl.value = ""; yearEl.value = "";
-      okEl.textContent = "شروع این ماه";
-    }
-    panel.style.display = "flex";
-    nameEl.focus();
-  };
-  const closePanel = ()=>{ panel.style.display = "none"; };
+  const noteEl = document.getElementById("monthPopNote");
+  const xEl = document.getElementById("monthPopX");
 
-  const newBtn = document.getElementById("newMonthBtn");
-  if(newBtn) newBtn.addEventListener("click", ()=>{
-    if(panel.style.display !== "none" && mpMode === "new") closePanel(); else openPanel("new");
-  });
-  const renameBtn = document.getElementById("renameMonthBtn");
-  if(renameBtn) renameBtn.addEventListener("click", ()=>{
-    if(panel.style.display !== "none" && mpMode === "rename") closePanel(); else openPanel("rename");
-  });
-  const cancelBtn = document.getElementById("cancelNewMonthBtn");
-  if(cancelBtn) cancelBtn.addEventListener("click", closePanel);
+  const note = t=>{ if(noteEl) noteEl.textContent = t||""; };
+  const open = ()=>{
+    MP_EDIT = null;
+    renderMonthSelector();
+    pop.hidden = false; btn.classList.add("on"); note("");
+    if(nameEl) nameEl.value = "";
+    /* سالِ ماهِ جاری از قبل پُر است، چون ماهِ تازه تقریباً همیشه در
+       همان سال است و دوباره تایپ کردنش کارِ اضافه است. */
+    if(yearEl) yearEl.value = (state.meta && state.meta.year) || "";
+  };
+  const close = ()=>{ pop.hidden = true; btn.classList.remove("on"); MP_EDIT = null; note(""); };
+
+  btn.addEventListener("click", ()=>{ if(pop.hidden) open(); else close(); });
+  if(xEl) xEl.addEventListener("click", close);
+  /* زدن روی زمینهٔ تاریک یعنی «بستن» — ولی فقط خودِ زمینه، نه کارت */
+  pop.addEventListener("click", e=>{ if(e.target === pop) close(); });
+  document.addEventListener("keydown", e=>{ if(e.key === "Escape" && !pop.hidden) close(); });
+
+  const commitRename = (key, row)=>{
+    const n = row.querySelector(".me-n"), y = row.querySelector(".me-y");
+    if(!n || !y) return;
+    MP_EDIT = null;
+    if(!renameMonth(key, n.value, y.value)) MP_EDIT = key;
+    renderMonthSelector();
+  };
+
+  if(list){
+    list.addEventListener("click", e=>{
+      const go = e.target.closest("[data-go]");
+      if(go){
+        const parts = go.getAttribute("data-go").split("|");
+        switchToMonth(parts[1], parts[0]);
+        close();
+        return;
+      }
+      const ren = e.target.closest("[data-ren]");
+      if(ren){
+        MP_EDIT = ren.getAttribute("data-ren");
+        renderMonthSelector();
+        const el = list.querySelector(".me-n");
+        if(el){ el.focus(); el.select(); }
+        return;
+      }
+      if(e.target.closest("[data-cancel]")){ MP_EDIT = null; renderMonthSelector(); return; }
+      const ok = e.target.closest("[data-ok]");
+      if(ok) commitRename(ok.getAttribute("data-ok"), ok.closest(".mrow"));
+    });
+    /* Enter ثبت می‌کند و Escape بی‌خیال می‌شود — بدون اینکه Escape تا
+       خودِ پنجره بالا برود و ببنددش. */
+    list.addEventListener("keydown", e=>{
+      const row = e.target.closest(".mrow");
+      if(!row || !MP_EDIT) return;
+      if(e.key === "Enter"){ e.preventDefault(); commitRename(MP_EDIT, row); }
+      else if(e.key === "Escape"){ e.stopPropagation(); MP_EDIT = null; renderMonthSelector(); }
+    });
+  }
+
   if(okEl) okEl.addEventListener("click", ()=>{
-    const name = nameEl.value.trim();
-    const year = yearEl.value.trim();
-    if(!name || !year){ alert("نام ماه و سال را کامل وارد کنید."); return; }
-    if(mpMode === "rename"){
-      if(!renameMonth(mpKey, name, year)) return;
-    } else {
-      const key = monthKeyOf(name, year);
-      if(state.monthsData[key] && !confirm("این ماه از قبل وجود دارد. بروید به همان ماه؟")) return;
-      switchToMonth(name, year);
-    }
-    closePanel();
-    nameEl.value = ""; yearEl.value = "";
+    const name = (nameEl.value||"").trim(), year = (yearEl.value||"").trim();
+    if(!name || !year){ note("نام ماه و سال را کامل وارد کنید."); return; }
+    /* ماهی که از قبل هست دوباره ساخته نمی‌شود؛ فقط می‌رویم سراغش */
+    switchToMonth(name, year);
+    close();
   });
-  /* Enter هم همان دکمه را می‌زند — کادرِ کوچکی که دکمه‌اش را باید با
-     موشواره زد، آدم را اذیت می‌کند. */
   [nameEl, yearEl].forEach(el=> el && el.addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); okEl.click(); }
   }));

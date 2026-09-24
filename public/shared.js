@@ -62,28 +62,80 @@
     ".sh-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:10px}",
     ".sh-sum{font-size:12px;color:var(--ink-soft);font-weight:600}",
     ".sh-filter{font-family:var(--font-body);font-size:12px;padding:5px 8px;border-radius:7px;",
-    /* ---- نمای مدیر ---- */
-    ".mg-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}",
-    ".mg-kpi{border:1px solid var(--card-border);border-radius:12px;padding:12px 14px;",
-    "  display:flex;flex-direction:column;gap:3px;background:var(--white)}",
-    ".mg-kpi .n{font-size:22px;font-weight:700;color:var(--ink)}",
-    ".mg-kpi .t{font-size:11.5px;color:var(--ink-faint)}",
-    ".mg-kpi.done .n{color:var(--green-ink,#1E7A4A)}",
-    ".mg-kpi.doing .n{color:var(--blue-ink,#1A4FA3)}",
-    ".mg-kpi.todo .n{color:var(--amber-ink,#B5791B)}",
-    ".mg-kpi.bad .n{color:var(--red-ink,#A6222B)}",
-    ".mg-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}",
-    ".mg-h{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:10px}",
-    ".mg-cw{height:230px;position:relative}",
-    ".mg-person{margin-bottom:16px}",
-    ".mg-pn{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:baseline;",
-    "  gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--card-border)}",
-    ".mg-pc{font-size:11.5px;font-weight:400;color:var(--ink-faint)}",
-    ".mg-pc .late{color:var(--red-ink,#A6222B);font-weight:600}",
-    ".mg-tab td{padding:6px 5px;font-size:12.5px;vertical-align:top}",
-    ".mg-tab td.w{white-space:nowrap;color:var(--ink-faint);font-size:11.5px;width:1%}",
-    ".mg-tab tr.late td{background:var(--red-bg,#F6E1E2)}",
     "  border:1px solid var(--card-border);background:var(--white);color:var(--ink);width:auto}",
+
+    /* ---------- نمای مدیر ----------
+       نمودارها این‌جا HTML‌اند نه canvas: شکل‌هایشان میلهٔ انباشتهٔ ساده
+       است و با HTML هم تیزتر درمی‌آیند، هم راست‌به‌چپ درست می‌شوند، هم
+       اندازه‌شان با قاب جور می‌ماند. رنگِ وضعیت‌ها از پالتِ خودِ کارتابل
+       می‌آید و هر بخش برچسبِ مستقیم و فاصله دارد، چون جداییِ tritan در
+       سنجه زیرِ هشت بود و رنگ به‌تنهایی کافی نیست. */
+    ".mg-wrap{display:flex;flex-direction:column;gap:14px}",
+    ".mg-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}",
+    ".mg-kpi{border:1px solid var(--card-border);border-radius:14px;padding:13px 15px;",
+    "  display:flex;flex-direction:column;gap:2px;background:var(--white);position:relative;overflow:hidden}",
+    ".mg-kpi::before{content:\"\";position:absolute;inset-block:0;inset-inline-start:0;width:3px;background:var(--kc,var(--ink-faint))}",
+    ".mg-kpi .n{font-size:26px;font-weight:700;line-height:1.25;color:var(--ink);font-variant-numeric:tabular-nums}",
+    ".mg-kpi .t{font-size:11.5px;color:var(--ink-faint);line-height:1.6}",
+    ".mg-card{border:1px solid var(--card-border);border-radius:14px;padding:16px 18px;background:var(--white)}",
+    ".mg-h{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:12px;",
+    "  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}",
+    ".mg-h .sub{font-size:11.5px;font-weight:400;color:var(--ink-faint)}",
+
+    /* میلهٔ انباشته — دو پیکسل فاصله بین بخش‌ها، سرهای گرد */
+    ".mg-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--paper-2)}",
+    ".mg-bar i{display:block;height:100%}",
+    ".mg-bar i:first-child{border-start-start-radius:7px;border-end-start-radius:7px}",
+    ".mg-bar i:last-child{border-start-end-radius:7px;border-end-end-radius:7px}",
+    ".mg-leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--ink-faint)}",
+    ".mg-leg span{display:inline-flex;align-items:center;gap:6px}",
+    ".mg-leg b{width:9px;height:9px;border-radius:3px;display:inline-block}",
+    ".mg-leg em{font-style:normal;color:var(--ink-soft);font-weight:600;font-variant-numeric:tabular-nums}",
+
+    /* یک ردیف برای هر نفر */
+    ".mg-people{display:flex;flex-direction:column;gap:11px}",
+    ".mg-p{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px 12px;align-items:center}",
+    /* رنگِ آواتار از خودِ نام درمی‌آید: «سینا» و «سیامک» هر دو با
+       دو حرفِ اول «سی» می‌شوند، پس حرف به‌تنهایی از هم جدایشان
+       نمی‌کند و رنگ این کار را می‌کند. */
+    ".mg-av{width:34px;height:34px;border-radius:50%;background:var(--ac,var(--brass-bg));color:#fff;",
+    "  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;",
+    "  flex:none;letter-spacing:-.2px}",
+    ".mg-pmid{min-width:0}",
+    ".mg-pn{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:5px;",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".mg-pr{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;text-align:end;",
+    "  font-variant-numeric:tabular-nums}",
+    ".mg-pr b{color:var(--ink-soft)}",
+    ".mg-pc{font-size:11.5px;font-weight:700;color:var(--ink-soft);",
+    "  font-variant-numeric:tabular-nums;min-width:34px;text-align:end}",
+
+    /* فهرستِ کارها */
+    ".mg-group{margin-top:16px}",
+    ".mg-group:first-child{margin-top:0}",
+    ".mg-gh{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding-bottom:8px;",
+    "  border-bottom:1px solid var(--card-border);margin-bottom:4px}",
+    ".mg-gh .nm{font-size:13px;font-weight:700;color:var(--ink)}",
+    ".mg-av.sm{width:26px;height:26px;font-size:11px}",
+    ".mg-gh .ct{font-size:11.5px;color:var(--ink-faint);font-variant-numeric:tabular-nums}",
+    ".mg-task{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;",
+    "  padding:9px 2px;border-bottom:1px solid var(--card-border)}",
+    ".mg-task:last-child{border-bottom:0}",
+    ".mg-tt{font-size:12.5px;color:var(--ink);line-height:1.7}",
+    ".mg-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}",
+    ".mg-chip{font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap;",
+    "  display:inline-flex;align-items:center;gap:5px;border:1px solid transparent}",
+    ".mg-chip .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}",
+    ".mg-chip-mute{background:var(--paper-2);color:var(--ink-faint);border-color:var(--card-border)}",
+    ".mg-leg{margin-top:0;margin-bottom:12px}",
+    ".mg-due{font-size:11px;color:var(--ink-faint);white-space:nowrap;font-variant-numeric:tabular-nums}",
+    ".mg-due.late{color:var(--red-ink,#A6222B);font-weight:600}",
+    ".mg-box{font-size:11px;color:var(--ink-faint);white-space:nowrap}",
+    ".mg-empty{padding:26px 10px;text-align:center;color:var(--ink-faint);font-size:12.5px;line-height:2}",
+    ".mg-fil{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:2px}",
+    ".mg-fil button{font-family:var(--font-body);font-size:11.5px;padding:5px 12px;border-radius:999px;",
+    "  border:1px solid var(--card-border);background:var(--white);color:var(--ink-soft);cursor:pointer}",
+    ".mg-fil button.on{background:var(--brass);border-color:var(--brass);color:#fff;font-weight:600}",
     /* خانه‌ای که این آدم اجازه‌اش را ندارد: خوانا می‌ماند ولی معلوم است
        که کادر نیست. خاکستریِ مرده نمی‌شود، چون محتوایش هنوز مهم است. */
     ".sh-tab .ro{display:block;font-size:12px;padding:6px 7px;color:var(--ink-soft);",
@@ -643,7 +695,6 @@
      پالتِ نمودار از خودِ صفحه می‌آید (chartTone)، نه یک پالتِ تازه:
      رنگِ «انجام شد» باید همان رنگی باشد که کاربر جای دیگرِ کارتابل
      دیده، وگرنه دو زبانِ رنگی در یک صفحه می‌شود. */
-  var MGR_CHARTS = {};
 
   function mgrBoxes() {
     return BOXES.filter(function (b) { return isMgr(b) && hasWho(b); });
@@ -658,11 +709,18 @@
       .match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
     return d ? Number(d[1]) * 10000 + Number(d[2]) * 100 + Number(d[3]) : 0;
   }
+  /* از formatToParts، نه از تکه‌تکه کردنِ رشته: خروجیِ این قالب
+     «07/02/1405 AP» است — ماه اول می‌آید و «AP» هم تهش هست. هر الگویی
+     که روی رشته بنویسیم یک روز با یک زبان یا یک مرورگرِ دیگر می‌شکند،
+     و این یکی شکسته بود: todayJ صفر برمی‌گرداند و هیچ کاری هیچ‌وقت
+     «از مهلت گذشته» شمرده نمی‌شد. */
   function todayJ() {
     try {
-      return jNum(new Intl.DateTimeFormat("en-u-ca-persian-nu-latn", {
-        year: "numeric", month: "2-digit", day: "2-digit"
-      }).format(new Date()).replace(/[^\d]/g, "/"));
+      var g = {};
+      new Intl.DateTimeFormat("en-u-ca-persian-nu-latn",
+        { year: "numeric", month: "2-digit", day: "2-digit" })
+        .formatToParts(new Date()).forEach(function (x) { g[x.type] = x.value; });
+      return Number(g.year) * 10000 + Number(g.month) * 100 + Number(g.day);
     } catch (e) { return 0; }
   }
 
@@ -714,15 +772,22 @@
     sec.innerHTML =
       '<div class="section-title">نمای مدیر</div>' +
       '<div class="section-sub">کارهای همهٔ نفراتِ گروه‌هایی که مدیرشان هستید، یک‌جا.</div>' +
-      '<div class="panel"><div class="mg-kpis" id="mgKpis"></div></div>' +
-      '<div class="mg-charts">' +
-        '<div class="panel"><div class="mg-h">وضعیتِ کلی</div>' +
-          '<div class="mg-cw"><canvas id="mgChartStat"></canvas></div></div>' +
-        '<div class="panel"><div class="mg-h">کارِ هر نفر</div>' +
-          '<div class="mg-cw"><canvas id="mgChartWho"></canvas></div></div>' +
-      '</div>' +
-      '<div class="panel"><div class="mg-h">کارها به تفکیکِ نفر</div>' +
-        '<div id="mgList"></div></div>';
+      '<div class="mg-wrap">' +
+        '<div class="mg-kpis" id="mgKpis"></div>' +
+        '<div class="mg-card">' +
+          '<div class="mg-h">پیشرفتِ کل<span class="sub" id="mgPct"></span></div>' +
+          '<div id="mgBar"></div>' +
+        '</div>' +
+        '<div class="mg-card">' +
+          '<div class="mg-h">کارِ هر نفر<span class="sub">از پرکارترین به کم‌کارترین</span></div>' +
+          '<div class="mg-people" id="mgPeople"></div>' +
+        '</div>' +
+        '<div class="mg-card">' +
+          '<div class="mg-h">کارها به تفکیکِ نفر</div>' +
+          '<div class="mg-fil" id="mgFil"></div>' +
+          '<div id="mgList"></div>' +
+        '</div>' +
+      '</div>';
     var foot = host.querySelector(".appfoot");
     host.insertBefore(sec, foot || null);
 
@@ -745,11 +810,66 @@
     mgrPaint();
   }
 
+  var MG_FILTER = "all";
+
+  function mgrTone() {
+    return (window.chartTone ? window.chartTone() : null) ||
+      { done: "#1E7A4A", doing: "#1A4FA3", todo: "#B5791B", bad: "#A6222B",
+        none: "#CFD7E0", surface: "#FFFFFF" };
+  }
+
+  /* میلهٔ انباشته. هر بخش فاصله و برچسبِ خودش را دارد، چون رنگ
+     به‌تنهایی برای همهٔ انواعِ کوررنگی کافی نیست. */
+  /* «max» یعنی این میله باید نسبت به پرکارترین نفر باریک‌تر شود. بدونِ
+     آن، کسی با یک کار همان‌قدر شلوغ به نظر می‌رسد که کسی با ده کار —
+     یعنی نمودار دقیقاً همان چیزی را پنهان می‌کند که مدیر دنبالش است. */
+  function mgBar(t, c, max) {
+    var total = c.done + c.doing + c.todo;
+    var w = (max && max > 0) ? Math.max(6, Math.round(total * 100 / max)) : 100;
+    if (!total) return '<div class="mg-bar" style="width:6%"></div>';
+    var seg = [[c.done, t.done, "انجام شده"], [c.doing, t.doing, "در حال انجام"],
+               [c.todo, t.todo, "انجام نشده"]];
+    return '<div class="mg-bar" style="width:' + w + '%">' + seg.map(function (x) {
+      return x[0] ? '<i style="flex:' + x[0] + ';background:' + x[1] + '" title="' +
+                    esc(x[2] + ": " + x[0]) + '"></i>' : "";
+    }).join("") + "</div>";
+  }
+
+  /* رنگِ ثابت برای هر آدم — از خودِ نشانه‌اش درمی‌آید، پس هر بار همان
+     رنگ است. روشناییِ ۴۰٪ نگه داشته شده تا متنِ سفید رویش در هر رنگی
+     خوانا بماند، و در تمِ شب هم همان است. */
+  function mgHue(slug) {
+    if (!slug) return "var(--ink-faint)";   /* «بدونِ مسئول» آدم نیست، پس رنگِ آدم نمی‌گیرد */
+    var h = 0, t = String(slug);
+    for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 360;
+    return "hsl(" + h + ",38%,40%)";
+  }
+
+  /* دو حرفِ اول، یا یک حرف از هر کلمه اگر نام چند کلمه‌ای باشد */
+  function mgInit(name) {
+    var w = String(name || "").trim().split(/\s+/);
+    return w.length > 1 ? (w[0].charAt(0) + w[1].charAt(0)) : w[0].slice(0, 2);
+  }
+
+  function mgLegend(t, c) {
+    return '<div class="mg-leg">' + [
+      ["انجام شده", c.done, t.done], ["در حال انجام", c.doing, t.doing],
+      ["انجام نشده", c.todo, t.todo]
+    ].map(function (x) {
+      return '<span><b style="background:' + x[2] + '"></b>' + esc(x[0]) +
+             " <em>" + faNum(x[1]) + "</em></span>";
+    }).join("") + "</div>";
+  }
+
+  function mgChip(label, color) {
+    return '<span class="mg-chip" style="background:' + color + '1A;color:' + color +
+           ';border-color:' + color + '33"><i class="dot" style="background:' + color +
+           '"></i>' + esc(label) + "</span>";
+  }
+
   function mgrPaint() {
     var d = mgrCollect();
-    var tone = (window.chartTone ? window.chartTone() : null) ||
-      { done: "#1E7A4A", doing: "#1A4FA3", todo: "#B5791B", bad: "#A6222B",
-        none: "#CFD7E0", surface: "#FFFFFF", cat: ["#1A4FA3"] };
+    var t = mgrTone();
 
     var tot = { all: 0, done: 0, doing: 0, todo: 0, late: 0 };
     Object.keys(d.people).forEach(function (k) {
@@ -760,67 +880,105 @@
 
     var kpi = document.getElementById("mgKpis");
     if (kpi) kpi.innerHTML = [
-      ["کل کارها", tot.all, ""],
-      ["انجام شده", tot.done, "done"],
-      ["در حال انجام", tot.doing, "doing"],
-      ["انجام نشده", tot.todo, "todo"],
-      ["از مهلت گذشته", tot.late, "bad"]
+      ["کل کارها", tot.all, "var(--ink-faint)"],
+      ["انجام شده", tot.done, t.done],
+      ["در حال انجام", tot.doing, t.doing],
+      ["انجام نشده", tot.todo, t.todo],
+      ["از مهلت گذشته", tot.late, tot.late ? t.bad : "var(--ink-faint)"]
     ].map(function (x) {
-      return '<div class="mg-kpi ' + x[2] + '"><span class="n">' + faNum(x[1]) +
-             '</span><span class="t">' + esc(x[0]) + "</span></div>";
+      return '<div class="mg-kpi" style="--kc:' + x[2] + '">' +
+        '<span class="n"' + (x[1] && x[2].charAt(0) === "#" ? ' style="color:' + x[2] + '"' : "") +
+        ">" + faNum(x[1]) + "</span>" +
+        '<span class="t">' + esc(x[0]) + "</span></div>";
     }).join("");
+    var pct = tot.all ? Math.round(tot.done * 100 / tot.all) : 0;
+    var pctEl = document.getElementById("mgPct");
+    if (pctEl) pctEl.textContent = faNum(pct) + "٪ تمام شده";
+    var barEl = document.getElementById("mgBar");
+    if (barEl) barEl.innerHTML = mgBar(t, tot) + mgLegend(t, tot);
 
+    /* ---- هر نفر یک ردیف ---- */
     var slugs = Object.keys(d.people).sort(function (a, b) {
       return d.people[b].all - d.people[a].all;
     });
+    var maxAll = slugs.reduce(function (m, k) { return Math.max(m, d.people[k].all); }, 0);
+    var people = document.getElementById("mgPeople");
+    if (people) people.innerHTML = slugs.length ? mgLegend(t, tot) + slugs.map(function (k) {
+      var p = d.people[k];
+      var name = k ? nameOfAny(d.boxes, k) : "بدونِ مسئول";
+      var pc = p.all ? Math.round(p.done * 100 / p.all) : 0;
+      return '<div class="mg-p">' +
+        '<span class="mg-av" style="--ac:' + mgHue(k) + '">' + (k ? esc(mgInit(name)) : "—") + "</span>" +
+        '<span class="mg-pmid"><span class="mg-pn">' + esc(name) + "</span>" +
+          mgBar(t, p, maxAll) + "</span>" +
+        '<span class="mg-pr"><b>' + faNum(p.done) + "</b> از " + faNum(p.all) +
+          (p.late ? '<br><span style="color:' + t.bad + '">' + faNum(p.late) + " از مهلت گذشته</span>" : "") +
+        "</span>" +
+        '<span class="mg-pc">' + faNum(pc) + "٪</span></div>";
+    }).join("") : '<div class="mg-empty">هنوز کاری به کسی سپرده نشده.</div>';
 
-    mgrChart("mgChartStat", {
-      type: "doughnut",
-      data: { labels: ["انجام شده", "در حال انجام", "انجام نشده"],
-        datasets: [{ data: [tot.done, tot.doing, tot.todo],
-          backgroundColor: [tone.done, tone.doing, tone.todo],
-          borderColor: tone.surface, borderWidth: 2 }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: "58%",
-        plugins: { legend: { position: "bottom" } } }
-    });
+    /* ---- فیلتر ---- */
+    var fil = document.getElementById("mgFil");
+    if (fil && !fil.children.length) {
+      fil.innerHTML = [["all", "همه"], ["open", "تمام‌نشده"], ["late", "از مهلت گذشته"]]
+        .map(function (x) {
+          return '<button data-mgf="' + x[0] + '"' + (MG_FILTER === x[0] ? ' class="on"' : "") +
+                 ">" + esc(x[1]) + "</button>";
+        }).join("");
+      fil.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("[data-mgf]") : null;
+        if (!b) return;
+        MG_FILTER = b.getAttribute("data-mgf");
+        Array.prototype.forEach.call(fil.children, function (x) {
+          x.classList.toggle("on", x.getAttribute("data-mgf") === MG_FILTER);
+        });
+        mgrPaint();
+      });
+    }
 
-    mgrChart("mgChartWho", {
-      type: "bar",
-      data: { labels: slugs.map(function (k) { return nameOfAny(d.boxes, k); }),
-        datasets: [
-          { label: "انجام شده", data: slugs.map(function (k) { return d.people[k].done; }),
-            backgroundColor: tone.done },
-          { label: "در حال انجام", data: slugs.map(function (k) { return d.people[k].doing; }),
-            backgroundColor: tone.doing },
-          { label: "انجام نشده", data: slugs.map(function (k) { return d.people[k].todo; }),
-            backgroundColor: tone.todo }
-        ] },
-      options: { responsive: true, maintainAspectRatio: false,
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
-        plugins: { legend: { position: "bottom" } } }
-    });
-
+    /* ---- فهرستِ کارها ---- */
     var list = document.getElementById("mgList");
     if (!list) return;
-    if (!d.rows.length) {
-      list.innerHTML = '<div class="sh-empty">هنوز کاری ثبت نشده.</div>';
+    var rows = d.rows.filter(function (r) {
+      if (MG_FILTER === "late") return r.late;
+      if (MG_FILTER === "open") return !r.done;
+      return true;
+    });
+    if (!rows.length) {
+      list.innerHTML = '<div class="mg-empty">' +
+        (MG_FILTER === "all" ? "هنوز کاری ثبت نشده." : "چیزی با این فیلتر نیست.") + "</div>";
       return;
     }
+    var statTone = { "انجام شد": t.done, "انجام شده": t.done, "در حال انجام": t.doing };
     list.innerHTML = slugs.map(function (k) {
+      var mine = rows.filter(function (r) { return r.who === k; });
+      if (!mine.length) return "";
+      /* از مهلت گذشته‌ها بالا، چون همان‌هایند که مدیر دنبالشان است */
+      mine.sort(function (x, y) { return (y.late ? 1 : 0) - (x.late ? 1 : 0); });
       var p = d.people[k];
-      var mine = d.rows.filter(function (r) { return r.who === k; });
-      return '<div class="mg-person"><div class="mg-pn">' +
-        esc(k ? nameOfAny(d.boxes, k) : "بدونِ مسئول") +
-        '<span class="mg-pc">' + faNum(p.done) + " از " + faNum(p.all) + " انجام شده" +
-        (p.late ? ' · <b class="late">' + faNum(p.late) + " از مهلت گذشته</b>" : "") +
-        "</span></div>" +
-        '<table class="sh-tab mg-tab"><tbody>' + mine.map(function (r) {
-          return "<tr" + (r.late ? ' class="late"' : "") + ">" +
-            "<td>" + esc(r.task || "—") + "</td>" +
-            '<td class="w">' + esc(r.box.title) + "</td>" +
-            '<td class="w">' + esc(r.due || "—") + "</td>" +
-            '<td class="w">' + esc(r.stat || "—") + "</td></tr>";
-        }).join("") + "</tbody></table></div>";
+      var gname = k ? nameOfAny(d.boxes, k) : "بدونِ مسئول";
+      return '<div class="mg-group">' +
+        '<div class="mg-gh">' +
+          '<span class="mg-av sm" style="--ac:' + mgHue(k) + '">' + (k ? esc(mgInit(gname)) : "—") + "</span>" +
+          '<span class="nm">' + esc(gname) + "</span>" +
+          '<span class="ct">' + faNum(p.done) + " از " + faNum(p.all) + " انجام شده</span>" +
+          (p.late ? mgChip(faNum(p.late) + " از مهلت گذشته", t.bad) : "") +
+        "</div>" +
+        mine.map(function (r) {
+          return '<div class="mg-task">' +
+            '<span class="mg-tt">' + esc(r.task || "—") + "</span>" +
+            '<span class="mg-meta">' +
+              /* «پایین» رنگِ وضعیت نمی‌گیرد: اهمیتش کم است و رنگِ
+                 خاکستریِ روشن به‌عنوان رنگِ متن اصلاً خوانا نبود. */
+              (r.pri ? (r.pri === "بالا" ? mgChip(r.pri, t.bad)
+                       : r.pri === "متوسط" ? mgChip(r.pri, t.todo)
+                       : '<span class="mg-chip mg-chip-mute">' + esc(r.pri) + "</span>") : "") +
+              (r.stat ? mgChip(r.stat, statTone[r.stat] || t.todo) : "") +
+              '<span class="mg-due' + (r.late ? " late" : "") + '">' +
+                (r.due ? (r.late ? "⚠ " : "") + esc(r.due) : "بی‌مهلت") + "</span>" +
+              '<span class="mg-box">' + esc(r.box.title) + "</span>" +
+            "</span></div>";
+        }).join("") + "</div>";
     }).join("");
   }
 
@@ -831,13 +989,6 @@
       if (p) return p.name;
     }
     return slug || "—";
-  }
-
-  function mgrChart(id, cfg) {
-    var el = document.getElementById(id);
-    if (!el || !window.Chart) return;
-    if (MGR_CHARTS[id]) { MGR_CHARTS[id].destroy(); MGR_CHARTS[id] = null; }
-    try { MGR_CHARTS[id] = new window.Chart(el.getContext("2d"), cfg); } catch (e) { /* بی‌نمودار هم فهرست هست */ }
   }
 
   /* ---------- راه‌اندازی ---------- */

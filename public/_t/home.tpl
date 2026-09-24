@@ -103,7 +103,9 @@ body{
 @media (max-width:640px){ .hero{ padding:44px 0 36px; } .hero h1{ font-size:27px; } .hero p.lead{ font-size:15px; } }
 
 /* ---------- بخش‌ها ---------- */
-section{ padding:52px 0; }
+/* نوارِ بالا چسبان است، پس پرش به یک بخش عنوانش را زیرِ نوار پنهان
+   می‌کرد. این حاشیه فقط برای پرشِ لنگر است، نه برای چیدمان. */
+section{ padding:52px 0; scroll-margin-top:86px; }
 .sec-head{ margin-bottom:28px; }
 .sec-head h2{ font-size:25px; margin:0 0 8px; }
 .sec-head p{ color:var(--ink-soft); margin:0; max-width:640px; }
@@ -203,13 +205,32 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 .ways a:hover{ background:rgba(255,255,255,.14); }
 
 /* ---------- پلن‌ها و سفارش ---------- */
-.plans{ display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); }
-.plan{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
-  padding:22px; text-align:center; box-shadow:var(--sh-1); }
-.plan h3{ margin:0 0 4px; font-size:17px; }
-.plan .price{ font-size:25px; font-weight:700; color:var(--brand); margin:10px 0 2px; }
+/* شش پلن روی یک شبکهٔ سه‌ستونه: سه بالا، سه پایین. auto-fit پیش از
+   این چهار تا را بالا می‌چید و دو تا را پایین، که هم بی‌قواره بود هم
+   ستونِ آخر را تنها می‌گذاشت. */
+.plans{ display:grid; gap:16px; grid-template-columns:repeat(3, minmax(0,1fr)); }
+@media (max-width:980px){ .plans{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+@media (max-width:620px){ .plans{ grid-template-columns:1fr; } }
+/* کارت‌ها ستونی‌اند تا قدشان با هم یکی شود و دکمه‌ها در یک خط بنشینند —
+   بدون آن، هر کارت به اندازهٔ متنِ خودش بلند می‌شد. */
+.plan{ display:flex; flex-direction:column; position:relative; overflow:hidden;
+  background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
+  padding:26px 22px 22px; text-align:center; box-shadow:var(--sh-1);
+  transition:transform .18s, box-shadow .18s, border-color .18s; }
+.plan::before{ content:""; position:absolute; inset-inline:0; top:0; height:3px;
+  background:linear-gradient(90deg, var(--brand), var(--brand-deep)); }
+.plan:hover{ transform:translateY(-3px); box-shadow:var(--sh-2); border-color:var(--brand); }
+/* عنوان‌ها یک تا دو خطی‌اند؛ ارتفاعِ ثابت یعنی قیمتِ همهٔ کارت‌ها
+   روی یک خط می‌افتد. */
+.plan h3{ margin:0; font-size:16.5px; line-height:1.75; min-height:3.5em;
+  display:flex; align-items:center; justify-content:center; }
+.plan .price{ font-size:26px; font-weight:700; color:var(--brand); margin:8px 0 2px;
+  font-variant-numeric:tabular-nums; }
 .plan .per{ font-size:12.5px; color:var(--ink-faint); }
-.plan .pnote{ font-size:13px; color:var(--ink-soft); margin:10px 0 16px; min-height:38px; }
+.plan .pnote{ flex:1; font-size:13.5px; color:var(--ink-soft); line-height:2;
+  text-align:start; margin:15px 0 18px; padding-top:15px;
+  border-top:1px dashed var(--line); }
+.plan .btn{ width:100%; }
 .order{ max-width:620px; margin:22px auto 0; }
 .order h3{ margin:0 0 14px; font-size:16px; }
 .order .ask-row{ display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-bottom:10px; }
