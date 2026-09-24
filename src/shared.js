@@ -21,7 +21,7 @@
 /* عمداً از kartabl.js چیزی وارد نمی‌شود: آن فایل خودش این‌جا را وارد
    می‌کند و حلقهٔ import، هرچند در ESM معمولاً کار می‌کند، یک روز سرِ
    ترتیبِ ارزیابی ما را زمین می‌زند. سه خطِ زیر همان سه‌تاست. */
-import { orgList, orgsOf, membersOf, orgById, cleanSlugs, pathOf, ORG_ID_RE } from './orgs.js';
+import { orgList, orgsOf, membersOf, mgrsOf, orgById, cleanSlugs, pathOf, ORG_ID_RE } from './orgs.js';
 
 const all = async (env, sql, ...b) => (await env.DB.prepare(sql).bind(...b).all()).results || [];
 const one = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).first();
@@ -69,14 +69,16 @@ export const SHARED_TYPES = [
      اصلاً ستونِ داده نیست — همان لحظه‌ای است که ردیف ساخته شده و
      سرور نگهش داشته، پس کسی نمی‌تواند عقب‌وجلویش کند. */
   { id: 'team', label: 'کارهای تیمی', icon: '🎯', cols: [
-    { k: 'task', t: 'کار',         kind: 'text', w: 230, edit: 'owner' },
+    { k: 'task', t: 'کار',         kind: 'text', w: 230, edit: 'mgr' },
     { k: 'who',  t: 'مسئول',       kind: 'who',  w: 130, edit: 'mgr' },
     {            t: 'تاریخ ثبت',   kind: 'made', w: 110, edit: 'never' },
     { k: 'due',  t: 'مهلت',        kind: 'date', w: 115, edit: 'mgr' },
     { k: 'done', t: 'تاریخ انجام', kind: 'date', w: 115, edit: 'doer' },
     { k: 'stat', t: 'وضعیت',       kind: 'pick', w: 125, edit: 'doer',
       opts: ['انجام نشده', 'در حال انجام', 'انجام شد', 'متوقف'] },
-    { k: 'note', t: 'یادداشت',     kind: 'long', edit: 'any' }
+    { k: 'pri',  t: 'اولویت',      kind: 'pick', w: 105, edit: 'mgr',
+      opts: ['بالا', 'متوسط', 'پایین'] },
+    { k: 'note', t: 'یادداشت',     kind: 'long', edit: 'mgrdoer' }
   ]},
   { id: 'invoices', label: 'فاکتورها', icon: '🧾', cols: [
     { k: 'no',   t: 'شماره',      kind: 'text',  w: 110, ltr: true },
@@ -121,6 +123,19 @@ export const SHARED_TYPES = [
 ];
 
 export const typeById = id => SHARED_TYPES.find(t => t.id === id) || null;
+
+/* چه کسانی می‌توانند یک ستون را عوض کنند. همین فهرست هم در پنل به
+   ادمین نشان داده می‌شود، پس نامِ فارسی‌اش هم این‌جاست — دو فهرستِ
+   جدا یعنی یک روز یکی‌شان گزینه‌ای می‌گیرد که آن یکی نمی‌شناسد. */
+export const EDIT_RULES = [
+  { id: 'mgr',     label: 'فقط مدیر' },
+  { id: 'owner',   label: 'فقط سازندهٔ ردیف' },
+  { id: 'doer',    label: 'فقط مسئولِ کار' },
+  { id: 'mgrdoer', label: 'مدیر و مسئول' },
+  { id: 'any',     label: 'همهٔ اعضا' },
+  { id: 'never',   label: 'هیچ‌کس — فقط دیده می‌شود' }
+];
+const RULE_IDS = EDIT_RULES.map(r => r.id);
 
 /* ---------- ساختِ جدول‌ها ----------
    در migrations هم هست؛ این‌جا هم می‌ماند تا اگر روی یک دیتابیسِ
@@ -170,6 +185,7 @@ export async function ensureShared(env) {
          می‌شود؛ قدیمی‌ها را خودِ ادمین وقتی خواست روشن می‌کند. */
       [bx, 'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0', 'rowlock'],
       [bx, "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''", 'org'],
+      [bx, "ALTER TABLE shared_boxes ADD COLUMN perms TEXT NOT NULL DEFAULT '{}'", 'perms'],
       [rw, "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''", 'owner'],
       [rw, 'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0', 'created']
     ]) {
@@ -182,13 +198,26 @@ export async function ensureShared(env) {
 
 const parseMembers = s => { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch { return []; } };
 
+/* ادمین می‌تواند برای هر ستون بگوید چه کسی عوضش کند. آنچه ذخیره شده
+   روی پیش‌فرضِ خودِ نوع می‌نشیند، نه جایش را می‌گیرد: ستونی که ادمین
+   دربارهٔ آن حرفی نزده، همان رفتارِ همیشگی‌اش را دارد. */
+const applyPerms = (cols, raw) => {
+  let p = {};
+  try { p = JSON.parse(raw || '{}') || {}; } catch { p = {}; }
+  return cols.map(c => (c.k && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
+};
+
 const shapeBox = r => {
   const t = typeById(r.type);
   return { id: r.id, title: r.title, type: r.type,
            label: t ? t.label : r.type, icon: t ? t.icon : '📋',
-           cols: t ? t.cols : [], members: parseMembers(r.members),
+           cols: t ? applyPerms(t.cols, r.perms) : [], members: parseMembers(r.members),
            mgrs: parseMembers(r.mgrs), rowlock: Number(r.rowlock || 0),
-           org: r.org || '', orgPath: '', created: r.created };
+           org: r.org || '', orgPath: '',
+           /* خامش هم می‌رود تا پنل بداند ادمین کدام ستون را دست زده و
+              کدام هنوز پیش‌فرضِ نوع است. */
+           perms: (() => { try { return JSON.parse(r.perms || '{}') || {}; } catch { return {}; } })(),
+           created: r.created };
 };
 
 /* ---------- خواندن ----------
@@ -207,7 +236,11 @@ async function withOrgs(env, boxes) {
        شود. ادمین در پنل می‌بیند که کسی نمی‌بیندش. */
     b.members = o ? o.members.slice() : [];
     b.orgPath = o ? pathOf(list, o.id) : '';
-    b.mgrs = b.mgrs.filter(m => b.members.includes(m));
+    /* مدیرِ گروه، مدیرِ همهٔ بخش‌های همان گروه هم هست. بخش می‌تواند
+       مدیرِ خودش را هم داشته باشد — این دو با هم جمع می‌شوند، نه اینکه
+       یکی جای آن یکی را بگیرد. */
+    b.mgrs = [...new Set([...(o ? o.mgrs : []), ...b.mgrs])]
+      .filter(m => b.members.includes(m));
   }
   return boxes;
 }
@@ -262,8 +295,9 @@ export async function getBox(env, id) {
      یک پرسشِ اضافه این‌جا ضرب می‌شود در تعدادِ آدم‌ها و ساعت‌ها.
      «مسیرِ گروه» هم این‌جا به کار نمی‌آید و فرستاده نمی‌شود. */
   if (b.org) {
-    b.members = await membersOf(env, b.org);
-    b.mgrs = b.mgrs.filter(m => b.members.includes(m));
+    const [mem, mgr] = await Promise.all([membersOf(env, b.org), mgrsOf(env, b.org)]);
+    b.members = mem;
+    b.mgrs = [...new Set([...mgr, ...b.mgrs])].filter(m => mem.includes(m));
   }
   return b;
 }
@@ -340,7 +374,10 @@ export function canEdit(box, col, by, row) {
   if (isMgr(box, by)) return true;
   const owner = row && row.owner;
   if (rule === 'owner') return !owner || owner === by;
-  if (rule === 'doer') {
+  if (rule === 'doer' || rule === 'mgrdoer') {
+    /* مدیر بالاتر رد شده، پس این‌جا mgrdoer و doer یک کار می‌کنند.
+       تا وقتی مسئولی انتخاب نشده، سازندهٔ ردیف همان نقش را دارد —
+       وگرنه کارِ تازه‌نوشته تا انتخابِ مسئول دست‌نخوردنی می‌ماند. */
     const who = row && row.v && row.v.who;
     return who ? who === by : (!owner || owner === by);
   }
@@ -353,11 +390,12 @@ export function canEdit(box, col, by, row) {
    خانه‌های مجاز را هم می‌خوابانَد. اسمِ خانه‌های ردشده برمی‌گردد تا
    صفحه بتواند بگوید چه چیزی نوشته نشد. */
 function mergeRow(box, by, old, incoming) {
-  const t = typeById(box.type);
   const clean = cleanRow(box.type, incoming);
   const out = {};
   const kept = [];
-  for (const c of (t ? t.cols : [])) {
+  /* ستون‌های خودِ این بخش، نه ستون‌های خامِ نوع: قاعده‌هایی که ادمین
+     عوض کرده روی همین‌ها نشسته‌اند. */
+  for (const c of (box.cols || [])) {
     if (!c.k) continue;
     const prev = old && old.v ? old.v[c.k] : undefined;
     const keep = () => { if (prev !== undefined) out[c.k] = prev; };
@@ -476,6 +514,19 @@ export async function saveBox(env, body, knownSlugs) {
      هر کس دستِ خودش باشد. پس کلید برایش همیشه روشن. */
   const rowlock = type === 'team' ? 1 : (body.rowlock ? 1 : 0);
 
+  /* قاعدهٔ دسترسیِ هر ستون. فقط کلیدهایی که این نوع واقعاً دارد و فقط
+     قاعده‌هایی که می‌شناسیم — وگرنه یک کلیدِ غلط در تنظیمات می‌ماند و
+     کسی نمی‌فهمد چرا آن ستون رفتارِ عجیبی دارد.
+     ستونِ نمایشی (بی‌کلید، مثل «تاریخ ثبت») قاعده نمی‌گیرد. */
+  const tCols = (typeById(type) || { cols: [] }).cols;
+  const perms = {};
+  const pin = (body.perms && typeof body.perms === 'object') ? body.perms : {};
+  for (const c of tCols) {
+    if (!c.k || c.edit === 'never') continue;
+    const r = String(pin[c.k] || '');
+    if (RULE_IDS.includes(r) && r !== (c.edit || '')) perms[c.k] = r;
+  }
+
   /* عوض کردنِ نوعِ یک جدولِ پر یعنی ستون‌هایش دیگر نمی‌خوانند و داده
      بی‌صدا ناپدید می‌شود. جلویش گرفته می‌شود. */
   if (cur && cur.type !== type) {
@@ -485,12 +536,14 @@ export async function saveBox(env, body, knownSlugs) {
   }
 
   await run(env,
-    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org)
-     VALUES(?,?,?,?,?,?,?,?)
+    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org,perms)
+     VALUES(?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET title=excluded.title, type=excluded.type,
                                    members=excluded.members, mgrs=excluded.mgrs,
-                                   rowlock=excluded.rowlock, org=excluded.org`,
-    id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock, org);
+                                   rowlock=excluded.rowlock, org=excluded.org,
+                                   perms=excluded.perms`,
+    id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock, org,
+    JSON.stringify(perms));
   return { ok: true, id, created: !cur };
 }
 

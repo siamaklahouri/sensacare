@@ -599,6 +599,15 @@ table.inv-tab td.desc{ text-align:right; }
 .shpick label:hover, .shlock:hover{ border-color:var(--brass); }
 .shpick input, .shlock input{ width:auto; margin:0; }
 .shlock{ margin-top:7px; }
+/* قاعدهٔ دسترسیِ ستون‌ها — یک ردیف برای هر ستون */
+.permgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:7px;
+  margin-top:7px; }
+.permrow{ display:flex; align-items:center; gap:8px; font-size:12.5px;
+  border:1px solid var(--line); border-radius:var(--r-sm); padding:7px 10px;
+  background:var(--paper-2); }
+.permrow .pn{ flex:0 0 auto; min-width:78px; color:var(--ink-soft); font-weight:600; }
+.permrow .pf{ font-size:11.5px; color:var(--ink-faint); }
+.permrow select{ flex:1; min-width:0; font-size:12px; padding:4px 6px; }
 .shlock input:disabled{ cursor:default; }
 .shlock:has(input:disabled){ opacity:.72; cursor:default; }
 
@@ -1978,6 +1987,9 @@ async function loadOrgs(){
         (o.boxes ? '<span class="hint2">' + fa(o.boxes) + ' بخش مشترک</span>' : '') +
       '</div>' +
       '<div class="mem">' + mem + '</div>' +
+      '<div class="mem">' + ((o.mgrs && o.mgrs.length)
+        ? '<span class="hint2">مدیر:</span>' + o.mgrs.map(m=> '<span class="p">' + esc(nameOf(m)) + '</span>').join("")
+        : '<span class="p none">مدیری ندارد</span>') + '</div>' +
       '<div class="acts">' +
         '<button class="btn" data-ogedit="' + esc(o.id) + '">ویرایش</button>' +
         '<button class="btn" data-ogkid="' + esc(o.id) + '">＋ زیرمجموعه</button>' +
@@ -2007,7 +2019,7 @@ async function loadOrgs(){
 /* فرمِ گروه. «بالادست» فهرستِ بقیهٔ گروه‌هاست منهای خودش و زیرمجموعه‌هایش
    — وگرنه می‌شد گروهی را زیرِ بچهٔ خودش برد و درخت به خودش برمی‌گشت. */
 function orgForm(cur, parentId){
-  const o = cur || { id:"", name:"", parent: parentId || "", members:[] };
+  const o = cur || { id:"", name:"", parent: parentId || "", members:[], mgrs:[] };
   const isNew = !cur;
   const under = (id)=>{
     const out = [id];
@@ -2035,17 +2047,42 @@ function orgForm(cur, parentId){
       <div class="shpick" id="ogMem">
         ${pickList(planners.map(pp=> pp.slug), sg=> o.members.indexOf(sg) >= 0)}
       </div></div>
+    <div class="fld"><label>مدیرِ گروه</label>
+      <div class="shpick" id="ogMgr"></div>
+      <div class="hint">فقط از میانِ همان‌هایی که بالا تیک خورده‌اند.
+        مدیرِ گروه، مدیرِ همهٔ بخش‌های مشترکِ این گروه هم هست: مسئول و
+        مهلت را او تعیین می‌کند و قفلِ ردیف‌های بقیه برایش باز است.</div></div>
     <div class="ov-acts">
       <button class="btn btn-main" id="ogSave">ذخیره</button>
       <button class="btn" onclick="closeOverlay()">انصراف</button>
     </div>`);
+
+  /* فهرستِ مدیر از روی همان تیک‌های عضویت ساخته می‌شود و با هر
+     تغییرشان از نو — همان کاری که فرمِ بخشِ مشترک می‌کند. */
+  const ogMgrSet = new Set(o.mgrs || []);
+  const drawOgMgr = ()=>{
+    const box = document.getElementById("ogMgr");
+    const picked = Array.from(document.querySelectorAll("#ogMem input:checked")).map(i=> i.value);
+    box.innerHTML = picked.length
+      ? pickList(picked, sg=> ogMgrSet.has(sg))
+      : '<div class="hint">اول عضو انتخاب کنید.</div>';
+    box.querySelectorAll("input").forEach(i=>{
+      i.onchange = ()=> i.checked ? ogMgrSet.add(i.value) : ogMgrSet.delete(i.value);
+    });
+  };
+  document.querySelectorAll("#ogMem input").forEach(i=> i.addEventListener("change", ()=>{
+    if(!i.checked) ogMgrSet.delete(i.value);
+    drawOgMgr();
+  }));
+  drawOgMgr();
 
   document.getElementById("ogSave").onclick = async ()=>{
     const body = {
       id: o.id,
       name: document.getElementById("ogName").value.trim(),
       parent: document.getElementById("ogParent").value,
-      members: Array.from(document.querySelectorAll("#ogMem input:checked")).map(i=> i.value)
+      members: Array.from(document.querySelectorAll("#ogMem input:checked")).map(i=> i.value),
+      mgrs: Array.from(document.querySelectorAll("#ogMgr input:checked")).map(i=> i.value)
     };
     const btn = document.getElementById("ogSave");
     btn.disabled = true;
@@ -2057,7 +2094,7 @@ function orgForm(cur, parentId){
   };
 }
 
-let SH_TYPES = [];
+let SH_TYPES = [], SH_RULES = [];
 
 async function loadShared(){
   const box = document.getElementById("shList");
@@ -2065,6 +2102,7 @@ async function loadShared(){
   const r = await api("/shared-boxes");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   SH_TYPES = r.data.types || [];
+  SH_RULES = r.data.rules || [];
   const items = r.data.items || [];
   if(!items.length){
     box.innerHTML = '<div class="hint">هنوز بخشِ مشترکی ساخته نشده. ' +
@@ -2117,7 +2155,7 @@ async function loadShared(){
 /* فرمِ ساخت و ویرایش. شناسه بعد از ساخته شدن قفل می‌شود، چون ردیف‌ها
    با همان شناسه به بخش وصل‌اند و عوض کردنش یعنی گم شدنشان. */
 function shForm(cur){
-  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"", rows:0 };
+  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"", perms:{}, rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -2137,6 +2175,11 @@ function shForm(cur){
             "</option>").join("")}
       </select>
       <div class="shcols" id="shCols"></div></div>
+    <div class="fld"><label>چه کسی کدام ستون را عوض کند</label>
+      <div class="permgrid" id="shPerms"></div>
+      <div class="hint">«مسئول» یعنی همان کسی که در ستونِ مسئول انتخاب شده.
+        تا وقتی مسئولی انتخاب نشده، سازندهٔ ردیف همان نقش را دارد.
+        این قاعده‌ها روی سرور اعمال می‌شوند، نه فقط در صفحه.</div></div>
     <div class="fld"><label>اعضا از کجا بیایند</label>
       <select id="shSrc">
         <option value="list">فهرستِ دستیِ کارتابل‌ها</option>
@@ -2239,9 +2282,39 @@ function shForm(cur){
   document.getElementById("shType").addEventListener("change", syncLock);
   syncLock();
 
+  /* قاعدهٔ هر ستون. آنچه از قبل ذخیره شده روی پیش‌فرضِ نوع می‌نشیند،
+     پس ستونی که دست نخورده همان رفتارِ همیشگی‌اش را دارد. */
+  const permOf = (b.perms && typeof b.perms === "object") ? Object.assign({}, b.perms) : {};
   const showCols = ()=>{
     const t = SH_TYPES.find(x=> x.id === document.getElementById("shType").value);
-    document.getElementById("shCols").textContent = t ? "ستون‌ها: " + t.cols.join(" · ") : "";
+    const names = t ? t.cols.map(c=> c.t) : [];
+    document.getElementById("shCols").textContent = names.length ? "ستون‌ها: " + names.join(" · ") : "";
+
+    const box = document.getElementById("shPerms");
+    if(!t){ box.innerHTML = ""; return; }
+    box.innerHTML = t.cols.map(c=>{
+      /* ستونِ نمایشی (مثل «تاریخ ثبت») داده نیست و کسی نمی‌تواند
+         عوضش کند، پس کشویی هم نمی‌خواهد. */
+      if(!c.k || c.edit === "never")
+        return '<div class="permrow"><span class="pn">' + esc(c.t) + '</span>' +
+               '<span class="pf">خودکار — دستِ کسی نیست</span></div>';
+      /* گزینهٔ خالی باید باشد، وگرنه ستونی که قاعدهٔ پیش‌فرض ندارد هیچ
+         گزینه‌ای را «selected» نمی‌کند و مرورگر اولی را برمی‌دارد — یعنی
+         جدولِ شرکت‌ها و سرورها بی‌آنکه کسی بخواهد قفلِ مدیر می‌شد. */
+      const cur = permOf[c.k] || "";
+      const dflt = c.edit
+        ? ((SH_RULES.find(r=> r.id === c.edit) || {}).label || c.edit)
+        : "طبقِ قفلِ مالکیت";
+      return '<div class="permrow"><span class="pn">' + esc(c.t) + '</span>' +
+        '<select data-perm="' + esc(c.k) + '">' +
+        '<option value=""' + (cur ? "" : " selected") + ">پیش‌فرض — " + esc(dflt) + "</option>" +
+        SH_RULES.map(r=> '<option value="' + esc(r.id) + '"' +
+          (r.id === cur ? " selected" : "") + ">" + esc(r.label) + "</option>").join("") +
+        "</select></div>";
+    }).join("");
+    box.querySelectorAll("[data-perm]").forEach(sel=>{
+      sel.onchange = ()=> permOf[sel.getAttribute("data-perm")] = sel.value;
+    });
   };
   document.getElementById("shType").addEventListener("change", showCols);
   showCols();
@@ -2269,7 +2342,9 @@ function shForm(cur){
              ? document.getElementById("shOrg").value : "",
       members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
-      rowlock: document.getElementById("shLock").checked ? 1 : 0
+      rowlock: document.getElementById("shLock").checked ? 1 : 0,
+      perms: Array.from(document.querySelectorAll("#shPerms [data-perm]"))
+        .reduce((a, sel)=>{ a[sel.getAttribute("data-perm")] = sel.value; return a; }, {})
     };
     const btn = document.getElementById("shSave");
     btn.disabled = true;

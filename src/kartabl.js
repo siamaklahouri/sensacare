@@ -524,16 +524,30 @@ function stateStats(st) {
 
 const monthLabel = key => String(key || '').split('|').reverse().join(' ');
 
+/* نامِ خواندنیِ هر بخشِ دیتابیس، برای پیامِ هشدار */
+const DB_SECTIONS = [
+  ['vm', 'سرورها'], ['lines', 'خطوط MVPN'], ['roster', 'چک‌لیست ریموت'],
+  ['parties', 'طرف‌حساب‌ها'], ['invoices', 'فاکتورها'], ['payables', 'بدهی‌ها'],
+  ['payableNotes', 'اسناد پرداختنی'], ['receivableNotes', 'اسناد دریافتنی'],
+  ['expenses', 'هزینه‌ها'], ['bank', 'حساب‌های بانکی'], ['budget', 'بودجه']
+];
+
 function dbStats(d) {
   const c = d && typeof d === 'object' ? d : {};
-  let filled = countFilled(c.vm) + countFilled(c.lines) + countFilled(c.roster) +
-               countFilled(c.parties) + countFilled(c.invoices) + countFilled(c.payables) +
-               countFilled(c.payableNotes) + countFilled(c.receivableNotes) +
-               countFilled(c.expenses) + countFilled(c.bank) + countFilled(c.budget);
-  for (const v of Object.values(c.companies || {})) filled += countFilled(v);
-  for (const v of Object.values(c.dailyLog || {})) filled += countFilled(v);
-  return { filled, groups: Object.keys(c.companies || {}).length };
+  const per = {};
+  let filled = 0;
+  for (const [k] of DB_SECTIONS) { per[k] = countFilled(c[k]); filled += per[k]; }
+  per.companies = 0;
+  for (const v of Object.values(c.companies || {})) per.companies += countFilled(v);
+  per.dailyLog = 0;
+  for (const v of Object.values(c.dailyLog || {})) per.dailyLog += countFilled(v);
+  filled += per.companies + per.dailyLog;
+  return { filled, per, groups: Object.keys(c.companies || {}).length };
 }
+
+const DB_LABEL = Object.assign(
+  { companies: 'شرکت‌ها', dailyLog: 'بکاپ روزانه' },
+  Object.fromEntries(DB_SECTIONS));
 
 /* برمی‌گرداند: پیام، اگر این نوشتن ویرانگر باشد */
 function lossReason(before, after, kind) {
@@ -544,15 +558,53 @@ function lossReason(before, after, kind) {
       return `${b.months - a.months} ماه از کارتابل کم می‌شود`;
     if (b.vault && !a.vault)
       return 'بخش «دیتای شخصی» پاک می‌شود';
+    /* تغییرِ نامِ ماه از این‌جا شبیهِ پاک شدن دیده می‌شود: کلیدِ قدیمی
+       می‌رود و کلیدی تازه با همان محتوا می‌آید — چون کلید خودش از نام و
+       سالِ ماه ساخته شده. پس اول کلیدهای رفته را با کلیدهای تازه‌آمده
+       جفت می‌کنیم؛ هر جفتی که محتوایش تقریباً یکی باشد، تغییرِ نام است
+       نه از دست رفتن.
+       جفت‌کردن با نزدیک‌ترین پرشدگی انجام می‌شود، نه با اولین کلید:
+       اگر دو ماه هم‌زمان جابه‌جا شده باشند، نباید اشتباهی جفت شوند. */
+    const gone = Object.keys(b.per || {}).filter(k => !((a.per || {})[k] > 0));
+    const born = Object.keys(a.per || {}).filter(k => !((b.per || {})[k] > 0));
+    const taken = new Set();
+    const renamed = new Set();
+    for (const g of gone) {
+      const bf = b.per[g];
+      let best = null, bestGap = Infinity;
+      for (const n of born) {
+        if (taken.has(n)) continue;
+        const gap = Math.abs(a.per[n] - bf);
+        if (gap < bestGap) { bestGap = gap; best = n; }
+      }
+      /* «تقریباً یکی» یعنی محتوا سرِ جایش است. اگر کسی هم‌زمان با عوض
+         کردنِ نام، نصفِ ماه را هم پاک کند، همان هشدار باید بیاید. */
+      if (best && a.per[best] >= bf * 0.75) { taken.add(best); renamed.add(g); }
+    }
+
     /* مهم‌ترین حالت و همانی که یک بار اتفاق افتاد: ماه‌ها سرِ جایشان
        می‌مانند ولی محتوای یکی‌شان خالی می‌شود. جمعِ کل آن‌قدر نمی‌افتد که
        آستانهٔ کلی را رد کند، پس هر ماه را جدا می‌سنجیم. */
     for (const [key, bf] of Object.entries(b.per || {})) {
+      if (renamed.has(key)) continue;
       const af = (a.per || {})[key] || 0;
       if (bf >= 10 && af < bf * 0.25)
         return `محتوای ماه «${monthLabel(key)}» تقریباً خالی می‌شود (${bf} خانه به ${af} می‌رسد)`;
     }
   }
+  /* همان درسی که برای ماه‌ها گرفته شد، این‌جا گرفته نشده بود: یک بخشِ
+     دیتابیس می‌توانست کامل خالی شود بی‌آنکه جمعِ کل آستانه را رد کند.
+     خطوط MVPN دو بار همین‌طور بی‌صدا رفتند — بقیهٔ بخش‌ها سرِ جایشان
+     بودند و افتِ کل زیرِ چهل درصد می‌ماند. پس هر بخش جدا سنجیده
+     می‌شود، دقیقاً مثل ماه‌ها. */
+  if (kind === 'db') {
+    for (const [key, bf] of Object.entries(b.per || {})) {
+      const af = (a.per || {})[key] || 0;
+      if (bf >= 10 && af < bf * 0.25)
+        return `بخش «${DB_LABEL[key] || key}» تقریباً خالی می‌شود (${bf} خانه به ${af} می‌رسد)`;
+    }
+  }
+
   if (b.filled >= 20 && a.filled < b.filled * (1 - LOSS_LIMIT))
     return `${b.filled - a.filled} خانهٔ پرشده از ${b.filled} تا حذف می‌شود`;
   return null;
@@ -637,11 +689,30 @@ export async function listKartablHistory(env, panel) {
 }
 
 async function historyRows(env, panel) {
+  /* خودِ محتوا هم خوانده می‌شود تا بشود گفت داخلِ هر عکس چه بوده.
+     بدونِ این، آدم فقط یک فهرستِ تاریخ می‌بیند و باید حدس بزند کدام
+     نسخه همانی است که دنبالش می‌گردد — و برای برگرداندنِ داده، حدس
+     زدن بدترین کار است. چهل تا بس است؛ ده دقیقه فاصلهٔ هر عکس یعنی
+     این چند روز را پوشش می‌دهد. */
   const rows = await all(env,
-    `SELECT id, k, rev, at, length(v) AS size FROM kartabl_hist
-     WHERE k IN (?,?) ORDER BY at DESC LIMIT 120`, panel.keys.state, panel.keys.db);
-  return rows.map(r => ({ id: r.id, which: r.k === panel.keys.state ? 'state' : 'db',
-                          rev: r.rev, at: r.at, size: r.size }));
+    `SELECT id, k, rev, at, length(v) AS size, v FROM kartabl_hist
+     WHERE k IN (?,?) ORDER BY at DESC LIMIT 40`, panel.keys.state, panel.keys.db);
+  return rows.map(r => {
+    const which = r.k === panel.keys.state ? 'state' : 'db';
+    let sum = null;
+    try {
+      const v = JSON.parse(r.v);
+      sum = which === 'state'
+        ? (() => { const st = stateStats(v);
+                   return { ماه: st.months, خانه: st.filled,
+                            ...(st.vault ? { 'دیتای شخصی': 1 } : {}) }; })()
+        : (() => { const d = dbStats(v), o = {};
+                   for (const [k, label] of Object.entries(DB_LABEL))
+                     if (d.per[k]) o[label] = d.per[k];
+                   return o; })();
+    } catch (e) { /* عکسِ ناخوانا: بی‌خلاصه، ولی در فهرست می‌ماند */ }
+    return { id: r.id, which, rev: r.rev, at: r.at, size: r.size, sum };
+  });
 }
 
 export async function restoreKartablSnapshot(env, panel, id) {
@@ -736,7 +807,14 @@ export async function buildKartablBackup(env, req, panel) {
       return open + rel + close;
     });
 
+    /* فروشگاه و کارتابل‌ها روی یک ورکرند ولی دو چیزِ جدا. هیچ فایلی از
+       فروشگاه نباید داخلِ پشتیبانِ کارتابل برود. چون فهرست از خودِ
+       صفحهٔ کارتابل درمی‌آید این عملاً ممکن نیست، ولی نرده‌اش گذاشته
+       می‌شود تا اگر فردا قالب به چیزی از فروشگاه ارجاع داد، بی‌صدا
+       همراهش نرود. */
+    const SHOP_ONLY = /^\/(index\.html|admin\.js|og\.png|logo(-mark)?(-mono|-white)?\.svg)$/;
     for (const [from, to] of wanted) {
+      if (SHOP_ONLY.test(from)) continue;
       const data = await grab(from);
       /* woff2 و png خودشان فشرده‌اند؛ دوباره فشردنشان فقط وقت می‌برد */
       if (data) extras.push({ name: to, data, store: /\.(woff2|png|webp|ico)$/.test(to) });

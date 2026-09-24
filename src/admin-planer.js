@@ -21,7 +21,7 @@ import {
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
-import { SHARED_TYPES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
+import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 
 export const ADMIN_PAGE = '/login';
@@ -699,8 +699,11 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const [boxes, counts] = await Promise.all([allBoxes(env), boxCounts(env)]);
     return json({ ok: true,
       items: boxes.map(b => Object.assign({}, b, { rows: counts[b.id] || 0 })),
+      /* ستون‌ها با کلید و قاعدهٔ پیش‌فرضشان می‌روند، نه فقط با نام:
+         پنل باید بتواند برای هر کدام قاعده انتخاب کند. */
+      rules: EDIT_RULES,
       types: SHARED_TYPES.map(t => ({ id: t.id, label: t.label, icon: t.icon,
-                                      cols: t.cols.map(c => c.t) })) });
+        cols: t.cols.map(c => ({ k: c.k || '', t: c.t, edit: c.edit || '' })) })) });
   }
 
   /* ---------- گروه‌های سازمانی ----------

@@ -39,7 +39,16 @@ export async function ensureOrgs(env) {
         slug TEXT NOT NULL,
         PRIMARY KEY (org, slug)
       )`),
-      env.DB.prepare('CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug)')
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug)'),
+      /* مدیرِ گروه، جدا از اعضا. یک ستونِ mgr روی خودِ گروه هم می‌شد،
+         ولی گروه می‌تواند بیش از یک مدیر داشته باشد و آن وقت یک رشتهٔ
+         JSON می‌شد که نمی‌شود روی آن پرسش زد. */
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS org_mgrs (
+        org  TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        PRIMARY KEY (org, slug)
+      )`),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS org_mgrs_slug ON org_mgrs(slug)')
     ]);
     ready = true;
   } catch (e) { /* مسیرها خودشان خطا می‌دهند */ }
@@ -64,12 +73,17 @@ const newId = () => {
    می‌شود و درخت در حافظه ساخته می‌شود — نه یک پرسش برای هر گره. */
 export async function orgList(env) {
   await ensureOrgs(env);
-  const rows = await all(env, 'SELECT * FROM orgs ORDER BY created, id');
-  const mem = await all(env, 'SELECT org, slug FROM org_members');
-  const byOrg = {};
+  const [rows, mem, mgr] = await Promise.all([
+    all(env, 'SELECT * FROM orgs ORDER BY created, id'),
+    all(env, 'SELECT org, slug FROM org_members'),
+    all(env, 'SELECT org, slug FROM org_mgrs').catch(() => [])
+  ]);
+  const byOrg = {}, mgrOf = {};
   for (const m of mem) (byOrg[m.org] = byOrg[m.org] || []).push(m.slug);
+  for (const m of mgr) (mgrOf[m.org] = mgrOf[m.org] || []).push(m.slug);
   return rows.map(r => ({ id: r.id, name: r.name, parent: r.parent || '',
-                          created: r.created, members: byOrg[r.id] || [] }));
+                          created: r.created, members: byOrg[r.id] || [],
+                          mgrs: mgrOf[r.id] || [] }));
 }
 
 /* «احیا › مالی» — چیزی که در نوار کنارِ کارتابل دیده می‌شود. اگر حلقه‌ای
@@ -102,6 +116,14 @@ export function cleanSlugs(list, known, max) {
     .map(x => String(x || '').trim().toLowerCase())
     .filter((x, i, a) => x && a.indexOf(x) === i && known.includes(x))
     .slice(0, max);
+}
+
+export async function mgrsOf(env, id) {
+  await ensureOrgs(env);
+  try {
+    const rows = await all(env, 'SELECT slug FROM org_mgrs WHERE org=?', String(id || ''));
+    return rows.map(r => r.slug);
+  } catch (e) { return []; }
 }
 
 export async function membersOf(env, id) {
@@ -141,6 +163,9 @@ export async function saveOrg(env, body, knownSlugs) {
   }
 
   const members = cleanSlugs(body.members, knownSlugs, 200);
+  /* مدیر باید خودش عضو باشد؛ مدیری که گروه را نمی‌بیند مدیرِ چیزی
+     نیست و فقط یک اسمِ گمراه‌کننده در تنظیمات می‌ماند. */
+  const mgrs = cleanSlugs(body.mgrs, members, 10);
 
   const oid = isNew ? newId() : id;
 
@@ -153,13 +178,18 @@ export async function saveOrg(env, body, knownSlugs) {
       `INSERT INTO orgs(id,name,parent,created) VALUES(?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, parent=excluded.parent`
     ).bind(oid, name, parent, Date.now()),
-    env.DB.prepare('DELETE FROM org_members WHERE org=?').bind(oid)
+    env.DB.prepare('DELETE FROM org_members WHERE org=?').bind(oid),
+    env.DB.prepare('DELETE FROM org_mgrs WHERE org=?').bind(oid)
   ];
-  if (members.length)
+  const fill = (table, list) => {
+    if (!list.length) return;
     stmts.push(env.DB.prepare(
-      'INSERT OR IGNORE INTO org_members(org,slug) VALUES ' +
-      members.map(() => '(?,?)').join(',')
-    ).bind(...members.flatMap(m => [oid, m])));
+      'INSERT OR IGNORE INTO ' + table + '(org,slug) VALUES ' +
+      list.map(() => '(?,?)').join(',')
+    ).bind(...list.flatMap(m => [oid, m])));
+  };
+  fill('org_members', members);
+  fill('org_mgrs', mgrs);
   await env.DB.batch(stmts);
 
   return { ok: true, id: oid, created: isNew };
@@ -182,6 +212,7 @@ export async function dropOrg(env, id) {
   if (box) return { error: 'یک بخشِ مشترک به این گروه وصل است. اول آن را جدا کنید.' };
   await env.DB.batch([
     env.DB.prepare('DELETE FROM org_members WHERE org=?').bind(oid),
+    env.DB.prepare('DELETE FROM org_mgrs WHERE org=?').bind(oid),
     env.DB.prepare('DELETE FROM orgs WHERE id=?').bind(oid)
   ]);
   return { ok: true };

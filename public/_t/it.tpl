@@ -283,6 +283,32 @@ window.KARTABL_UNTIL = {{UNTIL}};
     font-family:var(--font-body); font-size:12.5px; background:var(--white); border:1px solid var(--card-border);
     color:var(--ink); border-radius:7px; padding:6px 10px; width:130px; text-align:center;
   }
+  /* یک پنجره دو کار می‌کند، پس باید بگوید کدام کار را دارد می‌کند */
+  /* جدول‌های دیتای شخصی: پهنای ستون از colgroup می‌آید، پس باید
+     table-layout ثابت باشد. width:max-content می‌گذارد جدول از قاب
+     پهن‌تر شود و tbl-wrap اسکرولِ افقی بدهد — بهتر از فشرده شدنِ
+     همه‌چیز. */
+  .pg-tab{ table-layout:fixed; width:max-content; min-width:100%; }
+  .pg-tab th{ position:relative; }
+  .pg-tab .pg-cell{ width:100%; box-sizing:border-box; }
+  /* دستهٔ کشیدن روی لبهٔ پایانیِ ستون — در صفحهٔ راست‌به‌چپ یعنی سمت چپ */
+  .pg-tab .pg-grip{
+    position:absolute; top:0; bottom:0; inset-inline-end:0; width:9px;
+    cursor:col-resize; user-select:none;
+  }
+  .pg-tab .pg-grip:hover{ background:var(--brass); opacity:.45; }
+  /* فهرستِ نسخه‌های پیشین */
+  .hist-row{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:8px 10px; border:1px solid var(--card-border); border-radius:9px;
+    margin-top:7px; font-size:12.5px; background:var(--paper-2);
+  }
+  .hist-row .hw{ font-weight:700; color:var(--ink-soft); min-width:90px; }
+  .hist-row .ht{ color:var(--ink-faint); white-space:nowrap; }
+  .hist-row .hs{ color:var(--ink-soft); flex:1; min-width:140px; line-height:1.8; }
+  .new-month-panel .mp-title{
+    font-size:12px; color:var(--ink-soft); font-weight:600; margin-inline-end:auto;
+  }
 
   /* ---------- Shell ---------- */
   .shell{ display:flex; align-items:flex-start; min-height:calc(100vh - 70px); }
@@ -1289,12 +1315,16 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <label>ماه</label>
     <select id="monthSelector"></select>
     <button class="btn btn-brass btn-sm" id="newMonthBtn">＋ ماه جدید</button>
+    <button class="btn btn-ghost btn-sm" id="renameMonthBtn" title="نام همین ماه را درست کن">✎ نام ماه</button>
     <span class="topbar-clock" id="topbarClock">--:--:--</span>
     <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   </div>
 </div>
 
+<!-- یک پنجره برای هر دو کار: ساختنِ ماه تازه و درست کردنِ نامِ همین ماه.
+     دو پنجرهٔ جدا یعنی دو مارک‌آپ و دو شیوه‌نامه که باید هم‌قدم بمانند. -->
 <div class="new-month-panel" id="newMonthPanel" style="display:none;">
+  <span class="mp-title" id="monthPanelTitle"></span>
   <input id="newMonthName" type="text" placeholder="نام ماه، مثلاً آبان">
   <input id="newMonthYear" type="text" placeholder="سال، مثلاً ۱۴۰۴">
   <button class="btn btn-brass btn-sm" id="confirmNewMonthBtn">شروع این ماه</button>
@@ -1639,6 +1669,19 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-settings">
       <div class="section-title">تنظیمات کارتابل</div>
       <div class="section-sub">رمز ورود، ربات پشتیبان، و وضعیت همگام‌سازی</div>
+
+      <div class="panel">
+        <h3 class="set-h">🕘 نسخه‌های پیشین</h3>
+        <p class="set-p">کارتابل از خودش عکس نگه می‌دارد — دست‌کم ده دقیقه فاصله، و شصت تای آخر.
+          اگر چیزی پاک شد یا اشتباهی از فایل بازنویسی شد، همین‌جا می‌شود برش گرداند.
+          کنارِ هر نسخه نوشته شده داخلش چه بوده، تا لازم نباشد حدس بزنید.
+          برگرداندن هم خودش یک عکسِ تازه از وضعیت فعلی می‌گیرد، پس برگشتنش هم ممکن است.</p>
+        <div class="set-row">
+          <button type="button" class="btn btn-ghost" id="histBtn">نشان بده</button>
+          <span class="set-state" id="histState"></span>
+        </div>
+        <div id="histList"></div>
+      </div>
 
       <div class="panel">
         <h3 class="set-h">☁️ همگام‌سازی</h3>
@@ -2347,10 +2390,46 @@ function switchToMonth(monthName, year){
   state.currentMonthKey = key;
   state.meta.month = monthName;
   state.meta.year = year;
+  afterMonthChange();
+}
+
+/* هر چیزی که بعد از عوض شدنِ ماه باید دوباره کشیده شود. یک فهرست، دو
+   صدازننده (عوض کردنِ ماه و تغییرِ نامش) — دو فهرست یعنی یکی‌شان یک
+   روز چیزی می‌گیرد که آن یکی نمی‌گیرد. این دنباله در دو قالب فرق
+   دارد، پس هر کدام مالِ خودش را دارد. */
+function afterMonthChange(){
   renderMeta();
   renderMonthSelector();
   renderAll();
   scheduleSave();
+}
+/* نامِ یک ماه را درست می‌کند. کلیدِ ماه خودش از نام و سال ساخته می‌شود،
+   پس «تغییر نام» یعنی جابه‌جایی همان داده زیرِ کلیدِ تازه — نه ساختنِ
+   ماهی دیگر. اگر ماهی با نامِ تازه از قبل باشد، جلویش گرفته می‌شود:
+   وگرنه دادهٔ یکی‌شان بی‌صدا روی آن یکی می‌افتاد. */
+function renameMonth(oldKey, monthName, year){
+  monthName = String(monthName||"").trim();
+  year = String(year||"").trim();
+  if(!monthName || !year){ alert("نام ماه و سال را کامل وارد کنید."); return false; }
+  if(!oldKey || !state.monthsData[oldKey]){ alert("ماهی برای تغییر نام پیدا نشد."); return false; }
+  const key = monthKeyOf(monthName, year);
+  if(key === oldKey) return true;
+  if(state.monthsData[key]){ alert("ماهی با همین نام و سال از قبل هست."); return false; }
+  /* نسخهٔ در دستِ کار اول برمی‌گردد داخلِ نقشه، وگرنه تغییرهای همین
+     ماه که هنوز ننشسته‌اند گم می‌شوند. */
+  if(state.currentMonthKey) state.monthsData[state.currentMonthKey] = { tasks: state.tasks, days: state.days };
+  state.monthsData[key] = state.monthsData[oldKey];
+  delete state.monthsData[oldKey];
+  if(state.currentMonthKey === oldKey){
+    state.currentMonthKey = key;
+    state.meta.month = monthName;
+    state.meta.year = year;
+  }
+  /* کلیدِ یادآوری‌های بسته‌شده نامِ ماه را دارد، پس یکی‌دو یادآوری که
+     امروز بسته شده بود ممکن است دوباره پیدا شود. چون آن فهرست فقط تا
+     بسته شدنِ صفحه زنده است، مهاجرتش ارزشِ کد نداشت. */
+  afterMonthChange();
+  return true;
 }
 function renderMonthSelector(){
   const sel = document.getElementById("monthSelector");
@@ -3657,21 +3736,34 @@ async function importDatabaseFromFile(){
   try{
     dbWorkbook = wb;
     dbFileName = file.name;
-    backupData = { vm: parseServersSheet(wb) };
-    dailyLog = parseDailyLogSheet(wb);
-    companiesData = { companies: parseCompaniesSheet(wb) };
-    mvpnData = { lines: parseMvpnSheetFlat(wb) };
-    const remote = parseRemoteChecklistSheet(wb);
-    remoteBackupData = { roster: remote.roster };
-    if(remote.dates) state.remoteCheckDates = remote.dates;
-    if(remote.checks) state.remoteChecks = remote.checks;
+    /* برگه‌ای که در فایل نیست یعنی «دربارهٔ این بخش حرفی ندارم»، نه
+       «این بخش را خالی کن». پیش از این، خواندنِ هر فایلی که مثلاً برگهٔ
+       MVPN نداشت، خطوط MVPN را بی‌صدا صفر می‌کرد — و چون بقیهٔ بخش‌ها
+       سرِ جایشان بودند، افتِ کل آن‌قدر نبود که نگهبانِ سرور را بیدار
+       کند. همین یک خط، داده را می‌برد.
+       این چیزی است که کاربر دو بار دیدش: «بازم سرویس MVPN پرید». */
+    const has = n=> (wb.SheetNames||[]).indexOf(n) >= 0;
+    const skipped = [];
+    if(has("Servers")) backupData = { vm: parseServersSheet(wb) }; else skipped.push("سرورها");
+    if(has("DailyBackupLog")) dailyLog = parseDailyLogSheet(wb); else skipped.push("بکاپ روزانه");
+    if(has("Companies")) companiesData = { companies: parseCompaniesSheet(wb) }; else skipped.push("شرکت‌ها");
+    if(has("MVPN")) mvpnData = { lines: parseMvpnSheetFlat(wb) }; else skipped.push("MVPN");
+    if(has("RemoteChecklist")){
+      const remote = parseRemoteChecklistSheet(wb);
+      remoteBackupData = { roster: remote.roster };
+      if(remote.dates) state.remoteCheckDates = remote.dates;
+      if(remote.checks) state.remoteChecks = remote.checks;
+    } else skipped.push("چک‌لیست ریموت");
     /* بخشِ رمزدار عمداً از فایل خوانده نمی‌شود: کلیدش دستِ خودِ کاربر
        است و اگر این‌جا جایگزین شود، آن‌چه باز کرده بود قفل می‌ماند. */
     dbSyncedAt = new Date().toISOString();
     persistDbCache();
     scheduleSave();
     renderServers(); renderCompanies(); renderMvpn(); renderRemoteChecklist(); renderCharts();
-    updateDbStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست.");
+    /* صادقانه بگوید چه چیزی را نخوانده، وگرنه آدم فکر می‌کند همه‌چیز
+       از فایل آمده و بعداً سرِ یک بخشِ قدیمی گیج می‌شود. */
+    updateDbStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست." +
+      (skipped.length ? " — این بخش‌ها در فایل نبودند و دست‌نخورده ماندند: " + skipped.join("، ") : ""));
   }catch(e){
     console.error(e);
     updateDbStatus("⚠️ فایل خوانده شد ولی ساختارش با کارتابل نمی‌خواند.");
@@ -5397,13 +5489,97 @@ async function importVaultGridFromXlsx(sec){
         " برگه خوانده شد و رمز شد.\n\nفایل دیگر لازم نیست؛ داده داخلِ کارتابل نشست.");
 }
 
+/* ---------- پهنای ستون‌های دیتای شخصی ----------
+   ستون‌ها تا حالا همه یک اندازه درمی‌آمدند، چون کادرِ متن پهنای
+   پیش‌فرضِ خودش را دارد و به محتوا کاری ندارد: «ردیف» با یک رقم همان‌قدر
+   جا می‌گرفت که «توضیح» با یک بند متن.
+
+   دو چیز با هم:
+     • ستون خودش به اندازهٔ محتوایش باز می‌شود — با اندازه‌گیریِ واقعیِ
+       متن، نه شمردنِ نویسه‌ها: در فارسی عرضِ نویسه‌ها یکی نیست و
+       شمردن، «الف» و «ش» را هم‌اندازه حساب می‌کند.
+     • و اگر خوشتان نیامد، لبهٔ ستون را بکشید. همان را یادش می‌ماند.
+
+   پهنا راز نیست، پس در localStorage می‌نشیند نه داخلِ بخشِ رمزشده —
+   وگرنه هر بار کشیدنِ یک ستون، کلِ دیتای شخصی دوباره رمز می‌شد. */
+const PG_MIN = 58, PG_MAX = 420;
+let pgMeter = null;
+function pgTextWidth(t, bold){
+  if(!pgMeter) pgMeter = document.createElement("canvas").getContext("2d");
+  pgMeter.font = (bold ? "600 " : "") + "12.5px " + getComputedStyle(document.body).fontFamily;
+  return pgMeter.measureText(String(t == null ? "" : t)).width;
+}
+const pgKey = sec => STORE_KEY + ":pgw:" + ((sec && sec.id) || "");
+function pgSavedWidths(sec){
+  try{
+    const r = JSON.parse(localStorage.getItem(pgKey(sec)) || "null");
+    return (r && typeof r === "object") ? r : {};
+  }catch(e){ return {}; }
+}
+function pgSaveWidth(sec, ci, w){
+  const all = pgSavedWidths(sec);
+  all["c" + ci] = Math.round(w);
+  try{ localStorage.setItem(pgKey(sec), JSON.stringify(all)); }catch(e){}
+}
+function pgClearWidths(sec){
+  try{ localStorage.removeItem(pgKey(sec)); }catch(e){}
+}
+/* پهنای هر ستون: بلندترین چیزی که داخلش هست، با سقف و کف. سقف لازم
+   است وگرنه یک یادداشتِ بلند، بقیهٔ جدول را از صفحه بیرون می‌اندازد. */
+function pgWidths(sec, cols, rows){
+  const saved = pgSavedWidths(sec);
+  return cols.map((c, ci)=>{
+    if(saved["c" + ci]) return Math.min(PG_MAX * 2, Math.max(24, saved["c" + ci]));
+    let w = pgTextWidth(c, true);
+    for(const r of rows){
+      const v = r["c" + ci];
+      if(v) w = Math.max(w, pgTextWidth(v));
+    }
+    return Math.round(Math.min(PG_MAX, Math.max(PG_MIN, w + 26)));
+  });
+}
+/* کشیدنِ لبهٔ ستون. صفحه راست‌به‌چپ است، پس لبهٔ پایانیِ هر ستون سمتِ
+   چپش می‌افتد و بردنِ موشواره به چپ یعنی پهن‌تر. */
+function pgWireResize(sec, table){
+  table.querySelectorAll(".pg-grip").forEach(g=>{
+    g.addEventListener("mousedown", e=>{
+      e.preventDefault();
+      const ci = parseInt(g.getAttribute("data-ci"), 10);
+      const col = table.querySelector('col[data-ci="' + ci + '"]');
+      if(!col) return;
+      const x0 = e.clientX, w0 = col.offsetWidth || parseInt(col.style.width, 10) || PG_MIN;
+      document.body.style.cursor = "col-resize";
+      const move = ev=>{
+        const w = Math.max(24, w0 + (x0 - ev.clientX));
+        col.style.width = w + "px";
+      };
+      const up = ()=>{
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        document.body.style.cursor = "";
+        pgSaveWidth(sec, ci, parseInt(col.style.width, 10) || w0);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    });
+  });
+}
+
 function renderPersonalGrid(sec){
   const body = document.getElementById("personalTabBody");
   if(!body) return;
   const cols = vaultGridCols(sec);
   const rows = vaultRows(sec);
 
-  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join("") + `<th style="width:34px;"></th>`;
+  const widths = pgWidths(sec, cols, rows);
+  /* colgroup + table-layout:fixed تنها راهی است که پهنای ستون واقعاً
+     اعمال شود؛ بدون آن مرورگر خودش تصمیم می‌گیرد و کادرهای متن همه را
+     هم‌اندازه می‌کنند. */
+  const colsHtml = cols.map((c, ci)=>`<col data-ci="${ci}" style="width:${widths[ci]}px">`).join("")
+    + `<col style="width:34px">`;
+  const head = cols.map((c, ci)=>
+      `<th><span class="pg-grip" data-ci="${ci}" title="برای تغییر پهنا بکشید"></span>${escapeHtml(c)}</th>`
+    ).join("") + `<th></th>`;
   const bodyHtml = rows.map((r, i)=>
     "<tr>" + cols.map((c, ci)=>
       `<td><input type="text" class="pg-cell" data-row="${i}" data-col="c${ci}"
@@ -5414,19 +5590,27 @@ function renderPersonalGrid(sec){
   body.innerHTML = `
     <div class="panel" style="padding:14px;">
       <div class="tbl-wrap">
-        <table>
+        <table class="pg-tab">
+          <colgroup>${colsHtml}</colgroup>
           <thead><tr>${head}</tr></thead>
           <tbody>${bodyHtml || `<tr><td colspan="${cols.length+1}" style="color:var(--ink-faint); font-size:12.5px; text-align:center; padding:14px;">هنوز چیزی ثبت نشده.</td></tr>`}</tbody>
         </table>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
         <button type="button" class="btn btn-brass btn-sm" id="pgAddRow">＋ افزودن ردیف</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="pgAutoW"
+                title="پهنای ستون‌ها را دوباره از روی محتوا حساب کن">↔ پهنای خودکار</button>
         ${xlsxOff() ? "" : '<button type="button" class="btn btn-ghost btn-sm" id="pgImportXlsx" title="ستون‌ها به ترتیب می‌نشینند">⬆ خواندن از اکسل</button>'}
       </div>
     </div>`;
 
   const pgImp = document.getElementById("pgImportXlsx");
   if(pgImp) pgImp.addEventListener("click", ()=> importVaultGridFromXlsx(sec));
+
+  const pgTab = body.querySelector(".pg-tab");
+  if(pgTab) pgWireResize(sec, pgTab);
+  const pgAuto = document.getElementById("pgAutoW");
+  if(pgAuto) pgAuto.addEventListener("click", ()=>{ pgClearWidths(sec); renderPersonalGrid(sec); });
 
   body.querySelectorAll(".pg-cell").forEach(inp=>{
     inp.addEventListener("change", ()=>{
@@ -5964,26 +6148,63 @@ function setupMeta(){
     const [year, month] = key.split("|");
     switchToMonth(month, year);
   });
-  const newBtn = document.getElementById("newMonthBtn");
   const panel = document.getElementById("newMonthPanel");
+  const nameEl = document.getElementById("newMonthName");
+  const yearEl = document.getElementById("newMonthYear");
+  const titleEl = document.getElementById("monthPanelTitle");
+  const okEl = document.getElementById("confirmNewMonthBtn");
+  /* حالتِ پنجره — «new» یا «rename». کلیدی که موقع باز شدن جاری بوده
+     نگه داشته می‌شود، وگرنه اگر وسطِ کار ماه عوض شود نامِ ماهِ دیگری
+     درست می‌شد. */
+  let mpMode = "new", mpKey = null;
+  const openPanel = (mode)=>{
+    mpMode = mode;
+    mpKey = state.currentMonthKey || null;
+    if(mode === "rename"){
+      const parts = String(mpKey||"").split("|");
+      titleEl.textContent = "نامِ این ماه را درست کن:";
+      nameEl.value = parts[1] || "";
+      yearEl.value = parts[0] || "";
+      okEl.textContent = "ثبت نام تازه";
+    } else {
+      titleEl.textContent = "ماه تازه:";
+      nameEl.value = ""; yearEl.value = "";
+      okEl.textContent = "شروع این ماه";
+    }
+    panel.style.display = "flex";
+    nameEl.focus();
+  };
+  const closePanel = ()=>{ panel.style.display = "none"; };
+
+  const newBtn = document.getElementById("newMonthBtn");
   if(newBtn) newBtn.addEventListener("click", ()=>{
-    panel.style.display = panel.style.display==="none" ? "flex" : "none";
-    document.getElementById("newMonthName").focus();
+    if(panel.style.display !== "none" && mpMode === "new") closePanel(); else openPanel("new");
+  });
+  const renameBtn = document.getElementById("renameMonthBtn");
+  if(renameBtn) renameBtn.addEventListener("click", ()=>{
+    if(panel.style.display !== "none" && mpMode === "rename") closePanel(); else openPanel("rename");
   });
   const cancelBtn = document.getElementById("cancelNewMonthBtn");
-  if(cancelBtn) cancelBtn.addEventListener("click", ()=>{ panel.style.display = "none"; });
-  const confirmBtn = document.getElementById("confirmNewMonthBtn");
-  if(confirmBtn) confirmBtn.addEventListener("click", ()=>{
-    const name = document.getElementById("newMonthName").value.trim();
-    const year = document.getElementById("newMonthYear").value.trim();
+  if(cancelBtn) cancelBtn.addEventListener("click", closePanel);
+  if(okEl) okEl.addEventListener("click", ()=>{
+    const name = nameEl.value.trim();
+    const year = yearEl.value.trim();
     if(!name || !year){ alert("نام ماه و سال را کامل وارد کنید."); return; }
-    const key = monthKeyOf(name, year);
-    if(state.monthsData[key] && !confirm("این ماه از قبل وجود دارد. بروید به همان ماه؟")) return;
-    switchToMonth(name, year);
-    panel.style.display = "none";
-    document.getElementById("newMonthName").value = "";
-    document.getElementById("newMonthYear").value = "";
+    if(mpMode === "rename"){
+      if(!renameMonth(mpKey, name, year)) return;
+    } else {
+      const key = monthKeyOf(name, year);
+      if(state.monthsData[key] && !confirm("این ماه از قبل وجود دارد. بروید به همان ماه؟")) return;
+      switchToMonth(name, year);
+    }
+    closePanel();
+    nameEl.value = ""; yearEl.value = "";
   });
+  /* Enter هم همان دکمه را می‌زند — کادرِ کوچکی که دکمه‌اش را باید با
+     موشواره زد، آدم را اذیت می‌کند. */
+  [nameEl, yearEl].forEach(el=> el && el.addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); okEl.click(); }
+  }));
 }
 
 function setupToolbar(){
@@ -6352,6 +6573,46 @@ async function refreshBackupSettings(){
   }
 }
 
+/* ---------- نسخه‌های پیشین ----------
+   سرور از هر نوشتن عکس نگه می‌دارد، ولی تا امروز راهی برای دیدنشان در
+   خودِ کارتابل نبود و برگرداندن فقط از راهِ دستور ممکن بود. */
+function histFa(ms){
+  try{ return new Intl.DateTimeFormat("fa-IR",{ dateStyle:"short", timeStyle:"short" }).format(new Date(ms)); }
+  catch(e){ return String(ms); }
+}
+function histSum(s){
+  if(!s) return "—";
+  const parts = Object.keys(s).map(k=> escapeHtml(k) + " " + toPersianDigits(s[k]));
+  return parts.length ? parts.join(" · ") : "خالی";
+}
+async function loadHistory(){
+  const box = document.getElementById("histList");
+  const st  = document.getElementById("histState");
+  if(!box) return;
+  st.textContent = "در حال خواندن…";
+  const r = await apiCall("/state/history");
+  if(!r.ok){ st.textContent = "نشد: " + ((r.data&&r.data.error)||"خطا"); return; }
+  const items = (r.data.items||[]);
+  st.textContent = items.length ? toPersianDigits(items.length) + " نسخه" : "هنوز نسخه‌ای ثبت نشده.";
+  box.innerHTML = items.map(it=>
+    '<div class="hist-row">' +
+      '<span class="hw">' + (it.which === "db" ? "دیتابیس" : "کارها و ماه‌ها") + '</span>' +
+      '<span class="ht">' + escapeHtml(histFa(it.at)) + '</span>' +
+      '<span class="hs">' + histSum(it.sum) + '</span>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-hist="' + it.id + '">برگردان</button>' +
+    '</div>').join("");
+  box.querySelectorAll("[data-hist]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("این نسخه جای وضعیت فعلی بنشیند؟\n\nاز وضعیت فعلی هم عکس گرفته می‌شود، پس اگر پشیمان شدید برمی‌گردد.")) return;
+      btn.disabled = true;
+      const rr = await apiCall("/state/restore", { method:"POST", body: JSON.stringify({ id: Number(btn.getAttribute("data-hist")) }) });
+      if(!rr.ok){ btn.disabled = false; st.textContent = "نشد: " + ((rr.data&&rr.data.error)||"خطا"); return; }
+      st.textContent = "✓ برگشت. صفحه دوباره باز می‌شود…";
+      setTimeout(()=> location.reload(), 900);
+    });
+  });
+}
+
 function setupSettings(){
   if(window.KARTABL_OFFLINE){
     /* در نسخهٔ پشتیبان نه رمزی هست که عوض شود نه رباتی که تنظیم شود */
@@ -6359,6 +6620,9 @@ function setupSettings(){
     if(nav) nav.style.display = "none";
     return;
   }
+  const histBtn = document.getElementById("histBtn");
+  if(histBtn) histBtn.addEventListener("click", loadHistory);
+
   /* --- عوض کردن رمز --- */
   const form = document.getElementById("passForm");
   if(form) form.addEventListener("submit", async (e)=>{

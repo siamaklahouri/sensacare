@@ -61,6 +61,29 @@
     ".sh-empty{padding:26px 10px;text-align:center;color:var(--ink-faint);font-size:12.5px;line-height:2}",
     ".sh-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:10px}",
     ".sh-sum{font-size:12px;color:var(--ink-soft);font-weight:600}",
+    ".sh-filter{font-family:var(--font-body);font-size:12px;padding:5px 8px;border-radius:7px;",
+    /* ---- نمای مدیر ---- */
+    ".mg-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}",
+    ".mg-kpi{border:1px solid var(--card-border);border-radius:12px;padding:12px 14px;",
+    "  display:flex;flex-direction:column;gap:3px;background:var(--white)}",
+    ".mg-kpi .n{font-size:22px;font-weight:700;color:var(--ink)}",
+    ".mg-kpi .t{font-size:11.5px;color:var(--ink-faint)}",
+    ".mg-kpi.done .n{color:var(--green-ink,#1E7A4A)}",
+    ".mg-kpi.doing .n{color:var(--blue-ink,#1A4FA3)}",
+    ".mg-kpi.todo .n{color:var(--amber-ink,#B5791B)}",
+    ".mg-kpi.bad .n{color:var(--red-ink,#A6222B)}",
+    ".mg-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}",
+    ".mg-h{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:10px}",
+    ".mg-cw{height:230px;position:relative}",
+    ".mg-person{margin-bottom:16px}",
+    ".mg-pn{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:baseline;",
+    "  gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid var(--card-border)}",
+    ".mg-pc{font-size:11.5px;font-weight:400;color:var(--ink-faint)}",
+    ".mg-pc .late{color:var(--red-ink,#A6222B);font-weight:600}",
+    ".mg-tab td{padding:6px 5px;font-size:12.5px;vertical-align:top}",
+    ".mg-tab td.w{white-space:nowrap;color:var(--ink-faint);font-size:11.5px;width:1%}",
+    ".mg-tab tr.late td{background:var(--red-bg,#F6E1E2)}",
+    "  border:1px solid var(--card-border);background:var(--white);color:var(--ink);width:auto}",
     /* خانه‌ای که این آدم اجازه‌اش را ندارد: خوانا می‌ماند ولی معلوم است
        که کادر نیست. خاکستریِ مرده نمی‌شود، چون محتوایش هنوز مهم است. */
     ".sh-tab .ro{display:block;font-size:12px;padding:6px 7px;color:var(--ink-soft);",
@@ -134,6 +157,16 @@
       '<div class="panel">' +
         '<div class="sh-bar">' +
           '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>' +
+          /* فیلتر فقط برای جدول‌هایی که «مسئول» دارند معنی می‌دهد؛
+             در فهرستِ سرورها «کارِ من» چیزی نیست. */
+          (hasWho(box)
+            ? '<select class="sh-filter" data-shfil="' + esc(box.id) + '">' +
+                '<option value="all">همه</option>' +
+                '<option value="mine">وظایفِ من</option>' +
+                '<option value="made">نوشتهٔ من</option>' +
+                '<option value="open">هنوز تمام نشده</option>' +
+              '</select>'
+            : '') +
           '<span class="sh-sum" data-shsum="' + esc(box.id) + '"></span>' +
           '<span class="sh-live" style="margin-inline-start:auto"><span class="dot"></span>زنده</span>' +
         "</div>" +
@@ -170,6 +203,11 @@
     });
 
     sec.querySelector("[data-shadd]").addEventListener("click", function () { addRow(box.id); });
+    var fil = sec.querySelector("[data-shfil]");
+    if (fil) fil.addEventListener("change", function () {
+      FILTER[box.id] = fil.value;
+      paint(box.id, null);
+    });
   }
 
   /* ---------- قاعده‌های دسترسی ----------
@@ -187,7 +225,9 @@
     if (isMgr(box)) return true;
     var owner = r && r.owner;
     if (rule === "owner") return !owner || owner === me();
-    if (rule === "doer") {
+    /* مدیر بالاتر رد شده، پس این‌جا mgrdoer و doer یک کار می‌کنند.
+       تا وقتی مسئولی انتخاب نشده، سازندهٔ ردیف همان نقش را دارد. */
+    if (rule === "doer" || rule === "mgrdoer") {
       var who = r && r.v && r.v.who;
       return who ? who === me() : (!owner || owner === me());
     }
@@ -198,6 +238,30 @@
     if (!box.rowlock) return true;
     var owner = r && r.owner;
     return !owner || owner === me() || isMgr(box);
+  }
+
+  var FILTER = {};   /* id بخش → حالتِ فیلتر */
+  function hasWho(box) {
+    return (box.cols || []).some(function (c) { return c.kind === "who"; });
+  }
+  /* «تمام نشده» از روی ستونِ وضعیت خوانده می‌شود، و گزینه‌هایش را از
+     خودِ ستون می‌گیرد نه از یک فهرستِ دستی: هر نوعِ جدولی واژهٔ خودش
+     را دارد و فهرستِ دستی یک روز از آن عقب می‌افتد. */
+  function doneWord(box) {
+    var c = (box.cols || []).find(function (x) { return x.k === "stat" && x.opts; });
+    if (!c) return null;
+    return c.opts.find(function (o) { return o.indexOf("انجام شد") === 0; }) || null;
+  }
+  function passFilter(box, r) {
+    var mode = FILTER[box.id] || "all";
+    if (mode === "all") return true;
+    if (mode === "mine") return (r.v && r.v.who) === me();
+    if (mode === "made") return (r.owner || r.by) === me();
+    if (mode === "open") {
+      var d = doneWord(box);
+      return !d || (r.v && r.v.stat) !== d;
+    }
+    return true;
   }
 
   function nameOf(box, slug) {
@@ -345,7 +409,9 @@
     var body = document.querySelector('[data-shbody="' + id + '"]');
     if (!body) return;
     var s = st(id);
-    var rids = Object.keys(s.rows).sort(function (a, b) {
+    var rids = Object.keys(s.rows).filter(function (k) {
+      return passFilter(box, s.rows[k]);
+    }).sort(function (a, b) {
       return (s.rows[a].updated || 0) - (s.rows[b].updated || 0);
     });
 
@@ -353,9 +419,11 @@
     if (changed) for (var i = 0; i < changed.length; i++) fresh[changed[i].rid] = true;
 
     /* ردیف‌هایی که رفته‌اند */
+    var keep = {};
+    for (var q = 0; q < rids.length; q++) keep[rids[q]] = true;
     var have = body.querySelectorAll("tr[data-rid]");
     for (var j = have.length - 1; j >= 0; j--) {
-      if (!s.rows[have[j].getAttribute("data-rid")]) have[j].remove();
+      if (!keep[have[j].getAttribute("data-rid")]) have[j].remove();
     }
     /* تازه‌ها و عوض‌شده‌ها */
     for (var k = 0; k < rids.length; k++) {
@@ -386,9 +454,12 @@
     var el = document.querySelector('[data-shsum="' + box.id + '"]');
     if (!el) return;
     var s = st(box.id);
-    var rids = Object.keys(s.rows);
+    var all = Object.keys(s.rows);
+    var rids = all.filter(function (k) { return passFilter(box, s.rows[k]); });
     var moneyCols = box.cols.filter(function (c) { return c.kind === "money"; });
-    var bits = [faNum(rids.length) + " ردیف"];
+    var bits = [rids.length === all.length
+      ? faNum(all.length) + " ردیف"
+      : faNum(rids.length) + " از " + faNum(all.length) + " ردیف"];
     for (var i = 0; i < moneyCols.length; i++) {
       var sum = 0;
       for (var j = 0; j < rids.length; j++) sum += Number(s.rows[rids[j]].v[moneyCols[i].k] || 0);
@@ -560,6 +631,215 @@
     }
   });
 
+
+  /* ==================== نمای مدیر ====================
+     کسی که مدیرِ دست‌کم یک جدولِ تیمی است، یک بخشِ تازه در نوار کنار
+     می‌گیرد: همهٔ کارهای همهٔ نفراتش، یک‌جا.
+
+     چرا این‌جا و نه در قالبِ کارتابل؟ چون داده‌اش همین‌جاست. اگر در
+     قالب می‌نشست، باید همان کشیدنِ ردیف‌ها و همان قاعده‌های دسترسی دو
+     بار نوشته می‌شد — یک بار برای هر قالب.
+
+     پالتِ نمودار از خودِ صفحه می‌آید (chartTone)، نه یک پالتِ تازه:
+     رنگِ «انجام شد» باید همان رنگی باشد که کاربر جای دیگرِ کارتابل
+     دیده، وگرنه دو زبانِ رنگی در یک صفحه می‌شود. */
+  var MGR_CHARTS = {};
+
+  function mgrBoxes() {
+    return BOXES.filter(function (b) { return isMgr(b) && hasWho(b); });
+  }
+
+  /* تاریخ شمسی «۱۴۰۴/۰۸/۱۵» → عدد ۱۴۰۴۰۸۱۵، برای مقایسه. رشته‌ها را
+     مستقیم مقایسه نمی‌کنیم چون «۱۴۰۴/۹/۱» و «۱۴۰۴/۱۰/۱» را برعکس
+     می‌چیند. */
+  function jNum(t) {
+    var d = String(t == null ? "" : t)
+      .replace(/[۰-۹]/g, function (c) { return "۰۱۲۳۴۵۶۷۸۹".indexOf(c); })
+      .match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    return d ? Number(d[1]) * 10000 + Number(d[2]) * 100 + Number(d[3]) : 0;
+  }
+  function todayJ() {
+    try {
+      return jNum(new Intl.DateTimeFormat("en-u-ca-persian-nu-latn", {
+        year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date()).replace(/[^\d]/g, "/"));
+    } catch (e) { return 0; }
+  }
+
+  function mgrCollect() {
+    var boxes = mgrBoxes();
+    var today = todayJ();
+    var people = {};     /* slug → شمارش‌ها */
+    var rows = [];
+    boxes.forEach(function (b) {
+      var done = doneWord(b);
+      var s = st(b.id);
+      Object.keys(s.rows).forEach(function (rid) {
+        var r = s.rows[rid];
+        var who = (r.v && r.v.who) || "";
+        var stat = (r.v && r.v.stat) || "";
+        var due = jNum(r.v && r.v.due);
+        var isDone = done && stat === done;
+        var late = !isDone && due && today && due < today;
+        var p = people[who] || (people[who] = { slug: who, all: 0, done: 0, doing: 0, todo: 0, late: 0 });
+        p.all++;
+        if (isDone) p.done++;
+        else if (stat && stat.indexOf("در حال") === 0) p.doing++;
+        else p.todo++;
+        if (late) p.late++;
+        rows.push({ box: b, rid: rid, who: who, task: (r.v && r.v.task) || "",
+                    stat: stat, due: (r.v && r.v.due) || "", late: late, done: isDone,
+                    pri: (r.v && r.v.pri) || "" });
+      });
+    });
+    return { boxes: boxes, people: people, rows: rows };
+  }
+
+  function mgrMount() {
+    if (!mgrBoxes().length || document.getElementById("view-shared-mgr")) return;
+    var nav = document.querySelector(".nav-list");
+    var host = document.querySelector(".content");
+    if (!nav || !host) return;
+
+    var btn = document.createElement("button");
+    btn.className = "navbtn";
+    btn.setAttribute("data-view", "shared-mgr");
+    btn.innerHTML = '<span class="ic">👥</span> نمای مدیر';
+    var before = nav.querySelector('.navbtn[data-view="guide"]')
+              || nav.querySelector('.navbtn[data-view="settings"]');
+    nav.insertBefore(btn, before || null);
+
+    var sec = document.createElement("section");
+    sec.className = "view"; sec.id = "view-shared-mgr";
+    sec.innerHTML =
+      '<div class="section-title">نمای مدیر</div>' +
+      '<div class="section-sub">کارهای همهٔ نفراتِ گروه‌هایی که مدیرشان هستید، یک‌جا.</div>' +
+      '<div class="panel"><div class="mg-kpis" id="mgKpis"></div></div>' +
+      '<div class="mg-charts">' +
+        '<div class="panel"><div class="mg-h">وضعیتِ کلی</div>' +
+          '<div class="mg-cw"><canvas id="mgChartStat"></canvas></div></div>' +
+        '<div class="panel"><div class="mg-h">کارِ هر نفر</div>' +
+          '<div class="mg-cw"><canvas id="mgChartWho"></canvas></div></div>' +
+      '</div>' +
+      '<div class="panel"><div class="mg-h">کارها به تفکیکِ نفر</div>' +
+        '<div id="mgList"></div></div>';
+    var foot = host.querySelector(".appfoot");
+    host.insertBefore(sec, foot || null);
+
+    btn.addEventListener("click", function () {
+      var all = document.querySelectorAll(".navbtn");
+      for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
+      btn.classList.add("active");
+      var vs = document.querySelectorAll(".view");
+      for (var j = 0; j < vs.length; j++) vs[j].classList.remove("active");
+      sec.classList.add("active");
+      mgrRefresh();
+    });
+  }
+
+  /* ردیف‌های همهٔ جدول‌های زیرِ دستِ مدیر را می‌خواند. هر بخش یک
+     درخواست — با since=0 چون این نما کلِ تصویر را می‌خواهد، نه تغییرها. */
+  async function mgrRefresh() {
+    var boxes = mgrBoxes();
+    await Promise.all(boxes.map(function (b) { return pull(b.id, true); }));
+    mgrPaint();
+  }
+
+  function mgrPaint() {
+    var d = mgrCollect();
+    var tone = (window.chartTone ? window.chartTone() : null) ||
+      { done: "#1E7A4A", doing: "#1A4FA3", todo: "#B5791B", bad: "#A6222B",
+        none: "#CFD7E0", surface: "#FFFFFF", cat: ["#1A4FA3"] };
+
+    var tot = { all: 0, done: 0, doing: 0, todo: 0, late: 0 };
+    Object.keys(d.people).forEach(function (k) {
+      var p = d.people[k];
+      tot.all += p.all; tot.done += p.done; tot.doing += p.doing;
+      tot.todo += p.todo; tot.late += p.late;
+    });
+
+    var kpi = document.getElementById("mgKpis");
+    if (kpi) kpi.innerHTML = [
+      ["کل کارها", tot.all, ""],
+      ["انجام شده", tot.done, "done"],
+      ["در حال انجام", tot.doing, "doing"],
+      ["انجام نشده", tot.todo, "todo"],
+      ["از مهلت گذشته", tot.late, "bad"]
+    ].map(function (x) {
+      return '<div class="mg-kpi ' + x[2] + '"><span class="n">' + faNum(x[1]) +
+             '</span><span class="t">' + esc(x[0]) + "</span></div>";
+    }).join("");
+
+    var slugs = Object.keys(d.people).sort(function (a, b) {
+      return d.people[b].all - d.people[a].all;
+    });
+
+    mgrChart("mgChartStat", {
+      type: "doughnut",
+      data: { labels: ["انجام شده", "در حال انجام", "انجام نشده"],
+        datasets: [{ data: [tot.done, tot.doing, tot.todo],
+          backgroundColor: [tone.done, tone.doing, tone.todo],
+          borderColor: tone.surface, borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "58%",
+        plugins: { legend: { position: "bottom" } } }
+    });
+
+    mgrChart("mgChartWho", {
+      type: "bar",
+      data: { labels: slugs.map(function (k) { return nameOfAny(d.boxes, k); }),
+        datasets: [
+          { label: "انجام شده", data: slugs.map(function (k) { return d.people[k].done; }),
+            backgroundColor: tone.done },
+          { label: "در حال انجام", data: slugs.map(function (k) { return d.people[k].doing; }),
+            backgroundColor: tone.doing },
+          { label: "انجام نشده", data: slugs.map(function (k) { return d.people[k].todo; }),
+            backgroundColor: tone.todo }
+        ] },
+      options: { responsive: true, maintainAspectRatio: false,
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+        plugins: { legend: { position: "bottom" } } }
+    });
+
+    var list = document.getElementById("mgList");
+    if (!list) return;
+    if (!d.rows.length) {
+      list.innerHTML = '<div class="sh-empty">هنوز کاری ثبت نشده.</div>';
+      return;
+    }
+    list.innerHTML = slugs.map(function (k) {
+      var p = d.people[k];
+      var mine = d.rows.filter(function (r) { return r.who === k; });
+      return '<div class="mg-person"><div class="mg-pn">' +
+        esc(k ? nameOfAny(d.boxes, k) : "بدونِ مسئول") +
+        '<span class="mg-pc">' + faNum(p.done) + " از " + faNum(p.all) + " انجام شده" +
+        (p.late ? ' · <b class="late">' + faNum(p.late) + " از مهلت گذشته</b>" : "") +
+        "</span></div>" +
+        '<table class="sh-tab mg-tab"><tbody>' + mine.map(function (r) {
+          return "<tr" + (r.late ? ' class="late"' : "") + ">" +
+            "<td>" + esc(r.task || "—") + "</td>" +
+            '<td class="w">' + esc(r.box.title) + "</td>" +
+            '<td class="w">' + esc(r.due || "—") + "</td>" +
+            '<td class="w">' + esc(r.stat || "—") + "</td></tr>";
+        }).join("") + "</tbody></table></div>";
+    }).join("");
+  }
+
+  /* اسمِ آدم ممکن است در هر کدام از جدول‌ها باشد؛ اولین جایی که پیدا شد */
+  function nameOfAny(boxes, slug) {
+    for (var i = 0; i < boxes.length; i++) {
+      var p = (boxes[i].people || []).find(function (x) { return x.slug === slug; });
+      if (p) return p.name;
+    }
+    return slug || "—";
+  }
+
+  function mgrChart(id, cfg) {
+    var el = document.getElementById(id);
+    if (!el || !window.Chart) return;
+    if (MGR_CHARTS[id]) { MGR_CHARTS[id].destroy(); MGR_CHARTS[id] = null; }
+    try { MGR_CHARTS[id] = new window.Chart(el.getContext("2d"), cfg); } catch (e) { /* بی‌نمودار هم فهرست هست */ }
+  }
+
   /* ---------- راه‌اندازی ---------- */
   window.initSharedBoxes = async function () {
     try {
@@ -578,6 +858,7 @@
         return ao < bo ? -1 : ao > bo ? 1 : 0;
       });
       for (var i = 0; i < order.length; i++) mount(order[i]);
+      mgrMount();
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }
   };
 })();

@@ -771,7 +771,8 @@ CREATE TABLE IF NOT EXISTS shared_boxes (
   members TEXT NOT NULL DEFAULT '[]',   -- آرایهٔ JSON از slugِ کارتابل‌ها
   created INTEGER NOT NULL DEFAULT 0,
   mgrs    TEXT NOT NULL DEFAULT '[]',   -- مدیرهای این بخش (زیرمجموعهٔ اعضا)
-  rowlock INTEGER NOT NULL DEFAULT 0    -- ۱ یعنی هر کس فقط ردیفِ خودش
+  rowlock INTEGER NOT NULL DEFAULT 0,   -- ۱ یعنی هر کس فقط ردیفِ خودش
+  perms   TEXT NOT NULL DEFAULT '{}'    -- قاعدهٔ دسترسیِ هر ستون، به انتخابِ ادمین
 );
 
 CREATE TABLE IF NOT EXISTS shared_rows (
@@ -825,3 +826,14 @@ CREATE TABLE IF NOT EXISTS org_members (
 
 -- پرسشِ هر ورود «این کارتابل عضوِ کدام گروه‌هاست؟» است.
 CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug);
+
+-- ۳۶ | مدیرِ گروه
+-- جدا از اعضا، و جدولِ خودش نه یک ستونِ JSON روی orgs: یک گروه می‌تواند
+-- بیش از یک مدیر داشته باشد و روی رشتهٔ JSON نمی‌شود پرسش زد.
+-- مدیرِ گروه، مدیرِ همهٔ بخش‌های مشترکِ همان گروه هم هست.
+CREATE TABLE IF NOT EXISTS org_mgrs (
+  org  TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  PRIMARY KEY (org, slug)
+);
+CREATE INDEX IF NOT EXISTS org_mgrs_slug ON org_mgrs(slug);
