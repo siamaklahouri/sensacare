@@ -314,20 +314,17 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
 
-  /* ---------- Live clock (stable width, no layout shift) ---------- */
-  /* تاریخ از نوار بالا برداشته شد: همان تاریخ و همان ساعت یک بار دیگر
-     در داشبورد هم بود. اینجا فقط ساعت می‌ماند، جمع‌وجور و کنار انتخاب ماه. */
-  .live-clock{
-    display:flex; align-items:center; justify-content:center; margin-inline-start:auto;
+  /* ---------- ساعتِ نوارِ بالا ---------- */
+  /* همان نوارِ ساعتِ کارتابلِ فنی، مو‌به‌مو: تاریخ کنارِ ساعت، هر دو
+     کنارِ دکمهٔ ماه. پیش از این این قالب قرصِ ساعتِ خودش را داشت که
+     تاریخ نداشت و جای دیگری از نوار می‌نشست. */
+  .topbar-clock{
+    font-family:var(--font-display); font-size:13.5px; font-weight:700; color:var(--brass-ink);
     background:var(--brass-bg); border:1px solid transparent;
-    border-radius:999px; padding:6px 14px; user-select:none;
+    border-radius:20px; padding:7px 4px; letter-spacing:1px; margin-inline-end:6px;
+    display:inline-block; width:104px; box-sizing:border-box; text-align:center;
+    font-variant-numeric:tabular-nums; white-space:nowrap;
   }
-  .lc-time{
-    font-family:var(--font-display); font-variant-numeric:tabular-nums;
-    font-size:15px; font-weight:700; color:var(--brass-ink); letter-spacing:.8px;
-    line-height:1.3; white-space:nowrap;
-  }
-  .lc-date{ display:none; }
   .period select{
     font-family:var(--font-body); font-size:13px;
     background:var(--white); border:1px solid var(--card-border);
@@ -597,7 +594,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
     background:var(--white); color:var(--ink);
     border:1px solid var(--card-border);
     border-radius:14px; padding:18px 22px; margin-bottom:18px;
-    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
     box-shadow:var(--shadow); position:relative; overflow:hidden;
   }
   .dash-hero::after{
@@ -607,29 +604,27 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .dash-hero .dh-greet{ font-family:var(--font-display); font-size:16px; font-weight:700; color:var(--ink); position:relative; z-index:1; }
   .dash-hero .dh-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:4px; position:relative; z-index:1; }
 
-  /* ساعت و تاریخ هر کدام کارت خودش — قبلاً یک بلوکِ بزرگ بودند و همان
-     ساعت یک بار دیگر هم در نوار بالا تکرار می‌شد. */
-  .dh-side{ display:flex; gap:10px; position:relative; z-index:1; flex-wrap:wrap; }
-  .dh-box{
-    background:var(--paper); border:1px solid var(--card-border);
-    border-radius:12px; padding:9px 16px; text-align:center; min-width:124px;
+  /* همان دو چیپِ کارتابلِ فنی، مو‌به‌مو: تاریخ روی کاغذ، ساعت روی رنگِ
+     برند، هر دو هم‌عرض تا با عوض شدنِ ثانیه چیزی جابه‌جا نشود. */
+  .dash-hero .dh-date{
+    background:var(--paper); border:1px solid var(--card-border); border-radius:12px;
+    padding:9px 18px; font-size:11px; font-weight:600; color:var(--ink-soft);
+    text-align:center; position:relative; z-index:1; width:132px; box-sizing:border-box;
   }
-  /* چیپِ ساعت رنگِ برند می‌گیرد تا در میانِ کاغذِ روشن گم نشود. */
-  .dh-box:first-child{ background:var(--brass-bg); border-color:transparent; }
-  .dh-box:first-child .dh-cap{ color:var(--brass-ink); opacity:.85; }
-  .dh-box:first-child .dh-time{ color:var(--brass-ink); }
-  .dh-box .dh-cap{
-    font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:.3px;
-    text-transform:none; margin-bottom:3px;
+  .dash-hero .dh-date b{
+    display:block; font-family:var(--font-display); font-size:14.5px; margin-top:4px;
+    font-weight:700; color:var(--ink);
   }
-  /* ساعت هر ثانیه عوض می‌شود؛ اینجا ارقامِ هم‌عرض لازم است وگرنه عدد
-     مدام کمی جابه‌جا می‌شود. */
-  .dh-time{
-    font-family:var(--font-display); font-variant-numeric:tabular-nums;
-    font-size:23px; font-weight:800; color:var(--ink); letter-spacing:1px;
-    line-height:1.2; white-space:nowrap;
+  .dash-hero .dh-clock{
+    background:var(--brass-bg); border:1px solid transparent; border-radius:12px;
+    padding:9px 18px; font-size:11px; font-weight:600; color:var(--brass-ink);
+    text-align:center; position:relative; z-index:1; width:132px; box-sizing:border-box;
   }
-  .dh-datestr{ font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--ink); line-height:1.3; white-space:nowrap; }
+  .dash-hero .dh-clock b{
+    display:block; font-family:var(--font-display); font-size:19px; margin-top:4px;
+    letter-spacing:1.5px; font-variant-numeric:tabular-nums; color:var(--brass-ink); font-weight:700;
+    white-space:nowrap;
+  }
 
   .dash-group-label{
     display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:700; color:var(--ink-soft);
@@ -1144,10 +1139,6 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <small>مطالبات، بدهی‌ها، هزینه‌ها و نقدینگی</small>
     </div>
   </div>
-  <div class="live-clock" id="liveClock">
-    <div class="lc-time" id="lcTime">--:--:--</div>
-    <div class="lc-date" id="lcDate">در حال بارگذاری...</div>
-  </div>
   <!-- سه کنترلِ ماه (انتخاب، ساختن، تغییر نام) یکی شدند: یک دکمه که
        نامِ ماهِ جاری را نشان می‌دهد و با زدنش پنجرهٔ ماه‌ها باز می‌شود.
        نوارِ بالا جای تصمیم گرفتن نیست، جای دیدن است. -->
@@ -1155,6 +1146,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <button type="button" class="month-btn" id="monthBtn" title="ماه‌ها">
       <span class="ic">🗓</span><span id="monthBtnLabel">—</span><span class="caret">▾</span>
     </button>
+    <span class="topbar-date" id="topbarDate">—</span>
+    <span class="topbar-clock" id="topbarClock">--:--:--</span>
     <button type="button" class="theme-btn" id="themeBtn" title="تم شب">🌙</button>
   </div>
 </div>
@@ -2253,9 +2246,9 @@ function updateLiveClock(){
     const mi = tp.find(p=>p.type==="minute").value;
     const se = tp.find(p=>p.type==="second").value;
     const timeStr = `${fa(h)}:${fa(mi)}:${fa(se)}`;
-    const timeEl = document.getElementById("lcTime");
+    const timeEl = document.getElementById("topbarClock");
     if(timeEl) timeEl.textContent = timeStr;
-    const dhTimeEl = document.getElementById("dhTime");
+    const dhTimeEl = document.getElementById("dashHeroClock");
     if(dhTimeEl) dhTimeEl.textContent = timeStr;
 
     const dateFmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {year:"numeric", month:"2-digit", day:"2-digit"});
@@ -2264,10 +2257,15 @@ function updateLiveClock(){
     const m = dp.find(p=>p.type==="month").value;
     const d = dp.find(p=>p.type==="day").value;
     const dateStr = `${fa(d)} ${JALALI_MONTH_NAMES[parseInt(m,10)-1]} ${fa(y)}`;
-    const dateEl = document.getElementById("lcDate");
-    if(dateEl) dateEl.textContent = dateStr;
-    const dhDateEl = document.getElementById("dhDateStr");
-    if(dhDateEl) dhDateEl.textContent = dateStr;
+    /* نوارِ بالا روزِ هفته را هم می‌گوید («پنجشنبه ۲ مهر») — همان چیزی
+       که کارتابلِ فنی نشان می‌دهد. داشبورد تاریخِ کاملِ خودش را دارد. */
+    const dateEl = document.getElementById("topbarDate");
+    if(dateEl){
+      try{
+        dateEl.textContent = new Intl.DateTimeFormat("fa-IR-u-ca-persian",
+          { weekday:"short", day:"numeric", month:"long" }).format(now);
+      }catch(e){ dateEl.textContent = dateStr; }
+    }
   }catch(e){ /* clock is decorative — fail silently */ }
 }
 setInterval(updateLiveClock, 1000);
@@ -4486,16 +4484,8 @@ function renderDashHero(){
       <div class="dh-greet">👋 ${greet}، {{NAME}}</div>
       <div class="dh-sub">خلاصه‌ی وضعیت مالی امروز و این ماه، همه‌جا یک نگاه</div>
     </div>
-    <div class="dh-side">
-      <div class="dh-box">
-        <div class="dh-cap">ساعت اکنون</div>
-        <div class="dh-time" id="dhTime">--:--:--</div>
-      </div>
-      <div class="dh-box">
-        <div class="dh-cap">امروز</div>
-        <div class="dh-datestr" id="dhDateStr">${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</div>
-      </div>
-    </div>
+    <div class="dh-date">امروز<b>${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</b></div>
+    <div class="dh-clock">ساعت اکنون<b id="dashHeroClock">--:--:--</b></div>
   `;
   updateLiveClock();
 }
