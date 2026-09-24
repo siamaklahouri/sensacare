@@ -18,7 +18,7 @@ import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from '.
 import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
-import { boxesFor, getBox, rowsSince, putRow, killRow } from './shared.js';
+import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow } from './shared.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1118,6 +1118,15 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      نباشی، عضو نیستی و همین. */
   if (p === '/shared' && m === 'GET')
     return json({ boxes: await boxesFor(env, panel.id) });
+
+  /* یک درخواست برای همهٔ بخش‌ها. عمداً «/shared-news» است نه
+     «/shared/news»: دومی را الگوی زیر به‌عنوان بخشی به نامِ news
+     می‌گرفت و اگر روزی کسی بخشی با همین نام می‌ساخت، بی‌صدا
+     سایه می‌افتاد رویش. */
+  if (p === '/shared-news' && m === 'GET') {
+    const since = Math.max(0, parseInt(new URL(req.url).searchParams.get('since'), 10) || 0);
+    return json({ rows: await newsFor(env, panel.id, since), now: Date.now() });
+  }
 
   const mShared = p.match(/^\/shared\/([a-z0-9][a-z0-9-]{1,30})(\/row|\/del)?$/);
   if (mShared) {

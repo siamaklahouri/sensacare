@@ -70,6 +70,40 @@
        اندازه‌شان با قاب جور می‌ماند. رنگِ وضعیت‌ها از پالتِ خودِ کارتابل
        می‌آید و هر بخش برچسبِ مستقیم و فاصله دارد، چون جداییِ tritan در
        سنجه زیرِ هشت بود و رنگ به‌تنهایی کافی نیست. */
+    /* ---------- خبرِ کارِ تازه ----------
+       نوارِ کنار سمتِ راست است، پس خبرها سمتِ چپ می‌نشینند تا رویش
+       نیفتند. */
+    /* نشانِ خوانده‌نشده روی دکمهٔ نوار کنار: خبر بعد از چند ثانیه
+       می‌رود، ولی آدمی که سرِ میزش نبوده باید بعداً هم بفهمد. */
+    ".navbtn .shn-dot{display:inline-flex;align-items:center;justify-content:center;",
+    "  min-width:18px;height:18px;padding:0 5px;border-radius:9px;margin-inline-start:auto;",
+    "  background:var(--brass);color:#fff;font-size:10.5px;font-weight:700;",
+    "  font-variant-numeric:tabular-nums;line-height:1;flex:none}",
+    ".sh-bell{background:transparent;border:1px solid var(--card-border);border-radius:8px;",
+    "  font-size:12.5px;line-height:1;padding:5px 8px;cursor:pointer;color:var(--ink-soft)}",
+    ".sh-bell:hover{border-color:var(--brass);color:var(--brass)}",
+    ".sh-bell.off{opacity:.6}",
+    ".shn-wrap{position:fixed;inset-block-end:18px;inset-inline-end:18px;z-index:80;",
+    "  display:flex;flex-direction:column;gap:9px;max-width:330px;pointer-events:none}",
+    ".shn{pointer-events:auto;background:var(--white);border:1px solid var(--card-border);",
+    "  border-inline-start:3px solid var(--brass);border-radius:13px;padding:11px 14px;",
+    "  box-shadow:0 10px 30px rgba(11,37,69,.18);cursor:pointer;",
+    "  display:flex;gap:10px;align-items:flex-start;",
+    "  animation:shnIn .22s ease-out}",
+    "@keyframes shnIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}",
+    ".shn.go{opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s}",
+    /* کاری که به خودِ آدم سپرده شده پُررنگ‌تر است از خبرِ عمومی */
+    ".shn.mine{border-inline-start-color:var(--blue,#1A4FA3);background:var(--brass-bg)}",
+    ".shn .ic{font-size:16px;line-height:1.4;flex:none}",
+    ".shn .bd{min-width:0;flex:1}",
+    ".shn .hd{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:3px}",
+    ".shn .tx{font-size:12.5px;color:var(--ink);line-height:1.8;",
+    "  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
+    ".shn .mt{font-size:11px;color:var(--ink-faint);margin-top:4px}",
+    ".shn .x{background:transparent;border:0;color:var(--ink-faint);font-size:12px;",
+    "  cursor:pointer;padding:2px 5px;border-radius:6px;line-height:1;flex:none}",
+    ".shn .x:hover{background:var(--paper-2);color:var(--ink)}",
+
     ".mg-wrap{display:flex;flex-direction:column;gap:14px}",
     ".mg-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}",
     ".mg-kpi{border:1px solid var(--card-border);border-radius:14px;padding:13px 15px;",
@@ -221,6 +255,10 @@
             : '') +
           '<span class="sh-sum" data-shsum="' + esc(box.id) + '"></span>' +
           '<span class="sh-live" style="margin-inline-start:auto"><span class="dot"></span>زنده</span>' +
+          /* صدای خبر یکی است برای همهٔ بخش‌ها؛ این کلید هر جا که باشد
+             همان را خاموش و روشن می‌کند. جایش این‌جاست چون همین‌جا
+             آدم می‌فهمد صدا از کجا می‌آید. */
+          '<button type="button" class="sh-bell" data-shbell="1"></button>' +
         "</div>" +
         '<div class="tbl-wrap"><table class="sh-tab"><thead><tr>' +
           box.cols.map(function (c) {
@@ -684,6 +722,228 @@
   });
 
 
+  /* ==================== خبرِ کارِ تازه ====================
+     وقتی کسی در یک بخشِ گروهی کاری می‌گذارد، بقیه باید بفهمند — بدونِ
+     اینکه لازم باشد همان بخش را باز نگه دارند.
+
+     دو نکته که شکلِ این کد را تعیین کرد:
+
+     یک) ردیف اول خالی ساخته می‌شود و بعد پُر. پس «ردیفِ تازه» لحظهٔ
+     بدی برای خبر دادن است: عنوانش هنوز خالی است. خبر وقتی می‌رود که
+     ردیف برای اولین بار عنوان‌دار می‌شود.
+
+     دو) تازه‌سازیِ عادی فقط وقتی کار می‌کند که همان بخش باز باشد.
+     این‌جا پس‌زمینه‌ای جدا هر نیم‌دقیقه یک بار می‌پرسد، و وقتی تب پنهان
+     است نمی‌پرسد — یک تبِ فراموش‌شده نباید تا ابد به سرور بزند. به‌جایش
+     لحظه‌ای که آدم برمی‌گردد، همان‌جا می‌پرسد. */
+  var NEWS_MS = 30000;
+  var news = { since: 0, seen: {}, mine: {}, unread: {}, ready: false, timer: null, busy: false };
+  var MUTE_KEY = "sharedNoteMute";
+
+  function muted() {
+    try { return localStorage.getItem(MUTE_KEY) === "1"; } catch (e) { return false; }
+  }
+  function setMuted(v) {
+    try { localStorage.setItem(MUTE_KEY, v ? "1" : "0"); } catch (e) { /* بی‌حافظه هم کار می‌کند */ }
+  }
+
+  /* صدا از خودِ مرورگر ساخته می‌شود، نه از فایل: یک درخواستِ کمتر، و
+     در تمِ شب و روز و آفلاین هم فرقی نمی‌کند. مرورگرها تا اولین کلیکِ
+     آدم اجازهٔ صدا نمی‌دهند، پس AudioContext همان موقع ساخته می‌شود. */
+  var actx = null;
+  function wakeAudio() {
+    if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+    var C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return;
+    try { actx = new C(); } catch (e) { actx = null; }
+  }
+  document.addEventListener("pointerdown", wakeAudio, { once: true });
+  document.addEventListener("keydown", wakeAudio, { once: true });
+
+  function ding(high) {
+    if (muted()) return;
+    wakeAudio();
+    if (!actx || actx.state !== "running") return;
+    try {
+      /* دو نتِ کوتاه؛ کارِ سپرده‌شده به خودِ آدم یک پرده بالاتر است */
+      [0, 0.13].forEach(function (t, i) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = "sine";
+        o.frequency.value = (high ? 784 : 587) * (i ? 1.25 : 1);
+        var at = actx.currentTime + t;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(0.14, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + 0.11);
+        o.connect(g); g.connect(actx.destination);
+        o.start(at); o.stop(at + 0.13);
+      });
+    } catch (e) { /* صدا تزئینی است؛ نبودش کار را نمی‌خواباند */ }
+  }
+
+  function noteWrap() {
+    var w = document.getElementById("shNotes");
+    if (!w) {
+      w = document.createElement("div");
+      w.id = "shNotes"; w.className = "shn-wrap";
+      document.body.appendChild(w);
+    }
+    return w;
+  }
+
+  /* عنوانِ کار: ستونِ «کار» اگر بود، وگرنه اولین خانهٔ متنیِ ردیف. یک
+     جدولِ یادداشت ستونِ task ندارد ولی باز هم حرفی برای گفتن دارد. */
+  function rowTitle(box, v) {
+    if (!v) return "";
+    if (v.task) return String(v.task);
+    var cols = (box && box.cols) || [];
+    for (var i = 0; i < cols.length; i++) {
+      var c = cols[i];
+      if (c.kind === "who" || c.kind === "made") continue;
+      var t = v[c.k];
+      if (t && String(t).trim()) return String(t);
+    }
+    return "";
+  }
+
+  function toast(kind, box, row, title) {
+    var el = document.createElement("div");
+    el.className = "shn" + (kind === "mine" ? " mine" : "");
+    var who = row.owner ? nameOf(box, row.owner) : "";
+    el.innerHTML =
+      '<span class="ic">' + (kind === "mine" ? "🔔" : "🆕") + "</span>" +
+      '<span class="bd"><span class="hd">' +
+        (kind === "mine" ? "کاری به شما سپرده شد" : "کارِ تازه") + "</span>" +
+        '<span class="tx">' + esc(title) + "</span>" +
+        '<span class="mt">' + esc(box.title) + (who ? " · " + esc(who) : "") + "</span>" +
+      "</span>" +
+      '<button type="button" class="x" title="بستن">✕</button>';
+
+    var off = function () {
+      el.classList.add("go");
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+    };
+    el.querySelector(".x").addEventListener("click", function (e) { e.stopPropagation(); off(); });
+    /* زدن روی خبر می‌برد سرِ همان بخش — چون کارِ بعدیِ آدم همین است */
+    el.addEventListener("click", function () {
+      var b = navOf(box.id);
+      /* فهرستِ کنار بلندتر از صفحه است و دکمهٔ گروه معمولاً پایین‌تر از
+         دیدِ آدم می‌افتد؛ بدونِ این، کلیک کار می‌کند ولی معلوم نیست
+         کجا رفتیم. */
+      if (b) { b.scrollIntoView({ block: "nearest" }); b.click(); }
+      off();
+    });
+    /* شمارنده فقط وقتی بالا می‌رود که همان بخش جلوِ چشم نباشد */
+    var sec = document.getElementById("view-shared-" + box.id);
+    if (!sec || !sec.classList.contains("active") || document.hidden) {
+      news.unread[box.id] = (news.unread[box.id] || 0) + 1;
+      paintDot(box.id);
+    }
+    noteWrap().appendChild(el);
+    /* بیشتر از چهار تا روی هم تلنبار نشود */
+    var w = noteWrap();
+    while (w.children.length > 4) w.removeChild(w.firstChild);
+    setTimeout(off, kind === "mine" ? 14000 : 9000);
+  }
+
+  async function newsPull() {
+    if (news.busy || !BOXES.length) return;
+    news.busy = true;
+    try {
+      var r = await apiCall("/shared-news?since=" + news.since);
+      if (!r.ok) return;
+      var list = r.data.rows || [];
+      var first = !news.ready;
+      news.ready = true;
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        news.since = Math.max(news.since, row.updated || 0);
+        var box = BOXES.find(function (b) { return b.id === row.box; });
+        if (!box) continue;
+        var key = row.box + "|" + row.rid;
+        var title = rowTitle(box, row.v);
+        var who = row.v && row.v.who;
+        var wasMine = news.mine[key];
+        if (who === me()) news.mine[key] = true; else delete news.mine[key];
+        /* اولین دور فقط می‌شمارد: وگرنه هر بار باز کردنِ کارتابل، همهٔ
+           کارهای موجود یک‌جا خبر می‌شدند. */
+        if (first || !title) { if (title) news.seen[key] = true; continue; }
+        if (news.seen[key]) {
+          /* ردیفی که از قبل بود: فقط وقتی خبر دارد که تازه به من سپرده شده */
+          if (who === me() && !wasMine && row.by !== me()) { toast("mine", box, row, title); ding(true); }
+          continue;
+        }
+        news.seen[key] = true;
+        if (row.owner === me()) continue;        /* کارِ خودم خبر ندارد */
+        var mine = who === me();
+        toast(mine ? "mine" : "new", box, row, title);
+        ding(mine);
+      }
+      if (!news.since && r.data.now) news.since = r.data.now;
+    } catch (e) { /* شبکه قطع بود؛ نوبتِ بعد */ }
+    finally { news.busy = false; }
+  }
+
+  function navOf(id) { return document.querySelector('.navbtn[data-view="shared-' + id + '"]'); }
+
+  function paintDot(id) {
+    var btn = navOf(id);
+    if (!btn) return;
+    var dot = btn.querySelector(".shn-dot");
+    var n = news.unread[id] || 0;
+    if (!n) { if (dot) dot.remove(); return; }
+    if (!dot) {
+      dot = document.createElement("span");
+      dot.className = "shn-dot";
+      btn.appendChild(dot);
+    }
+    dot.textContent = faNum(n);
+  }
+
+  function clearDot(id) {
+    if (!news.unread[id]) return;
+    delete news.unread[id];
+    paintDot(id);
+  }
+
+  /* باز کردنِ بخش یعنی دیدمش */
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest(".navbtn") : null;
+    if (!b) return;
+    var v = String(b.getAttribute("data-view") || "");
+    if (v.indexOf("shared-") === 0) clearDot(v.slice(7));
+  });
+
+  function paintBells() {
+    var on = !muted();
+    var all = document.querySelectorAll("[data-shbell]");
+    for (var i = 0; i < all.length; i++) {
+      all[i].textContent = on ? "🔔" : "🔕";
+      all[i].title = on ? "صدای خبر روشن است — برای خاموش کردن بزنید"
+                        : "صدای خبر خاموش است — برای روشن کردن بزنید";
+      all[i].classList.toggle("off", !on);
+    }
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest ? e.target.closest("[data-shbell]") : null;
+    if (!b) return;
+    setMuted(!muted());
+    paintBells();
+    if (!muted()) ding(false);   /* تا بشنود چه چیزی را روشن کرده */
+  });
+
+  function startNews() {
+    paintBells();
+    if (news.timer || !BOXES.length) return;
+    newsPull();
+    news.timer = setInterval(function () {
+      if (!document.hidden) newsPull();
+    }, NEWS_MS);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) newsPull();
+    });
+  }
+
   /* ==================== نمای مدیر ====================
      کسی که مدیرِ دست‌کم یک جدولِ تیمی است، یک بخشِ تازه در نوار کنار
      می‌گیرد: همهٔ کارهای همهٔ نفراتش، یک‌جا.
@@ -1010,6 +1270,8 @@
       });
       for (var i = 0; i < order.length; i++) mount(order[i]);
       mgrMount();
+      /* خبرها مستقل از اینکه کدام بخش باز است کار می‌کنند */
+      startNews();
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }
   };
 })();

@@ -306,6 +306,41 @@ export async function getBox(env, id) {
   return b;
 }
 
+/* ---------- خبرِ کارهای تازه ----------
+   تازه‌سازیِ عادی فقط وقتی کار می‌کند که همان بخش باز باشد، وگرنه یک
+   کارتابلِ رهاشده تا ابد به سرور می‌زند. ولی خبر دقیقاً وقتی لازم است
+   که آدم جای دیگری از کارتابلش نشسته — پس این مسیر هست: پس‌زمینه هر
+   نیم‌دقیقه یک بار می‌پرسد «چیزی تازه هست؟».
+
+   عمداً از boxesFor استفاده نمی‌کند: آن اسمِ آدم‌ها و درختِ گروه را هم
+   می‌آورد که این‌جا به کار نمی‌آید و چهار-پنج پرسش خرج دارد. این‌جا سه
+   پرسش است، هر چند بخش که باشد — نه یکی به‌ازای هر بخش. D1 روی شبکه
+   است و پرسشِ داخلِ حلقه گران تمام می‌شود.
+
+   سقفِ شصت ردیف عمدی است: کسی که یک هفته نیامده، شصت خبر هم برایش
+   همان‌قدر بی‌معناست که ششصد تا. */
+export async function newsFor(env, slug, since = 0) {
+  await ensureShared(env);
+  const [rows, mine] = await Promise.all([
+    all(env, 'SELECT id, members, org FROM shared_boxes'),
+    orgsOf(env, slug)
+  ]);
+  const ids = rows
+    .filter(r => r.org ? mine.includes(r.org) : parseMembers(r.members).includes(slug))
+    .map(r => r.id);
+  if (!ids.length) return [];
+  const got = await all(env,
+    `SELECT box, rid, v, updated, by, owner FROM shared_rows
+      WHERE box IN (${ids.map(() => '?').join(',')}) AND updated>? AND dead=0
+      ORDER BY updated LIMIT 60`, ...ids, Number(since) || 0);
+  return got.map(r => {
+    let v = {};
+    try { v = JSON.parse(r.v) || {}; } catch { v = {}; }
+    return { box: r.box, rid: r.rid, v, updated: r.updated,
+             by: r.by, owner: r.owner || r.by || '' };
+  });
+}
+
 /* «since» یعنی: از این لحظه به بعد چه چیزی عوض شده؟ صفحه همین را هر
    چند ثانیه می‌پرسد، پس جوابش معمولاً خالی است و ارزان تمام می‌شود.
    ردیف‌های حذف‌شده هم می‌آیند (با dead=1) تا آن طرف بداند بردارد. */
