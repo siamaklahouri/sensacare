@@ -21,8 +21,8 @@ import {
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
-import { SHARED_TYPES, allBoxes, saveBox, dropBox, boxCounts } from './shared.js';
-import { orgList, saveOrg, dropOrg, pathOf } from './orgs.js';
+import { SHARED_TYPES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
+import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -175,6 +175,9 @@ function cleanSite(body, cur) {
    هر کاری که ادمین می‌کند این‌جا می‌ماند. نه برای اینکه به کسی
    گزارش برود، برای اینکه اگر فردا چیزی سرِ جایش نبود بشود فهمید
    کِی و چه اتفاقی افتاده. */
+const plannerSlugs = async env =>
+  (await all(env, 'SELECT slug FROM planners')).map(r => r.slug);
+
 async function log(env, what, slug, note) {
   try {
     await run(env, 'INSERT INTO admin_log(at, what, slug, note) VALUES(?,?,?,?)',
@@ -703,34 +706,29 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   /* ---------- گروه‌های سازمانی ----------
      درخت کوچک است، پس یک‌جا می‌رود و پنل خودش می‌چیندش. */
   if (p === '/orgs' && m === 'GET') {
-    const list = await orgList(env);
-    const boxes = await allBoxes(env);
-    const used = {};
-    for (const b of boxes) if (b.org) used[b.org] = (used[b.org] || 0) + 1;
+    const [list, used] = await Promise.all([orgList(env), orgBoxCounts(env)]);
     return json({ ok: true,
       items: list.map(o => Object.assign({}, o, { path: pathOf(list, o.id), boxes: used[o.id] || 0 })) });
   }
 
   if (p === '/orgs' && m === 'POST') {
-    const slugs = (await all(env, 'SELECT slug FROM planners')).map(r => r.slug);
-    const r = await saveOrg(env, body, slugs);
+    const r = await saveOrg(env, body, await plannerSlugs(env));
     if (r.error) return bad(r.error);
     await log(env, 'org', r.id, String(body.name || ''));
     return json({ ok: true, id: r.id, created: r.created });
   }
 
-  const mOrg = p.match(/^\/orgs\/([a-z0-9]{6,16})$/);
+  const mOrg = p.match(/^\/orgs\/([^/]+)$/);
   if (mOrg && m === 'DELETE') {
-    const boxes = await allBoxes(env);
-    const r = await dropOrg(env, mOrg[1], boxes.map(b => b.org).filter(Boolean));
+    if (!isOrgId(mOrg[1])) return bad('شناسهٔ گروه درست نیست.');
+    const r = await dropOrg(env, mOrg[1]);
     if (r.error) return bad(r.error);
     await log(env, 'org-del', mOrg[1], '');
     return json({ ok: true });
   }
 
   if (p === '/shared-boxes' && m === 'POST') {
-    const slugs = (await all(env, 'SELECT slug FROM planners')).map(r => r.slug);
-    const r = await saveBox(env, body, slugs);
+    const r = await saveBox(env, body, await plannerSlugs(env));
     if (r.error) return bad(r.error);
     await log(env, 'shared-box', r.id, (body.members || []).join(','));
     return json({ ok: true, id: r.id, created: r.created });

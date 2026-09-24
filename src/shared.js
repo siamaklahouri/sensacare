@@ -21,7 +21,7 @@
 /* عمداً از kartabl.js چیزی وارد نمی‌شود: آن فایل خودش این‌جا را وارد
    می‌کند و حلقهٔ import، هرچند در ESM معمولاً کار می‌کند، یک روز سرِ
    ترتیبِ ارزیابی ما را زمین می‌زند. سه خطِ زیر همان سه‌تاست. */
-import { orgList, orgsOf, pathOf } from './orgs.js';
+import { orgList, orgsOf, membersOf, orgById, cleanSlugs, pathOf, ORG_ID_RE } from './orgs.js';
 
 const all = async (env, sql, ...b) => (await env.DB.prepare(sql).bind(...b).all()).results || [];
 const one = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).first();
@@ -129,36 +129,53 @@ let ready = false;
 export async function ensureShared(env) {
   if (ready) return;
   try {
-    await run(env, `CREATE TABLE IF NOT EXISTS shared_boxes (
-      id      TEXT PRIMARY KEY,
-      title   TEXT NOT NULL DEFAULT '',
-      type    TEXT NOT NULL DEFAULT 'notes',
-      members TEXT NOT NULL DEFAULT '[]',
-      created INTEGER NOT NULL DEFAULT 0
-    )`);
-    await run(env, `CREATE TABLE IF NOT EXISTS shared_rows (
-      box     TEXT NOT NULL,
-      rid     TEXT NOT NULL,
-      v       TEXT NOT NULL DEFAULT '{}',
-      updated INTEGER NOT NULL DEFAULT 0,
-      by      TEXT NOT NULL DEFAULT '',
-      dead    INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (box, rid)
-    )`);
-    await run(env, 'CREATE INDEX IF NOT EXISTS shared_rows_box_upd ON shared_rows(box, updated)');
-    /* ستون‌هایی که بعداً اضافه شدند. هر کدام جدا، چون روی دیتابیسی که
-       یکی‌شان را دارد و آن یکی را ندارد نباید کلِ کار بخوابد. */
-    for (const q of [
-      "ALTER TABLE shared_boxes ADD COLUMN mgrs TEXT NOT NULL DEFAULT '[]'",
+    await env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS shared_boxes (
+        id      TEXT PRIMARY KEY,
+        title   TEXT NOT NULL DEFAULT '',
+        type    TEXT NOT NULL DEFAULT 'notes',
+        members TEXT NOT NULL DEFAULT '[]',
+        created INTEGER NOT NULL DEFAULT 0
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS shared_rows (
+        box     TEXT NOT NULL,
+        rid     TEXT NOT NULL,
+        v       TEXT NOT NULL DEFAULT '{}',
+        updated INTEGER NOT NULL DEFAULT 0,
+        by      TEXT NOT NULL DEFAULT '',
+        dead    INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (box, rid)
+      )`),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS shared_rows_box_upd ON shared_rows(box, updated)')
+    ]);
+
+    /* ستون‌هایی که بعداً اضافه شدند. اول می‌پرسیم چه ستون‌هایی هست و
+       فقط نداشته‌ها را اضافه می‌کنیم. قبلاً هر پنج ALTER کورکورانه
+       فرستاده می‌شد و روی هر دیتابیسِ به‌روز هر پنج‌تا خطا می‌خوردند —
+       و چون ready فقط برای همین ایزوله است، این با هر بار بالا آمدنِ
+       یک ایزولهٔ تازه دوباره تکرار می‌شد.
+
+       ALTERها دسته‌ای فرستاده نمی‌شوند: دسته تراکنشی است و اگر یکی
+       بخورد بقیه هم برمی‌گردند، پس اضافه شدنِ تدریجی از بین می‌رفت. */
+    const cols = async t => {
+      try { return new Set((await all(env, `PRAGMA table_info(${t})`)).map(r => r.name)); }
+      catch (e) { return null; }
+    };
+    const [bx, rw] = await Promise.all([cols('shared_boxes'), cols('shared_rows')]);
+    for (const [have, q, name] of [
+      [bx, "ALTER TABLE shared_boxes ADD COLUMN mgrs TEXT NOT NULL DEFAULT '[]'", 'mgrs'],
       /* پیش‌فرضِ ۰ عمدی است: بخش‌هایی که از قبل ساخته شده‌اند نباید یک
          روز صبح خودبه‌خود قفل شوند و کسی نفهمد چرا دیگر نمی‌تواند
          ردیفِ همکارش را درست کند. بخشِ تازه با کلیدِ روشن ساخته
          می‌شود؛ قدیمی‌ها را خودِ ادمین وقتی خواست روشن می‌کند. */
-      'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0',
-      "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''",
-      'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0',
-      "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''"
-    ]) { try { await run(env, q); } catch (e) { /* از قبل هست */ } }
+      [bx, 'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0', 'rowlock'],
+      [bx, "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''", 'org'],
+      [rw, "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''", 'owner'],
+      [rw, 'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0', 'created']
+    ]) {
+      if (have && have.has(name)) continue;
+      try { await run(env, q); } catch (e) { /* از قبل هست */ }
+    }
     ready = true;
   } catch (e) { /* اگر ساخته نشد، مسیرها خودشان خطا می‌دهند */ }
 }
@@ -197,10 +214,18 @@ async function withOrgs(env, boxes) {
 
 export async function boxesFor(env, slug) {
   await ensureShared(env);
-  const rows = await all(env, 'SELECT * FROM shared_boxes ORDER BY created, id');
-  const mine = await orgsOf(env, slug);
-  const boxes = await withOrgs(env, rows.map(shapeBox));
-  return withPeople(env, boxes.filter(b => b.org ? mine.includes(b.org) : b.members.includes(slug)));
+  /* دو پرسشِ مستقل، پس با هم. */
+  const [rows, mine] = await Promise.all([
+    all(env, 'SELECT * FROM shared_boxes ORDER BY created, id'),
+    orgsOf(env, slug)
+  ]);
+  /* اول غربال، بعد پر کردن. برعکسش یعنی اگر فقط یک بخش در کلِ سیستم به
+     گروهی وصل باشد، هر کاربری — حتی کسی که هیچ بخشِ گروهی ندارد —
+     هزینهٔ خواندنِ درختِ سازمان را می‌داد. غربال کردن این‌جا امن است
+     چون شاخهٔ گروه فقط b.org را می‌خواند، نه اعضا را. */
+  const mineBoxes = rows.map(shapeBox)
+    .filter(b => b.org ? mine.includes(b.org) : b.members.includes(slug));
+  return withPeople(env, await withOrgs(env, mineBoxes));
 }
 
 /* ستونِ «مسئول» باید اسمِ آدم‌ها را نشان بدهد نه slug را. اسم‌ها یک بار
@@ -231,7 +256,16 @@ export async function getBox(env, id) {
   await ensureShared(env);
   const r = await one(env, 'SELECT * FROM shared_boxes WHERE id=?', String(id || ''));
   if (!r) return null;
-  return (await withOrgs(env, [shapeBox(r)]))[0];
+  const b = shapeBox(r);
+  /* یک بخش، پس کلِ درختِ سازمان خوانده نمی‌شود — فقط اعضای همین گروه.
+     این مسیر هر شش ثانیه صدا زده می‌شود و با هر ویرایش و هر حذف، پس
+     یک پرسشِ اضافه این‌جا ضرب می‌شود در تعدادِ آدم‌ها و ساعت‌ها.
+     «مسیرِ گروه» هم این‌جا به کار نمی‌آید و فرستاده نمی‌شود. */
+  if (b.org) {
+    b.members = await membersOf(env, b.org);
+    b.mgrs = b.mgrs.filter(m => b.members.includes(m));
+  }
+  return b;
 }
 
 /* «since» یعنی: از این لحظه به بعد چه چیزی عوض شده؟ صفحه همین را هر
@@ -306,7 +340,6 @@ export function canEdit(box, col, by, row) {
   if (isMgr(box, by)) return true;
   const owner = row && row.owner;
   if (rule === 'owner') return !owner || owner === by;
-  if (rule === 'mgr') return false;
   if (rule === 'doer') {
     const who = row && row.v && row.v.who;
     return who ? who === by : (!owner || owner === by);
@@ -372,7 +405,7 @@ export async function putRow(env, box, rid, v, by) {
      ردیف را از نو می‌کشد و وسطِ تایپشان می‌پرد. */
   if (prev && sameRow(m.v, oldV))
     return { ok: true, rid: id, updated: prev.updated || now, v: oldV,
-             owner: old.owner, created: old.created, kept: m.kept, noop: true };
+             owner: old.owner, created: old.created, kept: m.kept };
 
   await run(env,
     `INSERT INTO shared_rows(box,rid,v,updated,by,dead,owner,created)
@@ -420,34 +453,29 @@ export async function saveBox(env, body, knownSlugs) {
   /* دو راهِ عضویت، و هم‌زمان نمی‌شوند: یا فهرستِ دستیِ اسم‌ها، یا یک
      گروه. اگر هر دو بود، فردا معلوم نبود کدام حرفِ آخر را می‌زند. */
   const org = String(body.org || '').trim();
-  if (org && !/^[a-z0-9]{6,16}$/.test(org)) return { error: 'گروه درست نیست.' };
-  if (org) {
-    const o = await one(env, 'SELECT id FROM orgs WHERE id=?', org).catch(() => null);
-    if (!o) return { error: 'این گروه پیدا نشد.' };
-  }
+  if (org && !ORG_ID_RE.test(org)) return { error: 'گروه درست نیست.' };
 
   /* فقط کارتابل‌هایی که واقعاً هستند؛ وگرنه فردا یک اسمِ غلط در
      فهرستِ اعضا می‌ماند و کسی نمی‌فهمد چرا آن یکی بخش را نمی‌بیند. */
-  const members = org ? [] : (Array.isArray(body.members) ? body.members : [])
-    .map(s => String(s || '').trim().toLowerCase())
-    .filter((s, i, a) => s && a.indexOf(s) === i && knownSlugs.includes(s))
-    .slice(0, 50);
+  const members = org ? [] : cleanSlugs(body.members, knownSlugs, 50);
 
   /* مدیر باید خودش عضو باشد؛ مدیری که بخش را نمی‌بیند مدیرِ چیزی نیست
      و فقط یک اسمِ گمراه‌کننده در تنظیمات می‌ماند. */
-  const eff = org
-    ? (await all(env, 'SELECT slug FROM org_members WHERE org=?', org)).map(r => r.slug)
-    : members;
-  const mgrs = (Array.isArray(body.mgrs) ? body.mgrs : [])
-    .map(x => String(x || '').trim().toLowerCase())
-    .filter((x, i, a) => x && a.indexOf(x) === i && eff.includes(x))
-    .slice(0, 10);
+  /* سه پرسشی که به هم کاری ندارند، با هم می‌روند. */
+  const [orgRow, orgMem, cur] = await Promise.all([
+    org ? orgById(env, org) : null,
+    org ? membersOf(env, org) : [],
+    one(env, 'SELECT id, type FROM shared_boxes WHERE id=?', id)
+  ]);
+  if (org && !orgRow) return { error: 'این گروه پیدا نشد.' };
+
+  const eff = org ? orgMem : members;
+  const mgrs = cleanSlugs(body.mgrs, eff, 10);
 
   /* نوعِ «کارهای تیمی» بدونِ قفل بی‌معنی است: کلِ حرفش این است که کارِ
      هر کس دستِ خودش باشد. پس کلید برایش همیشه روشن. */
   const rowlock = type === 'team' ? 1 : (body.rowlock ? 1 : 0);
 
-  const cur = await one(env, 'SELECT id, type FROM shared_boxes WHERE id=?', id);
   /* عوض کردنِ نوعِ یک جدولِ پر یعنی ستون‌هایش دیگر نمی‌خوانند و داده
      بی‌صدا ناپدید می‌شود. جلویش گرفته می‌شود. */
   if (cur && cur.type !== type) {
@@ -472,6 +500,20 @@ export async function dropBox(env, id) {
   await run(env, 'DELETE FROM shared_rows WHERE box=?', bid);
   await run(env, 'DELETE FROM shared_boxes WHERE id=?', bid);
   return { ok: true };
+}
+
+/* چند بخشِ مشترک به هر گروه وصل است — برای درختِ سازمان در پنل.
+   قبلاً برای همین عدد، همهٔ بخش‌ها خوانده و شکل داده می‌شدند و درختِ
+   سازمان بارِ دوم از دیتابیس درمی‌آمد. */
+export async function orgBoxCounts(env) {
+  await ensureShared(env);
+  try {
+    const rows = await all(env,
+      "SELECT org, COUNT(*) AS n FROM shared_boxes WHERE org <> '' GROUP BY org");
+    const out = {};
+    for (const r of rows) out[r.org] = r.n;
+    return out;
+  } catch (e) { return {}; }
 }
 
 /* شمارِ ردیف‌های زندهٔ هر بخش — برای نشان دادن در پنل */

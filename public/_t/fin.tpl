@@ -2555,8 +2555,10 @@ async function loadDatabase(){
   }
 }
 
-function persistCache(){
-  try{ Cloud.push(); }catch(e){ /* هنوز بالا نیامده */ }
+/* نوشتنِ محلی از فرستادن به سرور جدا شد، مثل کارتابل فنی: مسیرِ
+   پشتیبانِ آفلاین فقط نوشتنِ محلی می‌خواهد و نباید از راهی برود که
+   کارش رساندن به سرور است. */
+function persistCacheLocal(){
   try{
     localStorage.setItem(DB_CACHE_KEY, JSON.stringify({
       parties:partiesData, invoices:invoicesData, payables:payablesData,
@@ -2564,7 +2566,18 @@ function persistCache(){
     }));
   }catch(e){ /* non-fatal */ }
 }
+function persistCache(){
+  try{ Cloud.push(); }catch(e){ /* هنوز بالا نیامده */ }
+  persistCacheLocal();
+}
 function loadCachedDatabase(){
+  const seed = bkSeed();
+  if(seed && seed.db){
+    applyDbSnapshot(seed.db);
+    bkSeedDone();
+    try{ persistCacheLocal(); }catch(e){}
+    return;
+  }
   try{
     const raw = localStorage.getItem(DB_CACHE_KEY);
     if(!raw) return;
@@ -3842,9 +3855,41 @@ function scheduleSave(){
   }, 500);
 }
 
+/* ---------- دادهٔ داخلِ فایلِ پشتیبان ----------
+   فایلِ پشتیبان تا حالا خالی باز می‌شد و آدم باید می‌فهمید که باید
+   «⬆ بازیابی» بزند و کدام فایل را بدهد. حالا داده داخلِ خودِ صفحه
+   نشسته و همان بار اول پُر باز می‌شود.
+
+   مهرِ زمانِ پشتیبان نگه داشته می‌شود تا اگر همان فایل را دوباره باز
+   کردید، چیزی که این وسط عوض کرده‌اید پاک نشود — ولی پشتیبانِ تازه‌تر
+   جای قبلی را بگیرد. اگر localStorage در دسترس نباشد (روی file:// گاهی
+   نیست) هر بار از خودِ فایل خوانده می‌شود، که همان رفتارِ درست است. */
+let BK_SEED_READ = false, BK_SEED = null;
+function bkSeed(){
+  if(BK_SEED_READ) return BK_SEED;
+  BK_SEED_READ = true;
+  const s = (window.KARTABL_OFFLINE && window.KARTABL_SEED) ? window.KARTABL_SEED : null;
+  if(s){
+    try{
+      if(localStorage.getItem(STORE_KEY + ":seed") === String(s.stamp)){ BK_SEED = null; return null; }
+    }catch(e){ /* بدون حافظهٔ محلی هم باید باز شود */ }
+  }
+  BK_SEED = s;
+  return BK_SEED;
+}
+function bkSeedDone(){
+  const s = window.KARTABL_SEED;
+  if(!s) return;
+  try{ localStorage.setItem(STORE_KEY + ":seed", String(s.stamp)); }catch(e){}
+}
+
 async function loadState(){
+  /* دادهٔ پشتیبان یک شاخهٔ جدا نیست، فقط یک سرچشمهٔ دیگر برای همان
+     بایت‌هاست. شاخهٔ جدا پیش‌فرض‌های پایین را رد می‌کرد — همان
+     واگرایی که در کارتابل فنی نبود و این‌جا بود. */
+  const seed = bkSeed();
   try{
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = (seed && seed.state) ? JSON.stringify(seed.state) : localStorage.getItem(STORE_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
       state = Object.assign(deepClone(DEFAULT_STATE), parsed);
@@ -3857,6 +3902,9 @@ async function loadState(){
     state = deepClone(DEFAULT_STATE);
   }
   ensureMonthsMigration();
+  /* آنچه از فایلِ پشتیبان آمد روی همین مرورگر هم می‌نشیند، تا اگر
+     صفحه را دوباره باز کردی همان‌جا باشد. */
+  if(seed && seed.state){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 }
 
 /* ---------------- Monthly data helpers ---------------- */

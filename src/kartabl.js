@@ -695,41 +695,53 @@ export async function buildKartablBackup(env, req, panel) {
     } catch (e) { return null; }
   };
 
-  /* همهٔ کارتابل‌ها کتابخانه‌ها را از /v/ می‌گیرند — یک نسخه برای
-     هر دو، نه دو کپی روی سرور. */
   const F = panel.folder;
-  const extras = [];
-  for (const [from, to] of [
-    ['/v/chart.umd.min.js', F + '/v/chart.umd.min.js'],
-    ['/v/xlsx.full.min.js', F + '/v/xlsx.full.min.js'],
-    ['/f/Vazirmatn-Regular.2.woff2',   F + '/f/Vazirmatn-Regular.2.woff2'],
-    ['/f/Vazirmatn-Medium.2.woff2',    F + '/f/Vazirmatn-Medium.2.woff2'],
-    ['/f/Vazirmatn-SemiBold.2.woff2',  F + '/f/Vazirmatn-SemiBold.2.woff2'],
-    ['/f/Vazirmatn-Bold.2.woff2',      F + '/f/Vazirmatn-Bold.2.woff2'],
-    ['/f/Vazirmatn-ExtraBold.2.woff2', F + '/f/Vazirmatn-ExtraBold.2.woff2'],
-    ['/' + panel.icon, F + '/' + panel.icon]
-  ]) {
-    const data = await grab(from);
-    /* woff2 خودش فشرده است؛ دوباره فشردنش فقط وقت می‌برد */
-    if (data) extras.push({ name: to, data, store: to.endsWith('.woff2') });
-  }
 
+  /* صفحه را از همان کدی می‌گیریم که به مرورگر می‌دهد، نه با یک درخواستِ
+     HTTP به آدرسِ خودمان. آن راه به مسیریابی و ریدایرکت وابسته بود و
+     اگر یک روز عوض می‌شد، پشتیبان بی‌صدا بدونِ HTML می‌رفت. */
   let html = '';
-  try {
-    const res = await env.ASSETS.fetch(new Request(new URL(panel.page, req.url), req));
-    if (res.ok) {
-      html = (await res.text())
-        /* نسخهٔ داخل پشتیبان نباید سراغ سرور برود: نه ورود می‌خواهد و نه
-           همگام‌سازی. بدون این پرچم، فایلِ بازشده روی سیستم منتظر جوابی
-           می‌ماند که هیچ‌وقت نمی‌آید. */
-        .replace('<head>', '<head>\n<script>window.KARTABL_OFFLINE = true;<\/script>')
-        /* آدرس‌های مطلق روی file:// به جایی نمی‌رسند */
-        .replace(/"\/siamak\/v\//g, '"v/')
-        .replace(/\(\/f\//g, '(f/')
-        .replace(/"\/f\//g, '"f/')
-        .replace(/"\/(icon-[a-z]+\.\d+\.png)"/g, '"$1"');
+  try { html = (await renderPanelPage(env, req, panel)) || ''; }
+  catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
+
+  const extras = [];
+  if (html) {
+    /* دادهٔ کارتابل داخلِ خودِ صفحه می‌نشیند. تا حالا فایلِ پشتیبان خالی
+       باز می‌شد و آدم باید می‌فهمید که باید «⬆ بازیابی» بزند و کدام
+       فایل را بدهد — یعنی پشتیبانی که بدونِ راهنما باز نمی‌شد.
+       «<» فرار داده می‌شود وگرنه یک </script> وسطِ داده صفحه را می‌بندد. */
+    const seed = JSON.stringify({ stamp, state: st, db: database })
+      .replace(/</g, '\\u003c');
+    /* نسخهٔ داخل پشتیبان نباید سراغ سرور برود: نه ورود می‌خواهد و نه
+       همگام‌سازی. بدون این پرچم، فایلِ بازشده روی سیستم منتظر جوابی
+       می‌ماند که هیچ‌وقت نمی‌آید. */
+    html = html.replace('<head>', '<head>\n<script>window.KARTABL_OFFLINE = true;\n' +
+                        'window.KARTABL_SEED = ' + seed + ';<\/script>');
+
+    /* فایل‌های همراه از خودِ صفحه درمی‌آیند، نه از یک فهرستِ دستی.
+       فهرستِ دستی سایهٔ قالب بود و مثل هر سایه‌ای عقب می‌افتاد: یک بار
+       با اسمِ ثابتِ «siamak» پشتیبانِ بقیه کتابخانه‌هایش را گم کرد، و
+       لوگوی SLTech هم اصلاً در فهرست نبود و روی سیستم شکسته می‌ماند.
+       حالا هر آدرسِ مطلقی که صفحه به آن تکیه دارد پیدا، برداشته و
+       نسبی می‌شود — پس فایلِ تازه‌ای که فردا اضافه شود هم خودش می‌آید. */
+    const wanted = new Map();          /* آدرسِ روی سرور → نامِ داخلِ زیپ */
+    /* نقطه داخلِ نامِ فایل مجاز است: «icon-siamak.2.png» شمارهٔ نسخه را
+       وسطِ نامش دارد و بدونِ این، همان لوگو از قلم می‌افتاد. */
+    const ASSET = /(["'(])((?:\/[a-z0-9_-]{1,32})?\/(?:v|f)\/[A-Za-z0-9_.-]+|\/[A-Za-z0-9_.-]+\.(?:png|svg|ico|webp|js|css))(["')])/g;
+    html = html.replace(ASSET, (m, open, url, close) => {
+      /* نامِ کارتابل اگر جلوی /v/ یا /f/ چسبیده بود برداشته می‌شود:
+         روی سرور هر دو به یک فایل می‌رسند، ولی کنارِ فایل فقط یکی. */
+      const rel = url.replace(/^\/[a-z0-9_-]{1,32}(?=\/(?:v|f)\/)/, '').replace(/^\//, '');
+      wanted.set('/' + rel, F + '/' + rel);
+      return open + rel + close;
+    });
+
+    for (const [from, to] of wanted) {
+      const data = await grab(from);
+      /* woff2 و png خودشان فشرده‌اند؛ دوباره فشردنشان فقط وقت می‌برد */
+      if (data) extras.push({ name: to, data, store: /\.(woff2|png|webp|ico)$/.test(to) });
     }
-  } catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
+  }
 
   const entries = [
     { name: F + '/' + panel.files.json, data: stateJson },
@@ -840,7 +852,12 @@ export async function sendKartablBackup(env, req, panel, note = '') {
     `حجم: ${faDigits(Math.round(zip.length / 1024))} کیلوبایت\n\n` +
     `داخل زیپ: فایل داده، فایل اکسل${html ? '، و خودِ صفحهٔ کارتابل' : ''}.\n` +
     (counts.vault ? 'بخش شخصی رمزنگاری‌شده داخلش هست — با رمز خودش باز می‌شود.\n' : '') +
-    `برای برگرداندن: صفحه را باز کن و «⬆ بازیابی» را با فایل JSON بزن.`;
+    (html
+      /* دیگر «بازیابی بزن» نمی‌گوید: داده داخلِ خودِ صفحه است و همان
+         بار اول پُر باز می‌شود. گفتنِ کارِ اضافه‌ای که لازم نیست، آدم
+         را دنبالِ نخود سیاه می‌فرستد. */
+      ? 'زیپ را اکسترکت کن و فایل HTML را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.'
+      : '⚠️ این بار صفحهٔ کارتابل داخلِ زیپ نیست. برای برگرداندن: صفحه را باز کن و «⬆ بازیابی» را با فایل JSON بزن.');
 
   /* به هر ربات جداگانه. اگر یکی نگرفت، آن یکی نباید قربانی شود —
      پشتیبانی که به یک جا رسیده باشد از هیچ بهتر است. */

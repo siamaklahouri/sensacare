@@ -573,43 +573,32 @@ table.inv-tab td.desc{ text-align:right; }
 /* ---------- سازمان ----------
    همان قابِ بخش‌های مشترک، فقط با تورفتگی که عمق را نشان بدهد. خطِ
    عمودیِ سمتِ شروع، زیرمجموعه بودن را از یک نگاه معلوم می‌کند. */
-.orgrow{ border:1px solid var(--line); border-radius:var(--r); padding:13px 15px;
-  margin-bottom:9px; background:var(--paper-2); }
-.orgrow .h{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:6px; }
-.orgrow .h b{ font-size:14px; }
-.orgrow .h .ic{ font-size:16px; }
-.orgrow .h .branch{ color:var(--ink-faint); font-size:15px; }
-.orgrow .mem{ display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
-.orgrow .mem .p{ font-size:11.5px; background:var(--white); border:1px solid var(--line);
-  border-radius:999px; padding:3px 10px; color:var(--ink-soft); }
-.orgrow .mem .none{ color:var(--amber-ink); border-color:var(--amber); background:var(--amber-bg); }
-.orgrow .acts{ display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; }
-
-/* ---------- بخش‌های مشترک ---------- */
-.shbox{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
+/* ---------- قابِ کارت‌ها: بخش‌های مشترک و گروه‌های سازمانی ----------
+   یک شکل برای هر دو. جدا که بودند، فقط یکی‌دو پیکسل با هم فرق داشتند —
+   که خودش نشانهٔ کپی بود، نه تصمیم — و هر تغییرِ ظاهری دو جا لازم داشت. */
+.shbox, .orgrow{ border:1px solid var(--line); border-radius:var(--r); padding:14px 16px;
   margin-bottom:11px; background:var(--paper-2); }
-.shbox .h{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:8px; }
-.shbox .h b{ font-size:14px; }
-.shbox .h .ic{ font-size:16px; }
-.shbox .mem{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-.shbox .mem .p{ font-size:11.5px; background:var(--white); border:1px solid var(--line);
-  border-radius:999px; padding:3px 10px; color:var(--ink-soft); }
-.shbox .mem .none{ color:var(--amber-ink); border-color:var(--amber); background:var(--amber-bg); }
-.shbox .acts{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.shbox .h, .orgrow .h{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:8px; }
+.shbox .h b, .orgrow .h b{ font-size:14px; }
+.shbox .h .ic, .orgrow .h .ic{ font-size:16px; }
+.shbox .mem, .orgrow .mem{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.shbox .mem .p, .orgrow .mem .p{ font-size:11.5px; background:var(--white);
+  border:1px solid var(--line); border-radius:999px; padding:3px 10px; color:var(--ink-soft); }
+.shbox .mem .none, .orgrow .mem .none{ color:var(--amber-ink); border-color:var(--amber);
+  background:var(--amber-bg); }
+.shbox .acts, .orgrow .acts{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+/* تنها چیزی که مالِ خودِ درخت است */
+.orgrow .h .branch{ color:var(--ink-faint); font-size:15px; }
 .shcols{ font-size:11.5px; color:var(--ink-faint); line-height:1.9; }
 .shpick{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:7px;
   margin-top:7px; }
-.shpick label{ display:flex; align-items:center; gap:8px; font-size:12.5px;
+.shpick .kk{ font-size:11px; color:var(--ink-faint); }
+.shpick label, .shlock{ display:flex; align-items:center; gap:8px; font-size:12.5px;
   border:1px solid var(--line); border-radius:var(--r-sm); padding:8px 10px;
   background:var(--paper-2); cursor:pointer; }
-.shpick label:hover{ border-color:var(--brass); }
-.shpick input{ width:auto; margin:0; }
-.shpick .kk{ font-size:11px; color:var(--ink-faint); }
-.shlock{ display:flex; align-items:center; gap:9px; font-size:12.5px; margin-top:7px;
-  border:1px solid var(--line); border-radius:var(--r-sm); padding:9px 11px;
-  background:var(--paper-2); cursor:pointer; }
-.shlock:hover{ border-color:var(--brass); }
-.shlock input{ width:auto; margin:0; }
+.shpick label:hover, .shlock:hover{ border-color:var(--brass); }
+.shpick input, .shlock input{ width:auto; margin:0; }
+.shlock{ margin-top:7px; }
 .shlock input:disabled{ cursor:default; }
 .shlock:has(input:disabled){ opacity:.72; cursor:default; }
 
@@ -1329,6 +1318,18 @@ function renderPlanners(){
 }
 
 const find = slug => DATA.items.find(p=>p.slug===slug);
+/* نامِ خواندنیِ یک کارتابل. سه جا همین «پیدا کن، اگر بود نامش وگرنه
+   خودِ slug» نوشته شده بود. */
+const nameOf = slug => { const p = find(slug); return (p && p.name) || slug; };
+/* یک ردیفِ تیک‌خور در .shpick — سه جا همین مارک‌آپ ساخته می‌شد و باید
+   با CSSِ .shpick هم‌قدم می‌ماند. */
+const pickRow = (slug, checked) =>
+  '<label><input type="checkbox" value="' + esc(slug) + '"' + (checked ? " checked" : "") + '>' +
+  '<span>' + esc(nameOf(slug)) + '</span>' +
+  '<span class="kk" dir="ltr">' + esc(slug) + '</span></label>';
+const pickList = (slugs, isOn) => slugs.length
+  ? slugs.map(sg => pickRow(sg, isOn(sg))).join("")
+  : '<div class="hint">هنوز کارتابلی نیست.</div>';
 
 /* رونوشت — قبلاً باید آدرس یا رمز را دستی انتخاب می‌کردید. */
 async function copyText(btn){
@@ -1968,10 +1969,7 @@ async function loadOrgs(){
   ORGS.forEach(o=> (kids[o.parent || ""] = kids[o.parent || ""] || []).push(o));
   const draw = (pid, depth)=> (kids[pid] || []).map(o=>{
     const mem = o.members.length
-      ? o.members.map(m=>{
-          const pp = (DATA.items || []).find(x=> x.slug === m);
-          return '<span class="p">' + esc(pp ? (pp.name || m) : m) + '</span>';
-        }).join("")
+      ? o.members.map(m=> '<span class="p">' + esc(nameOf(m)) + '</span>').join("")
       : '<span class="p none">هنوز کسی داخلش نیست</span>';
     return '<div class="orgrow" style="margin-inline-start:' + (depth * 22) + 'px">' +
       '<div class="h">' + (depth ? '<span class="branch">└</span>' : '<span class="ic">🏢</span>') +
@@ -2035,12 +2033,7 @@ function orgForm(cur, parentId){
       </select></div>
     <div class="fld"><label>چه کسانی داخلش باشند</label>
       <div class="shpick" id="ogMem">
-        ${planners.length ? planners.map(pp=>
-          '<label><input type="checkbox" value="' + esc(pp.slug) + '"' +
-          (o.members.indexOf(pp.slug) >= 0 ? " checked" : "") + '>' +
-          '<span>' + esc(pp.name || pp.slug) + '</span>' +
-          '<span class="kk" dir="ltr">' + esc(pp.slug) + '</span></label>').join("")
-          : '<div class="hint">هنوز کارتابلی نیست.</div>'}
+        ${pickList(planners.map(pp=> pp.slug), sg=> o.members.indexOf(sg) >= 0)}
       </div></div>
     <div class="ov-acts">
       <button class="btn btn-main" id="ogSave">ذخیره</button>
@@ -2157,12 +2150,7 @@ function shForm(cur){
       <div class="hint" id="shOrgWho"></div></div>
     <div class="fld" id="shMemWrap"><label>کدام کارتابل‌ها عضو باشند</label>
       <div class="shpick" id="shMem">
-        ${planners.length ? planners.map(pp=>
-          '<label><input type="checkbox" value="' + esc(pp.slug) + '"' +
-          (b.members.includes(pp.slug) ? " checked" : "") + '>' +
-          '<span>' + esc(pp.name || pp.slug) + '</span>' +
-          '<span class="kk" dir="ltr">' + esc(pp.slug) + '</span></label>').join("")
-          : '<div class="hint">هنوز کارتابلی نیست.</div>'}
+        ${pickList(planners.map(pp=> pp.slug), sg=> b.members.includes(sg))}
       </div></div>
     <div class="fld"><label>مدیرِ این بخش — مسئول و مهلت را او تعیین می‌کند</label>
       <div class="shpick" id="shMgr"></div>
@@ -2171,8 +2159,7 @@ function shForm(cur){
     <div class="fld"><label>قفلِ مالکیت</label>
       <label class="shlock"><input type="checkbox" id="shLock"${b.rowlock ? " checked" : ""}>
         <span>هر کس فقط ردیفی را که خودش ساخته تغییر بدهد</span></label>
-      <div class="hint" id="shLockNote">خاموش یعنی هر عضوی هر ردیفی را عوض می‌کند —
-        برای جدولِ سرورها و شرکت‌ها معمولاً همین درست است، برای یادداشت و کار نه.</div></div>
+      <div class="hint" id="shLockNote"></div></div>
     <div class="ov-acts">
       <button class="btn btn-main" id="shSave">ذخیره</button>
       <button class="btn" onclick="closeOverlay()">انصراف</button>
@@ -2189,9 +2176,8 @@ function shForm(cur){
     sel.innerHTML = '<option value="">— انتخاب کنید —</option>' +
       ORGS.map(x=> '<option value="' + esc(x.id) + '"' + (x.id === b.org ? " selected" : "") +
         ">" + esc(x.path) + " (" + fa(x.members.length) + " نفر)</option>").join("");
-    if(!ORGS.length)
-      document.getElementById("shOrgWho").textContent =
-        "هنوز گروهی ساخته نشده — سربرگِ «سازمان».";
+    /* تنها نویسندهٔ #shOrgWho همان syncSrc است؛ دو نویسنده یعنی یکی‌شان
+       یک روز عوض می‌شود و آن یکی نه. */
     syncSrc();
   };
 
@@ -2214,10 +2200,7 @@ function shForm(cur){
       const o = ORGS.find(x=> x.id === document.getElementById("shOrg").value);
       document.getElementById("shOrgWho").textContent = o
         ? (o.members.length
-            ? "الان: " + o.members.map(m=>{
-                const pp = planners.find(x=> x.slug === m);
-                return pp ? (pp.name || m) : m;
-              }).join("، ")
+            ? "الان: " + o.members.map(nameOf).join("، ")
             : "این گروه هنوز عضوی ندارد — کسی این بخش را نمی‌بیند.")
         : (ORGS.length ? "" : "هنوز گروهی ساخته نشده — سربرگِ «سازمان».");
     }
@@ -2227,13 +2210,7 @@ function shForm(cur){
     const box = document.getElementById("shMgr");
     const picked = effMembers();
     if(!picked.length){ box.innerHTML = '<div class="hint">اول عضو انتخاب کنید.</div>'; return; }
-    box.innerHTML = picked.map(sg=>{
-      const pp = planners.find(x=> x.slug === sg) || { slug:sg, name:sg };
-      return '<label><input type="checkbox" value="' + esc(sg) + '"' +
-        (mgrSet.has(sg) ? " checked" : "") + '>' +
-        '<span>' + esc(pp.name || sg) + '</span>' +
-        '<span class="kk" dir="ltr">' + esc(sg) + '</span></label>';
-    }).join("");
+    box.innerHTML = pickList(picked, sg=> mgrSet.has(sg));
     box.querySelectorAll("input").forEach(i=>{
       i.onchange = ()=> i.checked ? mgrSet.add(i.value) : mgrSet.delete(i.value);
     });

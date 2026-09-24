@@ -113,8 +113,7 @@
         nav.insertBefore(head, before || null);
       }
       /* بعد از سرفصلِ خودش، نه ته فهرست */
-      var last = nav.querySelector('[data-shorg="' + key + '"]');
-      var cur = last;
+      var cur = nav.querySelector('[data-shorg="' + key + '"]');
       while (cur.nextElementSibling &&
              cur.nextElementSibling.classList.contains("navbtn") &&
              String(cur.nextElementSibling.getAttribute("data-view") || "").indexOf("shared-") === 0)
@@ -188,7 +187,6 @@
     if (isMgr(box)) return true;
     var owner = r && r.owner;
     if (rule === "owner") return !owner || owner === me();
-    if (rule === "mgr") return false;
     if (rule === "doer") {
       var who = r && r.v && r.v.who;
       return who ? who === me() : (!owner || owner === me());
@@ -219,6 +217,15 @@
     } catch (e) { return "—"; }
   }
 
+  /* مقدارِ خام چطور داخلِ کادر نوشته می‌شود. هم موقعِ ساختِ ردیف لازم
+     است هم موقعِ برگرداندنِ چیزی که سرور نپذیرفت؛ دو جا نوشتنش یعنی
+     یک روز قالبِ عدد در یکی عوض می‌شود و آن یکی بی‌صدا فرق می‌کند. */
+  function inputVal(col, v) {
+    if (v === undefined || v === null || v === "") return "";
+    return (col.kind === "money" || col.kind === "num")
+      ? Number(v).toLocaleString("en-US") : v;
+  }
+
   /* ---------- یک خانه ---------- */
   function cellHtml(col, val) {
     var v = val === undefined || val === null ? "" : val;
@@ -226,26 +233,24 @@
     /* مثل بقیهٔ جدول‌های کارتابل: هیچ خانه‌ای پیشنهادِ «نام کاربری» نگیرد */
     var name = ' data-k="' + esc(col.k) + '" autocomplete="off" spellcheck="false"' +
                ' data-lpignore="true" data-1p-ignore data-form-type="other"';
-    if (col.kind === "pick") {
-      return '<select' + name + '><option value=""></option>' +
-        col.opts.map(function (o) {
-          return '<option value="' + esc(o) + '"' + (String(v) === o ? " selected" : "") + ">" + esc(o) + "</option>";
-        }).join("") + "</select>";
-    }
-    /* «مسئول» فهرستِ بسته‌ای از اعضای همین بخش است، نه یک کادرِ متن:
-       اسمِ تایپ‌شده فردا با هیچ کارتابلی جور درنمی‌آید. */
-    if (col.kind === "who") {
-      return '<select' + name + '><option value="">— کسی —</option>' +
-        (col.people || []).map(function (p) {
-          return '<option value="' + esc(p.slug) + '"' + (String(v) === p.slug ? " selected" : "") +
-                 ">" + esc(p.name) + "</option>";
+    /* «مسئول» هم یک فهرستِ بسته است، فقط مقدار و برچسبش فرق دارند —
+       پس همان سازنده، نه یک کپیِ دیگر با همان صفت‌ها. */
+    if (col.kind === "pick" || col.kind === "who") {
+      var list = col.kind === "who"
+        ? (col.people || []).map(function (p) { return { v: p.slug, t: p.name }; })
+        : col.opts.map(function (o) { return { v: o, t: o }; });
+      return '<select' + name + '><option value="">' +
+        (col.kind === "who" ? "— کسی —" : "") + "</option>" +
+        list.map(function (o) {
+          return '<option value="' + esc(o.v) + '"' + (String(v) === o.v ? " selected" : "") +
+                 ">" + esc(o.t) + "</option>";
         }).join("") + "</select>";
     }
     if (col.kind === "long")
       return "<textarea" + name + dir + ' rows="1">' + esc(v) + "</textarea>";
     if (col.kind === "money" || col.kind === "num")
       return '<input type="text" inputmode="numeric" dir="ltr"' + name +
-             ' value="' + esc(v === "" ? "" : Number(v).toLocaleString("en-US")) + '">';
+             ' value="' + esc(inputVal(col, v)) + '">';
     if (col.kind === "date")
       return '<input type="text" dir="ltr" placeholder="۱۴۰۴/۰۷/۰۱"' + name + ' value="' + esc(v) + '">';
     return '<input type="text"' + name + dir + ' value="' + esc(v) + '">';
@@ -471,9 +476,7 @@
       if (!c.k) continue;
       var el = tr.querySelector('[data-k="' + c.k + '"]');
       if (!el || el === document.activeElement) continue;
-      var want = srv[c.k] === undefined ? "" : srv[c.k];
-      if (c.kind === "money" || c.kind === "num")
-        want = want === "" ? "" : Number(want).toLocaleString("en-US");
+      var want = inputVal(c, srv[c.k]);
       if (String(el.value) !== String(want)) { el.value = want; fit(el); }
     }
     kept(box, r.data.kept);
@@ -568,11 +571,11 @@
       /* اول بخش‌های بی‌گروه، بعد گروه‌به‌گروه. ترتیبِ سوار شدن همان
          ترتیبِ نوار کنار است، پس اگر مرتب نمی‌شد، یک بخشِ بی‌گروه
          می‌افتاد زیرِ سرفصلِ گروهِ قبلی و مالِ آن به نظر می‌رسید. */
+      /* رشتهٔ خالی خودش از هر نامی کوچک‌تر است، پس همین مقایسه هم
+         بی‌گروه‌ها را اول می‌گذارد و هم هر گروه را کنارِ خودش. */
       var order = BOXES.slice().sort(function (a, b) {
         var ao = a.orgPath || "", bo = b.orgPath || "";
-        if (!ao && bo) return -1;
-        if (ao && !bo) return 1;
-        return ao === bo ? 0 : (ao < bo ? -1 : 1);
+        return ao < bo ? -1 : ao > bo ? 1 : 0;
       });
       for (var i = 0; i < order.length; i++) mount(order[i]);
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }

@@ -25,23 +25,31 @@ let ready = false;
 export async function ensureOrgs(env) {
   if (ready) return;
   try {
-    await run(env, `CREATE TABLE IF NOT EXISTS orgs (
-      id      TEXT PRIMARY KEY,
-      name    TEXT NOT NULL DEFAULT '',
-      parent  TEXT NOT NULL DEFAULT '',
-      created INTEGER NOT NULL DEFAULT 0
-    )`);
-    await run(env, `CREATE TABLE IF NOT EXISTS org_members (
-      org  TEXT NOT NULL,
-      slug TEXT NOT NULL,
-      PRIMARY KEY (org, slug)
-    )`);
-    await run(env, 'CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug)');
+    /* سه دستور در یک رفت‌وبرگشت. هر «IF NOT EXISTS» است، پس هیچ‌کدام
+       خطا نمی‌دهد و دسته‌ای فرستادنشان بی‌خطر است. */
+    await env.DB.batch([
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS orgs (
+        id      TEXT PRIMARY KEY,
+        name    TEXT NOT NULL DEFAULT '',
+        parent  TEXT NOT NULL DEFAULT '',
+        created INTEGER NOT NULL DEFAULT 0
+      )`),
+      env.DB.prepare(`CREATE TABLE IF NOT EXISTS org_members (
+        org  TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        PRIMARY KEY (org, slug)
+      )`),
+      env.DB.prepare('CREATE INDEX IF NOT EXISTS org_members_slug ON org_members(slug)')
+    ]);
     ready = true;
   } catch (e) { /* مسیرها خودشان خطا می‌دهند */ }
 }
 
-const ID_RE = /^[a-z0-9]{6,16}$/;
+/* شکلِ شناسهٔ گروه یک جا تعریف می‌شود. سه‌جا نوشتنش یعنی یک روز یکی‌شان
+   عوض می‌شود و آن دو تا نه. */
+export const ORG_ID_RE = /^[a-z0-9]{6,16}$/;
+export const isOrgId = x => ORG_ID_RE.test(String(x || ''));
+const ID_RE = ORG_ID_RE;
 const newId = () => {
   const a = 'abcdefghijklmnopqrstuvwxyz0123456789';
   const b = crypto.getRandomValues(new Uint8Array(10));
@@ -81,6 +89,21 @@ export async function orgsOf(env, slug) {
   return rows.map(r => r.org);
 }
 
+export async function orgById(env, id) {
+  await ensureOrgs(env);
+  return await one(env, 'SELECT * FROM orgs WHERE id=?', String(id || ''));
+}
+
+/* پاک کردنِ فهرستِ نامِ کارتابل‌ها: خالی‌ها بیرون، تکراری‌ها یکی، و
+   فقط آن‌هایی که واقعاً وجود دارند. سه جا همین کار را می‌کرد (اعضای
+   بخش، مدیرها، اعضای گروه) و هر سه کپیِ هم بودند. */
+export function cleanSlugs(list, known, max) {
+  return (Array.isArray(list) ? list : [])
+    .map(x => String(x || '').trim().toLowerCase())
+    .filter((x, i, a) => x && a.indexOf(x) === i && known.includes(x))
+    .slice(0, max);
+}
+
 export async function membersOf(env, id) {
   await ensureOrgs(env);
   const rows = await all(env, 'SELECT slug FROM org_members WHERE org=?', String(id || ''));
@@ -117,22 +140,27 @@ export async function saveOrg(env, body, knownSlugs) {
     }
   }
 
-  const members = (Array.isArray(body.members) ? body.members : [])
-    .map(x => String(x || '').trim().toLowerCase())
-    .filter((x, i, a) => x && a.indexOf(x) === i && knownSlugs.includes(x))
-    .slice(0, 200);
+  const members = cleanSlugs(body.members, knownSlugs, 200);
 
   const oid = isNew ? newId() : id;
-  await run(env,
-    `INSERT INTO orgs(id,name,parent,created) VALUES(?,?,?,?)
-     ON CONFLICT(id) DO UPDATE SET name=excluded.name, parent=excluded.parent`,
-    oid, name, parent, Date.now());
 
   /* اعضا از نو نوشته می‌شوند. تفاضل گرفتن کوتاه‌تر بود ولی اگر وسطش
-     چیزی می‌شکست، گروه نیمه‌عضو می‌ماند. */
-  await run(env, 'DELETE FROM org_members WHERE org=?', oid);
-  for (const m of members)
-    await run(env, 'INSERT OR IGNORE INTO org_members(org,slug) VALUES(?,?)', oid, m);
+     چیزی می‌شکست، گروه نیمه‌عضو می‌ماند.
+     همه در یک دسته می‌روند: یک ردیف‌به‌ردیف INSERT یعنی برای بخشی با
+     سی نفر، سی‌ویک رفت‌وبرگشت پشتِ هم به دیتابیس. */
+  const stmts = [
+    env.DB.prepare(
+      `INSERT INTO orgs(id,name,parent,created) VALUES(?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET name=excluded.name, parent=excluded.parent`
+    ).bind(oid, name, parent, Date.now()),
+    env.DB.prepare('DELETE FROM org_members WHERE org=?').bind(oid)
+  ];
+  if (members.length)
+    stmts.push(env.DB.prepare(
+      'INSERT OR IGNORE INTO org_members(org,slug) VALUES ' +
+      members.map(() => '(?,?)').join(',')
+    ).bind(...members.flatMap(m => [oid, m])));
+  await env.DB.batch(stmts);
 
   return { ok: true, id: oid, created: isNew };
 }
@@ -140,14 +168,21 @@ export async function saveOrg(env, body, knownSlugs) {
 /* گروهی که زیرمجموعه یا جدول دارد پاک نمی‌شود. می‌شد زیرمجموعه‌ها را
    بالا کشید و جدول‌ها را بی‌صاحب کرد، ولی آن وقت یک کلیک، دسترسیِ چند
    نفر را بی‌صدا عوض می‌کرد. */
-export async function dropOrg(env, id, boxOrgs) {
+export async function dropOrg(env, id) {
   await ensureOrgs(env);
   const oid = String(id || '');
-  const kid = await one(env, 'SELECT id FROM orgs WHERE parent=?', oid);
+  /* هر دو نگهبان هم‌شکل‌اند و خودشان می‌پرسند. قبلاً فهرستِ بخش‌ها را
+     صدازننده باید آماده می‌کرد — یعنی برای یک جوابِ بله/خیر، همهٔ
+     بخش‌ها و کلِ درختِ سازمان خوانده می‌شد. */
+  const [kid, box] = await Promise.all([
+    one(env, 'SELECT id FROM orgs WHERE parent=?', oid),
+    one(env, "SELECT id FROM shared_boxes WHERE org=? LIMIT 1", oid).catch(() => null)
+  ]);
   if (kid) return { error: 'این گروه زیرمجموعه دارد. اول آن‌ها را جابه‌جا یا پاک کنید.' };
-  if ((boxOrgs || []).includes(oid))
-    return { error: 'یک بخشِ مشترک به این گروه وصل است. اول آن را جدا کنید.' };
-  await run(env, 'DELETE FROM org_members WHERE org=?', oid);
-  await run(env, 'DELETE FROM orgs WHERE id=?', oid);
+  if (box) return { error: 'یک بخشِ مشترک به این گروه وصل است. اول آن را جدا کنید.' };
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM org_members WHERE org=?').bind(oid),
+    env.DB.prepare('DELETE FROM orgs WHERE id=?').bind(oid)
+  ]);
   return { ok: true };
 }
