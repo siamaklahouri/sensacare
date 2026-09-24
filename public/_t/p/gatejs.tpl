@@ -10,14 +10,60 @@
    صفحه هم نمی‌تواند بخواندش. */
 const KARTABL_API = "{{API}}";
 
+/* ---------- یک کارتابل، یک جا ----------
+   هر ورود نشستِ قبلی را کنار می‌گذارد. این‌جا سمتِ مرورگرِ کنارگذاشته
+   است: تا خبردار شود، سروری که جوابِ ۴۰۱ با نشانهٔ taken داده همه‌چیز
+   را می‌خواباند.
+
+   پرچم داخلِ خودِ apiCall بررسی می‌شود، نه در تک‌تکِ صدازننده‌ها: این
+   صفحه چند تایمرِ مستقل دارد (ذخیره، بخش‌های مشترک، خبرها) و پیدا
+   کردنِ همه‌شان کاری است که یک روز یکی‌اش جا می‌ماند. از این‌جا هیچ
+   درخواستی رد نمی‌شود. */
+let KARTABL_TAKEN = false;
+
 async function apiCall(path, opts){
+  if(KARTABL_TAKEN) return { ok:false, status:401, data:{ taken:true } };
   const res = await fetch(KARTABL_API + path, Object.assign({
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" }
   }, opts || {}));
   let data = null;
   try{ data = await res.json(); }catch(e){ /* پاسخ بدون بدنه */ }
+  if(res.status === 401 && data && data.taken) takenOver(data);
   return { ok: res.ok, status: res.status, data: data || {} };
+}
+
+function takenOver(d){
+  if(KARTABL_TAKEN) return;
+  KARTABL_TAKEN = true;
+  const dev = (d && d.dev) ? String(d.dev) : "";
+  const at  = (d && d.at)  ? Number(d.at)  : 0;
+  const el = document.createElement("div");
+  el.id = "takenScreen";
+  el.setAttribute("style",
+    "position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;" +
+    "padding:22px;background:var(--paper,#EDF1F6);");
+  el.innerHTML =
+    '<div style="max-width:420px;width:100%;background:var(--white,#fff);' +
+      'border:1px solid var(--card-border,#DCE3EA);border-radius:16px;padding:26px 24px;' +
+      'box-shadow:0 18px 48px rgba(11,37,69,.18);text-align:center">' +
+      '<div style="font-size:34px;line-height:1;margin-bottom:12px">🔒</div>' +
+      '<div style="font-family:var(--font-display,inherit);font-size:17px;font-weight:700;' +
+        'color:var(--ink,#0B2545);margin-bottom:8px">این کارتابل جای دیگری باز شد</div>' +
+      '<div style="font-size:13px;color:var(--ink-soft,#43586D);line-height:2;margin-bottom:6px">' +
+        'هر کارتابل هم‌زمان فقط روی یک دستگاه باز می‌ماند' +
+        (dev ? '، و همین حالا روی <b>' + escapeGateHtml(dev) + '</b> باز شده' : '') +
+        (at ? '<br><span style="font-size:12px;color:var(--ink-faint,#8697A8)">' +
+              escapeGateHtml(faDateTime(at)) + '</span>' : '') +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--ink-faint,#8697A8);line-height:1.9;margin-bottom:18px">' +
+        'اگر خودتان بودید، همان‌جا ادامه بدهید. اگر نه، رمزتان را عوض کنید.</div>' +
+      '<button type="button" id="takenBack" style="font-family:inherit;font-size:13.5px;' +
+        'font-weight:600;padding:10px 20px;border-radius:10px;border:0;cursor:pointer;' +
+        'background:var(--brass,#1A4FA3);color:#fff">ورود دوباره روی همین دستگاه</button>' +
+    '</div>';
+  document.body.appendChild(el);
+  el.querySelector("#takenBack").addEventListener("click", ()=> location.reload());
 }
 
 /* تاریخ و ساعتِ فارسی برای پیامِ «آخرین ورود». این‌جا بالای گیت لازم

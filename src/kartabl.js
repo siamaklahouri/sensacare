@@ -457,14 +457,60 @@ async function hmac(env, body) {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export async function makeSession(env, panel, days = 30) {
+/* ---------- یک کارتابل، یک جا ----------
+   هر ورود یک شناسهٔ تازه می‌سازد و همان را به‌عنوان «نشستِ زنده» ثبت
+   می‌کند. هر درخواستی که شناسه‌اش با این یکی نخواند، از دستگاهی است که
+   جایش را به یکی دیگر داده. کلید از روی slug ساخته می‌شود نه از
+   panel.keys، چون آن از پیکربندیِ ذخیره‌شدهٔ هر کارتابل می‌آید و
+   کارتابل‌های موجود چنین کلیدی ندارند.
+
+   دو تب روی یک مرورگر یک کوکی دارند، پس یک شناسه — و هر دو کار
+   می‌کنند. چیزی که کنار گذاشته می‌شود «دستگاهِ دیگر» است، نه «تبِ
+   دیگر». */
+const sidKey = panel => 'sid:' + panel.id;
+
+/* پنلِ ادمین صریحاً بیرونِ این قفل است (solo:false). خواسته «هر
+   کارتابل یک جا» بود، نه پنلِ مدیریت — و کسی که کارتابل‌ها را می‌سازد
+   باید بتواند هم‌زمان از گوشی نگاهی بیندازد. */
+const solo = panel => panel.solo !== false;
+
+/* برچسبِ کوتاهِ دستگاه، فقط برای اینکه آن طرف بفهمد از کجا باز شده.
+   نه ذخیرهٔ User-Agent خام، نه چیزی که بشود با آن کسی را ردیابی کرد. */
+export function deviceLabel(req) {
+  const ua = String(req.headers.get('User-Agent') || '');
+  const os = /iPhone|iPad/i.test(ua) ? 'آیفون'
+           : /Android/i.test(ua) ? 'اندروید'
+           : /Macintosh|Mac OS/i.test(ua) ? 'مک'
+           : /Windows/i.test(ua) ? 'ویندوز'
+           : /Linux/i.test(ua) ? 'لینوکس' : '';
+  const br = /Edg\//i.test(ua) ? 'Edge'
+           : /OPR\/|Opera/i.test(ua) ? 'Opera'
+           : /Firefox/i.test(ua) ? 'Firefox'
+           : /Chrome/i.test(ua) ? 'Chrome'
+           : /Safari/i.test(ua) ? 'Safari' : '';
+  return [br, os].filter(Boolean).join(' روی ') || 'یک دستگاه';
+}
+
+export async function makeSession(env, panel, days = 30, req = null) {
   /* شمارهٔ نسل رمز داخل توکن است: با هر بار عوض شدن رمز بالا می‌رود و
      همهٔ نشست‌های قبلی — روی هر دستگاهی — از کار می‌افتند. */
   const gen = await getSetting(env, panel.keys.gen, 1);
-  const body = b64(enc.encode(JSON.stringify({ k: panel.id, gen, exp: Date.now() + days * 864e5 })))
+  let sid = '';
+  if (solo(panel)) {
+    sid = b64(crypto.getRandomValues(new Uint8Array(12)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    await setSetting(env, sidKey(panel), {
+      sid, at: Date.now(), dev: req ? deviceLabel(req) : ''
+    });
+  }
+  const body = b64(enc.encode(JSON.stringify({ k: panel.id, gen, sid, exp: Date.now() + days * 864e5 })))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return body + '.' + await hmac(env, body);
 }
+
+/* نشستی که جایش را به دستگاهِ دیگری داده. از null جداست تا پیامِ
+   کاربر فرق کند: «وارد نشده‌اید» چیزِ دیگری است. */
+export const TAKEN = Object.freeze({ taken: true });
 
 export async function readSession(env, panel, req) {
   const raw = (req.headers.get('Cookie') || '').split(';')
@@ -482,6 +528,12 @@ export async function readSession(env, panel, req) {
     if (p.gen !== await getSetting(env, panel.keys.gen, 1)) return null;
     /* کوکیِ یک کارتابل نباید درِ آن یکی را باز کند */
     if (p.k !== panel.id) return null;
+    /* نشستِ زنده یکی است. تا پیش از اولین ورودِ بعد از این تغییر چیزی
+       ثبت نشده، و آن وقت هیچ‌کس بی‌دلیل بیرون انداخته نمی‌شود. */
+    if (solo(panel)) {
+      const live = await getSetting(env, sidKey(panel), null);
+      if (live && live.sid && p.sid !== live.sid) return TAKEN;
+    }
     return p;
   } catch (e) { return null; }
 }
@@ -1044,7 +1096,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const prev = await getSetting(env, loginKey, 0);
     await setSetting(env, loginKey, Date.now());
     return json({ ok: true, lastLogin: prev || 0 }, 200,
-      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, days), days) });
+      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, days, req), days) });
   }
 
   if (p === '/logout' && m === 'POST')
@@ -1093,6 +1145,15 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */
   const session = await readSession(env, panel, req);
+  /* این کارتابل جای دیگری باز شده. کوکی همان‌جا پاک می‌شود تا این
+     مرورگر دوباره و دوباره نپرسد، و «taken» به صفحه می‌گوید پیامِ
+     درست را نشان بدهد — نه «وارد نشده‌اید» که گیج‌کننده است. */
+  if (session === TAKEN) {
+    const live = await getSetting(env, sidKey(panel), null);
+    return json({ error: 'این کارتابل روی دستگاه دیگری باز شد.', taken: true,
+                  dev: (live && live.dev) || '', at: (live && live.at) || 0 }, 401,
+      { 'Set-Cookie': `${panel.cookie}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0` });
+  }
   if (p === '/me')
     /* زمانِ آخرین ورود فقط برای کسی که وارد شده. بیرونِ در، این عدد
        به هر کسی که آدرس را دارد می‌گفت این کارتابل کِی استفاده شده. */
@@ -1211,7 +1272,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     /* نشست خودِ این مرورگر با نسل تازه دوباره ساخته می‌شود تا کاربر
        وسط کار بیرون نیفتد؛ بقیه باید دوباره وارد شوند. */
     return json({ ok: true }, 200,
-      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 30), 30) });
+      { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 30, req), 30) });
   }
 
   /* ---------- کلیدِ اضطراریِ ادمین ----------

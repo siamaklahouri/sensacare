@@ -34,7 +34,9 @@ export const ADMIN_PAGE_OLD = '/admin.planer';
 const ADMIN = {
   id: 'admin.planer',
   cookie: 'kartabl_admin',
-  keys: { pass: 'adminPlanerPassHash', gen: 'adminPlanerPassGen' }
+  keys: { pass: 'adminPlanerPassHash', gen: 'adminPlanerPassGen' },
+  /* قفلِ «یک کارتابل، یک جا» مالِ کارتابل‌هاست نه این‌جا */
+  solo: false
 };
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,30}$/;
@@ -327,7 +329,11 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   if (p === '/logout' && m === 'POST')
     return json({ ok: true }, 200, { 'Set-Cookie': cookieHeader(ADMIN, '', 0) });
 
-  const session = await readSession(env, ADMIN, req);
+  /* readSession برای نشستی که جایش را داده یک شیء برمی‌گرداند، نه
+     null. این‌جا با solo:false هیچ‌وقت پیش نمی‌آید، ولی یک شرطِ حقیقی
+     که فردا بی‌صدا به یک درِ باز تبدیل شود ارزشِ این دو خط را ندارد. */
+  const raw = await readSession(env, ADMIN, req);
+  const session = (raw && raw.taken) ? null : raw;
   if (p === '/me')
     return json(session
       ? { in: true, lastLogin: await getSetting(env, 'login:admin.planer', 0),
