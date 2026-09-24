@@ -288,13 +288,50 @@ export function vaultSeed(list) {
   return JSON.stringify(clean.length ? clean : VAULT_FALLBACK).replace(/</g, '\\u003c');
 }
 
+/* ---------- تکه‌های مشترکِ دو قالب ----------
+   کارتابلِ فنی و مالی حدودِ یک‌سومِ متنشان مو‌به‌مو یکی است — از صندوقِ
+   رمزدار تا دستیار و شیوه‌نامهٔ مشترک. دو نسخه یعنی هر اصلاح باید دو
+   بار انجام شود، و همین چند بار پیش آمده که یکی‌شان جا مانده.
+
+   حالا آن تکه‌ها یک فایل‌اند و همین‌جا، سمتِ سرور، سرِ جایشان می‌نشینند.
+   خروجی دقیقاً همان HTMLِ قبلی است — صفحه چیزی از بیرون بار نمی‌کند و
+   پشتیبانِ آفلاین هم مثلِ قبل کامل باز می‌شود.
+
+   تکه‌ای که پیدا نشود صفحه را نصفه‌نیمه نمی‌کند: null برمی‌گردد و
+   صدازننده می‌فهمد که قالب نیامده. */
+const PART_RE = /\{\{PART:([a-z0-9_-]{1,32})\}\}/g;
+
+/* قالبِ سرِهم‌شده تا استقرارِ بعدی عوض نمی‌شود، پس همان‌جا در ایزوله
+   می‌ماند و هر استقرار ایزولهٔ تازه می‌آورد. بدونِ این، چون صفحهٔ کارتابل
+   no-store است و واقعاً هر بار از نو ساخته می‌شود، هر بار باز کردنش
+   نوزده فایل را دوباره می‌خواند — پیش از تکه‌ها یکی بود. با این، بعد از
+   اولین درخواستِ هر ایزوله هیچ‌کدام. */
+const TPL_CACHE = new Map();
+
+async function withParts(env, req, html) {
+  const names = [...new Set([...html.matchAll(PART_RE)].map(m => m[1]))];
+  if (!names.length) return html;
+  const got = await Promise.all(names.map(async n => {
+    const r = await env.ASSETS.fetch(new Request(new URL('/_t/p/' + n + '.tpl', req.url), req));
+    return [n, r.ok ? await r.text() : null];
+  }));
+  const map = new Map(got);
+  if (got.some(([, v]) => v === null)) return null;
+  return html.replace(PART_RE, (m, n) => map.get(n));
+}
+
 export async function renderPanelPage(env, req, panel) {
   /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
      ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */
   const file = '/_t/' + (TEMPLATES[panel.kind] || 'fin') + '.tpl';
-  const res = await env.ASSETS.fetch(new Request(new URL(file, req.url), req));
-  if (!res.ok) return null;
-  let html = await res.text();
+  let html = TPL_CACHE.get(file);
+  if (html === undefined) {
+    const res = await env.ASSETS.fetch(new Request(new URL(file, req.url), req));
+    if (!res.ok) return null;
+    html = await withParts(env, req, await res.text());
+    if (html === null) return null;
+    TPL_CACHE.set(file, html);
+  }
   /* <!--IT-->…<!--/IT--> فقط برای کارتابلِ IT می‌ماند و <!--GEN-->…<!--/GEN-->
      فقط برای بقیه. تکه‌های جاوااسکریپتِ IT سرِ جایشان می‌مانند؛ همه‌شان
      پیش از دست‌زدن به صفحه وجودِ عنصر را بررسی می‌کنند. */
