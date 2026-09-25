@@ -86,6 +86,12 @@
       <div class="rp-head">
         <b id="rpTitle">گزارش</b>
         <span class="rp-acts">
+          <select id="rpSize" class="rp-size" title="اندازهٔ نمودار">
+            <option value="s">کوچک</option>
+            <option value="m" selected>متوسط</option>
+            <option value="l">بزرگ</option>
+            <option value="xl">خیلی بزرگ</option>
+          </select>
           <button type="button" class="btn btn-sm" id="rpPng">⬇ تصویر</button>
           <button type="button" class="btn btn-sm" id="rpXlsx">⬇ اکسلِ خلاصه</button>
           <button type="button" class="btn btn-sm" id="rpPrint">🖨 چاپ</button>
@@ -99,7 +105,13 @@
           <span id="rpPrintMeta"></span>
         </div>
         <div class="rp-cards" id="rpCards"></div>
-        <div class="chart-box" id="rpChartBox"><canvas id="rpChart"></canvas></div>
+        <!-- نمودار قابِ خودش را دارد، نه قابِ ۲۵۰ پیکسلیِ داشبورد.
+             ارتفاعش با نوعِ نمودار و تعدادِ دسته‌ها عوض می‌شود، و
+             نمودارهای برشی راهنمای کناری می‌گیرند با مقدار و درصد. -->
+        <div class="rp-plot" id="rpPlot">
+          <div class="rp-canvas" id="rpChartBox"><canvas id="rpChart"></canvas></div>
+          <div class="rp-legend" id="rpLegend" hidden></div>
+        </div>
         <div class="tbl-wrap"><table class="tbl rp-tab" id="rpTab"></table></div>
       </div>
     </div>
@@ -112,6 +124,11 @@
     background:var(--paper-2, transparent); transition:border-color .15s, background .15s;
   }
   .rp-drop.on{ border-color:var(--brass); background:var(--brass-bg); }
+  /* با آمدنِ فایل، کادرِ بزرگِ بارگذاری جمع می‌شود: خودِ گزارش مهم‌تر
+     از دکمه‌ای است که کارش را کرده. «فایل دیگر» در نوارِ زیرش هست. */
+  .rp-drop.fed{ padding:12px 16px; border-style:solid; }
+  .rp-drop.fed .rp-ic, .rp-drop.fed .rp-hint{ display:none; }
+  .rp-drop.fed .btn{ font-size:12px; padding:6px 12px; }
   .rp-drop .rp-ic{ font-size:34px; line-height:1; margin-bottom:10px; }
   .rp-hint{ font-size:12px; color:var(--ink-faint); margin-top:10px; line-height:1.9; }
   .rp-note{ font-size:12.5px; line-height:1.9; margin-top:8px; min-height:20px; color:var(--ink-soft); }
@@ -155,6 +172,55 @@
   }
   .rp-card .s{ font-size:11.5px; color:var(--rc, var(--brass)); font-weight:600;
     font-variant-numeric:tabular-nums; }
+  /* ---------- قابِ نمودار ---------- */
+  .rp-plot{ display:flex; gap:18px; align-items:stretch; margin-bottom:16px; }
+  .rp-canvas{
+    position:relative; flex:1 1 auto; min-width:0;
+    height:var(--rph, 420px); transition:height .18s;
+  }
+  .rp-canvas > canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; }
+  .rp-canvas[hidden]{ display:none; }
+  .rp-plot[hidden]{ display:none; }
+  /* راهنمای کناریِ نمودارهای برشی: رنگ، نام، مقدار، درصد — چیزی که
+     راهنمای فشردهٔ زیرِ نمودار هیچ‌وقت جا نمی‌داد. */
+  .rp-legend{
+    /* به اندازهٔ ردیف‌هایش بلند می‌شود، نه به اندازهٔ نمودار: با چهار
+       دسته، یک کادرِ نیمه‌خالیِ بلند کنارِ نمودار می‌نشست. */
+    flex:0 0 232px; align-self:flex-start;
+    max-height:var(--rph, 420px); overflow:auto;
+    border:1px solid var(--card-border); border-radius:12px; padding:10px 12px;
+    background:var(--paper-2, transparent);
+  }
+  .rp-legend[hidden]{ display:none; }
+  .rl-row{
+    display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center;
+    padding:6px 2px; font-size:12px; border-bottom:1px solid var(--card-border);
+  }
+  .rl-row:last-child{ border-bottom:0; }
+  .rl-row.tot{ font-weight:700; color:var(--ink); border-bottom:0; margin-top:4px;
+    border-top:1px solid var(--card-border); padding-top:8px; }
+  .rl-sw{ width:11px; height:11px; border-radius:3px; flex:none; }
+  .rl-nm{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    color:var(--ink-soft); }
+  .rl-vl{ font-variant-numeric:tabular-nums; color:var(--ink); white-space:nowrap; }
+  /* درصد به‌تنهایی یک عدد است؛ کنارش یک نوارِ باریک، سهمِ هر دسته را
+     بدونِ خواندنِ عدد نشان می‌دهد. */
+  .rl-pc{ grid-column:2 / -1; display:flex; align-items:center; gap:7px;
+    font-size:10.5px; color:var(--ink-faint);
+    font-variant-numeric:tabular-nums; margin-top:-1px; }
+  .rl-tr{ flex:1; height:4px; border-radius:99px; background:var(--card-border); overflow:hidden; }
+  .rl-tr > i{ display:block; height:100%; border-radius:99px; }
+  .rl-row.tot .rl-pc{ display:none; }
+  .rp-size{
+    font-family:var(--font-body); font-size:11.5px; padding:5px 8px; border-radius:8px;
+    border:1px solid var(--card-border); background:var(--white); color:var(--ink-soft);
+  }
+  @media (max-width:900px){
+    .rp-plot{ flex-direction:column; }
+    /* روی گوشی راهنما زیرِ نمودار می‌نشیند و خودِ صفحه اسکرول می‌شود؛
+       کادرِ اسکرول‌دارِ تودرتو یعنی سطرِ «جمع» گم می‌شد. */
+    .rp-legend{ flex:1 1 auto; align-self:stretch; max-height:none; overflow:visible; }
+  }
   .rp-tab th, .rp-tab td{ white-space:nowrap; }
   .rp-tab td.num{ font-variant-numeric:tabular-nums; }
   .rp-tab tr.rest td{ color:var(--ink-faint); font-style:italic; }
@@ -171,11 +237,16 @@
      پنهان‌کردنِ تک‌تکِ بخش‌ها (که با هر بخشِ تازه‌ای عقب می‌افتاد)،
      همه‌چیز پنهان می‌شود و فقط زنجیرهٔ والدهای گزارش برمی‌گردد. */
   @media print{
+    /* هر چیزی که نه خودِ گزارش است، نه توی آن، نه والدش — از صفحه
+       برداشته می‌شود. «visibility» به‌تنهایی کافی نبود: عنصرِ نامرئی
+       جایش را نگه می‌داشت و کاغذ با نیم‌صفحه سفید شروع می‌شد. */
+    *:not(:has(#rpPaper)):not(#rpPaper):not(#rpPaper *){ display:none !important; }
     body *{ visibility:hidden !important; }
     #rpPaper, #rpPaper *{ visibility:visible !important; }
-    #rpPaper{
-      position:absolute; inset-block-start:0; inset-inline-start:0;
-      width:100%; padding:0; margin:0;
+    #rpPaper{ width:100%; padding:0; margin:0; }
+    /* مرورگرِ بدونِ ‎:has()‎ همان راهِ قبلی را می‌رود */
+    @supports not (selector(:has(*))){
+      #rpPaper{ position:absolute; inset-block-start:0; inset-inline-start:0; }
     }
     .rp-print-head{
       display:block; margin-bottom:14px; padding-bottom:10px;
@@ -183,7 +254,17 @@
     }
     .rp-print-head b{ display:block; font-size:15px; }
     .rp-print-head span{ font-size:11px; color:#555; }
-    .chart-box{ height:330px; page-break-inside:avoid; }
+    .rp-plot{ page-break-inside:avoid; }
+    /* روی کاغذ، «خیلی بزرگ» از ارتفاعِ صفحه می‌زد بیرون و نصفِ نمودار
+       به صفحهٔ بعد می‌افتاد. */
+    .rp-canvas{ height:min(var(--rph, 420px), 148mm); }
+    /* رنگِ برش‌ها روی بوم چاپ می‌شود؛ اگر رنگِ راهنما نرود، راهنما
+       دیگر به نمودار وصل نیست. */
+    .rl-sw, .rl-tr > i{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    /* روی کاغذ چیزی «اسکرول» نمی‌شود: راهنما باید کاملِ ردیف‌هایش را
+       نشان بدهد، وگرنه آخرین دسته و سطرِ جمع می‌افتادند بیرون. */
+    .rp-legend{ max-height:none !important; overflow:visible !important; }
+    .rp-size{ display:none !important; }
     .rp-cards{ page-break-inside:avoid; }
     .rp-tab{ page-break-inside:auto; }
     .rp-tab tr{ page-break-inside:avoid; }

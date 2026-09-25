@@ -130,10 +130,11 @@
     load(aoa);
     if(!RP.rows.length || !RP.cols.length){
       note("در برگهٔ «" + name + "» داده‌ای پیدا نشد.", true);
-      $("rpBody").hidden = true; return;
+      $("rpBody").hidden = true; $("rpDrop").classList.remove("fed"); return;
     }
     $("rpMeta").textContent = faD(RP.rows.length) + " ردیف · " + faD(RP.cols.length) + " ستون";
     $("rpBody").hidden = false;
+    $("rpDrop").classList.add("fed");
     fillCols();
     draw();
   }
@@ -324,33 +325,156 @@
   }
 
   var ROUND = { bar:1, hbar:1, stack:1 };
+  var SLICE = { doughnut:1, pie:1, polarArea:1 };
+  var SIZE = { s:300, m:420, l:560, xl:720 };
+
+  /* ارتفاعِ قاب. قابِ ثابتِ ۲۵۰ پیکسلیِ داشبورد برای نمودارهای این‌جا
+     کم بود — دایره‌ای عملاً یک نقطه می‌شد. حالا:
+     • برشی: مربع‌وار و بزرگ، چون قطرِ دایره همان ارتفاع است.
+     • ستونیِ افقی: با تعدادِ دسته‌ها بلند می‌شود، وگرنه بیست ردیف
+       روی هم فشرده می‌شدند.
+     • بقیه: اندازهٔ انتخابیِ خودِ کاربر. */
+  function plotHeight(kind, n){
+    var base = SIZE[$("rpSize").value] || SIZE.m;
+    if(SLICE[kind]) return Math.round(base * 1.05);
+    if(kind === "hbar") return Math.max(base, Math.min(1400, n * 34 + 110));
+    if(kind === "radar") return Math.round(base * 1.05);
+    return base;
+  }
+
+  /* عددِ هر ستون روی خودش. بدونِ این، خواندنِ نمودار به نگه داشتنِ
+     موشواره روی هر میله بند بود — و روی کاغذ اصلاً ممکن نبود. */
+  var valueLabels = {
+    id: "rpVals",
+    afterDatasetsDraw: function(c, a, o){
+      if(!o || !o.on) return;
+      var g = c.ctx;
+      g.save();
+      g.font = "600 10.5px " + getComputedStyle(document.body).fontFamily;
+      g.fillStyle = o.color;
+      g.textAlign = o.horiz ? "left" : "center";
+      g.textBaseline = o.horiz ? "middle" : "bottom";
+      c.data.datasets.forEach(function(ds, di){
+        var meta = c.getDatasetMeta(di);
+        if(meta.hidden) return;
+        meta.data.forEach(function(el, i){
+          var v = ds.data[i];
+          if(v == null || (typeof v === "object")) return;
+          if(!v) return;
+          /* در نمودارِ انباشته عددِ تک‌تکِ تکه‌ها روی هم می‌افتد */
+          if(o.stacked) return;
+          g.fillText(fmt(v), el.x + (o.horiz ? 6 : 0), el.y - (o.horiz ? 0 : 5));
+        });
+      });
+      g.restore();
+    }
+  };
+
+  /* عددِ کل، وسطِ دونات. جای خالیِ وسط بزرگ‌ترین فضای بی‌استفادهٔ
+     نمودار است. */
+  var centerTotal = {
+    id: "rpCenter",
+    afterDraw: function(c, a, o){
+      if(!o || !o.on) return;
+      var m = c.getDatasetMeta(0);
+      if(!m || !m.data || !m.data.length) return;
+      var el = m.data[0];
+      var g = c.ctx, f = getComputedStyle(document.body).fontFamily;
+      g.save();
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = o.sub;
+      g.font = "11px " + f;
+      g.fillText(o.label, el.x, el.y - 14);
+      g.fillStyle = o.main;
+      g.font = "700 21px " + f;
+      g.fillText(o.total, el.x, el.y + 8);
+      g.restore();
+    }
+  };
+
+  /* راهنمای کناری برای نمودارهای برشی: نام، مقدار، درصد. زدن روی هر
+     ردیف همان برش را خاموش و روشن می‌کند. */
+  function sideLegend(d, colors, total){
+    var box = $("rpLegend");
+    var slice = SLICE[$("rpKind").value];
+    box.hidden = !slice;
+    if(!slice){ box.innerHTML = ""; RP.legend = null; return; }
+    /* همین فهرست سرِ «⬇ تصویر» دوباره روی خودِ عکس کشیده می‌شود */
+    RP.legend = d.list.map(function(x, i){
+      return { k: x.k, v: fmt(x.n), c: colors[i % colors.length],
+               pc: faD(Math.round((total ? x.n * 100 / total : 0) * 10) / 10) + "٪" };
+    });
+    RP.legend.push({ k: "جمع", v: fmt(total), c: "", pc: "" });
+    box.innerHTML = d.list.map(function(x, i){
+      var pc = total ? (x.n * 100 / total) : 0;
+      return '<div class="rl-row" data-ri="' + i + '">' +
+        '<span class="rl-sw" style="background:' + colors[i % colors.length] + '"></span>' +
+        '<span class="rl-nm" title="' + esc(x.k) + '">' + esc(x.k) + "</span>" +
+        '<span class="rl-vl">' + fmt(x.n) + "</span>" +
+        '<span class="rl-pc"><i class="rl-tr"><i style="width:' +
+          (Math.round(pc * 10) / 10) + "%;background:" + colors[i % colors.length] +
+          '"></i></i>' + faD(Math.round(pc * 10) / 10) + "٪</span></div>";
+    }).join("") +
+    '<div class="rl-row tot"><span class="rl-sw" style="background:transparent"></span>' +
+      '<span class="rl-nm">جمع</span><span class="rl-vl">' + fmt(total) + "</span></div>";
+    box.querySelectorAll("[data-ri]").forEach(function(row){
+      row.onclick = function(){
+        if(!RP.chart) return;
+        var i = Number(row.getAttribute("data-ri"));
+        RP.chart.toggleDataVisibility(i);
+        RP.chart.update();
+        row.style.opacity = RP.chart.getDataVisibility(i) ? "" : ".4";
+      };
+    });
+  }
 
   async function chart(d){
     var kind = $("rpKind").value;
-    var box = $("rpChartBox");
+    var plot = $("rpPlot");
     if(RP.chart){ try{ RP.chart.destroy(); }catch(e){} RP.chart = null; }
-    box.hidden = kind === "table";
+    plot.hidden = kind === "table";
+    $("rpLegend").hidden = true;
+    RP.legend = null;
     if(kind === "table") return;
     if(!(await ensureChartLib())) return;
+
     var t = chartTone();
     var labels = d.list.map(function(x){ return x.k; });
     var multi = d.series.length > 1;
+    var slice = !!SLICE[kind];
+    var stacked = kind === "stack";
+    var horiz = kind === "hbar";
 
-    /* یک سری → یک رنگ (چون فقط اندازه‌هاست). چند سری یا برش‌های
-       دایره‌ای → پالتِ دسته‌ها، چون هر کدام یک هویتِ جداست. */
-    var slice = ["doughnut","pie","polarArea"].indexOf(kind) >= 0;
+    /* ارتفاع پیش از ساختنِ نمودار، وگرنه بوم با اندازهٔ قبلی کشیده
+       می‌شود و تار می‌ماند. */
+    plot.style.setProperty("--rph", plotHeight(kind, labels.length) + "px");
+
+    var palette = t.cat;
+    /* یک سری از دسته‌های جدا (تهران، شیراز، …) با یک رنگِ واحد، دیوارِ
+       آبیِ یکدستی می‌شد که چشم دسته‌ها را از هم جدا نمی‌کرد. پس وقتی
+       فقط یک سری هست، هر دسته رنگِ خودش را می‌گیرد — مثل دایره‌ای. */
+    var byCat = slice || (!multi && (kind === "bar" || kind === "hbar" || kind === "polarArea"));
     var sets = d.series.map(function(sr, i){
-      var c = slice
-        ? labels.map(function(_, j){ return t.cat[j % t.cat.length]; })
-        : t.cat[i % t.cat.length];
+      var c = byCat
+        ? labels.map(function(_, j){ return palette[j % palette.length]; })
+        : palette[i % palette.length];
       var set = {
-        label: sr.name || AGG_NAME[$("rpAgg").value],
+        label: sr.name || AGG_NAME[$("rpAgg").value] || "مقدار",
         data: sr.data.map(function(v){ return Math.round(v * 100) / 100; }),
         backgroundColor: kind === "line" ? "transparent" : c,
-        borderColor: c, borderWidth: (kind === "line" || kind === "radar" || kind === "area") ? 2.5 : 0,
-        pointRadius: (kind === "line" || kind === "area") ? 3 : (kind === "scatter" ? 5 : 0),
-        pointBackgroundColor: c, tension: .3
+        borderWidth: (kind === "line" || kind === "radar" || kind === "area") ? 2.5
+                   : slice ? 2 : 0,
+        /* خطِ جداکنندهٔ برش‌ها همرنگِ کارت است، نه سفیدِ ثابت — در تمِ
+           شب سفید مثل یک قاب می‌زد بیرون. */
+        borderColor: slice ? t.surface : c,
+        hoverBorderColor: slice ? t.surface : c,
+        pointRadius: (kind === "line" || kind === "area") ? 3.5 : (kind === "scatter" ? 5 : 0),
+        pointHoverRadius: 6,
+        pointBackgroundColor: c,
+        tension: .3,
+        hoverOffset: slice ? 10 : 0
       };
+      if(slice) set.backgroundColor = c;
       if(kind === "area"){ set.fill = true; set.backgroundColor = c + "33"; }
       if(kind === "radar"){ set.backgroundColor = c + "2E"; set.fill = true; }
       if(ROUND[kind]) set.borderRadius = 7;
@@ -359,61 +483,74 @@
       return set;
     });
 
-    var type = kind === "hbar" || kind === "stack" ? "bar"
-             : kind === "area" ? "line" : kind;
-    var stacked = kind === "stack";
-    var flat = ["doughnut","pie","polarArea","radar"].indexOf(kind) >= 0;
+    var total = d.list.reduce(function(a, x){ return a + x.n; }, 0);
+    if(slice) sideLegend(d, palette, total);
+
+    var type = horiz || stacked ? "bar" : kind === "area" ? "line" : kind;
+    var flat = slice || kind === "radar";
 
     RP.chart = new Chart($("rpChart").getContext("2d"), {
       type: type,
       data: { labels: labels, datasets: sets },
+      plugins: [valueLabels, centerTotal],
       options: {
-        indexAxis: kind === "hbar" ? "y" : "x",
-        layout: { padding: { top: 6, bottom: 2 } },
+        indexAxis: horiz ? "y" : "x",
+        layout: { padding: { top: 14, bottom: 2, left: 6, right: horiz ? 46 : 6 } },
+        /* برش‌ها فضای بیشتری بگیرند: ضخامتِ کمتر یعنی سوراخِ بزرگ‌تر
+           برای عددِ وسط، ولی دایره همان‌قدر بزرگ می‌ماند. */
+        cutout: kind === "doughnut" ? "58%" : undefined,
         plugins: {
+          rpVals: { on: !slice && kind !== "radar" && kind !== "scatter",
+                    horiz: horiz, stacked: stacked, color: t.none === "#CFD7E0" ? "#43586D" : "#AAB9C7" },
+          rpCenter: { on: kind === "doughnut", total: fmt(total),
+                      label: AGG_NAME[$("rpAgg").value] || "جمع",
+                      main: t.done === "#1E7A4A" ? "#0B2545" : "#E7EEF4",
+                      sub:  t.done === "#1E7A4A" ? "#8697A8" : "#78899A" },
+          /* راهنمای زیرِ نمودار فقط برای چندسری؛ برشی‌ها راهنمای
+             کناریِ خودشان را دارند. */
           legend: {
-            display: multi || slice,
+            display: multi && !slice,
             position: "bottom",
             labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true,
                       pointStyle: "rectRounded", padding: 14,
-                      font: { size: 11.5, family: getComputedStyle(document.body).fontFamily } }
+                      font: { size: 12, family: getComputedStyle(document.body).fontFamily } }
           },
           tooltip: {
-            backgroundColor: "rgba(11,37,69,.92)", padding: 10, cornerRadius: 8,
-            titleFont: { size: 12 }, bodyFont: { size: 12 }, displayColors: true,
+            backgroundColor: "rgba(11,37,69,.93)", padding: 11, cornerRadius: 9,
+            titleFont: { size: 12.5 }, bodyFont: { size: 12.5 }, displayColors: true,
             callbacks: { label: function(c){
               var v = c.parsed;
-              var n = (v && typeof v === "object")
-                ? (kind === "hbar" ? v.x : v.y)
-                : v;
-              return " " + (c.dataset.label ? c.dataset.label + ": " : "") + fmt(n);
+              var n = (v && typeof v === "object") ? (horiz ? v.x : v.y) : v;
+              var pc = total ? " (" + faD(Math.round(n * 1000 / total) / 10) + "٪)" : "";
+              return " " + (c.dataset.label ? c.dataset.label + ": " : "") +
+                     fmt(n) + (slice ? pc : "");
             } }
           }
         },
         scales: flat ? (kind === "radar" ? { r: {
             grid: { color: "rgba(128,128,128,.18)" },
             angleLines: { color: "rgba(128,128,128,.18)" },
+            pointLabels: { font: { size: 11.5 } },
             ticks: { font: { size: 10 }, backdropColor: "transparent",
                      callback: function(v){ return fmt(v); } }
           } } : {}) : {
           x: { stacked: stacked,
-               grid: { display: kind === "hbar", color: "rgba(128,128,128,.14)" },
-               ticks: { font: { size: 10.5 }, maxRotation: 0, autoSkip: true,
+               grid: { display: horiz, color: "rgba(128,128,128,.13)" },
+               border: { display: false },
+               ticks: { font: { size: 11 }, maxRotation: 0, autoSkip: true,
                         callback: function(v){
-                          if(kind === "hbar" || kind === "scatter") return fmt(v);
+                          if(horiz || kind === "scatter") return fmt(v);
                           var t2 = this.getLabelForValue(v);
-                          return String(t2).length > 14 ? String(t2).slice(0, 13) + "…" : t2;
+                          return String(t2).length > 16 ? String(t2).slice(0, 15) + "…" : t2;
                         } } },
           y: { stacked: stacked, beginAtZero: true,
-               grid: { display: kind !== "hbar", color: "rgba(128,128,128,.14)" },
+               grid: { display: !horiz, color: "rgba(128,128,128,.13)" },
                border: { display: false },
-               ticks: { font: { size: 10.5 },
+               ticks: { font: { size: 11 }, autoSkip: true,
                         callback: function(v){
-                          if(kind === "hbar") {
-                            var t2 = this.getLabelForValue(v);
-                            return String(t2).length > 18 ? String(t2).slice(0, 17) + "…" : t2;
-                          }
-                          return fmt(v);
+                          if(!horiz) return fmt(v);
+                          var t2 = this.getLabelForValue(v);
+                          return String(t2).length > 22 ? String(t2).slice(0, 21) + "…" : t2;
                         } } }
         }
       }
@@ -467,26 +604,92 @@
   drop.addEventListener("drop", function(e){
     if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
   $("rpSheet").addEventListener("change", function(){ useSheet($("rpSheet").value); });
-  ["rpKind","rpCat","rpVal","rpAgg","rpTop","rpSort","rpSer","rpFilVal"].forEach(function(id){
+  ["rpKind","rpCat","rpVal","rpAgg","rpTop","rpSort","rpSer","rpFilVal","rpSize"].forEach(function(id){
     $(id).addEventListener("change", draw); });
   $("rpFilCol").addEventListener("change", function(){ fillFilVals(); draw(); });
   $("rpReset").addEventListener("click", function(){
     RP.rows = []; RP.cols = []; RP.wb = null;
     if(RP.chart){ try{ RP.chart.destroy(); }catch(e){} RP.chart = null; }
-    $("rpBody").hidden = true; note("");
+    $("rpBody").hidden = true; $("rpDrop").classList.remove("fed"); note("");
   });
 
-  /* تصویر: بوم زمینهٔ شفاف دارد، پس تصویرِ خام روی هر چیزی تار است.
-     زمینهٔ خودِ کارت زیرش گذاشته می‌شود. */
+  /* عکسِ گزارش، نه عکسِ بوم. بوم هم زمینهٔ شفاف دارد (پس روی هر
+     پس‌زمینه‌ای تار می‌افتد) و هم به‌تنهایی عنوان ندارد — و برای
+     نمودارهای برشی راهنمای کناری‌اش بیرونِ بوم است، یعنی عکسی در
+     می‌آمد که هیچ‌کس نمی‌فهمید چه چیزی را نشان می‌دهد. پس زمینه و
+     عنوان و راهنما و سطرِ پایین همین‌جا روی عکس کشیده می‌شوند. */
   $("rpPng").addEventListener("click", function(){
     if(!RP.chart){ note("این نوعِ گزارش نموداری ندارد.", true); return; }
-    var src = $("rpChart");
+    var src = $("rpChart"), t = chartTone();
+    var dark = t.done !== "#1E7A4A";
+    var ink  = dark ? "#E7EEF4" : "#0B2545";
+    var dim  = dark ? "#8DA0B2" : "#5B6E82";
+    var line = dark ? "#2A3A4B" : "#DCE4EC";
+    var f = getComputedStyle(document.body).fontFamily;
+    /* بوم با نسبتِ صفحه‌نمایش کشیده شده؛ همان نسبت را برای متن هم
+       نگه می‌داریم تا نوشته‌ها تارتر از نمودار نباشند. */
+    var k = Math.max(1, Math.round((src.width / Math.max(1, src.clientWidth)) * 100) / 100);
+    var leg = (RP.legend && RP.legend.length) ? RP.legend : null;
+    var PAD = 22 * k, HEAD = 58 * k, FOOT = 34 * k;
+    var LEG  = leg ? 250 * k : 0;
+    var LROW = 27 * k;
+    var bodyH = Math.max(src.height, leg ? leg.length * LROW + 10 * k : 0);
+
     var out = document.createElement("canvas");
-    out.width = src.width; out.height = src.height;
+    out.width  = Math.round(src.width + LEG + PAD * 2);
+    out.height = Math.round(bodyH + HEAD + FOOT + PAD);
     var g = out.getContext("2d");
-    g.fillStyle = chartTone().surface;
+    g.fillStyle = t.surface;
     g.fillRect(0, 0, out.width, out.height);
-    g.drawImage(src, 0, 0);
+    g.direction = "rtl";
+
+    /* سرصفحه */
+    g.textBaseline = "middle";
+    g.textAlign = "right";
+    g.fillStyle = ink;
+    g.font = "700 " + (17 * k) + "px " + f;
+    g.fillText($("rpTitle").textContent || "گزارش", out.width - PAD, PAD + 9 * k);
+    g.strokeStyle = line; g.lineWidth = Math.max(1, k);
+    g.beginPath();
+    g.moveTo(PAD, HEAD - 4 * k); g.lineTo(out.width - PAD, HEAD - 4 * k); g.stroke();
+
+    /* نمودار زیرِ سرصفحه، و راهنما سمتِ چپش */
+    g.drawImage(src, Math.round(PAD + LEG), Math.round(HEAD));
+
+    if(leg){
+      var lx = PAD + LEG - 6 * k, ly = HEAD + 8 * k;
+      for(var i = 0; i < leg.length; i++){
+        var r = leg[i], cy = ly + i * LROW + LROW / 2;
+        if(r.c){
+          g.fillStyle = r.c;
+          var sw = 11 * k;
+          if(g.roundRect){ g.beginPath(); g.roundRect(lx - sw, cy - sw / 2, sw, sw, 3 * k); g.fill(); }
+          else g.fillRect(lx - sw, cy - sw / 2, sw, sw);
+        }
+        g.textAlign = "right";
+        g.fillStyle = r.c ? ink : dim;
+        g.font = (r.c ? "" : "700 ") + (12.5 * k) + "px " + f;
+        g.fillText(r.k, lx - 17 * k, cy);
+        /* مقدارها از راست هم‌تراز می‌شوند تا رقم‌ها زیرِ هم بیفتند */
+        g.textAlign = "right";
+        g.fillStyle = ink;
+        g.font = "600 " + (12.5 * k) + "px " + f;
+        g.fillText(r.v, PAD + 108 * k, cy);
+        if(r.pc){
+          g.fillStyle = dim;
+          g.font = (11.5 * k) + "px " + f;
+          g.textAlign = "left";
+          g.fillText(r.pc, PAD, cy);
+        }
+      }
+    }
+
+    /* پانویس: از کدام فایل، کدام برگه، چند ردیف، چه روزی */
+    g.textAlign = "right";
+    g.fillStyle = dim;
+    g.font = (11.5 * k) + "px " + f;
+    g.fillText($("rpPrintMeta").textContent || "", out.width - PAD, out.height - PAD / 1.4);
+
     var a = document.createElement("a");
     a.href = out.toDataURL("image/png");
     a.download = rpFileName() + ".png";
@@ -534,6 +737,15 @@
     /* نمودار باید پیش از چاپ دوباره کشیده شود تا در اندازهٔ کاغذ تار نباشد */
     if(RP.chart) try{ RP.chart.resize(); }catch(e){}
     setTimeout(function(){ window.print(); }, 120);
+  });
+
+  /* چاپ با Ctrl+P از کنارِ دکمه رد می‌شود؛ قابِ کاغذ عرضِ دیگری دارد
+     و بومِ کشیده‌شده برای صفحه‌نمایش تار یا نصفه در می‌آمد. */
+  window.addEventListener("beforeprint", function(){
+    if(RP.chart) try{ RP.chart.resize(); }catch(e){}
+  });
+  window.addEventListener("afterprint", function(){
+    if(RP.chart) try{ RP.chart.resize(); }catch(e){}
   });
 
   /* تمِ شب که عوض شود، رنگِ نمودار هم باید عوض شود */
