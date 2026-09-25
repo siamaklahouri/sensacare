@@ -168,6 +168,13 @@ window.KARTABL_UNTIL = {{UNTIL}};
     cursor:pointer; white-space:nowrap;
   }
   .tsz-fit:hover{ border-color:var(--brass); color:var(--brass); }
+  /* جدولی که موتورِ پهنا رویش سوار است: خانه‌ها از ستونِ خودشان
+     بیرون نمی‌زنند، و کادرِ داخلِ خانه تا لبهٔ ستون پُر می‌شود — وگرنه
+     کشویی‌ای به پهنای پنجاه پیکسل وسطِ ستونی سیصد پیکسلی شناور
+     می‌ماند و ستون «گشاد» به نظر می‌رسد. */
+  .tsz-on th, .tsz-on td{ overflow:hidden; }
+  .tsz-on tbody td > input, .tsz-on tbody td > select,
+  .tsz-on tbody td > textarea{ width:100%; max-width:100%; box-sizing:border-box; }
   @media print{ .tsz-bar, .tsz-grip{ display:none !important; } }
 
   /* ---------- Shell ---------- */

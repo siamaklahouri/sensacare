@@ -21,7 +21,13 @@
    نشان نمی‌دهند. */
 (function(){
   "use strict";
-  var MIN = 56, MAX = 460, DRAG_MAX = 900;
+  var MIN = 46, MAX = 460, DRAG_MAX = 900;
+  /* پهنای دستهٔ کشیدن که روی سرستون می‌نشیند، و یک نفَسِ کوچک تا
+     حرفِ آخر به لبه نچسبد. */
+  var GRIP = 10, SLACK = 4;
+  /* ستونی که از این پهن‌تر است، ستونِ متنی حساب می‌شود و می‌تواند
+     فضای باقی‌ماندهٔ کارت را بگیرد — تا این سقف. */
+  var GROW_MIN = 120, GROW_MAX = 620;
   var SEEN = "__tsz";
 
   var key = function(id){ return "tsz:" + STORE_KEY + ":" + id; };
@@ -60,62 +66,223 @@
     return td.textContent || "";
   }
 
-  function fit(tab){
-    var cs = getComputedStyle(tab);
-    var font = cs.fontSize + " " + cs.fontFamily;
-    var head = tab.querySelectorAll("thead th");
+  /* قلمِ واقعیِ همان خانه. سرستون‌ها معمولاً ضخیم‌ترند؛ با قلمِ نازکِ
+     بدنه اندازه‌شان کم در می‌آمد و عنوان زیرِ دستهٔ کشیدن می‌رفت. */
+  function fontOf(el, fb){
+    if(!el) return fb;
+    var s = getComputedStyle(el);
+    return (s.fontStyle === "normal" ? "" : s.fontStyle + " ") +
+           (s.fontWeight && s.fontWeight !== "400" ? s.fontWeight + " " : "") +
+           s.fontSize + " " + s.fontFamily;
+  }
+
+  /* حاشیهٔ افقیِ خانه را از خودِ شیوه‌نامه می‌گیریم، نه یک عددِ حدسی.
+     جدولِ فشرده و جدولِ گشاد حاشیهٔ یکسان ندارند. */
+  function padOf(el){
+    if(!el) return 18;
+    var s = getComputedStyle(el);
+    return (parseFloat(s.paddingLeft) || 0) + (parseFloat(s.paddingRight) || 0) +
+           (parseFloat(s.borderLeftWidth) || 0) + (parseFloat(s.borderRightWidth) || 0);
+  }
+
+  /* پهنای سربارِ خودِ کادر: فلشِ کشویی، یا حاشیهٔ درونیِ input.
+     یک بار برای هر ستون، نه یک بار به ازای هر ردیف — اشکالِ قبلی
+     همین بود: ستونی مثل «مسئول» که در هر ردیف کشویی دارد، به ازای
+     هر ردیف ۲۴ پیکسل می‌گرفت و بعد از چند ردیف به سقف می‌خورد. */
+  function fieldPad(f){
+    if(!f) return 0;
+    var s = getComputedStyle(f);
+    var p = (parseFloat(s.paddingLeft) || 0) + (parseFloat(s.paddingRight) || 0) +
+            (parseFloat(s.borderLeftWidth) || 0) + (parseFloat(s.borderRightWidth) || 0);
+    /* فلشِ کشویی جای ثابتی از عرضِ کادر را می‌گیرد و روی متن می‌افتد؛
+       با ۱۸ پیکسل «انجام نشده» به «انجام نشد» بریده می‌شد. */
+    return f.tagName === "SELECT" ? p + 30 : p;
+  }
+
+  /* ستون‌های واقعیِ جدول. «هر th در thead» جواب نمی‌داد: جدول‌هایی
+     مثل سرورها یک سطرِ فیلتر هم زیرِ سرستون دارند، و آن‌وقت شمارشِ
+     ستون‌ها دو برابر می‌شد و colgroup با جدول جور در نمی‌آمد. پس
+     شمارش را از بدنه می‌گیریم و سرستون را سطری می‌گیریم که همان
+     تعداد خانه دارد. */
+  function colsOf(tab){
     var body = tab.querySelectorAll("tbody tr");
-    var out = [];
-    for(var i = 0; i < head.length; i++){
-      var need = textW(head[i].textContent.trim(), font) * 1.12 + 26;
+    var tally = {}, i, n = 0, best = -1;
+    for(i = 0; i < body.length; i++){
+      var c = body[i].children.length;
+      if(c < 2) continue;
+      tally[c] = (tally[c] || 0) + 1;
+      if(tally[c] > best){ best = tally[c]; n = c; }
+    }
+    var hrows = tab.querySelectorAll("thead tr");
+    var head = null;
+    for(i = 0; i < hrows.length; i++)
+      if(hrows[i].children.length === n){ head = hrows[i]; break; }
+    if(!head){
+      /* بدنه‌ای نبود یا با هیچ سطرِ سرستونی جور نشد: پرخانه‌ترین
+         سطرِ سرستون، که سطرِ عنوان‌هاست نه سطرِ فیلتر. */
+      for(i = 0; i < hrows.length; i++)
+        if(!head || hrows[i].children.length > head.children.length) head = hrows[i];
+      n = head ? head.children.length : 0;
+    }
+    /* سرستونِ گروهی (colspan) نقشهٔ ستون‌ها را به هم می‌زند */
+    if(head) for(i = 0; i < head.children.length; i++)
+      if(head.children[i].colSpan > 1) return { n: 0, head: null, cells: [] };
+    return { n: n, head: head, cells: head ? head.children : [] };
+  }
+
+  function fit(tab, C){
+    var cs = getComputedStyle(tab);
+    var fb = cs.fontSize + " " + cs.fontFamily;
+    var head = C.cells;
+    var body = tab.querySelectorAll("tbody tr");
+    var hFont = fontOf(head[0], fb);
+    var firstTd = tab.querySelector("tbody td");
+    var bFont = fontOf(firstTd, fb);
+    var hPad = padOf(head[0]) + GRIP;
+    var bPad = padOf(firstTd);
+    var out = [], txt = [];
+    for(var i = 0; i < C.n; i++){
+      var need = textW(head[i].textContent.trim(), hFont) + hPad;
+      /* سربارِ کادر یک بار، از روی اولین خانه‌ای که کادر دارد */
+      var extra = 0, gotExtra = false, free = true;
       for(var j = 0; j < body.length; j++){
+        /* ردیفِ «چیزی ثبت نشده» یک خانهٔ کشیده روی همهٔ ستون‌هاست؛ اگر
+           به حساب بیاید، متنِ بلندش پهنای ستونِ اول می‌شود. */
+        if(body[j].children.length !== C.n) continue;
         var td = body[j].children[i];
-        if(!td) continue;
+        if(!td || td.colSpan > 1) continue;
+        if(!gotExtra){
+          var f = td.querySelector("input,select,textarea");
+          if(f){
+            extra = fieldPad(f); gotExtra = true;
+            /* کشویی، عدد، تاریخ و تیک اندازهٔ خودشان را دارند: پهن‌تر
+               کردنشان فقط فضای خالی می‌سازد. فقط متنِ آزاد رشد می‌کند. */
+            var tp = (f.getAttribute("type") || "text").toLowerCase();
+            free = f.tagName === "TEXTAREA" ||
+                   (f.tagName === "INPUT" && (tp === "text" || tp === "search"));
+          }
+        }
         /* متنِ چندخطی: بلندترین خطش، نه کلِ متن */
         var parts = String(cellText(td)).split("\n");
         for(var q = 0; q < parts.length; q++){
-          var w = textW(parts[q].trim(), font) + 30;
+          var w = textW(parts[q].trim(), bFont) + bPad;
           if(w > need) need = w;
         }
-        if(td.querySelector("select")) need += 24;
       }
-      out.push(Math.max(MIN, Math.min(MAX, Math.round(need))));
+      out.push(Math.max(MIN, Math.min(MAX, Math.ceil(need + extra + SLACK))));
+      txt.push(free);
     }
-    return out;
+    return { w: out, txt: txt };
   }
 
   function apply(tab, ignoreSaved){
-    var head = tab.querySelectorAll("thead th");
-    if(!head.length) return;
+    var C = colsOf(tab);
+    if(!C.n || !C.head) return;
+    var head = C.cells;
     var group = tab.querySelector("colgroup");
-    if(!group || group.children.length !== head.length){
+    if(!group || group.children.length !== C.n){
       if(group) group.remove();
       group = document.createElement("colgroup");
-      for(var i = 0; i < head.length; i++) group.appendChild(document.createElement("col"));
+      for(var i = 0; i < C.n; i++) group.appendChild(document.createElement("col"));
       tab.insertBefore(group, tab.firstChild);
     }
     var saved = ignoreSaved ? null : load(tabId(tab));
-    var auto = fit(tab);
-    for(var j = 0; j < head.length; j++){
+    var F = fit(tab, C), auto = F.w;
+    var w = [];
+    for(var j = 0; j < C.n; j++){
       var k = head[j].textContent.trim() || String(j);
-      group.children[j].style.width = ((saved && saved[k]) || auto[j] || MIN) + "px";
+      w.push((saved && saved[k]) || auto[j] || MIN);
     }
+    /* اگر مجموعِ ستون‌ها از پهنای کادر بیشتر شد، همه به نسبتِ فضای
+       اضافه‌شان کوچک می‌شوند تا کلِ جدول یک‌جا دیده شود — «فیت»
+       یعنی همین، نه اینکه ستونِ اول از لبه بزند بیرون. پهنایی که
+       خودِ کاربر با دست کشیده دست نمی‌خورد؛ آن‌جا کادر می‌لغزد. */
+    if(!saved){ shrink(tab, w); grow(tab, w, auto, F.txt); }
+    var total = 0;
+    for(var q = 0; q < w.length; q++){
+      group.children[q].style.width = w[q] + "px";
+      total += w[q];
+    }
+    tab.classList.add("tsz-on");
     tab.style.tableLayout = "fixed";
-    tab.style.width = "max-content";
-    tab.style.minWidth = "100%";
+    /* جدول دقیقاً به اندازهٔ مجموعِ ستون‌هایش، با عددِ پیکسلی.
+       دو دام این‌جا بود:
+       • width:100% (یا min-width:100%) ⟵ کمبودِ پهنا را بینِ ستون‌ها
+         پخش می‌کرد؛ همان «گشاد شدن» که با دکمه می‌دیدید.
+       • width:max-content ⟵ به نظر بی‌خطر می‌آمد، ولی چیدمانِ ثابت
+         فقط وقتی به کار می‌افتد که پهنای جدول عددِ مشخصی باشد؛ با
+         max-content مرورگر به چیدمانِ خودکار برمی‌گشت و colgroup را
+         فقط یک پیشنهاد می‌گرفت — جدول ۱۲۳۵ می‌شد در حالی که مجموعِ
+         ستون‌ها ۹۱۸ بود. */
+    tab.style.width = total + "px";
+    tab.style.minWidth = "0";
+    tab.style.maxWidth = "none";
+  }
+
+  /* پهنای واقعیِ جایی که جدول در آن می‌نشیند */
+  function roomFor(tab){
+    var wrap = tab.closest(".tbl-wrap") || tab.parentNode;
+    if(!wrap || !wrap.getBoundingClientRect) return 0;
+    var r = wrap.getBoundingClientRect();
+    if(!r.width) return 0;
+    var cs = getComputedStyle(wrap);
+    return Math.floor(r.width - (parseFloat(cs.paddingLeft) || 0)
+                              - (parseFloat(cs.paddingRight) || 0) - 1);
+  }
+
+  /* بزرگ‌کردنِ فضای باقی‌مانده — ولی فقط برای ستون‌هایی که واقعاً
+     متن دارند. اگر همه را به یک نسبت پهن کنیم، «مسئول» و «وضعیت»
+     دوباره گشاد می‌شوند؛ و اگر هیچ‌کدام را پهن نکنیم، کارت نیمه‌خالی
+     می‌ماند. پس سهمِ اضافه می‌رود سراغِ ستونی که متنش بریده شده. */
+  function grow(tab, w, auto, txt){
+    var room = roomFor(tab);
+    if(room < 120) return;
+    var i, total = 0;
+    for(i = 0; i < w.length; i++) total += w[i];
+    var extra = room - total;
+    if(extra < 8) return;
+    var pick = [], base = 0;
+    for(i = 0; i < w.length; i++)
+      if(txt[i] && (auto[i] >= GROW_MIN || auto[i] >= MAX)){ pick.push(i); base += auto[i]; }
+    if(!pick.length || !base) return;
+    for(var q = 0; q < pick.length; q++){
+      var k = pick[q];
+      var want = w[k] + Math.floor(extra * (auto[k] / base));
+      w[k] = Math.min(want, Math.round(auto[k] * 2.2), GROW_MAX);
+    }
+  }
+
+  /* کوچک‌کردن به نسبتِ فضای اضافهٔ هر ستون: ستونی که فقط به اندازهٔ
+     حداقل است دست نمی‌خورد، و ستونِ پهن بیشترِ بار را می‌برد. */
+  function shrink(tab, w){
+    var room = roomFor(tab);
+    if(room < 120) return;
+    var sum = 0, slackAll = 0, i;
+    for(i = 0; i < w.length; i++){ sum += w[i]; slackAll += Math.max(0, w[i] - MIN); }
+    if(sum <= room || slackAll <= 0) return;
+    var cut = Math.min(sum - room, slackAll);
+    var done = 0;
+    for(i = 0; i < w.length; i++){
+      var share = Math.round(cut * (Math.max(0, w[i] - MIN) / slackAll));
+      if(i === w.length - 1) share = cut - done;
+      done += share;
+      w[i] = Math.max(MIN, w[i] - share);
+    }
   }
 
   /* دستهٔ کشیدن. یک بار برای هر جدول سوار می‌شود. */
   function wire(tab){
     if(tab[SEEN]) return;
     tab[SEEN] = 1;
-    var head = tab.querySelectorAll("thead th");
-    for(var i = 0; i < head.length; i++){
-      if(head[i].querySelector(".tsz-grip")) continue;
-      head[i].style.position = head[i].style.position || "relative";
+    var C = colsOf(tab);
+    if(!C.n || !C.head){ tab[SEEN] = 0; return; }
+    for(var i = 0; i < C.n; i++){
+      var th = C.cells[i];
+      if(th.querySelector(".tsz-grip")) continue;
+      th.style.position = th.style.position || "relative";
       var g = document.createElement("i");
       g.className = "tsz-grip";
-      head[i].appendChild(g);
+      th.appendChild(g);
     }
     apply(tab);
   }
@@ -179,8 +346,10 @@
     for(var i = 0; i < views.length; i++){
       var tab = views[i];
       if(!tab.querySelector("thead th")) continue;
-      /* جدول‌های ریزِ داخلِ کارت (مثل خلاصه‌ها) ستون‌بندی نمی‌خواهند */
-      if(tab.rows.length < 2) continue;
+      /* جدولِ خالی هم دسته و دکمه می‌گیرد: پهنا را پیش از پر شدنِ
+         جدول هم باید بشود چید. ولی سرستونِ گروهی (colspan) و جدولِ
+         تک‌ستونیِ داخلِ کارت نه. */
+      if(colsOf(tab).n < 2) continue;
       mountBtn(tab);
       if(tab[SEEN]) apply(tab); else wire(tab);
     }
