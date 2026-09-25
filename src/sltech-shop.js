@@ -14,7 +14,7 @@
    آن روز کارت‌به‌کارت همان کاری را می‌کند که لازم است. */
 
 import { getSetting, all, one, run } from './kartabl.js';
-import { toAdmin } from './sltech-bot.js';
+import { toAdmin, slContact } from './sltech-bot.js';
 import { JOBS } from './kartabl-jobs.js';
 
 const KINDS = { gen: 'عمومی', it: 'مدیر IT', fin: 'مالی' };
@@ -148,7 +148,7 @@ export async function placeOrder(env, body) {
     couponError: cp.error || '',
     plan: plan.name, days: Number(plan.days || 0),
     card: st.card || '', cardName: st.cardName || '',
-    telegram: st.telegram || '', bale: st.bale || ''
+    ...slContact(st)
   };
 }
 

@@ -18,6 +18,18 @@ import { json, bad, getSetting, setSetting, all, one, run, BOT_API } from './kar
 
 /* نامِ سکّویی که در جدول‌ها می‌نشیند، جدا از فروشگاه */
 export const SL_PF = { telegram: 'sltg', bale: 'slbale' };
+
+/* ---------- نشانیِ پشتیبانی ----------
+   یک شناسه، هر دو پیام‌رسان. این‌جا پیش‌فرض است نه قفل: هر چه در پنل
+   ← «تنظیمات سایت» نوشته شود جایش را می‌گیرد. بودنِ پیش‌فرض یعنی
+   سایت از همان اول راهِ تماس دارد، حتی اگر کسی هنوز سراغِ آن صفحه
+   نرفته باشد — و تا امروز نرفته بود، پس بخشِ «راه‌های تماس» خالی
+   می‌ماند و روی فاکتور هم نمی‌گفت فیش را کجا بفرستند. */
+export const SL_SUPPORT = 'sltechinfo';
+export const slContact = st => ({
+  telegram: (st && st.telegram) || SL_SUPPORT,
+  bale: (st && st.bale) || SL_SUPPORT
+});
 const KIND_OF = { sltg: 'telegram', slbale: 'bale' };
 const LABEL = { telegram: 'تلگرام', bale: 'بله' };
 

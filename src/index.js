@@ -1,5 +1,5 @@
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
-import { handleSlUpdate, fromWeb } from './sltech-bot.js';
+import { handleSlUpdate, fromWeb, slContact } from './sltech-bot.js';
 import { placeOrder, checkCoupon } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
@@ -2558,11 +2558,10 @@ export default {
          از تنظیمات (شمارهٔ کارت و توکن این‌جا کاری ندارند). */
       if (p === '/api/sl/site' && m === 'GET') {
         const st = (await getSetting(env, 'sltechSite', {})) || {};
-        return json({ ok: true, site: {
-          telegram: st.telegram || '', bale: st.bale || '',
+        return json({ ok: true, site: Object.assign({
           phone: st.phone || '', email: st.email || '',
           plans: Array.isArray(st.plans) ? st.plans : []
-        } });
+        }, slContact(st)) });
       }
 
       /* سنجیدنِ کد تخفیف پیش از ثبت — فقط برای نشان دادنِ مبلغ.

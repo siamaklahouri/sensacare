@@ -19,7 +19,7 @@ import {
   handleKartabl, buildAllBackup, sendAllBackup
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
-import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
+import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
@@ -111,7 +111,9 @@ const MAX_PLANS = 6;
 
 /* آنچه بیرون می‌رود: همه‌چیز جز توکن‌ها. */
 const publicSite = st => ({
-  telegram: st.telegram || '', bale: st.bale || '',
+  /* اگر ادمین چیزی ننوشته، همان پیش‌فرضی که سایت نشان می‌دهد این‌جا
+     هم دیده شود — وگرنه پنل خالی نشان می‌داد و سایت پُر. */
+  ...slContact(st),
   phone: st.phone || '', email: st.email || '',
   card: st.card || '', cardName: st.cardName || '',
   /* هر ربات گفتگوی خودش را دارد: پشتیبان و پیام‌ها به هر دو می‌روند. */
