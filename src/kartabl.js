@@ -315,7 +315,7 @@ const PART_RE = /\{\{PART:([a-z0-9_-]{1,32})\}\}/g;
    اولین درخواستِ هر ایزوله هیچ‌کدام. */
 const TPL_CACHE = new Map();
 
-async function withParts(env, req, html) {
+export async function withParts(env, req, html) {
   const names = [...new Set([...html.matchAll(PART_RE)].map(m => m[1]))];
   if (!names.length) return html;
   const got = await Promise.all(names.map(async n => {

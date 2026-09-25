@@ -1447,6 +1447,7 @@ let saveTimer = null;
 let dirHandle = null;
 
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+{{PART:fadigits}}
 {{PART:idb}}
 
 function fsaSupported(){ return typeof window.showDirectoryPicker === "function"; }

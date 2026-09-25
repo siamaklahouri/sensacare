@@ -1590,6 +1590,7 @@ function flashSaveHint(text){
   clearTimeout(saveHintTimer);
   saveHintTimer = setTimeout(()=>{ hint.textContent = ""; }, 3000);
 }
+{{PART:fadigits}}
 {{PART:idb}}
 function fsaSupported(){ return typeof window.showDirectoryPicker === "function"; }
 

@@ -85,7 +85,7 @@ function disabledPanelPage(panel) {
 }
 
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
-         renderPanelPage } from './kartabl.js';
+         renderPanelPage, withParts } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1889,7 +1889,10 @@ export default {
         if (r) return r;
       }
       const res = await env.ASSETS.fetch(new Request(new URL('/_t/admin.tpl', req.url), req));
-      if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
+      /* پنلِ مدیریت هم از همان پاره‌قالب‌ها استفاده می‌کند — فعلاً فقط
+         ارقامِ فارسی — پس مثلِ صفحهٔ کارتابل از withParts رد می‌شود. */
+      const adminHtml = res.ok ? await withParts(env, req, await res.text()) : null;
+      if (adminHtml) return withSecurity(new Response(adminHtml, { headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
         'X-Robots-Tag': 'noindex, nofollow' } }));

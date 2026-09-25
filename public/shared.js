@@ -23,6 +23,16 @@
   };
   var faNum = function (n) { return String(n).replace(/[0-9]/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[d]; }); };
   var money = function (n) { return faNum(Number(n || 0).toLocaleString("en-US")); };
+  /* ارقامِ فارسی/عربی → لاتین. هر جا عددی از متنِ کاربر خوانده می‌شود
+     باید از این رد شود، وگرنه «۲۵٬۰۰۰» صفر حساب می‌شود. */
+  var enNum = function (v) {
+    return String(v)
+      .replace(/[\u06F0-\u06F9\u0660-\u0669]/g, function (c) {
+        var n = c.charCodeAt(0);
+        return String(n >= 0x6F0 ? n - 0x6F0 : n - 0x660);
+      })
+      .replace(/\u066C/g, "").replace(/\u066B/g, ".");
+  };
 
   function newRid() {
     var a = "abcdefghijklmnopqrstuvwxyz0123456789", out = "";
@@ -417,8 +427,10 @@
      یک روز قالبِ عدد در یکی عوض می‌شود و آن یکی بی‌صدا فرق می‌کند. */
   function inputVal(col, v) {
     if (v === undefined || v === null || v === "") return "";
+    /* عدد هم مثلِ بقیهٔ صفحه فارسی نوشته می‌شود. سرور در cleanRow رقمِ
+       فارسی را می‌فهمد، پس همین رشته دوباره عددِ درست می‌شود. */
     return (col.kind === "money" || col.kind === "num")
-      ? Number(v).toLocaleString("en-US") : v;
+      ? faNum(Number(v).toLocaleString("en-US")) : v;
   }
 
   /* ---------- یک خانه ---------- */

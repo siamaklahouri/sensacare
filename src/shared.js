@@ -500,6 +500,15 @@ const MAX_ROWS = 2000;
    ثابت ندارد و ستون‌هایش روی همان بخش نشسته‌اند. تا وقتی این‌جا از نوع
    خوانده می‌شد، هر چیزی که ادمین خودش ساخته بود بی‌صدا دور ریخته
    می‌شد — ردیف ذخیره می‌شد ولی خانه‌هایش خالی. */
+/* ارقامِ فارسی/عربی → لاتین، به‌علاوهٔ جداکنندهٔ هزارگان و ممیزِ فارسی */
+export const latinNum = s => String(s)
+  .replace(/[\u06F0-\u06F9\u0660-\u0669]/g, c => {
+    const n = c.charCodeAt(0);
+    return String(n >= 0x6F0 ? n - 0x6F0 : n - 0x660);
+  })
+  .replace(/\u066C/g, '')
+  .replace(/\u066B/g, '.');
+
 export function cleanRow(cols, v) {
   const out = {};
   for (const c of (cols || [])) {
@@ -507,7 +516,10 @@ export function cleanRow(cols, v) {
     let x = v && v[c.k];
     if (x === undefined || x === null) continue;
     if (c.kind === 'num' || c.kind === 'money') {
-      const n = Number(String(x).replace(/[,٬\s]/g, ''));
+      /* رقمِ فارسی و عربی هم عدد است. کارتابل عددها را فارسی نشان
+         می‌دهد و کاربر هم فارسی تایپ می‌کند؛ اگر این‌جا ترجمه نشود،
+         Number روی «۲۵٬۰۰۰» NaN می‌دهد و مبلغ صفر ذخیره می‌شود. */
+      const n = Number(latinNum(String(x)).replace(/[,\s]/g, ''));
       out[c.k] = Number.isFinite(n) ? n : 0;
     } else {
       out[c.k] = String(x).slice(0, c.kind === 'long' ? MAX_CELL : 300);

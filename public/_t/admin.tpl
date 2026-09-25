@@ -664,9 +664,9 @@ table.inv-tab td.desc{ text-align:right; }
     <div class="brandword">SLTech</div>
     <h1 id="gateTitle">ورود به کارتابل</h1>
     <p id="gateSub">نام کاربری و رمزتان را بزنید تا وارد کارتابل خودتان شوید.</p>
-    <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden>
+    <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden data-ascii>
     <input type="text" id="gateUser" placeholder="نام کاربری" autocomplete="username"
-           dir="ltr" spellcheck="false" autocapitalize="off">
+           dir="ltr" spellcheck="false" autocapitalize="off" data-ascii>
     <input type="password" id="gatePass" placeholder="رمز" autocomplete="current-password">
     <input type="password" id="gatePass2" placeholder="تکرار رمز" autocomplete="new-password" hidden>
     <button type="submit" id="gateBtn">ورود</button>
@@ -709,7 +709,7 @@ table.inv-tab td.desc{ text-align:right; }
   <section id="tab-list">
     <div class="findbar">
       <input type="search" id="find" placeholder="جستجو در نام یا آدرس کارتابل…"
-        autocomplete="off" spellcheck="false">
+        autocomplete="off" spellcheck="false" data-ascii>
       <span class="n" id="findCount"></span>
       <!-- پشتیبانِ همه با هم. فهرست همان لحظه از پایگاه‌داده خوانده
            می‌شود، پس کارتابلی که همین امروز ساخته شده هم داخلش هست. -->
@@ -762,12 +762,12 @@ table.inv-tab td.desc{ text-align:right; }
       </div>
       <div class="row">
         <div class="fld"><label>نام شخص</label><input type="text" id="nName" placeholder="مثلاً: نسرین" autocomplete="off"></div>
-        <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
+        <div class="fld"><label>آدرس کارتابل</label><input type="text" id="nSlug" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false" data-ascii></div>
         <div class="fld"><label>نام کاربری (خالی = مثل آدرس)</label>
-          <input type="text" id="nUser" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false"></div>
+          <input type="text" id="nUser" placeholder="nasrin" dir="ltr" autocomplete="off" spellcheck="false" data-ascii></div>
         <div class="fld"><label>چک‌لیست آماده (اختیاری)</label><select id="nJob"></select></div>
         <div class="fld"><label>رمز ورود (خالی = خودکار)</label>
-          <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off"></div>
+          <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off" data-ascii></div>
         <div class="fld"><label>مهلت به روز (خالی = بی‌مهلت)</label>
           <input type="number" id="nDays" min="0" max="3650" dir="ltr" autocomplete="off"
             placeholder="مثلاً ۳۰"></div>
@@ -836,15 +836,15 @@ table.inv-tab td.desc{ text-align:right; }
         از صفحه هم برداشته می‌شود.</p>
       <div class="row">
         <div class="fld"><label>تلگرام (نام کاربری یا لینک)</label>
-          <input type="text" id="stTelegram" dir="ltr" placeholder="@sltech_ir" autocomplete="off"></div>
+          <input type="text" id="stTelegram" dir="ltr" placeholder="@sltech_ir" autocomplete="off" data-ascii></div>
         <div class="fld"><label>بله (نام کاربری یا لینک)</label>
-          <input type="text" id="stBale" dir="ltr" placeholder="@sltech_ir" autocomplete="off"></div>
+          <input type="text" id="stBale" dir="ltr" placeholder="@sltech_ir" autocomplete="off" data-ascii></div>
       </div>
       <div class="row">
         <div class="fld"><label>تلفن</label>
           <input type="text" id="stPhone" dir="ltr" placeholder="۰۲۱…" autocomplete="off"></div>
         <div class="fld"><label>ایمیل</label>
-          <input type="text" id="stEmail" dir="ltr" placeholder="info@sltech.ir" autocomplete="off"></div>
+          <input type="text" id="stEmail" dir="ltr" placeholder="info@sltech.ir" autocomplete="off" data-ascii></div>
       </div>
     </div>
 
@@ -853,7 +853,7 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">شمارهٔ کارتی که برای خریدِ کارتابل اعلام می‌شود.</p>
       <div class="row">
         <div class="fld"><label>شمارهٔ کارت (۱۶ رقم)</label>
-          <input type="text" id="stCard" dir="ltr" inputmode="numeric" placeholder="6037…" autocomplete="off"></div>
+          <input type="text" id="stCard" dir="ltr" inputmode="numeric" placeholder="6037…" autocomplete="off" data-ascii></div>
         <div class="fld"><label>به نام</label>
           <input type="text" id="stCardName" placeholder="نام صاحب کارت" autocomplete="off"></div>
       </div>
@@ -873,7 +873,7 @@ table.inv-tab td.desc{ text-align:right; }
         «مبلغ» عددِ ثابت. سقفِ استفاده و مهلت اختیاری‌اند — خالی یعنی بی‌حد.</p>
       <div class="row">
         <div class="fld"><label>کد</label>
-          <input type="text" id="cpCode" dir="ltr" placeholder="NOWRUZ" autocomplete="off"></div>
+          <input type="text" id="cpCode" dir="ltr" placeholder="NOWRUZ" autocomplete="off" data-ascii></div>
         <div class="fld"><label>نوع</label>
           <select id="cpKind"><option value="percent">درصد</option><option value="amount">مبلغ (تومان)</option></select></div>
         <div class="fld"><label>مقدار</label>
@@ -900,14 +900,14 @@ table.inv-tab td.desc{ text-align:right; }
         <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
           <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
         <div class="fld"><label>شناسهٔ گفتگوی تلگرام</label>
-          <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸"></div>
+          <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
         <div><button class="btn" id="stTgTest">پیام آزمایشی</button></div>
       </div>
       <div class="row" style="margin-top:8px;">
         <div class="fld"><label>توکن بله <span id="stBaleHas" class="hint2"></span></label>
           <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
         <div class="fld"><label>شناسهٔ گفتگوی بله</label>
-          <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸"></div>
+          <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
         <div><button class="btn" id="stBaleTest">پیام آزمایشی</button></div>
       </div>
       <div class="hint">شناسهٔ گفتگو را از خودِ ربات می‌گیرید: یک پیام به ربات بدهید و
@@ -930,7 +930,7 @@ table.inv-tab td.desc{ text-align:right; }
         وارد این پنل می‌شوید — همان صفحه‌ای که کاربرها هم از آن وارد کارتابلِ خودشان می‌شوند.</p>
       <div class="row">
         <div class="fld"><label>نام کاربری</label>
-          <input type="text" id="auName" dir="ltr" autocomplete="off" spellcheck="false"></div>
+          <input type="text" id="auName" dir="ltr" autocomplete="off" spellcheck="false" data-ascii></div>
         <div><button class="btn btn-main" id="auGo">ذخیره</button></div>
       </div>
     </div>
@@ -1457,7 +1457,7 @@ function openEdit(slug){
       <div class="fld"><label>نام</label><input type="text" id="eName" value="${esc(p.name)}"></div>
       <div class="fld"><label>نام کاربری</label>
         <input type="text" id="eUser" dir="ltr" autocomplete="off" spellcheck="false"
-          value="${esc(p.user || p.slug)}" ${p.builtin ? "disabled" : ""}></div>
+          value="${esc(p.user || p.slug)}" ${p.builtin ? "disabled" : ""} data-ascii></div>
       <div class="fld"><label>مهلت (روز)</label>
         <input type="number" id="eDays" min="0" max="3650" dir="ltr" autocomplete="off"
           placeholder="${p.until ? esc(String(Math.max(0, daysLeft(p.until)))) : "بی‌مهلت"}"></div>
@@ -1622,7 +1622,7 @@ function openVaultReset(slug){
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="fld"><label>رمز تازهٔ کاربر (خالی = فقط رمز فعلی را نشانم بده)</label>
-        <input type="text" id="vNew" dir="ltr"></div>
+        <input type="text" id="vNew" dir="ltr" data-ascii></div>
     </div>
     <div class="ov-acts">
       <button class="btn btn-main" id="vGo">ادامه</button>
@@ -1807,7 +1807,7 @@ function openDelete(slug){
       <div class="fld"><label>برای تأیید، <code>${esc(slug)}</code> را تایپ کنید</label>
         <input type="text" id="dSlug" dir="ltr" autocomplete="off" autocorrect="off"
           autocapitalize="off" spellcheck="false" name="confirm-text"
-          placeholder="${esc(slug)}"></div>
+          placeholder="${esc(slug)}" data-ascii></div>
     </div>
     <div class="ov-acts">
       <button class="btn btn-danger" id="dGo">حذف کن</button>
@@ -2240,7 +2240,7 @@ function shForm(cur){
              placeholder="مثلاً: شرکت‌های مشترک"></div>
     <div class="fld"><label>شناسه (انگلیسی، بعداً عوض نمی‌شود)</label>
       <input type="text" id="shId" dir="ltr" maxlength="31" value="${esc(b.id)}"
-             placeholder="shared-companies" ${isNew ? "" : "disabled"}></div>
+             placeholder="shared-companies" ${isNew ? "" : "disabled"} data-ascii></div>
     <div class="fld"><label>نوع جدول${(!isNew && b.rows) ? " — چون داده دارد عوض نمی‌شود" : ""}</label>
       <select id="shType" ${(!isNew && b.rows) ? "disabled" : ""}>
         ${SH_TYPES.map(t=> '<option value="' + esc(t.id) + '"' +
@@ -3157,6 +3157,9 @@ async function loadLog(){
          <td class="ltr">${esc(i.note || "")}</td></tr>`).join("")}</tbody></table></div>`
     : `<p class="hint">هنوز چیزی ثبت نشده.</p>`;
 }
+</script>
+<script>
+{{PART:fadigits}}
 </script>
 </body>
 </html>
