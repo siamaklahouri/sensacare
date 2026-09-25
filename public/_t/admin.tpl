@@ -380,6 +380,10 @@ a{ color:var(--brass-ink); }
 
 /* ---------- نوار جستجو ---------- */
 .findbar{ display:flex; gap:9px; align-items:center; margin-bottom:14px; }
+.findbar .btn{ flex:none; }
+.bk-note{ font-size:12.5px; line-height:1.9; color:var(--ink-soft); margin:8px 2px 0; min-height:20px; }
+.bk-note.bad{ color:#A6222B; }
+.bk-note.good{ color:#1E7A4A; }
 .findbar input{ flex:1; padding:10px 13px; border:1px solid var(--line);
   border-radius:var(--r); font-family:var(--font); font-size:13px;
   background:var(--white); color:var(--ink); box-shadow:var(--sh-1);
@@ -605,6 +609,19 @@ table.inv-tab td.desc{ text-align:right; }
 .permrow{ display:flex; align-items:center; gap:8px; font-size:12.5px;
   border:1px solid var(--line); border-radius:var(--r-sm); padding:7px 10px;
   background:var(--paper-2); }
+.permrow.cus{ flex-wrap:wrap; }
+.permrow .cn{ flex:1 1 130px; min-width:110px; font-family:inherit; font-size:12.5px;
+  padding:6px 9px; border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--white); color:var(--ink); }
+.permrow .ck{ flex:0 0 118px; }
+.permrow .co{ flex:1 1 130px; min-width:110px; font-family:inherit; font-size:12px;
+  padding:6px 9px; border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--white); color:var(--ink); }
+.permrow .poff[disabled]{ opacity:.3; cursor:default; }
+.coladd{ display:flex; gap:8px; }
+.coladd input{ flex:1; font-family:inherit; font-size:13px; padding:8px 11px;
+  border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--white); color:var(--ink); }
   /* ستونی که برداشته شده: هست تا بشود برش گرداند، ولی معلوم است که
      دیگر در جدول نیست. */
   .permrow.gone{ opacity:.5; }
@@ -694,7 +711,13 @@ table.inv-tab td.desc{ text-align:right; }
       <input type="search" id="find" placeholder="جستجو در نام یا آدرس کارتابل…"
         autocomplete="off" spellcheck="false">
       <span class="n" id="findCount"></span>
+      <!-- پشتیبانِ همه با هم. فهرست همان لحظه از پایگاه‌داده خوانده
+           می‌شود، پس کارتابلی که همین امروز ساخته شده هم داخلش هست. -->
+      <button class="btn btn-sm" id="bkAll" title="یک زیپ با یک پوشه برای هر کارتابل">
+        🗂 پشتیبان همه، همین حالا</button>
+      <button class="btn btn-sm" id="bkAllDl" title="همان زیپ، روی همین دستگاه">⬇</button>
     </div>
+    <div class="bk-note" id="bkAllNote"></div>
     <div class="plist" id="plist"></div>
   </section>
 
@@ -1192,6 +1215,35 @@ function setupTabs(){
   if(ogn) ogn.addEventListener("click", ()=> orgForm(null));
   const fx = document.getElementById("find");
   if(fx) fx.addEventListener("input", ()=>{ findText = fx.value; renderPlanners(); });
+
+  /* ---- پشتیبانِ همهٔ کارتابل‌ها ----
+     فهرست را سرور همان لحظه از پایگاه‌داده می‌خواند، پس کارتابلی که
+     همین امروز ساخته شده هم داخلش هست — جایی ثبت‌نام نمی‌خواهد. */
+  const bkNote = (t, cls)=>{
+    const el = document.getElementById("bkAllNote");
+    if(!el) return;
+    el.textContent = t || "";
+    el.className = "bk-note" + (cls ? " " + cls : "");
+  };
+  const bkAll = document.getElementById("bkAll");
+  if(bkAll) bkAll.addEventListener("click", async ()=>{
+    const n = (DATA.items || []).filter(x=> !x.disabled).length;
+    if(!confirm("پشتیبانِ " + fa(n) + " کارتابل در یک زیپ ساخته و همین حالا فرستاده شود؟")) return;
+    bkAll.disabled = true;
+    bkNote("در حال ساختن… چند لحظه طول می‌کشد.");
+    const r = await api("/backup/all", { method:"POST" });
+    bkAll.disabled = false;
+    if(!r.ok){ bkNote(r.data.error || "نشد.", "bad"); return; }
+    bkNote("رفت — " + fa(r.data.count) + " کارتابل، " +
+           fa(Math.round(r.data.size / 1024)) + " کیلوبایت، به " + (r.data.to || []).join(" و ") +
+           ((r.data.failed || []).length ? " (نرسید: " + r.data.failed.join(" — ") + ")" : ""), "good");
+  });
+  const bkDl = document.getElementById("bkAllDl");
+  if(bkDl) bkDl.addEventListener("click", ()=>{
+    bkNote("در حال ساختن… فایل خودش دانلود می‌شود.");
+    location.href = API + "/backup/all";
+    setTimeout(()=> bkNote(""), 6000);
+  });
   document.getElementById("logoutBtn").addEventListener("click", async ()=>{
     await api("/logout", { method:"POST" });
     location.reload();
@@ -2196,19 +2248,18 @@ function shForm(cur){
             "</option>").join("")}
       </select>
       <div class="shcols" id="shCols"></div></div>
-    <div class="fld" id="shColWrap" hidden><label>ستون‌ها را خودتان بنویسید</label>
-      <textarea id="shColSpec" rows="3"
-        placeholder="مشتری, مبلغ:مبلغ, سررسید:تاریخ, وضعیت:باز/بسته, شرح:بلند">${esc(colSpecText(b.colspec))}</textarea>
-      <div class="hint">با کاما، نقطه‌ویرگول، خطِ تازه یا خطِ تیرهٔ فاصله‌دار جدا کنید.
-        نوعِ هر ستون اختیاری است و بعد از دونقطه می‌آید:
-        <b>تاریخ</b>، <b>مبلغ</b>، <b>عدد</b>، <b>بلند</b> برای متنِ چندخطی،
-        یا چند گزینه با اسلش (<span dir="ltr">باز/بسته/معوق</span>) برای کشویی.
-        ننوشتنش یعنی متنِ یک‌خطی. حداکثر ۱۲ ستون.
-        «مسئول» و «تاریخ ثبت» خودشان اضافه می‌شوند — خبر دادن، فیلترِ «وظایفِ من»
-        و نمای مدیر از همان‌ها می‌آیند.
-        <br>نامِ یک ستون را که عوض کنید، دادهٔ داخلش می‌ماند؛ ستونی که برداشته
-        شود دادهٔ خودش را هم با خود می‌برد.</div></div>
-    <div class="fld"><label>چه کسی کدام ستون را عوض کند</label>
+    <div class="fld" id="shColWrap" hidden><label>ستون‌ها را یکی‌یکی اضافه کنید</label>
+      <div class="coladd">
+        <input type="text" id="shColNew" maxlength="30" autocomplete="off"
+               placeholder="نامِ ستون، مثلاً: مشتری">
+        <button type="button" class="btn btn-brass btn-sm" id="shColAdd">＋ افزودن</button>
+      </div>
+      <div class="hint">نام را بنویسید و Enter بزنید (یا «افزودن»). هر چه بنویسید
+        همان یک ستون می‌شود — کاما و خط تیره داخلِ نام مشکلی ندارند.
+        نوعِ داده و اینکه چه کسی بتواند عوضش کند، پایین‌تر برای هر ستون جداست.
+        حداکثر ۱۲ ستون. «مسئول» و «تاریخ ثبت» خودشان اضافه می‌شوند — خبر دادن،
+        فیلترِ «وظایفِ من» و نمای مدیر از همان‌ها می‌آیند.</div></div>
+    <div class="fld"><label>هر ستون: نوعِ داده، و چه کسی عوضش کند</label>
       <div class="permgrid" id="shPerms"></div>
       <div class="hint">«مسئول» یعنی همان کسی که در ستونِ مسئول انتخاب شده.
         تا وقتی مسئولی انتخاب نشده، سازندهٔ ردیف همان نقش را دارد.
@@ -2334,20 +2385,22 @@ function shForm(cur){
      ساخته می‌شوند و فقط برای همین فرم‌اند — کلیدِ واقعی را سرور
      می‌دهد و با نام نگهشان می‌دارد، پس قاعده‌ای که این‌جا انتخاب
      می‌شود سرِ جای خودش می‌نشیند. */
-  const specCols = ()=>{
-    const raw = (document.getElementById("shColSpec") || {}).value || "";
-    const out = [];
-    raw.split(/[,،;؛\n]+|\s+-\s+/).forEach(piece=>{
-      const line = piece.trim(); if(!line) return;
-      const at = line.search(/[:：]/);
-      const name = (at < 0 ? line : line.slice(0, at)).trim().slice(0,30);
-      if(!name || out.length >= 12) return;
-      /* بدونِ edit، یعنی پیش‌فرضش همان قفلِ مالکیتِ این بخش است —
-         همان چیزی که سرور هم می‌کند. اگر این‌جا «همهٔ اعضا» می‌نوشتیم،
-         فرم چیزی را وعده می‌داد که سرور انجام نمی‌دهد. */
-      out.push({ k: "@" + name, t: name, edit: "" });
-    });
-    return out;
+  /* ستون‌های دلخواه یک آرایهٔ زنده‌اند که با «افزودن» پُر می‌شود. کلیدِ
+     «@نام» فقط مالِ همین فرم است؛ کلیدِ واقعی را سرور می‌دهد و با نام
+     نگهشان می‌دارد، پس عوض کردنِ نام داده را نمی‌پراند. */
+  const CUS = (b.colspec || []).map(c=> ({
+    t: c.t, kind: c.kind || "text", opts: (c.opts || []).join("/") }));
+  const specCols = ()=> CUS.map(c=> ({ k: "@" + c.t, t: c.t, edit: "", cus: c }));
+
+  const addCol = ()=>{
+    const el = document.getElementById("shColNew");
+    const t = (el.value || "").trim().slice(0, 30);
+    if(!t) return;
+    if(CUS.length >= 12){ say("بیشتر از ۱۲ ستون نمی‌شود.", true); return; }
+    if(CUS.some(c=> c.t === t)){ say("ستونی با همین نام هست.", true); return; }
+    CUS.push({ t, kind:"text", opts:"" });
+    el.value = ""; el.focus();
+    showCols();
   };
 
   const showCols = ()=>{
@@ -2378,6 +2431,32 @@ function shForm(cur){
         ? ((SH_RULES.find(r=> r.id === c.edit) || {}).label || c.edit)
         : "طبقِ قفلِ مالکیت";
       const gone = offOf.has(c.k);
+      /* ستونِ دلخواه: نام، نوعِ داده و دسترسی هر سه در همین یک ردیف */
+      if(c.cus){
+        const i = CUS.indexOf(c.cus);
+        const KINDS = [["text","متن یک‌خطی"],["long","متن چندخطی"],["date","تاریخ"],
+                       ["money","مبلغ"],["num","عدد"],["pick","کشویی"]];
+        return '<div class="permrow cus' + (gone ? " gone" : "") + '">' +
+          '<input class="cn" data-cn="' + i + '" value="' + esc(c.t) + '" maxlength="30">' +
+          '<select class="ck" data-ck="' + i + '">' + KINDS.map(k=>
+            '<option value="' + k[0] + '"' + (c.cus.kind === k[0] ? " selected" : "") +
+            ">" + k[1] + "</option>").join("") + "</select>" +
+          (c.cus.kind === "pick"
+            ? '<input class="co" data-co="' + i + '" value="' + esc(c.cus.opts) +
+              '" placeholder="باز/بسته/معوق">'
+            : "") +
+          '<select data-perm="' + esc(c.k) + '"' + (gone ? " disabled" : "") + ">" +
+            '<option value=""' + (permOf[c.k] ? "" : " selected") + ">پیش‌فرض</option>" +
+            SH_RULES.map(r=> '<option value="' + esc(r.id) + '"' +
+              (r.id === (permOf[c.k] || "") ? " selected" : "") + ">" + esc(r.label) + "</option>").join("") +
+          "</select>" +
+          '<button type="button" class="poff" data-up="' + i + '" title="بالاتر"' +
+            (i === 0 ? " disabled" : "") + ">▲</button>" +
+          '<button type="button" class="poff" data-dn="' + i + '" title="پایین‌تر"' +
+            (i === CUS.length - 1 ? " disabled" : "") + ">▼</button>" +
+          '<button type="button" class="poff" data-del="' + i + '" title="حذفِ این ستون">✕</button>' +
+        "</div>";
+      }
       return '<div class="permrow' + (gone ? " gone" : "") + '"><span class="pn">' + esc(c.t) + '</span>' +
         '<select data-perm="' + esc(c.k) + '"' + (gone ? " disabled" : "") + ">" +
         '<option value=""' + (cur ? "" : " selected") + ">پیش‌فرض — " + esc(dflt) + "</option>" +
@@ -2391,6 +2470,36 @@ function shForm(cur){
     box.querySelectorAll("[data-perm]").forEach(sel=>{
       sel.onchange = ()=> permOf[sel.getAttribute("data-perm")] = sel.value;
     });
+    /* نام با change ثبت می‌شود نه با هر حرف، وگرنه هر کلید یک
+       بازسازیِ کامل بود و مکان‌نما می‌پرید. */
+    box.querySelectorAll("[data-cn]").forEach(el=>{
+      el.onchange = ()=>{
+        const i = Number(el.getAttribute("data-cn"));
+        const t = (el.value || "").trim().slice(0,30);
+        if(!t || CUS.some((c,j)=> j !== i && c.t === t)){ showCols(); return; }
+        const was = "@" + CUS[i].t, now = "@" + t;
+        if(permOf[was]){ permOf[now] = permOf[was]; delete permOf[was]; }
+        if(offOf.has(was)){ offOf.delete(was); offOf.add(now); }
+        CUS[i].t = t; showCols();
+      };
+    });
+    box.querySelectorAll("[data-ck]").forEach(el=>{
+      el.onchange = ()=>{ CUS[Number(el.getAttribute("data-ck"))].kind = el.value; showCols(); };
+    });
+    box.querySelectorAll("[data-co]").forEach(el=>{
+      el.onchange = ()=>{ CUS[Number(el.getAttribute("data-co"))].opts = el.value; };
+    });
+    box.querySelectorAll("[data-del]").forEach(el=>{
+      el.onclick = ()=>{ CUS.splice(Number(el.getAttribute("data-del")), 1); showCols(); };
+    });
+    const move = (i, d)=>{
+      if(i + d < 0 || i + d >= CUS.length) return;
+      const x = CUS[i]; CUS[i] = CUS[i + d]; CUS[i + d] = x; showCols();
+    };
+    box.querySelectorAll("[data-up]").forEach(el=>{
+      el.onclick = ()=> move(Number(el.getAttribute("data-up")), -1); });
+    box.querySelectorAll("[data-dn]").forEach(el=>{
+      el.onclick = ()=> move(Number(el.getAttribute("data-dn")), 1); });
     box.querySelectorAll("[data-off]").forEach(btn=>{
       btn.onclick = ()=>{
         const k = btn.getAttribute("data-off");
@@ -2400,7 +2509,10 @@ function shForm(cur){
     });
   };
   document.getElementById("shType").addEventListener("change", showCols);
-  document.getElementById("shColSpec").addEventListener("input", showCols);
+  document.getElementById("shColAdd").addEventListener("click", addCol);
+  document.getElementById("shColNew").addEventListener("keydown", e=>{
+    if(e.key === "Enter"){ e.preventDefault(); addCol(); }
+  });
   showCols();
 
   /* از روی نوعِ جدول یک شناسهٔ پیشنهادی می‌سازیم تا کسی مجبور نباشد
@@ -2427,7 +2539,8 @@ function shForm(cur){
       members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
       rowlock: document.getElementById("shLock").checked ? 1 : 0,
-      cols: (document.getElementById("shColSpec") || {}).value || "",
+      cols: CUS.map(c=> ({ t: c.t, kind: c.kind,
+                           opts: c.kind === "pick" ? String(c.opts || "").split("/") : [] })),
       /* ستون‌های دلخواه با «@نام» می‌روند، مثلِ قاعده‌هایشان */
       off: Array.from(offOf),
       /* کلیدِ ستون‌های دلخواه در این فرم «@نام» است؛ سرور آن‌ها را با

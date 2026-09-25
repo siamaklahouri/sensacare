@@ -196,6 +196,22 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:tablecss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
 
+
+  /* ---------- پهنای ستون‌ها ---------- */
+  .tsz-grip{
+    position:absolute; top:0; bottom:0; inset-inline-end:0; width:9px;
+    cursor:col-resize; user-select:none; touch-action:none;
+  }
+  .tsz-grip:hover{ background:var(--brass); opacity:.45; }
+  .tsz-bar{ display:flex; justify-content:flex-end; margin:0 0 6px; }
+  .tsz-fit{
+    font-family:var(--font-body); font-size:11px; padding:4px 9px; border-radius:7px;
+    border:1px solid var(--card-border); background:transparent; color:var(--ink-faint);
+    cursor:pointer; white-space:nowrap;
+  }
+  .tsz-fit:hover{ border-color:var(--brass); color:var(--brass); }
+  @media print{ .tsz-bar, .tsz-grip{ display:none !important; } }
+
   /* ---------- Shell ---------- */
   .shell{ display:flex; align-items:flex-start; min-height:calc(100vh - 70px); }
   .sidebar{
@@ -4376,6 +4392,8 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "کدام شرکت‌ها بیشترین بازدید را داشته‌اند؟",
   "خطوط MVPN که هنوز فعال نشده‌اند کدام‌اند؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
+{{PART:tablesize}}
+
 {{PART:reportjs}}
 
 {{PART:aiassist}}

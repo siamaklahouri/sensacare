@@ -236,6 +236,33 @@ const KIND_WORDS = [
 ];
 const KIND_W = { text: 150, long: 0, date: 115, money: 130, num: 110, pick: 125 };
 
+/* پنل ستون‌ها را یکی‌یکی می‌سازد و همین شکل می‌فرستدشان. متنِ
+   جداشده‌با‌کاما هم هنوز پذیرفته می‌شود (برای چیزی که از قبل ذخیره
+   شده)، ولی راهِ اصلی این است: نامِ ستون هیچ‌وقت وسطِ یک جداکننده
+   نصف نمی‌شود، چون اصلاً جداکننده‌ای در کار نیست. */
+const KINDS_OK = ['text', 'long', 'date', 'money', 'num', 'pick'];
+
+export function cleanCustomCols(list) {
+  const out = [];
+  for (const raw of (Array.isArray(list) ? list : [])) {
+    const t = String((raw && raw.t) || '').trim().slice(0, 30);
+    if (!t) continue;
+    const kind = KINDS_OK.includes(raw && raw.kind) ? raw.kind : 'text';
+    const col = { t, kind };
+    if (kind === 'pick') {
+      col.opts = (Array.isArray(raw.opts) ? raw.opts : String(raw.opts || '').split('/'))
+        .map(o => String(o).trim().slice(0, 24)).filter(Boolean).slice(0, 12);
+      /* کشویی بدونِ گزینه یعنی خانه‌ای که هیچ‌وقت پُر نمی‌شود */
+      if (!col.opts.length) { col.kind = 'text'; delete col.opts; }
+    }
+    const w = KIND_W[col.kind];
+    if (w) col.w = w;
+    out.push(col);
+    if (out.length >= CUSTOM_MAX) break;
+  }
+  return out;
+}
+
 export function parseCustomCols(raw) {
   const out = [];
   for (const piece of String(raw || '').split(/[,،;؛\n]+|\s+-\s+/)) {
@@ -672,7 +699,9 @@ export async function saveBox(env, body, knownSlugs) {
   let cols = '';
   let tCols = tDef.cols;
   if (tDef.custom) {
-    const parsed = parseCustomCols(body.cols);
+    const parsed = Array.isArray(body.cols)
+      ? cleanCustomCols(body.cols)
+      : parseCustomCols(body.cols);
     if (!parsed.length) return { error: 'دست‌کم یک ستون بنویسید — با کاما یا خطِ تازه جدایشان کنید.' };
     const keyed = keyCustomCols(parsed, cur ? readCustom(cur.cols) : []);
     cols = JSON.stringify(keyed);

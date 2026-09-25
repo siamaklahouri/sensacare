@@ -49,8 +49,7 @@
     ".sh-tab td{padding:3px 4px;vertical-align:top}",
     /* جدول خودش را به اندازهٔ محتوا می‌کشد و قاب اسکرولِ افقی
        می‌دهد؛ بهتر از اینکه همه‌چیز توی هم فشرده شود. */
-    ".sh-tab{width:100%;table-layout:auto}",
-    ".sh-tab th{white-space:nowrap}",
+    ".sh-tab th{white-space:nowrap;position:relative}",
     /* متنِ بلند نباید کلِ جدول را بکشد */
     ".sh-tab textarea,.sh-tab .ro{max-width:420px}",
     ".sh-tab td.who{font-size:10.5px;color:var(--ink-faint);white-space:nowrap;padding-top:10px}",
@@ -272,8 +271,7 @@
                است و بقیه‌اش را مرورگر از روی محتوا می‌چیند. با پهنای
                ثابت، ستونِ «ردیف» همان‌قدر جا می‌گرفت که ستونِ نام، و
                ستونی که ادمین برداشته بود جایش خالی می‌ماند. */
-            return "<th" + (c.w ? ' style="min-width:' + Math.min(c.w, 120) + "px;width:" + c.w + 'px"' : "") +
-                   ">" + esc(c.t) + "</th>";
+            return "<th>" + esc(c.t) + "</th>";
           }).join("") +
           '<th style="width:104px">صاحب</th><th style="width:40px"></th>' +
         "</tr></thead><tbody data-shbody=\"" + esc(box.id) + "\"></tbody></table></div>" +
@@ -547,6 +545,8 @@
     var empty = document.querySelector('[data-shempty="' + id + '"]');
     if (empty) empty.hidden = rids.length > 0;
     summary(box);
+    /* موتورِ پهنا خودش با دیدنِ تغییرِ جدول دوباره می‌چیند */
+    if (window.tableSizeSweep) window.tableSizeSweep();
   }
 
   /* اگر جدول ستونِ مبلغ دارد، جمعش پایِ کار می‌آید — همان چیزی که
@@ -732,6 +732,10 @@
     }
   });
 
+
+  /* پهنای ستون‌ها این‌جا نیست: موتورش داخلِ خودِ صفحه است
+     («tablesize») و همهٔ جدول‌های کارتابل را می‌گیرد، نه فقط این‌ها.
+     دو پیاده یعنی یک روز یکی‌شان چیزی می‌گیرد که آن یکی نمی‌گیرد. */
 
   /* ==================== خبرِ کارِ تازه ====================
      وقتی کسی در یک بخشِ گروهی کاری می‌گذارد، بقیه باید بفهمند — بدونِ
