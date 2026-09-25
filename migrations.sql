@@ -772,7 +772,8 @@ CREATE TABLE IF NOT EXISTS shared_boxes (
   created INTEGER NOT NULL DEFAULT 0,
   mgrs    TEXT NOT NULL DEFAULT '[]',   -- مدیرهای این بخش (زیرمجموعهٔ اعضا)
   rowlock INTEGER NOT NULL DEFAULT 0,   -- ۱ یعنی هر کس فقط ردیفِ خودش
-  perms   TEXT NOT NULL DEFAULT '{}'    -- قاعدهٔ دسترسیِ هر ستون، به انتخابِ ادمین
+  perms   TEXT NOT NULL DEFAULT '{}',   -- قاعدهٔ دسترسیِ هر ستون، به انتخابِ ادمین
+  cols    TEXT NOT NULL DEFAULT ''     -- ستون‌های جدولِ دلخواه (آرایهٔ JSON)؛ بقیهٔ نوع‌ها خالی
 );
 
 CREATE TABLE IF NOT EXISTS shared_rows (
@@ -788,7 +789,7 @@ CREATE TABLE IF NOT EXISTS shared_rows (
 );
 
 -- ۳۴ | صاحبِ ردیف و مدیرِ بخش
--- چهار ستونِ بالا بعداً اضافه شدند. این‌جا ALTER TABLE نمی‌آید چون این
+-- پنج ستونِ بالا بعداً اضافه شدند. این‌جا ALTER TABLE نمی‌آید چون این
 -- فایل هر بار موقع استقرار اجرا می‌شود و بارِ دوم کلِ استقرار را
 -- می‌خواباند. به‌جایش ensureShared در src/shared.js اولین باری که
 -- درخواستی برسد خودش اضافه‌شان می‌کند — همان‌جا داخلِ try، پس اگر از

@@ -709,6 +709,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
          پنل باید بتواند برای هر کدام قاعده انتخاب کند. */
       rules: EDIT_RULES,
       types: SHARED_TYPES.map(t => ({ id: t.id, label: t.label, icon: t.icon,
+        /* نوعِ دلخواه ستون‌های ثابت ندارد؛ پنل خودش از آنچه ادمین
+           می‌نویسد می‌سازدشان، و این‌ها فقط ستون‌فقرات‌اند. */
+        custom: !!t.custom,
         cols: t.cols.map(c => ({ k: c.k || '', t: c.t, edit: c.edit || '' })) })) });
   }
 

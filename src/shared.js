@@ -32,6 +32,13 @@ const run = async (env, sql, ...b) => await env.DB.prepare(sql).bind(...b).run()
      text  یک خطی | long متنِ بلند | num عدد | money مبلغ (تومان)
      date  تاریخ شمسی به شکل ۱۴۰۴/۰۷/۰۱ | pick فهرستِ بسته
    عرضِ ستون‌ها را صفحه از همین‌جا می‌گیرد، نه از CSS. */
+/* ستون‌فقرتِ جدولِ دلخواه — همان دو ستونی که «کارهای تیمی» را کار
+   می‌اندازند. کلیدهایشان با c1..cN قاطی نمی‌شود. */
+const CUSTOM_SPINE = [
+  { k: 'who', t: 'مسئول',     kind: 'who',  w: 130, edit: 'any' },
+  {           t: 'تاریخ ثبت', kind: 'made', w: 110, edit: 'never' }
+];
+
 export const SHARED_TYPES = [
   { id: 'companies', label: 'شرکت‌ها', icon: '🏢', cols: [
     { k: 'name',  t: 'نام شرکت',    kind: 'text', w: 170 },
@@ -119,6 +126,17 @@ export const SHARED_TYPES = [
     { k: 'mail',  t: 'ایمیل',   kind: 'text', w: 170, ltr: true },
     { k: 'note',  t: 'یادداشت', kind: 'long' }
   ]},
+  /* جدولِ دلخواه: ستون‌هایش را خودِ ادمین می‌نویسد. چیزی که این‌جا
+     به‌عنوان cols می‌ماند فقط «ستون‌فقرات» است — مسئول و تاریخِ ثبت —
+     که به هر جدولِ دلخواهی اضافه می‌شود. ستون‌های خودِ ادمین در
+     shapeBox جلوی این‌ها می‌نشینند.
+
+     چرا مسئول همیشه هست: خبرِ «کاری به شما سپرده شد»، فیلترِ «وظایفِ
+     من»، نمای مدیر و قاعده‌های doer/mgrdoer همه از همین یک ستون
+     می‌آیند. بدونش جدولِ دلخواه یک جدولِ ساده می‌شد، نه چیزی شبیه
+     کارهای تیمی. */
+  { id: 'custom', label: 'دلخواه — ستون‌هایش را خودم می‌نویسم', icon: '🧩',
+    custom: true, cols: CUSTOM_SPINE },
   { id: 'notes', label: 'یادداشت‌های مشترک', icon: '📝', cols: [
     { k: 'title', t: 'موضوع', kind: 'text', w: 200 },
     { k: 'body',  t: 'متن',   kind: 'long' },
@@ -190,6 +208,7 @@ export async function ensureShared(env) {
       [bx, 'ALTER TABLE shared_boxes ADD COLUMN rowlock INTEGER NOT NULL DEFAULT 0', 'rowlock'],
       [bx, "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''", 'org'],
       [bx, "ALTER TABLE shared_boxes ADD COLUMN perms TEXT NOT NULL DEFAULT '{}'", 'perms'],
+      [bx, "ALTER TABLE shared_boxes ADD COLUMN cols TEXT NOT NULL DEFAULT ''", 'cols'],
       [rw, "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''", 'owner'],
       [rw, 'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0', 'created']
     ]) {
@@ -199,6 +218,76 @@ export async function ensureShared(env) {
     ready = true;
   } catch (e) { /* اگر ساخته نشد، مسیرها خودشان خطا می‌دهند */ }
 }
+
+/* ---------- ستون‌های جدولِ دلخواه ----------
+   ادمین اسم‌ها را با کاما (یا «،»، نقطه‌ویرگول، خطِ تیرهٔ فاصله‌دار، یا
+   خطِ تازه) جدا می‌نویسد. نوعِ هر ستون اختیاری است و بعد از دونقطه
+   می‌آید؛ ننوشتنش یعنی متنِ یک‌خطی:
+
+     مشتری, مبلغ:مبلغ, سررسید:تاریخ, وضعیت:باز/بسته, شرح:بلند
+
+   خطِ تیره فقط وقتی جداکننده است که دو طرفش فاصله باشد، وگرنه اسمی
+   مثل «پیش‌فاکتور - ۲» وسطش نصف می‌شد. */
+const CUSTOM_MAX = 12;
+const KIND_WORDS = [
+  ['بلند', 'long'], ['متن بلند', 'long'], ['توضیح', 'long'], ['یادداشت', 'long'],
+  ['تاریخ', 'date'], ['مبلغ', 'money'], ['پول', 'money'],
+  ['عدد', 'num'], ['رقم', 'num'], ['متن', 'text']
+];
+const KIND_W = { text: 150, long: 0, date: 115, money: 130, num: 110, pick: 125 };
+
+export function parseCustomCols(raw) {
+  const out = [];
+  for (const piece of String(raw || '').split(/[,،;؛\n]+|\s+-\s+/)) {
+    const line = piece.trim();
+    if (!line) continue;
+    const at = line.search(/[:：]/);
+    const name = (at < 0 ? line : line.slice(0, at)).trim().slice(0, 30);
+    if (!name) continue;
+    const spec = at < 0 ? '' : line.slice(at + 1).trim();
+    const col = { t: name };
+    if (spec.includes('/')) {
+      /* «باز/بسته/معوق» یعنی کشویی با همین گزینه‌ها */
+      col.kind = 'pick';
+      col.opts = spec.split('/').map(o => o.trim().slice(0, 24)).filter(Boolean).slice(0, 12);
+      if (!col.opts.length) { col.kind = 'text'; delete col.opts; }
+    } else {
+      const hit = KIND_WORDS.find(([w]) => w === spec);
+      col.kind = hit ? hit[1] : 'text';
+    }
+    const w = KIND_W[col.kind];
+    if (w) col.w = w;
+    out.push(col);
+    if (out.length >= CUSTOM_MAX) break;
+  }
+  return out;
+}
+
+/* کلیدها c1..cN‌اند و به جایگاه بسته نیستند: وقتی ادمین فهرست را عوض
+   می‌کند، ستونی که نامش همان مانده کلیدِ قبلی‌اش را نگه می‌دارد. وگرنه
+   جابه‌جا کردنِ دو ستون، دادهٔ همهٔ ردیف‌ها را با هم عوض می‌کرد. */
+export function keyCustomCols(cols, prev) {
+  const byName = {};
+  for (const c of (prev || [])) if (c.k && c.t) byName[c.t] = c.k;
+  const used = new Set();
+  const out = cols.map(c => {
+    const k = byName[c.t];
+    if (k && !used.has(k)) { used.add(k); return { ...c, k }; }
+    return { ...c };
+  });
+  let n = 1;
+  for (const c of out) {
+    if (c.k) continue;
+    while (used.has('c' + n)) n++;
+    c.k = 'c' + n; used.add(c.k);
+  }
+  return out;
+}
+
+const readCustom = raw => { try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch { return []; } };
+
+/* ستون‌های خودِ ادمین جلو، ستون‌فقرات آخر */
+const customCols = raw => [...readCustom(raw), ...CUSTOM_SPINE];
 
 const parseMembers = s => { try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch { return []; } };
 
@@ -215,7 +304,10 @@ const shapeBox = r => {
   const t = typeById(r.type);
   return { id: r.id, title: r.title, type: r.type,
            label: t ? t.label : r.type, icon: t ? t.icon : '📋',
-           cols: t ? applyPerms(t.cols, r.perms) : [], members: parseMembers(r.members),
+           cols: t ? applyPerms(t.custom ? customCols(r.cols) : t.cols, r.perms) : [],
+           /* متنی که ادمین نوشته، برای برگرداندن در فرمِ پنل */
+           colspec: t && t.custom ? readCustom(r.cols) : null,
+           members: parseMembers(r.members),
            mgrs: parseMembers(r.mgrs), rowlock: Number(r.rowlock || 0),
            org: r.org || '', orgPath: '',
            /* خامش هم می‌رود تا پنل بداند ادمین کدام ستون را دست زده و
@@ -367,11 +459,13 @@ export async function rowsSince(env, boxId, since = 0) {
 const MAX_CELL = 4000;
 const MAX_ROWS = 2000;
 
-export function cleanRow(type, v) {
-  const t = typeById(type);
-  if (!t) return {};
+/* ستون‌ها از خودِ بخش می‌آیند، نه از نوعش: نوعِ «دلخواه» ستون‌های
+   ثابت ندارد و ستون‌هایش روی همان بخش نشسته‌اند. تا وقتی این‌جا از نوع
+   خوانده می‌شد، هر چیزی که ادمین خودش ساخته بود بی‌صدا دور ریخته
+   می‌شد — ردیف ذخیره می‌شد ولی خانه‌هایش خالی. */
+export function cleanRow(cols, v) {
   const out = {};
-  for (const c of t.cols) {
+  for (const c of (cols || [])) {
     if (!c.k) continue;          /* ستونِ نمایشی مثل «تاریخ ثبت» داده ندارد */
     let x = v && v[c.k];
     if (x === undefined || x === null) continue;
@@ -429,7 +523,7 @@ export function canEdit(box, col, by, row) {
    خانه‌های مجاز را هم می‌خوابانَد. اسمِ خانه‌های ردشده برمی‌گردد تا
    صفحه بتواند بگوید چه چیزی نوشته نشد. */
 function mergeRow(box, by, old, incoming) {
-  const clean = cleanRow(box.type, incoming);
+  const clean = cleanRow(box.cols, incoming);
   const out = {};
   const kept = [];
   /* ستون‌های خودِ این بخش، نه ستون‌های خامِ نوع: قاعده‌هایی که ادمین
@@ -542,7 +636,7 @@ export async function saveBox(env, body, knownSlugs) {
   const [orgRow, orgMem, cur] = await Promise.all([
     org ? orgById(env, org) : null,
     org ? membersOf(env, org) : [],
-    one(env, 'SELECT id, type FROM shared_boxes WHERE id=?', id)
+    one(env, 'SELECT id, type, cols FROM shared_boxes WHERE id=?', id)
   ]);
   if (org && !orgRow) return { error: 'این گروه پیدا نشد.' };
 
@@ -557,12 +651,25 @@ export async function saveBox(env, body, knownSlugs) {
      قاعده‌هایی که می‌شناسیم — وگرنه یک کلیدِ غلط در تنظیمات می‌ماند و
      کسی نمی‌فهمد چرا آن ستون رفتارِ عجیبی دارد.
      ستونِ نمایشی (بی‌کلید، مثل «تاریخ ثبت») قاعده نمی‌گیرد. */
-  const tCols = (typeById(type) || { cols: [] }).cols;
+  /* ستون‌های جدولِ دلخواه را همین‌جا می‌سازیم، چون هم قاعده‌ها روی
+     همین‌ها بسته می‌شوند و هم خودشان باید ذخیره شوند. */
+  const tDef = typeById(type) || { cols: [] };
+  let cols = '';
+  let tCols = tDef.cols;
+  if (tDef.custom) {
+    const parsed = parseCustomCols(body.cols);
+    if (!parsed.length) return { error: 'دست‌کم یک ستون بنویسید — با کاما یا خطِ تازه جدایشان کنید.' };
+    const keyed = keyCustomCols(parsed, cur ? readCustom(cur.cols) : []);
+    cols = JSON.stringify(keyed);
+    tCols = [...keyed, ...CUSTOM_SPINE];
+  }
   const perms = {};
   const pin = (body.perms && typeof body.perms === 'object') ? body.perms : {};
   for (const c of tCols) {
     if (!c.k || c.edit === 'never') continue;
-    const r = String(pin[c.k] || '');
+    /* پنل ستون‌های دلخواه را با «@نام» می‌فرستد، چون کلیدِ واقعی را
+       همین‌جا می‌سازیم و آن‌طرف هنوز نمی‌داندش. */
+    const r = String(pin[c.k] || pin['@' + c.t] || '');
     if (RULE_IDS.includes(r) && r !== (c.edit || '')) perms[c.k] = r;
   }
 
@@ -575,14 +682,14 @@ export async function saveBox(env, body, knownSlugs) {
   }
 
   await run(env,
-    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org,perms)
-     VALUES(?,?,?,?,?,?,?,?,?)
+    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org,perms,cols)
+     VALUES(?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET title=excluded.title, type=excluded.type,
                                    members=excluded.members, mgrs=excluded.mgrs,
                                    rowlock=excluded.rowlock, org=excluded.org,
-                                   perms=excluded.perms`,
+                                   perms=excluded.perms, cols=excluded.cols`,
     id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock, org,
-    JSON.stringify(perms));
+    JSON.stringify(perms), cols);
   return { ok: true, id, created: !cur };
 }
 

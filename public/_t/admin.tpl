@@ -2154,8 +2154,19 @@ async function loadShared(){
 
 /* فرمِ ساخت و ویرایش. شناسه بعد از ساخته شدن قفل می‌شود، چون ردیف‌ها
    با همان شناسه به بخش وصل‌اند و عوض کردنش یعنی گم شدنشان. */
+/* ستون‌های ذخیره‌شدهٔ جدولِ دلخواه را دوباره به همان متنی برمی‌گرداند
+   که ادمین نوشته بود، تا ویرایش از جایی که بود ادامه پیدا کند. */
+function colSpecText(cols){
+  const W = { long:"بلند", date:"تاریخ", money:"مبلغ", num:"عدد" };
+  return (cols || []).map(c=>{
+    if(c.kind === "pick" && (c.opts || []).length) return c.t + ":" + c.opts.join("/");
+    return W[c.kind] ? c.t + ":" + W[c.kind] : c.t;
+  }).join("، ");
+}
+
 function shForm(cur){
-  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"", perms:{}, rows:0 };
+  const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"",
+                     perms:{}, colspec:null, rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -2175,6 +2186,18 @@ function shForm(cur){
             "</option>").join("")}
       </select>
       <div class="shcols" id="shCols"></div></div>
+    <div class="fld" id="shColWrap" hidden><label>ستون‌ها را خودتان بنویسید</label>
+      <textarea id="shColSpec" rows="3"
+        placeholder="مشتری, مبلغ:مبلغ, سررسید:تاریخ, وضعیت:باز/بسته, شرح:بلند">${esc(colSpecText(b.colspec))}</textarea>
+      <div class="hint">با کاما، نقطه‌ویرگول، خطِ تازه یا خطِ تیرهٔ فاصله‌دار جدا کنید.
+        نوعِ هر ستون اختیاری است و بعد از دونقطه می‌آید:
+        <b>تاریخ</b>، <b>مبلغ</b>، <b>عدد</b>، <b>بلند</b> برای متنِ چندخطی،
+        یا چند گزینه با اسلش (<span dir="ltr">باز/بسته/معوق</span>) برای کشویی.
+        ننوشتنش یعنی متنِ یک‌خطی. حداکثر ۱۲ ستون.
+        «مسئول» و «تاریخ ثبت» خودشان اضافه می‌شوند — خبر دادن، فیلترِ «وظایفِ من»
+        و نمای مدیر از همان‌ها می‌آیند.
+        <br>نامِ یک ستون را که عوض کنید، دادهٔ داخلش می‌ماند؛ ستونی که برداشته
+        شود دادهٔ خودش را هم با خود می‌برد.</div></div>
     <div class="fld"><label>چه کسی کدام ستون را عوض کند</label>
       <div class="permgrid" id="shPerms"></div>
       <div class="hint">«مسئول» یعنی همان کسی که در ستونِ مسئول انتخاب شده.
@@ -2285,14 +2308,48 @@ function shForm(cur){
   /* قاعدهٔ هر ستون. آنچه از قبل ذخیره شده روی پیش‌فرضِ نوع می‌نشیند،
      پس ستونی که دست نخورده همان رفتارِ همیشگی‌اش را دارد. */
   const permOf = (b.perms && typeof b.perms === "object") ? Object.assign({}, b.perms) : {};
+  /* قاعده‌های ستون‌های دلخواه با کلیدِ واقعی (c1، c2 …) ذخیره شده‌اند،
+     ولی این فرم ستون‌ها را با «@نام» می‌شناسد چون هنوز کلیدی ندارند.
+     بدونِ این نگاشت، باز کردنِ فرمِ ویرایش قاعده‌ها را «پیش‌فرض»
+     نشان می‌داد و ذخیرهٔ بعدی بی‌صدا پاکشان می‌کرد. */
+  (b.colspec || []).forEach(c=>{ if(c.k && permOf[c.k]) permOf["@" + c.t] = permOf[c.k]; });
+
+  /* همان تجزیه‌ای که سرور می‌کند، فقط برای نشان دادن: اسم و نوعِ هر
+     ستون، تا قاعده‌هایش همان‌جا انتخاب شود. کلیدها این‌جا از روی نام
+     ساخته می‌شوند و فقط برای همین فرم‌اند — کلیدِ واقعی را سرور
+     می‌دهد و با نام نگهشان می‌دارد، پس قاعده‌ای که این‌جا انتخاب
+     می‌شود سرِ جای خودش می‌نشیند. */
+  const specCols = ()=>{
+    const raw = (document.getElementById("shColSpec") || {}).value || "";
+    const out = [];
+    raw.split(/[,،;؛\n]+|\s+-\s+/).forEach(piece=>{
+      const line = piece.trim(); if(!line) return;
+      const at = line.search(/[:：]/);
+      const name = (at < 0 ? line : line.slice(0, at)).trim().slice(0,30);
+      if(!name || out.length >= 12) return;
+      /* بدونِ edit، یعنی پیش‌فرضش همان قفلِ مالکیتِ این بخش است —
+         همان چیزی که سرور هم می‌کند. اگر این‌جا «همهٔ اعضا» می‌نوشتیم،
+         فرم چیزی را وعده می‌داد که سرور انجام نمی‌دهد. */
+      out.push({ k: "@" + name, t: name, edit: "" });
+    });
+    return out;
+  };
+
   const showCols = ()=>{
     const t = SH_TYPES.find(x=> x.id === document.getElementById("shType").value);
-    const names = t ? t.cols.map(c=> c.t) : [];
-    document.getElementById("shCols").textContent = names.length ? "ستون‌ها: " + names.join(" · ") : "";
+    const isCustom = !!(t && t.custom);
+    const wrap = document.getElementById("shColWrap");
+    if(wrap) wrap.hidden = !isCustom;
+    /* ستون‌های خودِ ادمین جلو، ستون‌فقرات (مسئول و تاریخ ثبت) آخر —
+       همان ترتیبی که سرور می‌سازد. */
+    const cols = !t ? [] : isCustom ? specCols().concat(t.cols) : t.cols;
+    const names = cols.map(c=> c.t);
+    document.getElementById("shCols").textContent = names.length ? "ستون‌ها: " + names.join(" · ")
+      : isCustom ? "هنوز ستونی ننوشته‌اید." : "";
 
     const box = document.getElementById("shPerms");
     if(!t){ box.innerHTML = ""; return; }
-    box.innerHTML = t.cols.map(c=>{
+    box.innerHTML = cols.map(c=>{
       /* ستونِ نمایشی (مثل «تاریخ ثبت») داده نیست و کسی نمی‌تواند
          عوضش کند، پس کشویی هم نمی‌خواهد. */
       if(!c.k || c.edit === "never")
@@ -2317,6 +2374,7 @@ function shForm(cur){
     });
   };
   document.getElementById("shType").addEventListener("change", showCols);
+  document.getElementById("shColSpec").addEventListener("input", showCols);
   showCols();
 
   /* از روی نوعِ جدول یک شناسهٔ پیشنهادی می‌سازیم تا کسی مجبور نباشد
@@ -2343,6 +2401,9 @@ function shForm(cur){
       members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
       rowlock: document.getElementById("shLock").checked ? 1 : 0,
+      cols: (document.getElementById("shColSpec") || {}).value || "",
+      /* کلیدِ ستون‌های دلخواه در این فرم «@نام» است؛ سرور آن‌ها را با
+         نام می‌شناسد، پس همان‌طور فرستاده می‌شوند. */
       perms: Array.from(document.querySelectorAll("#shPerms [data-perm]"))
         .reduce((a, sel)=>{ a[sel.getAttribute("data-perm")] = sel.value; return a; }, {})
     };

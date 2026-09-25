@@ -1005,7 +1005,11 @@
         else if (stat && stat.indexOf("در حال") === 0) p.doing++;
         else p.todo++;
         if (late) p.late++;
-        rows.push({ box: b, rid: rid, who: who, task: (r.v && r.v.task) || "",
+        /* عنوانِ کار از همان جایی می‌آید که خبرها می‌گیرندش: ستونِ
+           «کار» اگر بود، وگرنه اولین خانهٔ متنیِ ردیف. جدولِ دلخواه
+           ستونِ task ندارد و پیش از این ردیف‌هایش این‌جا بی‌نام
+           می‌افتادند. */
+        rows.push({ box: b, rid: rid, who: who, task: rowTitle(b, r.v),
                     stat: stat, due: (r.v && r.v.due) || "", late: late, done: isDone,
                     pri: (r.v && r.v.pri) || "" });
       });
