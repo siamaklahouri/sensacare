@@ -117,6 +117,27 @@
     ".mg-kpi .n{font-size:26px;font-weight:700;line-height:1.25;color:var(--ink);font-variant-numeric:tabular-nums}",
     ".mg-kpi .t{font-size:11.5px;color:var(--ink-faint);line-height:1.6}",
     ".mg-card{border:1px solid var(--card-border);border-radius:14px;padding:16px 18px;background:var(--white)}",
+
+    /* ---- نمودارها ----
+       دو ستون روی صفحهٔ بزرگ، یک ستون روی گوشی. هر بوم قابِ خودش را
+       دارد و Chart.js نسبتِ ابعاد را نگه نمی‌دارد، پس قاب ارتفاعش را
+       تعیین می‌کند نه برعکس. */
+    ".mg-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}",
+    /* display:grid از [hidden]ِ مرورگر قوی‌تر است؛ بدونِ این خط، قابِ
+       نمودار حتی وقتی کتابخانه نیامده بود سرِ جایش می‌ماند — یک ردیف
+       کادرِ خالی. */
+    ".mg-charts[hidden]{display:none}",
+    ".mg-ch{position:relative;height:var(--mgh,280px)}",
+    ".mg-ch > canvas{position:absolute;inset:0;width:100% !important;height:100% !important}",
+    ".mg-card.wide{grid-column:1/-1}",
+    ".mg-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:10px}",
+    "@media (max-width:640px){.mg-ch{--mgh:240px}}",
+    /* وقتی نمودارها آمدند، میله‌های CSS همان حرف را دو بار می‌زنند.
+       ردیفِ هر نفر می‌ماند (نام، شمار، درصد، دیرکرد) ولی میله‌اش نه. */
+    ".mg-wrap.has-ch .mg-p .mg-bar{display:none}",
+    ".mg-wrap.has-ch .mg-people > .mg-leg{display:none}",
+    ".mg-wrap.has-ch #mgBar .mg-leg{display:none}",
+    ".mg-wrap.has-ch .mg-pmid{gap:0}",
     ".mg-h{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:12px;",
     "  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}",
     ".mg-h .sub{font-size:11.5px;font-weight:400;color:var(--ink-faint)}",
@@ -1057,6 +1078,26 @@
           '<div class="mg-h">پیشرفتِ کل<span class="sub" id="mgPct"></span></div>' +
           '<div id="mgBar"></div>' +
         '</div>' +
+        /* نمودارها اگر کتابخانه نیامد اصلاً ساخته نمی‌شوند؛ میله‌های
+           بالا و فهرستِ پایین بدونشان هم کارشان را می‌کنند. */
+        '<div class="mg-charts" id="mgCharts" hidden>' +
+          '<div class="mg-card">' +
+            '<div class="mg-h">وضعیتِ کارها<span class="sub">سهمِ هر وضعیت از کلِ کارها</span></div>' +
+            '<div class="mg-ch"><canvas id="mgChStat"></canvas></div>' +
+          '</div>' +
+          '<div class="mg-card">' +
+            '<div class="mg-h">مهلت‌ها<span class="sub">کارهای تمام‌نشده، بر اساس اینکه چقدر وقت مانده</span></div>' +
+            '<div class="mg-ch"><canvas id="mgChDue"></canvas></div>' +
+          '</div>' +
+          '<div class="mg-card wide">' +
+            '<div class="mg-h">بارِ کارِ هر نفر<span class="sub">انجام‌شده، در جریان و مانده — روی هم</span></div>' +
+            '<div class="mg-ch" id="mgChPeopleBox"><canvas id="mgChPeople"></canvas></div>' +
+          '</div>' +
+          '<div class="mg-card wide">' +
+            '<div class="mg-h">هر گروه چقدر کارِ باز دارد<span class="sub">تمام‌نشده‌ها به تفکیکِ جدول</span></div>' +
+            '<div class="mg-ch" id="mgChBoxesBox"><canvas id="mgChBoxes"></canvas></div>' +
+          '</div>' +
+        '</div>' +
         '<div class="mg-card">' +
           '<div class="mg-h">کارِ هر نفر<span class="sub">از پرکارترین به کم‌کارترین</span></div>' +
           '<div class="mg-people" id="mgPeople"></div>' +
@@ -1146,6 +1187,277 @@
            '"></i>' + esc(label) + "</span>";
   }
 
+  /* ==================== نمودارهای نمای مدیر ====================
+     میله‌های CSS بالا سرِ جایشان می‌مانند: هم سبک‌اند، هم وقتی
+     کتابخانهٔ نمودار نیاید (یا نسخهٔ آفلاینِ پشتیبان باز شود) تنها
+     چیزی هستند که کار می‌کند. نمودارها رویشان اضافه می‌شوند، نه
+     جایشان.
+
+     رنگ‌ها از chartTone می‌آیند، همان رنگ‌هایی که «انجام شد» و «در
+     حال انجام» جای دیگرِ کارتابل دارند. */
+
+  var MG_CH = {};   /* id → نمودارِ ساخته‌شده، تا هر بار نابود شود */
+
+  function mgFont() { return getComputedStyle(document.body).fontFamily; }
+
+  function mgDestroy(id) {
+    if (MG_CH[id]) { try { MG_CH[id].destroy(); } catch (e) {} MG_CH[id] = null; }
+  }
+
+  /* عددِ کل، وسطِ دونات — بزرگ‌ترین فضای خالیِ نمودار */
+  var mgCenter = {
+    id: "mgCenter",
+    afterDraw: function (c, a, o) {
+      if (!o || !o.on) return;
+      var m = c.getDatasetMeta(0);
+      if (!m || !m.data || !m.data.length) return;
+      var el = m.data[0], g = c.ctx, f = mgFont();
+      g.save();
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = o.sub; g.font = "11px " + f;
+      g.fillText(o.label, el.x, el.y - 14);
+      g.fillStyle = o.main; g.font = "700 22px " + f;
+      g.fillText(o.total, el.x, el.y + 9);
+      g.restore();
+    }
+  };
+
+  /* عددِ هر میله روی خودش. بدونِ این، خواندنِ نمودار به نگه داشتنِ
+     موشواره بند است — و مدیر معمولاً فقط نگاه می‌کند. */
+  var mgVals = {
+    id: "mgVals",
+    afterDatasetsDraw: function (c, a, o) {
+      if (!o || !o.on) return;
+      var g = c.ctx;
+      g.save();
+      g.font = "600 10.5px " + mgFont();
+      g.fillStyle = o.color;
+      g.textAlign = o.horiz ? "left" : "center";
+      g.textBaseline = o.horiz ? "middle" : "bottom";
+      c.data.datasets.forEach(function (ds, di) {
+        var meta = c.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach(function (el, i) {
+          var v = ds.data[i];
+          if (!v) return;
+          g.fillText(faNum(v), el.x + (o.horiz ? 6 : 0), el.y - (o.horiz ? 0 : 5));
+        });
+      });
+      g.restore();
+    }
+  };
+
+  function mgAxis(t) {
+    return {
+      grid: { color: "rgba(128,128,128,.13)" },
+      border: { display: false },
+      ticks: { font: { size: 11, family: mgFont() },
+               callback: function (v) { return faNum(v); } }
+    };
+  }
+
+  function mgTooltip() {
+    return {
+      backgroundColor: "rgba(11,37,69,.93)", padding: 10, cornerRadius: 9,
+      titleFont: { size: 12.5, family: mgFont() },
+      bodyFont: { size: 12.5, family: mgFont() },
+      callbacks: { label: function (c) {
+        var v = c.parsed;
+        var n = (v && typeof v === "object") ? (v.x != null ? v.x : v.y) : v;
+        return " " + (c.dataset.label ? c.dataset.label + ": " : "") + faNum(n);
+      } }
+    };
+  }
+
+  /* چند روز تا مهلت. خروجی یکی از کلیدهای MG_DUE است. */
+  var MG_DUE = ["گذشته", "امروز و فردا", "تا یک هفته", "دیرتر", "بی‌مهلت"];
+  function mgDueBucket(due, today) {
+    if (!due || !today) return 4;
+    if (due < today) return 0;
+    /* فاصلهٔ تقریبی بر حسب روز، از همان عددِ ۱۴۰۴۰۸۱۵ */
+    var d = mgDays(due) - mgDays(today);
+    return d <= 1 ? 1 : d <= 7 ? 2 : 3;
+  }
+  /* شمارِ روزِ تقریبی از عددِ شمسی. ماه‌های ۱ تا ۶ سی‌ویک روزه‌اند و
+     بقیه سی — برای سطل‌بندی همین دقت کافی است. */
+  function mgDays(n) {
+    var y = Math.floor(n / 10000), m = Math.floor(n / 100) % 100, d = n % 100;
+    var acc = 0;
+    for (var i = 1; i < m; i++) acc += i <= 6 ? 31 : 30;
+    return y * 365 + acc + d;
+  }
+
+  async function mgrCharts(d, t, tot) {
+    var box = document.getElementById("mgCharts");
+    if (!box) return;
+    var lib = window.ensureChartLib ? await window.ensureChartLib() : (typeof Chart !== "undefined");
+    if (!lib || typeof Chart === "undefined") {
+      /* بی‌کتابخانه — نسخهٔ آفلاینِ پشتیبان هم همین حالت است — میله‌های
+         CSS تنها چیزی هستند که کار می‌کند، پس سرِ جایشان می‌مانند. */
+      box.hidden = true;
+      var w0 = document.querySelector("#view-shared-mgr .mg-wrap");
+      if (w0) w0.classList.remove("has-ch");
+      return;
+    }
+    box.hidden = false;
+    var wrap = document.querySelector("#view-shared-mgr .mg-wrap");
+    if (wrap) wrap.classList.add("has-ch");
+    var dark = t.done !== "#1E7A4A";
+    var ink = dark ? "#E7EEF4" : "#0B2545";
+    var dim = dark ? "#8DA0B2" : "#5B6E82";
+    var valColor = dark ? "#AAB9C7" : "#43586D";
+
+    /* ---- ۱) وضعیتِ کارها ---- */
+    mgDestroy("stat");
+    var sv = [tot.done, tot.doing, tot.todo];
+    var sc = [t.done, t.doing, t.todo];
+    var sl = ["انجام شده", "در حال انجام", "انجام نشده"];
+    if (tot.all) MG_CH.stat = new Chart(document.getElementById("mgChStat").getContext("2d"), {
+      type: "doughnut",
+      data: { labels: sl, datasets: [{ data: sv, backgroundColor: sc,
+              borderColor: t.surface, borderWidth: 2, hoverOffset: 10 }] },
+      plugins: [mgCenter],
+      options: {
+        cutout: "60%",
+        layout: { padding: 6 },
+        plugins: {
+          mgCenter: { on: true, total: faNum(tot.all), label: "کلِ کارها",
+                      main: ink, sub: dim },
+          legend: { position: "bottom",
+                    labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true,
+                              pointStyle: "rectRounded", padding: 13,
+                              font: { size: 12, family: mgFont() },
+                              generateLabels: function (c) {
+                                return sl.map(function (n, i) {
+                                  return { text: n + " — " + faNum(sv[i]),
+                                           fillStyle: sc[i], strokeStyle: sc[i],
+                                           lineWidth: 0, index: i };
+                                });
+                              } } },
+          tooltip: mgTooltip()
+        }
+      }
+    });
+
+    /* ---- ۲) مهلت‌ها ---- */
+    mgDestroy("due");
+    var today = todayJ();
+    var buck = [0, 0, 0, 0, 0];
+    d.rows.forEach(function (r) {
+      if (r.done) return;                      /* تمام‌شده مهلت ندارد */
+      buck[mgDueBucket(jNum(r.due), today)]++;
+    });
+    var bc = [t.bad, t.todo, t.doing, t.done, t.none];
+    MG_CH.due = new Chart(document.getElementById("mgChDue").getContext("2d"), {
+      type: "bar",
+      data: { labels: MG_DUE, datasets: [{ label: "کارِ تمام‌نشده", data: buck,
+              backgroundColor: bc, borderRadius: 7, borderWidth: 0 }] },
+      plugins: [mgVals],
+      options: {
+        layout: { padding: { top: 16 } },
+        plugins: { legend: { display: false }, tooltip: mgTooltip(),
+                   mgVals: { on: true, horiz: false, color: valColor } },
+        scales: { x: { grid: { display: false }, border: { display: false },
+                       ticks: { font: { size: 11, family: mgFont() } } },
+                  y: Object.assign(mgAxis(t), { beginAtZero: true, ticks:
+                       Object.assign(mgAxis(t).ticks, { precision: 0 }) }) }
+      }
+    });
+
+    /* ---- ۳) بارِ کارِ هر نفر ---- */
+    mgDestroy("people");
+    var slugs = Object.keys(d.people).sort(function (a, b) {
+      return d.people[b].all - d.people[a].all;
+    });
+    var names = slugs.map(function (k) {
+      return k ? nameOfAny(d.boxes, k) : "بدونِ مسئول";
+    });
+    /* هر نفر یک ردیف؛ قاب با تعدادِ نفرات بلند می‌شود وگرنه ده نفر
+       روی هم فشرده می‌شوند. */
+    var pb = document.getElementById("mgChPeopleBox");
+    if (pb) pb.style.setProperty("--mgh",
+      Math.max(220, Math.min(900, slugs.length * 38 + 70)) + "px");
+    if (slugs.length) MG_CH.people = new Chart(
+      document.getElementById("mgChPeople").getContext("2d"), {
+      type: "bar",
+      data: { labels: names, datasets: [
+        { label: "انجام شده", data: slugs.map(function (k) { return d.people[k].done; }),
+          backgroundColor: t.done, borderRadius: 5, borderWidth: 0 },
+        { label: "در حال انجام", data: slugs.map(function (k) { return d.people[k].doing; }),
+          backgroundColor: t.doing, borderRadius: 5, borderWidth: 0 },
+        { label: "انجام نشده", data: slugs.map(function (k) { return d.people[k].todo; }),
+          backgroundColor: t.todo, borderRadius: 5, borderWidth: 0 }
+      ] },
+      options: {
+        indexAxis: "y",
+        layout: { padding: { left: 6, right: 20 } },
+        plugins: {
+          legend: { position: "bottom",
+                    labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true,
+                              pointStyle: "rectRounded", padding: 13,
+                              font: { size: 12, family: mgFont() } } },
+          tooltip: Object.assign(mgTooltip(), { mode: "index" })
+        },
+        scales: {
+          x: Object.assign(mgAxis(t), { stacked: true, beginAtZero: true }),
+          y: { stacked: true, grid: { display: false }, border: { display: false },
+               ticks: { font: { size: 11.5, family: mgFont() },
+                        callback: function (v) {
+                          var s2 = this.getLabelForValue(v);
+                          return String(s2).length > 18 ? String(s2).slice(0, 17) + "…" : s2;
+                        } } }
+        }
+      }
+    });
+
+    /* ---- ۴) کارِ بازِ هر گروه ---- */
+    mgDestroy("boxes");
+    var per = {};
+    d.rows.forEach(function (r) {
+      if (r.done) return;
+      var k = r.box.title || r.box.id;
+      var o = per[k] || (per[k] = { open: 0, late: 0 });
+      o.open++;
+      if (r.late) o.late++;
+    });
+    var bk = Object.keys(per).sort(function (a, b) { return per[b].open - per[a].open; });
+    var bb = document.getElementById("mgChBoxesBox");
+    if (bb) bb.style.setProperty("--mgh",
+      Math.max(200, Math.min(700, bk.length * 40 + 70)) + "px");
+    if (bk.length) MG_CH.boxes = new Chart(
+      document.getElementById("mgChBoxes").getContext("2d"), {
+      type: "bar",
+      data: { labels: bk, datasets: [
+        { label: "از مهلت گذشته", data: bk.map(function (k) { return per[k].late; }),
+          backgroundColor: t.bad, borderRadius: 5, borderWidth: 0 },
+        { label: "بازِ دیگر", data: bk.map(function (k) { return per[k].open - per[k].late; }),
+          backgroundColor: t.doing, borderRadius: 5, borderWidth: 0 }
+      ] },
+      plugins: [mgVals],
+      options: {
+        indexAxis: "y",
+        layout: { padding: { left: 6, right: 20 } },
+        plugins: {
+          legend: { position: "bottom",
+                    labels: { boxWidth: 11, boxHeight: 11, usePointStyle: true,
+                              pointStyle: "rectRounded", padding: 13,
+                              font: { size: 12, family: mgFont() } } },
+          tooltip: Object.assign(mgTooltip(), { mode: "index" }),
+          mgVals: { on: false }
+        },
+        scales: {
+          x: Object.assign(mgAxis(t), { stacked: true, beginAtZero: true }),
+          y: { stacked: true, grid: { display: false }, border: { display: false },
+               ticks: { font: { size: 11.5, family: mgFont() },
+                        callback: function (v) {
+                          var s2 = this.getLabelForValue(v);
+                          return String(s2).length > 22 ? String(s2).slice(0, 21) + "…" : s2;
+                        } } }
+        }
+      }
+    });
+  }
+
   function mgrPaint() {
     var d = mgrCollect();
     var t = mgrTone();
@@ -1175,6 +1487,10 @@
     if (pctEl) pctEl.textContent = faNum(pct) + "٪ تمام شده";
     var barEl = document.getElementById("mgBar");
     if (barEl) barEl.innerHTML = mgBar(t, tot) + mgLegend(t, tot);
+
+    /* نمودارها جدا کشیده می‌شوند و منتظرِ کتابخانه می‌مانند؛ بقیهٔ
+       صفحه نباید پشتِ آن معطل بماند. */
+    mgrCharts(d, t, tot);
 
     /* ---- هر نفر یک ردیف ---- */
     var slugs = Object.keys(d.people).sort(function (a, b) {
@@ -1289,6 +1605,14 @@
       });
       for (var i = 0; i < order.length; i++) mount(order[i]);
       mgrMount();
+      /* تمِ شب که عوض شود، رنگِ نمودارها هم باید عوض شود — درست مثل
+         نمودارهای داشبورد و گزارش‌ساز. */
+      try {
+        new MutationObserver(function () {
+          var v = document.getElementById("view-shared-mgr");
+          if (v && v.classList.contains("active")) mgrPaint();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      } catch (e) { /* بدونِ این هم نما کار می‌کند */ }
       /* خبرها مستقل از اینکه کدام بخش باز است کار می‌کنند */
       startNews();
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }

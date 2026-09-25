@@ -28,12 +28,18 @@
    کردنِ نمودار از باندِ مجاز روشن‌تر بودند. */
 function chartTone(){
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  /* «ink» و «inkFaint» رنگِ نوشته‌اند، نه رنگِ داده: عددی که روی بوم
+     کشیده می‌شود (مثلِ عددِ وسطِ دونات یا عددِ روی ستون) باید همان
+     خوانایی‌ای را داشته باشد که متنِ کنارِ نمودار دارد. رنگِ متنِ CSS
+     را نمی‌شود روی بوم ریخت، پس این‌جا هم می‌آیند. */
   return dark
     ? { done:"#46976A", doing:"#5A8FE8", todo:"#B07F26", none:"#3A4653",
         bad:"#B0524F", surface:"#121E29",
+        ink:"#E7EEF4", inkFaint:"#8DA0B2",
         cat:["#4A85E0","#B8821F","#1FA298","#8B6FC4","#D25B65"] }
     : { done:"#1E7A4A", doing:"#1A4FA3", todo:"#B5791B", none:"#CFD7E0",
         bad:"#A6222B", surface:"#FFFFFF",
+        ink:"#0B2545", inkFaint:"#5B6E82",
         cat:["#1A4FA3","#B5791B","#0A8F88","#6E45B0","#A6222B"] };
 }
 /* کمی روشن‌تر برای وقتی موشواره رویش می‌رود */

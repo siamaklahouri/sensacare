@@ -89,6 +89,19 @@
      یک بار برای هر ستون، نه یک بار به ازای هر ردیف — اشکالِ قبلی
      همین بود: ستونی مثل «مسئول» که در هر ردیف کشویی دارد، به ازای
      هر ردیف ۲۴ پیکسل می‌گرفت و بعد از چند ردیف به سقف می‌خورد. */
+  /* خانه‌ای که محتوایش یک نشانِ رنگی است (مثلِ «انجام نشده» در جدولِ
+     مهلت‌ها) از متنش پهن‌تر است: حاشیهٔ درونیِ خودِ نشان هم جا
+     می‌خواهد. بدونِ این، نشان دو خط می‌شد. */
+  function chipPad(td){
+    var k = td.children.length === 1 ? td.children[0] : null;
+    if(!k || k.querySelector("input,select,textarea")) return 0;
+    var s2 = getComputedStyle(k);
+    if(s2.display === "inline" && !parseFloat(s2.paddingLeft)) return 0;
+    return (parseFloat(s2.paddingLeft) || 0) + (parseFloat(s2.paddingRight) || 0) +
+           (parseFloat(s2.borderLeftWidth) || 0) + (parseFloat(s2.borderRightWidth) || 0) +
+           (parseFloat(s2.marginLeft) || 0) + (parseFloat(s2.marginRight) || 0);
+  }
+
   function fieldPad(f){
     if(!f) return 0;
     var s = getComputedStyle(f);
@@ -151,6 +164,8 @@
         if(body[j].children.length !== C.n) continue;
         var td = body[j].children[i];
         if(!td || td.colSpan > 1) continue;
+        var chip = chipPad(td);
+        if(chip > extra && !gotExtra) extra = chip;
         if(!gotExtra){
           var f = td.querySelector("input,select,textarea");
           if(f){
@@ -245,10 +260,23 @@
     for(i = 0; i < w.length; i++)
       if(txt[i] && (auto[i] >= GROW_MIN || auto[i] >= MAX)){ pick.push(i); base += auto[i]; }
     if(!pick.length || !base) return;
+    /* دو مرحله: اول با سقفِ «۲٫۲ برابرِ محتوا» تا ستونِ کوتاه بی‌دلیل
+       کش نیاید. اگر بعدش هنوز کارت نیمه‌خالی ماند (مثلِ جدولی که فقط
+       یک ستونِ متنی دارد)، باقی‌مانده هم بینِ همان‌ها پخش می‌شود، این
+       بار فقط با سقفِ مطلق. */
+    spread(w, pick, auto, base, extra, 2.2);
+    var used = 0;
+    for(i = 0; i < w.length; i++) used += w[i];
+    var left = room - used;
+    if(left > 24) spread(w, pick, auto, base, left, 0);
+  }
+
+  function spread(w, pick, auto, base, extra, ratio){
     for(var q = 0; q < pick.length; q++){
       var k = pick[q];
       var want = w[k] + Math.floor(extra * (auto[k] / base));
-      w[k] = Math.min(want, Math.round(auto[k] * 2.2), GROW_MAX);
+      var cap = ratio ? Math.min(Math.round(auto[k] * ratio), GROW_MAX) : GROW_MAX;
+      w[k] = Math.max(w[k], Math.min(want, cap));
     }
   }
 

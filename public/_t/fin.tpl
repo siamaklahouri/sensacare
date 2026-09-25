@@ -445,7 +445,11 @@ window.KARTABL_UNTIL = {{UNTIL}};
      حالا بوم داخل قابی با ارتفاعِ مشخص می‌نشیند و کاملاً پُرش می‌کند، و
      Chart.js با maintainAspectRatio:false همان قاب را مبنا می‌گیرد. پس
      نمودار همیشه وسطِ قاب است و هر سه یک اندازه. */
-  .chart-box{ position:relative; width:100%; height:250px; margin-top:4px; }
+  /* قابِ نمودارهای داشبورد. ۲۵۰ پیکسل برای یک دونات با راهنمای زیرش
+     کم بود: خودِ دایره کمتر از نصفِ قاب می‌شد. حالا قاب بلندتر است و
+     روی گوشی کوتاه‌تر می‌شود تا کارت از صفحه نزند بیرون. */
+  .chart-box{ position:relative; width:100%; height:312px; margin-top:4px; }
+  @media (max-width:760px){ .chart-box{ height:268px; } }
   .chart-box > canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; }
   /* وقتی داده‌ای نیست یا کتابخانه نیامده، جای بوم یک پیام می‌نشیند؛
      آن هم باید وسطِ همین قاب بایستد. */
