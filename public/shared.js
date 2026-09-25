@@ -53,7 +53,8 @@
     /* متنِ بلند نباید کلِ جدول را بکشد */
     ".sh-tab textarea,.sh-tab .ro{max-width:420px}",
     ".sh-tab td.who{font-size:10.5px;color:var(--ink-faint);white-space:nowrap;padding-top:10px}",
-    ".sh-tab textarea{min-height:32px;line-height:1.8;overflow:hidden}",
+    ".sh-tab textarea{height:32px;min-height:32px;max-height:32px;line-height:1.8;",
+    "  overflow:hidden;white-space:nowrap;resize:none}",
     /* هم‌شکلِ دکمهٔ حذفِ بقیهٔ جدول‌های کارتابل: تا دست رویش نرود آرام است */
     ".sh-del{display:inline-flex;align-items:center;justify-content:center;",
     "  width:28px;height:28px;padding:0;box-sizing:border-box;background:transparent;",
@@ -198,8 +199,11 @@
     ".mg-fil button.on{background:var(--brass);border-color:var(--brass);color:#fff;font-weight:600}",
     /* خانه‌ای که این آدم اجازه‌اش را ندارد: خوانا می‌ماند ولی معلوم است
        که کادر نیست. خاکستریِ مرده نمی‌شود، چون محتوایش هنوز مهم است. */
+    /* خانهٔ فقط‌خواندنی هم یک خط می‌ماند؛ متنِ کاملش از همان پیکان
+       باز می‌شود. پیش از این با pre-wrap ردیف را کش می‌داد. */
     ".sh-tab .ro{display:block;font-size:12px;padding:6px 7px;color:var(--ink-soft);",
-    "  line-height:1.8;white-space:pre-wrap;word-break:break-word;min-height:20px}",
+    "  line-height:1.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;",
+    "  min-height:20px}",
     ".sh-tab td.locked{background:var(--paper-2,rgba(0,0,0,.02))}",
     ".sh-stamp{font-size:11px;color:var(--ink-faint);white-space:nowrap;padding-top:9px}",
     ".sh-mine{font-weight:600}",
@@ -615,12 +619,13 @@
     return v;
   }
 
-  /* یک خطی می‌ماند تا وقتی متنش یک خط است؛ بعد خودش باز می‌شود.
-     بدون این، یادداشتِ بلند پشتِ یک خانهٔ ۳۲ پیکسلی گم می‌شد. */
+  /* یک خط می‌ماند، هر قدر هم متنش بلند باشد.
+     پیش از این خودش تا ۱۶۰ پیکسل باز می‌شد؛ یک یادداشتِ سه‌خطی ردیف
+     را سه برابر می‌کرد و چشم دیگر نمی‌توانست سطرها را دنبال کند.
+     متنِ کامل از پیکانِ گوشهٔ خانه باز می‌شود (cellpop). */
   function fit(el) {
     if (!el || el.tagName !== "TEXTAREA") return;
-    el.style.height = "auto";
-    el.style.height = Math.min(160, Math.max(32, el.scrollHeight)) + "px";
+    el.style.height = "32px";
   }
 
   function wire(box, tr) {

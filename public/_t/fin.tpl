@@ -133,6 +133,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .period input::placeholder{ color:var(--ink-faint); }
 {{PART:tablecss}}
+{{PART:cellpopcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
 
@@ -4024,6 +4025,7 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
 {{PART:tablesize}}
+{{PART:cellpop}}
 
 {{PART:reportjs}}
 
