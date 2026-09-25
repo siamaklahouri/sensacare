@@ -45,6 +45,20 @@ function toHost(host, url) {
   return Response.redirect(next.toString(), 301);
 }
 
+/* دامنهٔ خودِ همین سایت. پیش از این هر جا آدرسِ مطلق لازم بود
+   PUBLIC_HOST نوشته می‌شد — یعنی درخواستی که به sltech.ir آمده بود
+   آدرسِ sensacare.ir می‌گرفت: robots و sitemap دامنهٔ آن یکی را
+   تبلیغ می‌کردند و /p/… با ۳۰۱ از دامنه بیرون می‌رفت.
+
+   حالا هر سایت آدرسِ خودش را می‌دهد. وقتی هیچ‌کدام تنظیم نشده (محلی
+   یا پیش‌نمایش) همان میزبانِ درخواست. */
+function siteBase(env, url, site) {
+  const host = site === 'panel' ? env.PANEL_HOST
+             : site === 'shop' ? env.PUBLIC_HOST
+             : '';
+  return host ? `https://${host}` : `${url.protocol}//${url.host}`;
+}
+
 /* صفحه‌ای که به‌جای کارتابلِ غیرفعال نشان داده می‌شود. عمداً ساده و
    بی‌داده است: کسی که به این آدرس می‌رسد نباید چیزی جز همین بفهمد. */
 function disabledPanelPage(panel) {
@@ -1638,13 +1652,15 @@ export default {
       return Response.redirect(new URL(ADMIN_PAGE, req.url).toString(), 302);
     }
 
-    /* صفحه‌های فروشگاه روی دامنهٔ پنل جایی ندارند و برمی‌گردند خانه‌شان.
+    /* مسیرهای فروشگاه روی دامنهٔ پنل معنایی ندارند. پیش از این به
+       دامنهٔ فروشگاه فرستاده می‌شدند؛ حالا به خانهٔ *همین* سایت
+       می‌روند — هیچ آدرسی از sltech.ir نباید کاربر را به دامنهٔ دیگری
+       ببرد. ۳۰۲ است نه ۳۰۱: این مسیرها این‌جا «جابه‌جا نشده‌اند»،
+       اصلاً وجود ندارند، و ۳۰۱ در مرورگر می‌ماند.
        فقط صفحه‌ها؛ فایل‌های ثابت (نشان، فونت، اسکریپت) مشترک‌اند و
        همین‌جا سرو می‌شوند. */
-    if (site === 'panel' && m === 'GET' && /^\/(admin\/?$|p\/|a\/|s\/|c\/)/.test(p)) {
-      const r = toHost(env.SHOP_HOST, req.url);
-      if (r) return r;
-    }
+    if (site === 'panel' && m === 'GET' && /^\/(admin\/?$|p\/|a\/|s\/|c\/)/.test(p))
+      return Response.redirect(new URL('/', req.url).toString(), 302);
     /* ---------- صفحه‌های واقعی برای گوگل ----------
        سایت تک‌صفحه‌ای است، پس بدون این، گوگل فقط یک صفحه می‌بیند و
        محصولات و مقالات جای مستقلی در نتایج ندارند. اینجا همان index.html
@@ -1806,25 +1822,34 @@ export default {
     }
 
     if (p === '/robots.txt') {
-      /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
-         گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
-         www — و اعتبار صفحه بین دوتا نصف می‌شود. */
-      const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
+      /* دامنهٔ خودِ همین سایت — هر کدام sitemap خودش را می‌دهد. یک
+         robots مشترک یعنی sltech.ir نقشهٔ فروشگاه را تبلیغ می‌کرد.
+
+         کارتابل‌ها این‌جا نام برده نمی‌شوند: صفحه‌شان خودش سرصفحهٔ
+         «noindex, nofollow» دارد، و فهرست کردنشان در یک فایلِ عمومی
+         هم ناقص می‌شد (هر کارتابلِ تازه‌ای از قلم می‌افتاد) و هم
+         نامشان را به هر کسی می‌گفت. */
+      const base = siteBase(env, url, site);
+      const rules = site === 'panel'
+        ? 'Disallow: /api/\nDisallow: /login\nDisallow: /admin.planer\n'
+        : 'Disallow: /api/\nDisallow: /admin\n';
       return new Response(
-        `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\nDisallow: /siamak\nDisallow: /sina\nDisallow: /reza\nDisallow: /admin.planer\nDisallow: /login\n\n` +
+        `User-agent: *\nAllow: /\n${rules}\n` +
         `Sitemap: ${base}/sitemap.xml\n`,
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
     if (p === '/sitemap.xml') {
-      /* همیشه دامنهٔ اصلی، حتی وقتی بازدیدکننده با www آمده باشد. وگرنه
-         گوگل هر صفحه را دو بار می‌بیند: یکی روی sensacare.ir و یکی روی
-         www — و اعتبار صفحه بین دوتا نصف می‌شود. */
-      const base = env.PUBLIC_HOST ? `https://${env.PUBLIC_HOST}` : `${url.protocol}//${url.host}`;
+      /* دامنهٔ خودِ همین سایت، نه همیشه فروشگاه: نقشهٔ sltech.ir پیش
+         از این آدرس‌های sensacare.ir را فهرست می‌کرد — یعنی یک دامنه
+         صفحه‌های دامنهٔ دیگر را به گوگل معرفی می‌کرد. */
+      const base = siteBase(env, url, site);
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
       const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
-      try {
+      /* دامنهٔ پنل فقط یک صفحهٔ عمومی دارد: خودِ صفحهٔ معرفی. کارتابل‌ها
+         و صفحهٔ ورود noindex‌اند و جایی در نقشه ندارند. */
+      if (site !== 'panel') try {
         const enc = t => encodeURIComponent(String(t));
         for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
           urls.push(`<url><loc>${base}/p/${enc(pr.id)}</loc><changefreq>weekly</changefreq>` +
