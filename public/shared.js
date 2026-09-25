@@ -206,9 +206,16 @@
     ".sh-kept{font-size:11.5px;color:var(--red-ink,#A6222B);line-height:1.9;margin-top:8px;min-height:19px}",
     /* سرفصلِ گروه در نوار کنار. دکمه نیست، پس نه hover دارد نه کلیک —
        وگرنه آدم رویش می‌زند و انتظار دارد چیزی باز شود. */
-    ".sh-org{font-size:10.5px;letter-spacing:.02em;color:var(--ink-faint);",
-    "  padding:12px 10px 5px;margin-top:4px;border-top:1px solid var(--card-border,rgba(11,37,69,.08));",
-    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+    /* نامِ گروه، بالای بخش‌هایی که به آن وصل‌اند. با ۱۰٫۵ پیکسل و
+       رنگِ کم‌رنگ، عملاً خوانده نمی‌شد: روی صفحهٔ معمولی فقط چند نقطه
+       دیده می‌شد و کاربر پرسید «این نقطه بالای گروه مالی چیست؟».
+       سرفصلی که خوانده نشود از نبودنش بدتر است. */
+    ".sh-org{font-size:11.5px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft);",
+    "  padding:13px 10px 6px;margin-top:4px;border-top:1px solid var(--card-border,rgba(11,37,69,.08));",
+    "  display:flex;align-items:center;gap:6px;",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".sh-org::before{content:\"\";width:5px;height:5px;border-radius:2px;flex:none;",
+    "  background:var(--brass,#1A4FA3);opacity:.75}"
   ].join("\n");
 
   function addCss() {
