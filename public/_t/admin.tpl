@@ -605,6 +605,16 @@ table.inv-tab td.desc{ text-align:right; }
 .permrow{ display:flex; align-items:center; gap:8px; font-size:12.5px;
   border:1px solid var(--line); border-radius:var(--r-sm); padding:7px 10px;
   background:var(--paper-2); }
+  /* ستونی که برداشته شده: هست تا بشود برش گرداند، ولی معلوم است که
+     دیگر در جدول نیست. */
+  .permrow.gone{ opacity:.5; }
+  .permrow.gone .pn{ text-decoration:line-through; }
+  .permrow .poff{
+    background:transparent; border:0; color:var(--ink-faint); cursor:pointer;
+    font-size:12px; line-height:1; padding:5px 7px; border-radius:7px; flex:none;
+  }
+  .permrow .poff:hover{ background:var(--red-bg,#F6E1E2); color:var(--red-ink,#A6222B); }
+  .permrow.gone .poff:hover{ background:var(--green-bg,#E3EFE7); color:var(--green-ink,#1E7A4A); }
 .permrow .pn{ flex:0 0 auto; min-width:78px; color:var(--ink-soft); font-weight:600; }
 .permrow .pf{ font-size:11.5px; color:var(--ink-faint); }
 .permrow select{ flex:1; min-width:0; font-size:12px; padding:4px 6px; }
@@ -2166,7 +2176,7 @@ function colSpecText(cols){
 
 function shForm(cur){
   const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"",
-                     perms:{}, colspec:null, rows:0 };
+                     perms:{}, off:[], colspec:null, rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -2313,6 +2323,11 @@ function shForm(cur){
      بدونِ این نگاشت، باز کردنِ فرمِ ویرایش قاعده‌ها را «پیش‌فرض»
      نشان می‌داد و ذخیرهٔ بعدی بی‌صدا پاکشان می‌کرد. */
   (b.colspec || []).forEach(c=>{ if(c.k && permOf[c.k]) permOf["@" + c.t] = permOf[c.k]; });
+  /* ستون‌هایی که از این بخش برداشته شده‌اند. برداشتن داده را پاک
+     نمی‌کند — ستون از جدول می‌رود و اگر برش گردانید، مقدارها سرِ
+     جایشان‌اند. */
+  const offOf = new Set(Array.isArray(b.off) ? b.off : []);
+  (b.colspec || []).forEach(c=>{ if(c.k && offOf.has(c.k)) offOf.add("@" + c.t); });
 
   /* همان تجزیه‌ای که سرور می‌کند، فقط برای نشان دادن: اسم و نوعِ هر
      ستون، تا قاعده‌هایش همان‌جا انتخاب شود. کلیدها این‌جا از روی نام
@@ -2343,7 +2358,7 @@ function shForm(cur){
     /* ستون‌های خودِ ادمین جلو، ستون‌فقرات (مسئول و تاریخ ثبت) آخر —
        همان ترتیبی که سرور می‌سازد. */
     const cols = !t ? [] : isCustom ? specCols().concat(t.cols) : t.cols;
-    const names = cols.map(c=> c.t);
+    const names = cols.filter(c=> !offOf.has(c.k)).map(c=> c.t);
     document.getElementById("shCols").textContent = names.length ? "ستون‌ها: " + names.join(" · ")
       : isCustom ? "هنوز ستونی ننوشته‌اید." : "";
 
@@ -2362,15 +2377,26 @@ function shForm(cur){
       const dflt = c.edit
         ? ((SH_RULES.find(r=> r.id === c.edit) || {}).label || c.edit)
         : "طبقِ قفلِ مالکیت";
-      return '<div class="permrow"><span class="pn">' + esc(c.t) + '</span>' +
-        '<select data-perm="' + esc(c.k) + '">' +
+      const gone = offOf.has(c.k);
+      return '<div class="permrow' + (gone ? " gone" : "") + '"><span class="pn">' + esc(c.t) + '</span>' +
+        '<select data-perm="' + esc(c.k) + '"' + (gone ? " disabled" : "") + ">" +
         '<option value=""' + (cur ? "" : " selected") + ">پیش‌فرض — " + esc(dflt) + "</option>" +
         SH_RULES.map(r=> '<option value="' + esc(r.id) + '"' +
           (r.id === cur ? " selected" : "") + ">" + esc(r.label) + "</option>").join("") +
-        "</select></div>";
+        "</select>" +
+        '<button type="button" class="poff" data-off="' + esc(c.k) + '" title="' +
+          (gone ? "برگرداندنِ این ستون" : "برداشتنِ این ستون از جدول") + '">' +
+          (gone ? "↩" : "✕") + "</button></div>";
     }).join("");
     box.querySelectorAll("[data-perm]").forEach(sel=>{
       sel.onchange = ()=> permOf[sel.getAttribute("data-perm")] = sel.value;
+    });
+    box.querySelectorAll("[data-off]").forEach(btn=>{
+      btn.onclick = ()=>{
+        const k = btn.getAttribute("data-off");
+        if(offOf.has(k)) offOf.delete(k); else offOf.add(k);
+        showCols();
+      };
     });
   };
   document.getElementById("shType").addEventListener("change", showCols);
@@ -2402,6 +2428,8 @@ function shForm(cur){
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
       rowlock: document.getElementById("shLock").checked ? 1 : 0,
       cols: (document.getElementById("shColSpec") || {}).value || "",
+      /* ستون‌های دلخواه با «@نام» می‌روند، مثلِ قاعده‌هایشان */
+      off: Array.from(offOf),
       /* کلیدِ ستون‌های دلخواه در این فرم «@نام» است؛ سرور آن‌ها را با
          نام می‌شناسد، پس همان‌طور فرستاده می‌شوند. */
       perms: Array.from(document.querySelectorAll("#shPerms [data-perm]"))

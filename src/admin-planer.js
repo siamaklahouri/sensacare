@@ -16,7 +16,7 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl
+  handleKartabl, buildAllBackup, sendAllBackup
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF } from './sltech-bot.js';
@@ -701,6 +701,25 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
      ادمین می‌سازدشان و تعیین می‌کند کدام کارتابل‌ها عضو باشند. خودِ
      دادهٔ داخلشان از این‌جا دیده نمی‌شود؛ فقط شمارِ ردیف‌ها، تا معلوم
      باشد کدام بخش خالی است و کدام پر. */
+  /* ---------- پشتیبانِ همهٔ کارتابل‌ها ----------
+     یک زیپ، و داخلش یک پوشه به نامِ هر کارتابل. این‌جاست نه در
+     مسیرهای خودِ کارتابل: هر کاربر فقط پشتیبانِ خودش را می‌گیرد و
+     نباید به دادهٔ بقیه برسد. */
+  if (p === '/backup/all' && m === 'GET') {
+    const r = await buildAllBackup(env, req);
+    if (r.error) return bad(r.error, 502);
+    return new Response(r.zip, { headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(r.name)}`,
+      'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+  }
+  if (p === '/backup/all' && m === 'POST') {
+    const r = await sendAllBackup(env, req, 'دستی');
+    if (!r.ok) return bad(r.error, 502);
+    await log(env, 'backup-all', String(r.count), String(r.size));
+    return json(r);
+  }
+
   if (p === '/shared-boxes' && m === 'GET') {
     const [boxes, counts] = await Promise.all([allBoxes(env), boxCounts(env)]);
     return json({ ok: true,

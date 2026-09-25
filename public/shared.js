@@ -47,6 +47,12 @@
     ".sh-tab input:focus,.sh-tab select:focus,.sh-tab textarea:focus{outline:none;",
     "  border-color:var(--brass);background:var(--white);box-shadow:0 0 0 3px rgba(26,79,163,.14)}",
     ".sh-tab td{padding:3px 4px;vertical-align:top}",
+    /* جدول خودش را به اندازهٔ محتوا می‌کشد و قاب اسکرولِ افقی
+       می‌دهد؛ بهتر از اینکه همه‌چیز توی هم فشرده شود. */
+    ".sh-tab{width:100%;table-layout:auto}",
+    ".sh-tab th{white-space:nowrap}",
+    /* متنِ بلند نباید کلِ جدول را بکشد */
+    ".sh-tab textarea,.sh-tab .ro{max-width:420px}",
     ".sh-tab td.who{font-size:10.5px;color:var(--ink-faint);white-space:nowrap;padding-top:10px}",
     ".sh-tab textarea{min-height:32px;line-height:1.8;overflow:hidden}",
     /* هم‌شکلِ دکمهٔ حذفِ بقیهٔ جدول‌های کارتابل: تا دست رویش نرود آرام است */
@@ -262,7 +268,12 @@
         "</div>" +
         '<div class="tbl-wrap"><table class="sh-tab"><thead><tr>' +
           box.cols.map(function (c) {
-            return "<th" + (c.w ? ' style="width:' + c.w + 'px"' : "") + ">" + esc(c.t) + "</th>";
+            /* پهنا دیگر میخ‌کوب نیست: عددِ نوعِ ستون فقط یک «کمینه»
+               است و بقیه‌اش را مرورگر از روی محتوا می‌چیند. با پهنای
+               ثابت، ستونِ «ردیف» همان‌قدر جا می‌گرفت که ستونِ نام، و
+               ستونی که ادمین برداشته بود جایش خالی می‌ماند. */
+            return "<th" + (c.w ? ' style="min-width:' + Math.min(c.w, 120) + "px;width:" + c.w + 'px"' : "") +
+                   ">" + esc(c.t) + "</th>";
           }).join("") +
           '<th style="width:104px">صاحب</th><th style="width:40px"></th>' +
         "</tr></thead><tbody data-shbody=\"" + esc(box.id) + "\"></tbody></table></div>" +

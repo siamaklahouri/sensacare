@@ -297,7 +297,15 @@ const parseMembers = s => { try { const a = JSON.parse(s); return Array.isArray(
 const applyPerms = (cols, raw) => {
   let p = {};
   try { p = JSON.parse(raw || '{}') || {}; } catch { p = {}; }
-  return cols.map(c => (c.k && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
+  /* «__off» فهرستِ ستون‌هایی است که ادمین از این بخش برداشته. برداشتن
+     یعنی از جدول می‌رود، نه اینکه داده‌اش پاک شود: اگر فردا برش
+     گرداند، همان مقدارها سرِ جایشان‌اند. mergeRow هم هر کلیدِ ناشناسی
+     را دست‌نخورده نگه می‌دارد، وگرنه اولین ویرایشِ بعدی پاکشان
+     می‌کرد. */
+  const off = Array.isArray(p.__off) ? p.__off : [];
+  return cols
+    .filter(c => !(c.k && off.includes(c.k)))
+    .map(c => (c.k && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
 };
 
 const shapeBox = r => {
@@ -313,6 +321,8 @@ const shapeBox = r => {
            /* خامش هم می‌رود تا پنل بداند ادمین کدام ستون را دست زده و
               کدام هنوز پیش‌فرضِ نوع است. */
            perms: (() => { try { return JSON.parse(r.perms || '{}') || {}; } catch { return {}; } })(),
+           off: (() => { try { const q = JSON.parse(r.perms || '{}') || {};
+                               return Array.isArray(q.__off) ? q.__off : []; } catch { return []; } })(),
            created: r.created };
 };
 
@@ -528,6 +538,11 @@ function mergeRow(box, by, old, incoming) {
   const kept = [];
   /* ستون‌های خودِ این بخش، نه ستون‌های خامِ نوع: قاعده‌هایی که ادمین
      عوض کرده روی همین‌ها نشسته‌اند. */
+  /* ستونی که ادمین برداشته دیگر در box.cols نیست، پس حلقهٔ زیر به آن
+     نمی‌رسد و مقدارش در out نمی‌افتد — یعنی اولین ویرایشِ بعدی پاکش
+     می‌کرد. این‌جا اول همه‌چیزِ قبلی برداشته می‌شود و حلقه فقط
+     ستون‌های امروزی را روی آن می‌نویسد. */
+  if (old && old.v) for (const k in old.v) out[k] = old.v[k];
   for (const c of (box.cols || [])) {
     if (!c.k) continue;
     const prev = old && old.v ? old.v[c.k] : undefined;
@@ -665,6 +680,13 @@ export async function saveBox(env, body, knownSlugs) {
   }
   const perms = {};
   const pin = (body.perms && typeof body.perms === 'object') ? body.perms : {};
+  /* ستون‌هایی که ادمین برداشته. فقط کلیدهایی که این نوع واقعاً دارد، و
+     ستونِ نمایشی (بی‌کلید) اصلاً برداشتنی نیست. */
+  const offIn = Array.isArray(body.off) ? body.off.map(String) : [];
+  const off = tCols
+    .filter(c => c.k && (offIn.includes(c.k) || offIn.includes('@' + c.t)))
+    .map(c => c.k);
+  if (off.length) perms.__off = off;
   for (const c of tCols) {
     if (!c.k || c.edit === 'never') continue;
     /* پنل ستون‌های دلخواه را با «@نام» می‌فرستد، چون کلیدِ واقعی را

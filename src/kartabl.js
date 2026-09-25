@@ -231,7 +231,12 @@ export function panelFromRow(row) {
     job: c.job || '',
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
-    files: { json: c.filejson, xlsx: c.filexlsx, html: c.filehtml },
+    /* کارتابل‌هایی که از پنل ساخته می‌شوند «filehtml» ندارند و تا
+       حالا صفحه‌شان با نامِ «undefined» و بدونِ پسوند داخلِ زیپ
+       می‌رفت — یعنی فایلی که با دوبار کلیک باز نمی‌شد. نامِ خودِ
+       کارتابل جایش را می‌گیرد. */
+    files: { json: c.filejson, xlsx: c.filexlsx,
+             html: c.filehtml || ((c.title || row.name || row.slug) + '.html') },
     zip: stamp => `${c.zip}${stamp}.zip`,
     workbook: WORKBOOKS[kind],
     counts: COUNTS[kind]
@@ -829,7 +834,13 @@ function faDigits(n) {
   return String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
 }
 
-export async function buildKartablBackup(env, req, panel) {
+/* opts.sharedDir: در پشتیبانِ «همه با هم»، فایل‌های مشترک (فونت،
+   کتابخانهٔ نمودار، آیکن) یک بار در ریشهٔ زیپ می‌نشینند و هر پوشه از
+   کنارِ خودش با «../» به آن‌ها اشاره می‌کند. بدونش هر کارتابل نسخهٔ
+   خودش را می‌برد و زیپ چند برابر می‌شد.
+   opts.entriesOnly: فهرستِ فایل‌ها را بده، زیپ نساز — صدازننده خودش
+   همه را با هم در یک زیپ می‌گذارد. */
+export async function buildKartablBackup(env, req, panel, opts = {}) {
   const { state, db, updated } = await loadKartabl(env, panel);
   const st = state || {};
   const database = db || {};
@@ -858,6 +869,7 @@ export async function buildKartablBackup(env, req, panel) {
   };
 
   const F = panel.folder;
+  const SH = opts.sharedDir || '';
 
   /* صفحه را از همان کدی می‌گیریم که به مرورگر می‌دهد، نه با یک درخواستِ
      HTTP به آدرسِ خودمان. آن راه به مسیریابی و ریدایرکت وابسته بود و
@@ -894,8 +906,10 @@ export async function buildKartablBackup(env, req, panel) {
       /* نامِ کارتابل اگر جلوی /v/ یا /f/ چسبیده بود برداشته می‌شود:
          روی سرور هر دو به یک فایل می‌رسند، ولی کنارِ فایل فقط یکی. */
       const rel = url.replace(/^\/[a-z0-9_-]{1,32}(?=\/(?:v|f)\/)/, '').replace(/^\//, '');
-      wanted.set('/' + rel, F + '/' + rel);
-      return open + rel + close;
+      wanted.set('/' + rel, SH ? SH + '/' + rel : F + '/' + rel);
+      /* «../_files/…» بعد از اکسترکت هم درست است، چون پوشهٔ مشترک
+         کنارِ پوشهٔ همین کارتابل می‌نشیند. */
+      return open + (SH ? '../' + SH + '/' + rel : rel) + close;
     });
 
     /* فروشگاه و کارتابل‌ها روی یک ورکرند ولی دو چیزِ جدا. هیچ فایلی از
@@ -918,12 +932,13 @@ export async function buildKartablBackup(env, req, panel) {
   ];
   if (html) { entries.push({ name: F + '/' + panel.files.html, data: html }); entries.push(...extras); }
 
-  const zip = await makeZip(entries);
   const counts = {
     months: Object.keys(st.monthsData || {}).length + (st.currentMonthKey ? 1 : 0),
     vault: !!(st.personalVault && st.personalVault.cipher),
     own: panel.counts(st, database)
   };
+  if (opts.entriesOnly) return { entries, counts, html: !!html, updated };
+  const zip = await makeZip(entries);
   return { zip, name: panel.zip(stamp), counts, html: !!html, updated };
 }
 
@@ -1060,22 +1075,114 @@ function plainText(t) {
 }
 
 /* هر شب همراه پشتیبان فروشگاه صدا زده می‌شود — برای هر دو کارتابل */
+/* ---------- پشتیبانِ همهٔ کارتابل‌ها در یک زیپ ----------
+   یک فایل، و داخلش یک پوشه به نامِ هر کارتابل. فایل‌های مشترک — فونت،
+   کتابخانهٔ نمودار، آیکن — یک بار در «_files» می‌نشینند و هر پوشه از
+   کنارِ خودش به آن‌ها اشاره می‌کند؛ وگرنه با چند کارتابل، زیپ چند
+   برابر می‌شد بدونِ اینکه چیزِ تازه‌ای داخلش باشد.
+
+   کارتابلِ غیرفعال داخلش نمی‌رود. اگر ساختنِ یکی‌شان نشد، بقیه
+   می‌روند و همان یکی در «راهنما.txt» گزارش می‌شود — پشتیبانی که
+   نُه‌دهمش رسیده باشد از هیچ بهتر است. */
+export async function buildAllBackup(env, req) {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  const byName = new Map();      /* نامِ داخلِ زیپ → فایل، برای یکی‌کردنِ مشترک‌ها */
+  const parts = [], failed = [];
+
+  for (const panel of await allPanels(env)) {
+    if (panel.disabled) continue;
+    try {
+      const r = await buildKartablBackup(env, req, panel,
+        { sharedDir: '_files', entriesOnly: true });
+      for (const e of r.entries) if (!byName.has(e.name)) byName.set(e.name, e);
+      parts.push({ panel, counts: r.counts, html: r.html });
+    } catch (e) {
+      failed.push(panel.title + ' (' + (e.message || 'نشد') + ')');
+    }
+  }
+  if (!parts.length) return { error: failed.length ? failed.join(' — ') : 'هیچ کارتابلِ فعالی نیست.' };
+
+  const lines = [
+    'پشتیبانِ کارتابل‌های SLTech — ' + stamp.replace(/-/g, ':').replace(/^(.{10}):/, '$1 '),
+    '',
+    'هر پوشه مالِ یک کارتابل است. داخلِ هر پوشه فایل داده (JSON)، فایل',
+    'اکسل، و خودِ صفحهٔ کارتابل (HTML) هست. زیپ را اکسترکت کنید و فایلِ',
+    'HTML را باز کنید — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.',
+    '',
+    'پوشهٔ «_files» فایل‌های مشترک است (فونت و کتابخانهٔ نمودار). پاکش',
+    'نکنید، وگرنه صفحه‌ها بدون فونت و نمودار باز می‌شوند.',
+    ''
+  ];
+  for (const x of parts) {
+    const own = Object.entries(x.counts.own).map(([k, v]) => v + ' ' + k).join(' · ');
+    lines.push('• ' + x.panel.folder + '/  — ' + x.panel.title);
+    lines.push('    ' + own + ' · ' + x.counts.months + ' ماه' +
+               (x.counts.vault ? ' · بخش شخصیِ رمزدار' : '') +
+               (x.html ? '' : ' · ⚠ بدونِ صفحهٔ HTML'));
+  }
+  if (failed.length) {
+    lines.push('', '⚠ این کارتابل‌ها ساخته نشدند:');
+    for (const f of failed) lines.push('  • ' + f);
+  }
+  byName.set('راهنما.txt', { name: 'راهنما.txt', data: lines.join('\n') });
+
+  const zip = await makeZip([...byName.values()]);
+  return { zip, name: 'sltech-backup-' + stamp + '.zip', parts, failed, stamp };
+}
+
+export async function sendAllBackup(env, req, note = '') {
+  const bots = await siteBots(env);
+  if (!bots.length) return { ok: false,
+    error: 'هیچ رباتی تنظیم نشده. از پنل مدیر، سربرگ «تنظیمات سایت»، توکن و شناسهٔ گفتگو را بگذارید.' };
+
+  const built = await buildAllBackup(env, req);
+  if (built.error) return { ok: false, error: built.error };
+  const { zip, name, parts, failed } = built;
+
+  const caption =
+    `🗂 <b>پشتیبانِ کارتابل‌های SLTech</b>${note ? ' — ' + note : ''}\n` +
+    `${faDigits(parts.length)} کارتابل · ${faDigits(Math.round(zip.length / 1024))} کیلوبایت\n\n` +
+    parts.map(x => `• ${x.panel.title}`).join('\n') +
+    (failed.length ? `\n\n⚠️ ساخته نشد: ${failed.join(' — ')}` : '') +
+    `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. اکسترکت کن و فایلِ HTML هر ` +
+    `پوشه را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.`;
+
+  const sent = [], bad = [];
+  for (const bot of bots) {
+    const fd = new FormData();
+    fd.append('chat_id', bot.chat);
+    fd.append('caption', bot.kind === 'bale' ? plainText(caption) : caption);
+    if (bot.kind !== 'bale') fd.append('parse_mode', 'HTML');
+    fd.append('document', new Blob([zip], { type: 'application/zip' }), name);
+    try {
+      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) sent.push(bot.kind);
+      else bad.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
+    } catch (e) { bad.push(bot.kind + ': ' + e.message); }
+  }
+  /* هر کارتابل وضعیتِ خودش را نگه می‌دارد، تا پنل مثل قبل بتواند
+     بگوید آخرین پشتیبانِ هرکدام کِی رفت. */
+  const at = Date.now();
+  for (const x of parts)
+    await setSetting(env, x.panel.keys.last,
+      sent.length ? { at, size: zip.length, ok: true, to: sent, failed: bad, all: true }
+                  : { at, ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' });
+  if (!sent.length) return { ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' };
+  return { ok: true, size: zip.length, name, count: parts.length, to: sent, failed: bad };
+}
+
+/* چهار نوبت در شبانه‌روز، هر شش ساعت. نامِ نوبت از ساعتِ تهران
+   می‌آید نه گرینویچ، چون همان است که در پیام دیده می‌شود. */
+const SLOT_NAME = { '02': 'بامداد', '08': 'صبح', '14': 'ظهر', '20': 'شب' };
+
 export async function nightlyKartablBackup(env, slot) {
   /* ورکر در cron درخواستی ندارد، ولی برای گرفتن فایل HTML از ASSETS یک
      Request لازم است. یکی می‌سازیم. */
-  const out = {};
-  for (const panel of await allPanels(env)) {
-    /* کارتابلِ غیرفعال پشتیبان نمی‌خواهد. حذف‌شده که اصلاً در فهرست
-       نیست، چون فهرست از همان جدول خوانده می‌شود. */
-    if (panel.disabled) continue;
-    const req = new Request('https://' + (env.PANEL_HOST || env.PUBLIC_HOST || 'sltech.ir') + panel.page);
-    /* اگر یکی نرفت، آن یکی نباید قربانی شود */
-    const r = await sendKartablBackup(env, req, panel, slot === 'noon' ? 'خودکار — ظهر' : 'خودکار — شبانه')
-      .catch(e => ({ ok: false, error: e.message }));
-    if (!r.ok) await setSetting(env, panel.keys.last, { at: Date.now(), ok: false, error: r.error });
-    out[panel.id] = r;
-  }
-  return out;
+  const req = new Request('https://' + (env.PANEL_HOST || env.PUBLIC_HOST || 'sltech.ir') + '/');
+  const when = SLOT_NAME[slot] || slot || '';
+  return await sendAllBackup(env, req, 'خودکار' + (when ? ' — ' + when : ''))
+    .catch(e => ({ ok: false, error: e.message }));
 }
 
 /* ---------- مسیرها ---------- */

@@ -1592,10 +1592,10 @@ export default {
       await fn(env);
     })().catch(e => console.log(name, e.message)));
 
-    /* پشتیبانِ کارتابل‌ها دو بار در روز می‌رود، پس قفلش نمی‌تواند فقط
-       «امروز» باشد وگرنه نوبت دوم رد می‌شود. نوبت را از ساعتِ گرینویچِ
-       همین اجرا می‌گیریم: ۰۸:۳۰ یعنی ظهرِ تهران و ۲۲:۰۰ یعنی ۱:۳۰ بامداد. */
-    const slot = new Date(event.scheduledTime || Date.now()).getUTCHours() < 15 ? 'noon' : 'night';
+    /* پشتیبانِ کارتابل‌ها چهار بار در روز می‌رود، پس قفلش نمی‌تواند فقط
+       «امروز» باشد وگرنه نوبت‌های بعدی رد می‌شوند. نوبت خودِ ساعتِ
+       گرینویچِ همین اجراست — چهار عددِ متفاوت، چهار قفلِ متفاوت. */
+    const slot = String(new Date(event.scheduledTime || Date.now()).getUTCHours()).padStart(2, '0');
     const twice = (name, fn) => ctx.waitUntil((async () => {
       if (!(await claimOnce(env, `${name}:${day}:${slot}`))) return;
       await fn(env, slot);
