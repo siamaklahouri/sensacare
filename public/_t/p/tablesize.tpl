@@ -28,6 +28,14 @@
   /* ستونی که از این پهن‌تر است، ستونِ متنی حساب می‌شود و می‌تواند
      فضای باقی‌ماندهٔ کارت را بگیرد — تا این سقف. */
   var GROW_MIN = 120, GROW_MAX = 620;
+  /* کفِ پهنای ستونی که تویش تایپ می‌شود («وظیفه»، «یادداشت»، «شرح»)،
+     و وزنِ بیشترِ کادرِ چندخطی که برای پاراگراف ساخته شده. */
+  var TYPE_MIN = 168, LONG_WEIGHT = 1.45;
+  /* ستونی که تویش تایپ می‌شود زودتر از ستونِ معمولی وارد تقسیمِ فضا
+     می‌شود (۹۰ به‌جای ۱۲۰)، تا «یادداشت»ی که تازه یک کلمه تویش نوشته
+     شده یک‌باره از سهم نیفتد. ولی وزنش همان محتوایش می‌ماند، وگرنه
+     «مسئول» هم‌پای «وظیفه» پهن می‌شد. */
+  var FIELD_MIN = 90;
   var SEEN = "__tsz";
 
   var key = function(id){ return "tsz:" + STORE_KEY + ":" + id; };
@@ -57,12 +65,26 @@
     return cv.measureText(String(t == null ? "" : t)).width;
   }
 
-  /* متنِ یک خانه: مقدارِ کادر اگر کادری هست، وگرنه متنِ خودش */
+  /* متنِ یک خانه: مقدارِ کادر اگر کادری هست، وگرنه متنِ خودش.
+     راهنمای داخلِ کادر (placeholder) هم اندازه می‌گیرد، چون تا وقتی
+     خانه خالی است همان دیده می‌شود. */
   function cellText(td){
     var f = td.querySelector("input,select,textarea");
     if(f) return f.tagName === "SELECT"
       ? (f.options[f.selectedIndex] || {}).text || ""
       : f.value || f.placeholder || "";
+    return td.textContent || "";
+  }
+
+  /* ولی برای «این ستون پر است یا خالی؟» فقط خودِ مقدار حساب است.
+     ستونِ «وظایف اصلی امروز» که هنوز چیزی تویش نوشته نشده، راهنمای
+     داخلِ کادرش را دارد — و اگر آن را «پر» بگیریم، ستون به اندازهٔ
+     همان راهنما می‌ماند و اولین جمله‌ای که بنویسند جا نمی‌شود. */
+  function cellVal(td){
+    var f = td.querySelector("input,select,textarea");
+    if(f) return f.tagName === "SELECT"
+      ? (f.options[f.selectedIndex] || {}).text || ""
+      : f.value || "";
     return td.textContent || "";
   }
 
@@ -153,11 +175,11 @@
     var bFont = fontOf(firstTd, fb);
     var hPad = padOf(head[0]) + GRIP;
     var bPad = padOf(firstTd);
-    var out = [], txt = [];
+    var out = [], txt = [], typ = [], got = [];
     for(var i = 0; i < C.n; i++){
       var need = textW(head[i].textContent.trim(), hFont) + hPad;
       /* سربارِ کادر یک بار، از روی اولین خانه‌ای که کادر دارد */
-      var extra = 0, gotExtra = false, free = true;
+      var extra = 0, gotExtra = false, free = true, kind = "", filled = false;
       for(var j = 0; j < body.length; j++){
         /* ردیفِ «چیزی ثبت نشده» یک خانهٔ کشیده روی همهٔ ستون‌هاست؛ اگر
            به حساب بیاید، متنِ بلندش پهنای ستونِ اول می‌شود. */
@@ -173,12 +195,15 @@
             /* کشویی، عدد، تاریخ و تیک اندازهٔ خودشان را دارند: پهن‌تر
                کردنشان فقط فضای خالی می‌سازد. فقط متنِ آزاد رشد می‌کند. */
             var tp = (f.getAttribute("type") || "text").toLowerCase();
-            free = f.tagName === "TEXTAREA" ||
-                   (f.tagName === "INPUT" && (tp === "text" || tp === "search"));
+            if(f.tagName === "TEXTAREA") kind = "long";
+            else if(f.tagName === "INPUT" && (tp === "text" || tp === "search")) kind = "text";
+            free = !!kind;
           }
         }
         /* متنِ چندخطی: بلندترین خطش، نه کلِ متن */
-        var parts = String(cellText(td)).split("\n");
+        var cell = String(cellText(td));
+        if(String(cellVal(td)).trim()) filled = true;
+        var parts = cell.split("\n");
         for(var q = 0; q < parts.length; q++){
           var w = textW(parts[q].trim(), bFont) + bPad;
           if(w > need) need = w;
@@ -186,8 +211,10 @@
       }
       out.push(Math.max(MIN, Math.min(MAX, Math.ceil(need + extra + SLACK))));
       txt.push(free);
+      typ.push(kind);
+      got.push(filled);
     }
-    return { w: out, txt: txt };
+    return { w: out, txt: txt, typ: typ, got: got };
   }
 
   function apply(tab, ignoreSaved){
@@ -212,7 +239,7 @@
        اضافه‌شان کوچک می‌شوند تا کلِ جدول یک‌جا دیده شود — «فیت»
        یعنی همین، نه اینکه ستونِ اول از لبه بزند بیرون. پهنایی که
        خودِ کاربر با دست کشیده دست نمی‌خورد؛ آن‌جا کادر می‌لغزد. */
-    if(!saved){ shrink(tab, w); grow(tab, w, auto, F.txt); }
+    if(!saved){ shrink(tab, w); grow(tab, w, auto, F.txt, F.typ, F.got); }
     var total = 0;
     for(var q = 0; q < w.length; q++){
       group.children[q].style.width = w[q] + "px";
@@ -249,33 +276,61 @@
      متن دارند. اگر همه را به یک نسبت پهن کنیم، «مسئول» و «وضعیت»
      دوباره گشاد می‌شوند؛ و اگر هیچ‌کدام را پهن نکنیم، کارت نیمه‌خالی
      می‌ماند. پس سهمِ اضافه می‌رود سراغِ ستونی که متنش بریده شده. */
-  function grow(tab, w, auto, txt){
+  function grow(tab, w, auto, txt, typ, got){
     var room = roomFor(tab);
     if(room < 120) return;
     var i, total = 0;
     for(i = 0; i < w.length; i++) total += w[i];
     var extra = room - total;
     if(extra < 8) return;
-    var pick = [], base = 0;
-    for(i = 0; i < w.length; i++)
-      if(txt[i] && (auto[i] >= GROW_MIN || auto[i] >= MAX)){ pick.push(i); base += auto[i]; }
+    /* وزنِ هر ستون در تقسیمِ فضای اضافه.
+       ستونی که کادرِ متنِ آزاد دارد جایی است که کاربر *می‌نویسد* — و
+       آنچه می‌نویسد هنوز آن‌جا نیست. اگر وزنش را از محتوای امروزش
+       بگیریم، «یادداشت»ِ خالی برای همیشه هشتاد پیکسل می‌ماند و اولین
+       جمله‌ای که تویش بنویسند سه خط می‌شود. پس کفِ وزن TYPE_MIN است،
+       و کادرِ چندخطی (که برای پاراگراف ساخته شده) وزنِ بیشتری دارد. */
+    var pick = [], wt = [], base = 0;
+    for(i = 0; i < w.length; i++){
+      if(!txt[i]) continue;
+      var fieldy = typ && (typ[i] === "text" || typ[i] === "long");
+      var empty = fieldy && got && !got[i];
+      if(!fieldy && auto[i] < GROW_MIN) continue;
+      if(fieldy && !empty && typ[i] !== "long" && auto[i] < FIELD_MIN) continue;
+      var v = empty ? Math.max(auto[i], TYPE_MIN) : auto[i];
+      if(typ && typ[i] === "long") v = Math.round(Math.max(v, TYPE_MIN) * LONG_WEIGHT);
+      pick.push(i); wt[i] = v; base += v;
+    }
     if(!pick.length || !base) return;
-    /* دو مرحله: اول با سقفِ «۲٫۲ برابرِ محتوا» تا ستونِ کوتاه بی‌دلیل
+    /* اول کفِ ستون‌های نوشتنی، بعد تقسیمِ نسبتی.
+       بدونِ این ترتیب، «یادداشت»ِ خالی و «مسئول» که یک نامِ کوتاه دارد
+       هر دو به یک اندازه می‌رسیدند — در حالی که یکی جای نوشتن است و
+       آن یکی نه. */
+    for(var z = 0; z < pick.length && extra > 0; z++){
+      var m = pick[z];
+      var floorW = (typ && typ[m] === "long") ? Math.round(TYPE_MIN * LONG_WEIGHT)
+                 : (got && !got[m] && typ && (typ[m] === "text" || typ[m] === "long")) ? TYPE_MIN
+                 : 0;
+      if(floorW <= w[m]) continue;
+      var add = Math.min(floorW - w[m], extra);
+      w[m] += add; extra -= add;
+    }
+    if(extra < 8) return;
+    /* دو مرحله: اول با سقفِ «۲٫۲ برابرِ وزن» تا ستونِ کوتاه بی‌دلیل
        کش نیاید. اگر بعدش هنوز کارت نیمه‌خالی ماند (مثلِ جدولی که فقط
        یک ستونِ متنی دارد)، باقی‌مانده هم بینِ همان‌ها پخش می‌شود، این
        بار فقط با سقفِ مطلق. */
-    spread(w, pick, auto, base, extra, 2.2);
+    spread(w, pick, wt, base, extra, 2.2);
     var used = 0;
     for(i = 0; i < w.length; i++) used += w[i];
     var left = room - used;
-    if(left > 24) spread(w, pick, auto, base, left, 0);
+    if(left > 24) spread(w, pick, wt, base, left, 0);
   }
 
-  function spread(w, pick, auto, base, extra, ratio){
+  function spread(w, pick, wt, base, extra, ratio){
     for(var q = 0; q < pick.length; q++){
       var k = pick[q];
-      var want = w[k] + Math.floor(extra * (auto[k] / base));
-      var cap = ratio ? Math.min(Math.round(auto[k] * ratio), GROW_MAX) : GROW_MAX;
+      var want = w[k] + Math.floor(extra * (wt[k] / base));
+      var cap = ratio ? Math.min(Math.round(wt[k] * ratio), GROW_MAX) : GROW_MAX;
       w[k] = Math.max(w[k], Math.min(want, cap));
     }
   }
