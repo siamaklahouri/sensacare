@@ -910,6 +910,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+      <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1234,6 +1235,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <!-- GUIDE -->
 {{PART:settings}}
     <!-- ASSISTANT -->
+{{PART:report}}
+
     <section class="view" id="view-assistant" data-feat="ai">
       <div class="section-title">🤖 دستیار هوشمند</div>
       <div class="section-sub">هر چیزی بپرسید — هم دربارهٔ همین کارتابل، هم هر سؤال دیگری</div>
@@ -4373,6 +4376,8 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "کدام شرکت‌ها بیشترین بازدید را داشته‌اند؟",
   "خطوط MVPN که هنوز فعال نشده‌اند کدام‌اند؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
+{{PART:reportjs}}
+
 {{PART:aiassist}}
 async function init(){
 

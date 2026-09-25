@@ -679,6 +679,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <button class="navbtn" data-view="parties" data-feat="view:parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
     <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+      <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1156,6 +1157,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
     <!-- GUIDE -->
     <!-- ASSISTANT -->
+{{PART:report}}
+
     <section class="view" id="view-assistant" data-feat="ai">
       <div class="section-title">🤖 دستیار هوشمند</div>
       <div class="section-sub">هر چیزی بپرسید — هم دربارهٔ همین کارتابل، هم هر سؤال دیگری</div>
@@ -3993,6 +3996,8 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "خلاصه‌ی وضعیت مالی این ماه را بگو",
   "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
+{{PART:reportjs}}
+
 {{PART:aiassist}}
 async function init(){
   try{
