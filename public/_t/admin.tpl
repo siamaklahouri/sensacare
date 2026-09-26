@@ -186,24 +186,73 @@ a{ color:var(--brass-ink); }
   transition:border-color .15s, color .15s, transform .12s; }
 .icon-btn:hover{ border-color:var(--brass); color:var(--brass-ink); transform:translateY(-1px); }
 
+/* ---------- زنگوله ---------- */
+.bell-wrap{ position:relative; flex:none; }
+.bell-btn{ position:relative; }
+.bell-dot{
+  position:absolute; top:-5px; inset-inline-end:-5px; min-width:17px; height:17px;
+  padding:0 4px; border-radius:9px; background:var(--red,#A6222B); color:#fff;
+  font-size:10.5px; font-weight:700; line-height:17px; text-align:center;
+  box-shadow:0 0 0 2px var(--paper);
+}
+.bell-pop{
+  position:absolute; top:calc(100% + 9px); inset-inline-end:0; z-index:60;
+  width:min(360px, calc(100vw - 32px));
+  background:var(--white); border:1px solid var(--line); border-radius:14px;
+  box-shadow:0 18px 44px rgba(10,22,48,.22); overflow:hidden;
+}
+.bell-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 14px; border-bottom:1px solid var(--line); font-size:13px;
+}
+.bell-x{ border:0; background:none; cursor:pointer; color:var(--ink-faint); font-size:13px; }
+.bell-x:hover{ color:var(--ink); }
+.bell-list{ max-height:min(60vh, 420px); overflow-y:auto; }
+.bell-item{
+  display:flex; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line-soft, var(--line));
+  border-inline-start:3px solid transparent;
+}
+.bell-item:last-child{ border-bottom:0; }
+.bell-item .bi{ font-size:15px; line-height:1.5; flex:none; }
+.bell-item .bt{ min-width:0; }
+.bell-item b{ font-size:12.5px; display:block; }
+.bell-item p{ margin:3px 0 0; font-size:11.5px; line-height:1.9; color:var(--ink-soft);
+  overflow-wrap:anywhere; }
+.bell-item.b-bad{ border-inline-start-color:var(--red,#A6222B); }
+.bell-item.b-warn{ border-inline-start-color:var(--amber,#B4801F); }
+.bell-item.b-ok{ border-inline-start-color:var(--green,#2C7A4B); }
+.bell-item.b-info{ border-inline-start-color:var(--line); }
+.bell-empty{ padding:22px 14px; text-align:center; font-size:12px; color:var(--ink-faint); }
+
 /* ---------- نوار آمار ---------- */
 .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
   gap:11px; margin-bottom:18px; }
-.stat{ position:relative; display:flex; align-items:center; gap:12px;
+.stat{ position:relative; display:flex; align-items:center; gap:13px;
   background:var(--white); border:1px solid var(--line); border-radius:var(--r);
-  padding:13px 15px; box-shadow:var(--sh-1); overflow:hidden;
-  transition:box-shadow .2s, transform .15s; }
-.stat:hover{ box-shadow:var(--sh-2); transform:translateY(-1px); }
-/* نوارِ رنگی لبهٔ «شروع» است، پس در راست‌چین سمتِ راست می‌نشیند. */
+  padding:15px 17px; box-shadow:var(--sh-1); overflow:hidden;
+  transition:box-shadow .2s, transform .15s, border-color .2s; }
+.stat:hover{ box-shadow:var(--sh-2); transform:translateY(-2px);
+  border-color:color-mix(in srgb, var(--sc, var(--brass)) 45%, var(--line)); }
+/* نوارِ رنگی لبهٔ «شروع» است، پس در راست‌چین سمتِ راست می‌نشیند.
+   محو می‌شود تا مثلِ یک خطِ چسبیده به نظر نیاید. */
 .stat::before{ content:""; position:absolute; inset-block:0; inset-inline-start:0;
-  width:3px; background:var(--sc, var(--brass)); }
-.stat .si{ width:34px; height:34px; flex:none; border-radius:11px; font-size:15px;
+  width:4px; background:linear-gradient(to bottom,
+    var(--sc, var(--brass)), color-mix(in srgb, var(--sc, var(--brass)) 25%, transparent)); }
+/* هالهٔ خیلی کم‌رنگِ هم‌رنگِ کارت، پشتِ عدد — کارت را از یک کادرِ
+   سفیدِ ساده درمی‌آورد بی‌آنکه متن را کم‌سو کند. */
+.stat::after{ content:""; position:absolute; inset-block-start:-34px; inset-inline-start:-30px;
+  width:120px; height:120px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, color-mix(in srgb, var(--sc, var(--brass)) 13%, transparent), transparent 68%); }
+.stat .si, .stat .sv{ position:relative; }
+.stat .si{ width:40px; height:40px; flex:none; border-radius:13px; font-size:17px;
   display:flex; align-items:center; justify-content:center;
-  background:var(--sbg, var(--brass-bg)); }
+  background:var(--sbg, var(--brass-bg));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc, var(--brass)) 22%, transparent); }
 .stat .sv{ min-width:0; }
-.stat .n{ font-size:21px; font-weight:800; line-height:1.25; letter-spacing:-.02em;
+.stat .n{ font-size:25px; font-weight:800; line-height:1.2; letter-spacing:-.02em;
   font-variant-numeric:tabular-nums; }
 .stat .l{ font-size:11.5px; color:var(--ink-faint); line-height:1.7; }
+.stat.s-all .n{ color:var(--brass-ink, var(--ink)); }
 .stat.s-all{ --sc:var(--brass); --sbg:var(--brass-bg); }
 .stat.s-on{ --sc:var(--green); --sbg:var(--green-bg); }
 .stat.s-on .n{ color:var(--green-ink); }
@@ -213,16 +262,18 @@ a{ color:var(--brass-ink); }
 .stat.s-key .n{ font-size:14px; line-height:1.9; }
 
 /* ---------- سربرگ‌ها ---------- */
-.tabs{ display:flex; gap:4px; flex-wrap:wrap; margin-bottom:18px;
-  background:var(--white); border:1px solid var(--line); border-radius:14px;
-  padding:4px; box-shadow:var(--sh-1); width:fit-content; max-width:100%;
-  overflow-x:auto; }
+/* عرضش به اندازهٔ خودش است، پس بدونِ حاشیهٔ خودکار در راست‌چین
+   می‌چسبید به لبهٔ راست و «وسط» به نظر نمی‌آمد. */
+.tabs{ display:flex; gap:4px; flex-wrap:wrap; margin:0 auto 18px;
+  background:var(--white); border:1px solid var(--line); border-radius:15px;
+  padding:5px; box-shadow:var(--sh-1); width:fit-content; max-width:100%;
+  overflow-x:auto; justify-content:center; }
 .tabs button{ padding:8px 16px; border:0; background:transparent; color:var(--ink-soft);
   border-radius:10px; font-family:var(--font); font-size:12.5px; font-weight:500;
   cursor:pointer; transition:background .15s, color .15s; white-space:nowrap; }
 .tabs button:hover{ color:var(--ink); background:var(--paper-2); }
-.tabs button.active{ background:var(--brass); color:#fff; font-weight:700;
-  box-shadow:0 2px 8px rgba(18,62,128,.3); }
+.tabs button.active{ background:linear-gradient(145deg, var(--btn, var(--brass)), var(--btn-deep, var(--brass)));
+  color:#fff; font-weight:700; box-shadow:0 3px 11px rgba(18,62,128,.34); }
 
 /* ---------- پنل ---------- */
 .panel{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
@@ -379,8 +430,16 @@ a{ color:var(--brass-ink); }
 .pcard .acts .btn-ic{ padding:6px 9px; font-size:13px; line-height:1.4; }
 
 /* ---------- نوار جستجو ---------- */
-.findbar{ display:flex; gap:9px; align-items:center; margin-bottom:14px; }
+/* روی صفحهٔ باریک، کادرِ جستجو و دو دکمهٔ پشتیبان کنارِ هم جا نمی‌شدند
+   و صد پیکسل از لبه می‌زدند بیرون — کلِ پنل افقی می‌لغزید. حالا
+   می‌شکنند: کادر یک خطِ کامل، دکمه‌ها خطِ بعد. */
+.findbar{ display:flex; gap:9px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
 .findbar .btn{ flex:none; }
+.findbar input{ min-width:0; }
+@media (max-width:560px){
+  .findbar input{ flex:1 1 100%; }
+  .findbar .btn{ flex:1 1 auto; }
+}
 .bk-note{ font-size:12.5px; line-height:1.9; color:var(--ink-soft); margin:8px 2px 0; min-height:20px; }
 .bk-note.bad{ color:#A6222B; }
 .bk-note.good{ color:#1E7A4A; }
@@ -684,6 +743,18 @@ table.inv-tab td.desc{ text-align:right; }
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
       <p class="sub2" id="topSub"></p>
+    </div>
+    <div class="bell-wrap">
+      <button class="icon-btn bell-btn" id="bellBtn" title="خبرها" aria-expanded="false">
+        🔔<span class="bell-dot" id="bellDot" hidden></span>
+      </button>
+      <div class="bell-pop" id="bellPop" hidden>
+        <div class="bell-head">
+          <b>خبرها</b>
+          <button type="button" class="bell-x" id="bellX" title="بستن">✕</button>
+        </div>
+        <div class="bell-list" id="bellList"></div>
+      </div>
     </div>
     <button class="icon-btn" id="themeBtn" title="تم روز و شب">🌙</button>
     <button class="btn" id="logoutBtn">خروج</button>
@@ -1178,8 +1249,11 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
 function openApp(lastLogin){
   document.getElementById("gate").hidden = true;
   document.getElementById("app").hidden = false;
-  if(lastLogin) say("آخرین ورودِ قبلی شما: <b>" + esc(faDateTime(lastLogin)) + "</b>");
+  /* ورودِ قبلی به زنگوله می‌رود، نه به نوارِ گذرا: آن نوار ۱۲ ثانیه
+     بعد می‌رفت و اگر آدم سرش جای دیگری بود، هیچ‌وقت نمی‌دیدش. */
+  BELL_LOGIN = lastLogin || 0;
   setupTheme();
+  setupBell();
   setupTabs();
   setupNew();
   setupKeys();
@@ -1254,6 +1328,97 @@ function setupTabs(){
   });
 }
 
+/* ---------- زنگوله ----------
+   هر چه ادمین باید بداند یک‌جا جمع می‌شود: پشتیبانِ دیشب، کارتابلی که
+   مهلتش دارد تمام می‌شود، کلیدِ اضطراری که گذاشته نشده. پیش از این
+   این‌ها پراکنده بودند — یکی خطِ قرمزِ بالای فهرست، یکی نوارِ سبزِ
+   گذرا که ۱۲ ثانیه بعد می‌رفت، و بقیه اصلاً جایی گفته نمی‌شدند.
+
+   «هشدار» شمرده می‌شود و نقطهٔ قرمز می‌گیرد؛ «خبر» فقط نوشته می‌شود. */
+let BELL_LOGIN = 0;
+
+function bellItems(){
+  const out = [];
+  const add = (kind, icon, title, body) => out.push({ kind, icon, title, body });
+
+  /* پشتیبانِ همگانی */
+  const b = DATA.backupAll;
+  if(b && b.at){
+    const when = faDateTime(b.at);
+    if(b.ok){
+      add("ok", "🗄", "پشتیبان رفت",
+        when + " — " + fa(b.count || 0) + " کارتابل، " +
+        fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
+        ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""));
+      if((b.failed || []).length)
+        add("warn", "⚠️", "یکی از ربات‌ها نگرفت", (b.failed || []).join(" — "));
+      if((b.noHtml || []).length)
+        add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند", (b.noHtml || []).join("، "));
+    } else {
+      add("bad", "⛔", "پشتیبان نرفت",
+        when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"));
+    }
+  } else {
+    add("warn", "🗄", "هنوز پشتیبانی ثبت نشده", "اولین نوبت که برود، همین‌جا نوشته می‌شود.");
+  }
+
+  /* مهلتِ کارتابل‌ها */
+  const now = Date.now(), DAY = 864e5;
+  const over = [], soon = [];
+  (DATA.items || []).forEach(p=>{
+    if(!p.until) return;
+    if(p.until < now) over.push(p.name || p.slug);
+    else if(p.until - now < 7 * DAY) soon.push((p.name || p.slug) + " — " + fa(Math.ceil((p.until - now) / DAY)) + " روز");
+  });
+  if(over.length) add("bad", "⏳", "مهلتشان تمام شده", over.join("، "));
+  if(soon.length) add("warn", "⏳", "مهلتشان نزدیک است", soon.join("، "));
+
+  /* کلیدِ اضطراری */
+  if(!DATA.escrowReady)
+    add("warn", "🔑", "کلیدِ اضطراری گذاشته نشده",
+        "بدونِ آن، اگر کاربری رمزِ بخشِ شخصی‌اش را فراموش کند کاری نمی‌شود کرد.");
+
+  /* ورودِ قبلی */
+  if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN));
+
+  return out;
+}
+
+function bellPaint(){
+  const list = document.getElementById("bellList");
+  const dot = document.getElementById("bellDot");
+  if(!list) return;
+  const items = bellItems();
+  const need = items.filter(i=> i.kind === "bad" || i.kind === "warn").length;
+  dot.hidden = !need;
+  dot.textContent = need ? fa(need) : "";
+  list.innerHTML = items.length ? items.map(i=>`
+    <div class="bell-item b-${i.kind}">
+      <span class="bi">${i.icon}</span>
+      <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p></div>
+    </div>`).join("")
+    : `<div class="bell-empty">فعلاً خبری نیست.</div>`;
+}
+
+function setupBell(){
+  const btn = document.getElementById("bellBtn");
+  const pop = document.getElementById("bellPop");
+  if(!btn || !pop) return;
+  const close = ()=>{ pop.hidden = true; btn.setAttribute("aria-expanded","false"); };
+  btn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const open = pop.hidden;
+    if(open) bellPaint();
+    pop.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.getElementById("bellX").addEventListener("click", close);
+  /* کلیکِ بیرون و Esc می‌بندندش — وگرنه روی موبایل باز می‌ماند و
+     جلوی بقیهٔ صفحه را می‌گیرد. */
+  document.addEventListener("click", (e)=>{ if(!pop.hidden && !pop.contains(e.target)) close(); });
+  document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") close(); });
+}
+
 /* ---------- فهرست ---------- */
 /* یادداشتِ زیرِ دکمه‌های پشتیبان. هم setupTabs از آن استفاده می‌کند هم
    loadPlanners، پس این‌جاست نه داخلِ یکی از آن دو. */
@@ -1268,17 +1433,13 @@ function bkNote(t, cls){
    پشتیبانی که نمی‌رفت هیچ ردی نمی‌گذاشت و کسی نمی‌فهمید چرا چیزی
    نیامده. */
 function bkLast(){
+  /* متنش حالا داخلِ زنگوله است. این‌جا فقط یک خطِ کوتاه می‌ماند تا
+     کسی که روی همین صفحه ایستاده بداند آخرین نوبت چه شد. */
+  bellPaint();
   const b = DATA.backupAll;
   if(!b || !b.at) return;
-  const when = faDateTime(b.at);
-  if(b.ok){
-    bkNote("آخرین پشتیبان: " + when + " — " + fa(b.count || 0) + " کارتابل، " +
-           fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
-           ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""), "good");
-  } else {
-    bkNote("آخرین پشتیبان نرفت — " + when + (b.note ? " (" + b.note + ")" : "") +
-           " — " + (b.error || "بی‌دلیلِ ثبت‌شده"), "bad");
-  }
+  bkNote(b.ok ? "آخرین پشتیبان: " + faDateTime(b.at) + " ✓"
+              : "آخرین پشتیبان نرفت — " + faDateTime(b.at), b.ok ? "good" : "bad");
 }
 
 async function loadPlanners(){
