@@ -56,8 +56,16 @@
   .inst-form input{
     box-sizing:border-box; border:1px solid var(--card-border); border-radius:8px; padding:9px 10px;
     font-family:var(--font-body); font-size:12.5px;
+    /* بدونِ این، خانهٔ گرید به اندازهٔ عرضِ ذاتیِ input (حدود ۱۸۰
+       پیکسل) باز می‌ماند و fr اصلاً کوچک نمی‌شود: چهار کادر ۷۴۸
+       پیکسل می‌شدند داخلِ ۳۳۴ پیکسل و صفحه افقی می‌لغزید. */
+    min-width:0;
   }
-  .inst-date-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  /* روی صفحهٔ باریک، کادرها زیرِ هم — نه چهارتا کنارِ هم که هرکدام
+     هفتاد پیکسل شوند. */
+  @media (max-width:760px){ .inst-form{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:430px){ .inst-form{ grid-template-columns:1fr; } }
+  .inst-date-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
   .inst-date-row label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
   .inst-date-row select{
     border:1px solid var(--card-border); border-radius:8px; padding:8px 6px; font-family:var(--font-body);
