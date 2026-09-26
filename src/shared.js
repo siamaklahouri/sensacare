@@ -547,9 +547,23 @@ const RID_RE = /^[a-z0-9]{6,32}$/;
    نمی‌خواهد، یادداشتِ مشترک می‌خواهد. */
 const isMgr = (box, by) => !!by && (box.mgrs || []).includes(by);
 
+/* کاری که «انجام شد» خورده، بسته است. واژه‌اش را از خودِ ستونِ وضعیت
+   می‌خوانیم نه از فهرستی دستی، چون هر نوعِ جدول واژهٔ خودش را دارد.
+
+   یک درِ پشتی می‌ماند و عمدی است: مدیرِ همان بخش می‌تواند وضعیت را
+   برگرداند. بدونِ آن، یک کلیکِ اشتباه کار را برای همیشه دست‌نخوردنی
+   می‌کرد و هیچ راهی برای بازکردنش نبود. */
+export function rowDone(box, row) {
+  const c = (box.cols || []).find(x => x.k === 'stat' && Array.isArray(x.opts));
+  if (!c) return false;
+  const v = row && row.v ? String(row.v[c.k] == null ? '' : row.v[c.k]) : '';
+  return /^انجام شد/.test(v.trim());
+}
+
 export function canEdit(box, col, by, row) {
   const rule = col.edit || (box.rowlock ? 'owner' : 'any');
   if (rule === 'never') return false;
+  if (rowDone(box, row)) return isMgr(box, by) && col.k === 'stat';
   if (rule === 'any') return true;
   /* مدیر بقیهٔ قفل‌ها را باز می‌کند — وگرنه اگر کسی شرکت را ترک کند،
      ردیف‌هایش برای همیشه دست‌نخوردنی می‌مانند. */
@@ -647,6 +661,16 @@ export async function killRow(env, box, rid, by) {
   const id = String(rid || '');
   if (!RID_RE.test(id)) return { error: 'شناسهٔ ردیف درست نیست.' };
   const me = String(by || '').slice(0, 40);
+  /* کارِ تمام‌شده بسته است: نه ویرایش، نه برداشتن. فقط مدیرِ همان
+     بخش. وگرنه قفلِ ویرایش دور زده می‌شد — کافی بود ردیف را پاک کنند
+     و دوباره بنویسند. */
+  {
+    const r = await one(env, 'SELECT v FROM shared_rows WHERE box=? AND rid=?', box.id, id);
+    let v = null;
+    try { v = r ? JSON.parse(r.v) : null; } catch (e) { v = null; }
+    if (v && rowDone(box, { v }) && !isMgr(box, me))
+      return { error: 'این کار «انجام شد» خورده و بسته است؛ فقط مدیرِ این بخش می‌تواند بازش کند.' };
+  }
   /* برداشتن از هر ویرایشی سنگین‌تر است: چیزی که رفت برنمی‌گردد. پس
      وقتی قفلِ مالکیت روشن است، فقط صاحبِ ردیف یا مدیر. */
   if (box.rowlock) {

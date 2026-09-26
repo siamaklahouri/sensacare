@@ -229,7 +229,26 @@
     "  display:flex;align-items:center;gap:6px;",
     "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     ".sh-org::before{content:\"\";width:5px;height:5px;border-radius:2px;flex:none;",
-    "  background:var(--brass,#1A4FA3);opacity:.75}"
+    "  background:var(--brass,#1A4FA3);opacity:.75}",
+    /* ردیفی که از روی خبر آمده‌ایم سراغش. چند ثانیه چشمک می‌زند و
+       بعد یک نوارِ کناری می‌ماند تا وقتی صفحه عوض شود — وگرنه در
+       فهرستی با بیست ردیف معلوم نیست کدام بود. */
+    "tr.sh-row.sh-spot>td{background:var(--brass-bg,rgba(176,141,87,.16))!important;",
+    "  animation:shSpot 2.6s ease}",
+    "tr.sh-row.sh-spot>td:first-child{box-shadow:inset 3px 0 0 var(--brass,#B08D57)}",
+    "@keyframes shSpot{0%,100%{background:transparent}18%,62%{background:var(--brass-bg,rgba(176,141,87,.3))}}",
+    "@media (prefers-reduced-motion:reduce){tr.sh-row.sh-spot>td{animation:none}}",
+    /* کارِ تمام‌شده: خاموش‌تر، با یک نوارِ سبزِ باریک — تا معلوم باشد
+       چرا خانه‌هایش دست نمی‌خورند. */
+    "tr.sh-row.sh-shut>td{opacity:.62}",
+    "tr.sh-row.sh-shut>td:first-child{box-shadow:inset 3px 0 0 var(--green,#2F6B4F)}",
+    "tr.sh-row.sh-shut .ro{text-decoration:line-through;text-decoration-thickness:1px}",
+    /* فیلترهای ستونی: کوچک‌تر از فیلترِ اصلی، و آن‌که خورده پررنگ. */
+    ".sh-fcol{max-width:170px}",
+    ".sh-filter{font-family:var(--font-body);font-size:11.5px;padding:6px 8px;",
+    "  border:1px solid var(--card-border);border-radius:8px;background:var(--white);color:var(--ink)}",
+    ".sh-fcol.on{border-color:var(--brass,#B08D57);font-weight:600}",
+    ".sh-fclear{font-size:11px}",
   ].join("\n");
 
   function addCss() {
@@ -300,6 +319,27 @@
                 '<option value="open">هنوز تمام نشده</option>' +
               '</select>'
             : '') +
+          /* و یک فیلتر برای هر ستونی که ارزشِ فیلتر دارد — مسئول،
+             کشویی‌ها (وضعیت، اولویت) و تاریخ‌ها. */
+          filterDefs(box).map(function (c) {
+            var opts = '<option value="">' + esc(c.t) + ': همه</option>';
+            if (c.kind === "who")
+              opts += (box.people || []).map(function (p) {
+                return '<option value="' + esc(p.slug) + '">' + esc(p.name || p.slug) + "</option>";
+              }).join("") + '<option value="—">— بی‌مسئول —</option>';
+            else if (c.kind === "pick")
+              opts += c.opts.map(function (o) {
+                return '<option value="' + esc(o) + '">' + esc(o) + "</option>";
+              }).join("");
+            else
+              opts += DATE_MODES.map(function (m) {
+                return '<option value="' + m[0] + '">' + esc(m[1]) + "</option>";
+              }).join("");
+            return '<select class="sh-filter sh-fcol" data-shfcol="' + esc(box.id) +
+                   '" data-k="' + esc(c.k) + '">' + opts + "</select>";
+          }).join("") +
+          '<button type="button" class="btn btn-sm sh-fclear" data-shfclear="' +
+            esc(box.id) + '" hidden>پاک‌کردنِ فیلترها</button>' +
           '<span class="sh-sum" data-shsum="' + esc(box.id) + '"></span>' +
           '<span class="sh-live" style="margin-inline-start:auto"><span class="dot"></span>زنده</span>' +
           /* صدای خبر یکی است برای همهٔ بخش‌ها؛ این کلید هر جا که باشد
@@ -346,7 +386,23 @@
     sec.querySelector("[data-shadd]").addEventListener("click", function () { addRow(box.id); });
     var fil = sec.querySelector("[data-shfil]");
     if (fil) fil.addEventListener("change", function () {
-      FILTER[box.id] = fil.value;
+      fstate(box.id).mode = fil.value;
+      paint(box.id, null);
+    });
+    sec.querySelectorAll("[data-shfcol]").forEach(function (sl) {
+      sl.addEventListener("change", function () {
+        fstate(box.id).col[sl.getAttribute("data-k")] = sl.value;
+        sl.classList.toggle("on", !!sl.value);
+        paint(box.id, null);
+      });
+    });
+    var clr = sec.querySelector("[data-shfclear]");
+    if (clr) clr.addEventListener("click", function () {
+      FILTER[box.id] = { mode: "all", col: {} };
+      if (fil) fil.value = "all";
+      sec.querySelectorAll("[data-shfcol]").forEach(function (x) {
+        x.value = ""; x.classList.remove("on");
+      });
       paint(box.id, null);
     });
   }
@@ -359,9 +415,20 @@
   function me() { return window.KARTABL_SLUG || ""; }
   function isMgr(box) { return (box.mgrs || []).indexOf(me()) >= 0; }
 
+  /* همان قاعدهٔ سرور: کارِ تمام‌شده بسته است و فقط مدیر می‌تواند
+     وضعیتش را برگرداند. این‌جا فقط برای اینکه صفحه درست نشان دهد —
+     تصمیمِ واقعی سمتِ سرور گرفته می‌شود. */
+  function rowDone(box, r) {
+    var c = (box.cols || []).find(function (x) { return x.k === "stat" && x.opts; });
+    if (!c) return false;
+    var v = r && r.v ? String(r.v[c.k] == null ? "" : r.v[c.k]) : "";
+    return v.trim().indexOf("انجام شد") === 0;
+  }
+
   function canEdit(box, col, r) {
     var rule = col.edit || (box.rowlock ? "owner" : "any");
     if (rule === "never") return false;
+    if (rowDone(box, r)) return isMgr(box) && col.k === "stat";
     if (rule === "any") return true;
     if (isMgr(box)) return true;
     var owner = r && r.owner;
@@ -376,6 +443,8 @@
   }
 
   function canKill(box, r) {
+    /* ردیفِ بسته را هم نمی‌شود پاک کرد؛ وگرنه قفل بی‌معنی بود. */
+    if (rowDone(box, r)) return isMgr(box);
     if (!box.rowlock) return true;
     var owner = r && r.owner;
     return !owner || owner === me() || isMgr(box);
@@ -393,14 +462,89 @@
     if (!c) return null;
     return c.opts.find(function (o) { return o.indexOf("انجام شد") === 0; }) || null;
   }
+  /* فیلترها از خودِ ستون‌های همان بخش ساخته می‌شوند، نه از فهرستی
+     دستی. پس کارهای تیمی «مسئول» و «مهلت» و «اولویت» می‌گیرد،
+     فاکتورها «وضعیت» و «سررسید»، و جدولِ سرورها همان چیزی که دارد —
+     بدونِ اینکه برای هر نوع جدا کد بنویسیم. */
+  function filterDefs(box) {
+    var out = [];
+    (box.cols || []).forEach(function (c) {
+      if (!c.k) return;
+      if (c.kind === "who") out.push({ k: c.k, t: c.t, kind: "who" });
+      else if (c.kind === "pick" && c.opts && c.opts.length)
+        out.push({ k: c.k, t: c.t, kind: "pick", opts: c.opts });
+      else if (c.kind === "date") out.push({ k: c.k, t: c.t, kind: "date" });
+    });
+    return out;
+  }
+
+  var DATE_MODES = [
+    ["late", "گذشته"], ["today", "امروز"], ["week", "تا یک هفته"],
+    ["has", "مهلت‌دار"], ["none", "بی‌مهلت"]
+  ];
+
+  function fstate(id) {
+    var f = FILTER[id];
+    if (!f || typeof f !== "object") FILTER[id] = f = { mode: "all", col: {} };
+    if (!f.col) f.col = {};
+    return f;
+  }
+
+  function anyFilter(id) {
+    var f = fstate(id);
+    if (f.mode && f.mode !== "all") return true;
+    for (var k in f.col) if (f.col[k]) return true;
+    return false;
+  }
+
+  function dateHit(mode, raw) {
+    var n = jNum(raw), t = todayJ();
+    if (mode === "none") return !n;
+    if (!n) return false;
+    if (mode === "has") return true;
+    if (!t) return true;                 /* تاریخِ امروز را نتوانستیم بگیریم */
+    if (mode === "late") return n < t;
+    if (mode === "today") return n === t;
+    if (mode === "week") return n >= t && n <= addDaysJ(t, 7);
+    return true;
+  }
+
+  /* هفت روز بعد، روی عددِ شمسیِ YYYYMMDD. از خودِ تقویم می‌گیریم تا
+     آخرِ ماه و سالِ کبیسه درست دربیاید. */
+  function addDaysJ(n, days) {
+    try {
+      var y = Math.floor(n / 10000), m = Math.floor(n / 100) % 100, d = n % 100;
+      var g = new Date();
+      /* از امروزِ میلادی جلو می‌رویم و دوباره به شمسی برمی‌گردانیم —
+         امن‌تر از حساب کردنِ دستیِ طولِ ماه‌های شمسی. */
+      g.setDate(g.getDate() + days);
+      var o = {};
+      new Intl.DateTimeFormat("en-u-ca-persian-nu-latn",
+        { year: "numeric", month: "2-digit", day: "2-digit" })
+        .formatToParts(g).forEach(function (x) { o[x.type] = x.value; });
+      var out = Number(o.year) * 10000 + Number(o.month) * 100 + Number(o.day);
+      return out || (y * 10000 + m * 100 + d + days);
+    } catch (e) { return n + days; }
+  }
+
   function passFilter(box, r) {
-    var mode = FILTER[box.id] || "all";
-    if (mode === "all") return true;
-    if (mode === "mine") return (r.v && r.v.who) === me();
-    if (mode === "made") return (r.owner || r.by) === me();
+    var f = fstate(box.id);
+    var mode = f.mode || "all";
+    if (mode === "mine" && (r.v && r.v.who) !== me()) return false;
+    if (mode === "made" && (r.owner || r.by) !== me()) return false;
     if (mode === "open") {
       var d = doneWord(box);
-      return !d || (r.v && r.v.stat) !== d;
+      if (d && (r.v && r.v.stat) === d) return false;
+    }
+    var defs = filterDefs(box);
+    for (var i = 0; i < defs.length; i++) {
+      var c = defs[i], want = f.col[c.k];
+      if (!want) continue;
+      var got = r.v ? r.v[c.k] : "";
+      if (c.kind === "date") { if (!dateHit(want, got)) return false; }
+      /* «— بی‌مسئول —» یعنی خانهٔ خالی، نه متنِ «—». */
+      else if (want === "—") { if (String(got == null ? "" : got).trim()) return false; }
+      else if (String(got == null ? "" : got) !== want) return false;
     }
     return true;
   }
@@ -474,7 +618,9 @@
   }
 
   function rowHtml(box, r) {
-    return '<tr class="sh-row" data-rid="' + esc(r.rid) + '">' +
+    var shut = rowDone(box, r);
+    return '<tr class="sh-row' + (shut ? " sh-shut" : "") + '" data-rid="' + esc(r.rid) + '"' +
+      (shut ? ' title="این کار تمام شده و بسته است"' : '') + '>' +
       box.cols.map(function (c) {
         /* «تاریخ ثبت» ستونِ داده نیست: همان لحظه‌ای است که سرور ردیف را
            ساخته. پس نه کادر دارد، نه ذخیره می‌شود. */
@@ -597,6 +743,10 @@
      آدم بعد از پر کردنِ جدول دنبالش می‌گردد. */
   function summary(box) {
     var el = document.querySelector('[data-shsum="' + box.id + '"]');
+    /* دکمهٔ پاک‌کردن فقط وقتی هست که فیلتری خورده باشد — وگرنه یک
+       دکمهٔ بی‌کار کنارِ بقیه می‌ماند. */
+    var clr = document.querySelector('[data-shfclear="' + box.id + '"]');
+    if (clr) clr.hidden = !anyFilter(box.id);
     if (!el) return;
     var s = st(box.id);
     var all = Object.keys(s.rows);
@@ -861,6 +1011,25 @@
     return "";
   }
 
+  /* بردنِ چشم روی یک ردیف. جدول شاید هنوز نیامده باشد — بخش تازه باز
+     شده و دارد از سرور می‌گیرد — پس چند ثانیه صبر می‌کنیم، نه اینکه
+     یک بار نگاه کنیم و بی‌صدا رد شویم. */
+  function spotRow(boxId, rid, tries) {
+    tries = tries || 0;
+    var sec = document.getElementById("view-shared-" + boxId);
+    var tr = sec && sec.querySelector('tr.sh-row[data-rid="' + rid + '"]');
+    if (!tr) {
+      if (tries < 24) setTimeout(function () { spotRow(boxId, rid, tries + 1); }, 250);
+      return;
+    }
+    try { tr.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { tr.scrollIntoView(); }
+    tr.classList.remove("sh-spot");
+    void tr.offsetWidth;            /* تا انیمیشن دوباره از اول بیفتد */
+    tr.classList.add("sh-spot");
+    clearTimeout(spotRow.t);
+    spotRow.t = setTimeout(function () { tr.classList.remove("sh-spot"); }, 6000);
+  }
+
   function toast(kind, box, row, title) {
     var el = document.createElement("div");
     el.className = "shn" + (kind === "mine" ? " mine" : "");
@@ -886,6 +1055,9 @@
          دیدِ آدم می‌افتد؛ بدونِ این، کلیک کار می‌کند ولی معلوم نیست
          کجا رفتیم. */
       if (b) { b.scrollIntoView({ block: "nearest" }); b.click(); }
+      /* و بعد سرِ خودِ همان ردیف — رفتن به بخش کافی نبود: آدم باید
+         در فهرست دنبالش می‌گشت. */
+      spotRow(box.id, row.rid);
       off();
     });
     /* شمارنده فقط وقتی بالا می‌رود که همان بخش جلوِ چشم نباشد */
