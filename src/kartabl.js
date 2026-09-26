@@ -861,11 +861,21 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
      هم داخلش می‌روند و صفحه به‌جای آدرس‌های مطلق، کنار خودش را نگاه
      می‌کند. بار اول که این را نگذاشتم، فایلِ آفلاین باز می‌شد ولی
      نمودارها روی «در حال بارگذاری» می‌ماندند. */
+  /* فونت و کتابخانهٔ نمودار برای همهٔ کارتابل‌ها یکی است. پیش از این
+     هر کارتابل همان دوازده فایل را دوباره از ASSETS می‌گرفت — با ده
+     کارتابل یعنی صد و بیست درخواست به‌جای دوازده، و هر درخواست یک
+     سهم از بودجهٔ ورکر. حالا buildAllBackup یک حافظه می‌دهد و هر فایل
+     یک بار خوانده می‌شود. */
+  const cache = opts.cache || null;
   const grab = async path => {
+    if (cache && cache.has(path)) return cache.get(path);
+    let out = null;
     try {
       const r = await env.ASSETS.fetch(new Request(new URL(path, req.url), req));
-      return r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
-    } catch (e) { return null; }
+      out = r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+    } catch (e) { out = null; }
+    if (cache) cache.set(path, out);
+    return out;
   };
 
   const F = panel.folder;
@@ -874,9 +884,14 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
   /* صفحه را از همان کدی می‌گیریم که به مرورگر می‌دهد، نه با یک درخواستِ
      HTTP به آدرسِ خودمان. آن راه به مسیریابی و ریدایرکت وابسته بود و
      اگر یک روز عوض می‌شد، پشتیبان بی‌صدا بدونِ HTML می‌رفت. */
-  let html = '';
-  try { html = (await renderPanelPage(env, req, panel)) || ''; }
-  catch (e) { /* بدون صفحه هم پشتیبان می‌رود، بهتر از نرفتنش */ }
+  /* پشتیبانِ بدونِ صفحه نصفه است. اگر صفحه ساخته نشد، دلیلش باید
+     بیرون برود — پیش از این این‌جا بی‌صدا خالی می‌ماند و کاربر فقط
+     می‌دید که «بعضی پوشه‌ها HTML ندارند». */
+  let html = '', htmlErr = '';
+  try {
+    html = (await renderPanelPage(env, req, panel)) || '';
+    if (!html) htmlErr = 'قالب یا یکی از پاره‌هایش خوانده نشد';
+  } catch (e) { htmlErr = (e && e.message) || 'خطای ناشناخته'; }
 
   const extras = [];
   if (html) {
@@ -937,9 +952,9 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     vault: !!(st.personalVault && st.personalVault.cipher),
     own: panel.counts(st, database)
   };
-  if (opts.entriesOnly) return { entries, counts, html: !!html, updated };
+  if (opts.entriesOnly) return { entries, counts, html: !!html, htmlErr, updated };
   const zip = await makeZip(entries);
-  return { zip, name: panel.zip(stamp), counts, html: !!html, updated };
+  return { zip, name: panel.zip(stamp), counts, html: !!html, htmlErr, updated };
 }
 
 /* ---------- فرستادن به ربات ----------
@@ -1095,13 +1110,17 @@ export async function buildAllBackup(env, req) {
   const byName = new Map();      /* نامِ داخلِ زیپ → فایل، برای یکی‌کردنِ مشترک‌ها */
   const parts = [], failed = [];
 
+  /* فونت و کتابخانهٔ نمودار برای همهٔ کارتابل‌ها یکی است: یک بار خوانده
+     می‌شود، نه یک بار برای هر کدام. با ده کارتابل این صد و هشت درخواستِ
+     تکراری کم می‌کند، و هر درخواست یک سهم از بودجهٔ ورکر است. */
+  const cache = new Map();
   for (const panel of await allPanels(env)) {
     if (panel.disabled) continue;
     try {
       const r = await buildKartablBackup(env, req, panel,
-        { sharedDir: '_files', entriesOnly: true });
+        { sharedDir: '_files', entriesOnly: true, cache });
       for (const e of r.entries) if (!byName.has(e.name)) byName.set(e.name, e);
-      parts.push({ panel, counts: r.counts, html: r.html });
+      parts.push({ panel, counts: r.counts, html: r.html, htmlErr: r.htmlErr });
     } catch (e) {
       failed.push(panel.title + ' (' + (e.message || 'نشد') + ')');
     }
@@ -1124,7 +1143,8 @@ export async function buildAllBackup(env, req) {
     lines.push('• ' + x.panel.folder + '/  — ' + x.panel.title);
     lines.push('    ' + own + ' · ' + x.counts.months + ' ماه' +
                (x.counts.vault ? ' · بخش شخصیِ رمزدار' : '') +
-               (x.html ? '' : ' · ⚠ بدونِ صفحهٔ HTML'));
+               (x.html ? '' : ' · ⚠ بدونِ صفحهٔ HTML' +
+                              (x.htmlErr ? ' (' + x.htmlErr + ')' : '')));
   }
   if (failed.length) {
     lines.push('', '⚠ این کارتابل‌ها ساخته نشدند:');
@@ -1183,7 +1203,12 @@ export async function sendAllBackup(env, req, note = '') {
   const caption =
     `🗂 <b>پشتیبانِ کارتابل‌های SLTech</b>${note ? ' — ' + note : ''}\n` +
     `${faDigits(parts.length)} کارتابل · ${faDigits(Math.round(zip.length / 1024))} کیلوبایت\n\n` +
-    parts.map(x => `• ${x.panel.title}`).join('\n') +
+    parts.map(x => `• ${x.panel.title}${x.html ? '' : ' ⚠ بدونِ HTML'}`).join('\n') +
+    (parts.some(x => !x.html)
+      ? `\n\n⚠️ صفحهٔ HTML این‌ها ساخته نشد: ` +
+        parts.filter(x => !x.html)
+          .map(x => x.panel.title + (x.htmlErr ? ' — ' + x.htmlErr : '')).join(' / ')
+      : '') +
     (failed.length ? `\n\n⚠️ ساخته نشد: ${failed.join(' — ')}` : '') +
     `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. اکسترکت کن و فایلِ HTML هر ` +
     `پوشه را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.`;
