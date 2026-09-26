@@ -313,13 +313,25 @@ const PART_RE = /\{\{PART:([a-z0-9_-]{1,32})\}\}/g;
    no-store است و واقعاً هر بار از نو ساخته می‌شود، هر بار باز کردنش
    نوزده فایل را دوباره می‌خواند — پیش از تکه‌ها یکی بود. با این، بعد از
    اولین درخواستِ هر ایزوله هیچ‌کدام. */
+/* خواندنِ یک فایلِ ایستا از دلِ ورکر.
+   این‌جا عمداً *درخواستِ اصلی را پاس نمی‌دهیم*. با
+   `new Request(url, req)` بدنهٔ درخواست هم کپی می‌شود، و بدنه یک
+   جریان است که فقط یک بار خوانده می‌شود. روی یک GET بی‌بدنه به چشم
+   نمی‌آمد، ولی دکمهٔ «پشتیبان الان» POST می‌فرستد و بدنه‌اش پیش از
+   مسیریابی خوانده شده: اولین کپی هم شکست می‌خورد و بقیه هم، با
+   «This ReadableStream is disturbed». نتیجه‌اش پشتیبانی بود که همهٔ
+   کارتابل‌هایش بی‌صفحهٔ HTML می‌رفت.
+   فایلِ ایستا هیچ‌کدام از سربرگ‌های تماس‌گیرنده را لازم ندارد؛ فقط
+   نشانی‌اش را. */
+export const assetReq = (req, path) => new Request(new URL(path, req.url));
+
 const TPL_CACHE = new Map();
 
 export async function withParts(env, req, html) {
   const names = [...new Set([...html.matchAll(PART_RE)].map(m => m[1]))];
   if (!names.length) return html;
   const got = await Promise.all(names.map(async n => {
-    const r = await env.ASSETS.fetch(new Request(new URL('/_t/p/' + n + '.tpl', req.url), req));
+    const r = await env.ASSETS.fetch(assetReq(req, '/_t/p/' + n + '.tpl'));
     return [n, r.ok ? await r.text() : null];
   }));
   const map = new Map(got);
@@ -333,7 +345,7 @@ export async function renderPanelPage(env, req, panel) {
   const file = '/_t/' + (TEMPLATES[panel.kind] || 'fin') + '.tpl';
   let html = TPL_CACHE.get(file);
   if (html === undefined) {
-    const res = await env.ASSETS.fetch(new Request(new URL(file, req.url), req));
+    const res = await env.ASSETS.fetch(assetReq(req, file));
     if (!res.ok) return null;
     html = await withParts(env, req, await res.text());
     if (html === null) return null;
@@ -871,7 +883,7 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     if (cache && cache.has(path)) return cache.get(path);
     let out = null;
     try {
-      const r = await env.ASSETS.fetch(new Request(new URL(path, req.url), req));
+      const r = await env.ASSETS.fetch(assetReq(req, path));
       out = r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
     } catch (e) { out = null; }
     if (cache) cache.set(path, out);
@@ -1234,15 +1246,20 @@ export async function sendAllBackup(env, req, note = '') {
     await setSetting(env, x.panel.keys.last,
       sent.length ? { at, size: zip.length, ok: true, to: sent, failed: bad, all: true }
                   : { at, ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' });
+  /* کدام کارتابل صفحه نگرفت — در خودِ پاسخ، نه فقط در کپشنِ ربات.
+     تا وقتی این فقط داخلِ کپشن بود، تنها راهِ فهمیدنش این بود که کسی
+     پیامِ ربات را بخواند؛ آزمون هم نمی‌توانست ببیندش. */
+  const noHtml = parts.filter(x => !x.html).map(x => x.panel.title);
   if (!sent.length) {
     const error = bad.join(' — ') || 'هیچ رباتی نگرفت.';
     await markBackup(env, { at, ok: false, error, note, size: zip.length, count: parts.length });
     await tellBackupFailed(env, error, note);
-    return { ok: false, error };
+    return { ok: false, error, noHtml };
   }
   await markBackup(env, { at, ok: true, note, size: zip.length, name,
-                          count: parts.length, to: sent, failed: bad });
-  return { ok: true, size: zip.length, name, count: parts.length, to: sent, failed: bad };
+                          count: parts.length, to: sent, failed: bad, noHtml });
+  return { ok: true, size: zip.length, name, count: parts.length,
+           to: sent, failed: bad, noHtml };
 }
 
 /* چهار نوبت در شبانه‌روز، هر شش ساعت. نامِ نوبت از ساعتِ تهران

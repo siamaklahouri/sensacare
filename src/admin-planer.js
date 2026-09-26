@@ -737,7 +737,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   }
   if (p === '/backup/all' && m === 'POST') {
     const r = await sendAllBackup(env, req, 'دستی');
-    if (!r.ok) return bad(r.error, 502);
+    /* حتی وقتی هیچ رباتی نگرفت، باید معلوم باشد صفحه‌ها ساخته شدند
+       یا نه — دو ایرادِ جدا هستند و با هم قاتی می‌شدند. */
+    if (!r.ok) return json({ ok: false, error: r.error, noHtml: r.noHtml || [] }, 502);
     await log(env, 'backup-all', String(r.count), String(r.size));
     return json(r);
   }

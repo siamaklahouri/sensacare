@@ -85,7 +85,7 @@ function disabledPanelPage(panel) {
 }
 
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
-         renderPanelPage, withParts } from './kartabl.js';
+         renderPanelPage, withParts, assetReq } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1352,7 +1352,7 @@ async function ratingMap(env) {
 }
 
 async function injectMeta(env, req, meta) {
-  const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+  const res = await env.ASSETS.fetch(assetReq(req, '/'));
   let html = await res.text();
   const quiet = wantsQuiet(req);
 
@@ -1661,7 +1661,7 @@ export default {
        ثابت پیش از ورکر سرو می‌شوند، پس «run_worker_first» در wrangler.toml
        این مسیر را به این‌جا می‌رساند. */
     if (site === 'panel' && m === 'GET' && (p === '/' || p === '/index.html')) {
-      const res = await env.ASSETS.fetch(new Request(new URL('/_t/home.tpl', req.url), req));
+      const res = await env.ASSETS.fetch(assetReq(req, '/_t/home.tpl'));
       if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'public, max-age=300' } }));
@@ -1807,7 +1807,7 @@ export default {
        باز می‌شود. همان index.html داده می‌شود و خودِ صفحه پنل را
        بالا می‌آورد. */
     if (/^\/admin\/?$/.test(p)) {
-      const res = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+      const res = await env.ASSETS.fetch(assetReq(req, '/'));
       return withSecurity(new Response(await res.text(), {
         headers: { 'Content-Type': 'text/html; charset=utf-8',
                    'X-Robots-Tag': 'noindex, nofollow',
@@ -1905,7 +1905,7 @@ export default {
         const r = toHost(env.PANEL_HOST, req.url);
         if (r) return r;
       }
-      const res = await env.ASSETS.fetch(new Request(new URL('/_t/admin.tpl', req.url), req));
+      const res = await env.ASSETS.fetch(assetReq(req, '/_t/admin.tpl'));
       /* پنلِ مدیریت هم از همان پاره‌قالب‌ها استفاده می‌کند — فعلاً فقط
          ارقامِ فارسی — پس مثلِ صفحهٔ کارتابل از withParts رد می‌شود. */
       const adminHtml = res.ok ? await withParts(env, req, await res.text()) : null;
@@ -1963,7 +1963,7 @@ export default {
            به‌جایش خودِ فروشگاه باز می‌شود تا بازدیدکننده گم نشود — ولی
            با کد ۴۰۴، تا گوگل آن را صفحهٔ واقعی حساب نکند. */
         if (res.status === 404 && req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(p)) {
-          const home = await env.ASSETS.fetch(new Request(new URL('/', req.url), req));
+          const home = await env.ASSETS.fetch(assetReq(req, '/'));
           if (home.ok) return withSecurity(new Response(await home.text(), { status: 404,
             headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
         }
