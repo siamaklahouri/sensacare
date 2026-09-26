@@ -14,7 +14,7 @@
    آن روز کارت‌به‌کارت همان کاری را می‌کند که لازم است. */
 
 import { getSetting, all, one, run } from './kartabl.js';
-import { toAdmin, slContact } from './sltech-bot.js';
+import { toAdmin, slContact, slSend, SL_PF } from './sltech-bot.js';
 import { JOBS } from './kartabl-jobs.js';
 
 const KINDS = { gen: 'عمومی', it: 'مدیر IT', fin: 'مالی' };
@@ -28,6 +28,10 @@ function newInvoice() {
 }
 
 const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+/* متنِ فاکتور با parse_mode=HTML می‌رود، پس هر چه از کاربر آمده باید
+   بی‌خطر شود — وگرنه یک «<» در نامِ پلن کلِ پیام را می‌شکند. */
+const esc = t => String(t == null ? '' : t)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const money = n => fa(Number(n || 0).toLocaleString('en-US')) + ' تومان';
 
 /* جدول ممکن است هنوز ساخته نشده باشد (مهاجرت نرفته). در آن حالت
@@ -49,7 +53,11 @@ async function ensure(env) {
      می‌نشیند و بعدش بی‌اثر است. */
   for (const sql of [
     "ALTER TABLE sl_orders ADD COLUMN coupon TEXT NOT NULL DEFAULT ''",
-    'ALTER TABLE sl_orders ADD COLUMN discount INTEGER NOT NULL DEFAULT 0'
+    'ALTER TABLE sl_orders ADD COLUMN discount INTEGER NOT NULL DEFAULT 0',
+    /* گفتگوی خریدار در ربات: فاکتور و خبرِ وضعیت به همین‌جا برمی‌گردد،
+       و فیشی که می‌فرستد به همین سفارش می‌چسبد. */
+    "ALTER TABLE sl_orders ADD COLUMN pf TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE sl_orders ADD COLUMN chat TEXT NOT NULL DEFAULT ''"
   ]) { try { await run(env, sql); } catch (e) { /* از قبل بود */ } }
 
   try {
@@ -92,15 +100,26 @@ export async function placeOrder(env, body) {
   if (!plans.length) return { error: 'فعلاً پلنی برای فروش تعریف نشده.', status: 503 };
 
   const txt = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
-  const name = txt(body.name, 60);
-  const contact = txt(body.contact, 80);
+  /* خریدار باید به رباتِ خودِ SLTech وصل شده باشد. شماره و گفتگو از
+     همان ردیفی خوانده می‌شود که ربات پر کرده، نه از حرفِ مرورگر —
+     وگرنه هر کسی می‌توانست شمارهٔ دیگری را به سفارش بچسباند. */
+  const nonce = txt(body.nonce, 40);
+  const login = nonce
+    ? await one(env, "SELECT * FROM bot_logins WHERE nonce=? AND status='ready'", nonce)
+    : null;
+  if (!login || !login.phone)
+    return { error: 'اول با تلگرام یا بله وصل شوید تا شماره‌تان تأیید شود.', status: 401 };
+  if (Date.now() - login.created > 30 * 60000)
+    return { error: 'وقتِ اتصال گذشت. دوباره وصل شوید.', status: 410 };
+
+  const name = txt(body.name, 60) || txt(login.name, 60);
+  const contact = login.phone;
   const job = txt(body.job, 30);
   const kind = KINDS[body.kind] ? body.kind : 'gen';
   const note = txt(body.note, 500);
   const seats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
 
   if (!name) return { error: 'نامتان را بنویسید.' };
-  if (!contact) return { error: 'یک راهِ تماس بگذارید، وگرنه نمی‌شود خبرتان کرد.' };
   if (job && !JOBS[job]) return { error: 'شغلِ انتخاب‌شده را نمی‌شناسم.' };
 
   /* پلن با نامش می‌آید ولی قیمت از سرور خوانده می‌شود، نه از مرورگر —
@@ -120,10 +139,10 @@ export async function placeOrder(env, body) {
   const price = full - off;
   try {
     await run(env,
-      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?)`,
+      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount,pf,chat)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?,?,?)`,
       id, now, plan.name, price, Number(plan.days || 0), kind, job, name, contact, seats, note, now,
-      off ? cp.code : '', off);
+      off ? cp.code : '', off, login.platform || '', String(login.chat_id || ''));
     if (off) await run(env, 'UPDATE sl_coupons SET used = used + 1 WHERE code=?', cp.code);
   } catch (e) {
     return { error: 'سفارش ثبت نشد: ' + e.message, status: 500 };
@@ -137,10 +156,27 @@ export async function placeOrder(env, body) {
     `نوع کارتابل: ${KINDS[kind]}${job && JOBS[job] ? ` — ${JOBS[job].label}` : ''}\n` +
     `مدت: ${plan.days ? fa(plan.days) + ' روز' : 'بی‌مهلت'}\n` +
     (note ? `\nتوضیح خریدار:\n${note}\n` : '');
+  /* خبر به مدیر — با گفتگوی واقعیِ خریدار، پس ریپلای هم به خودش
+     می‌رسد؛ برخلافِ پیامِ فرمِ سایت که گفتگویی نداشت. */
   await toAdmin(env,
-    { pf: 'slweb', chat: 'order:' + id, name, phone: contact },
+    { pf: login.platform || 'slweb', chat: String(login.chat_id || 'order:' + id),
+      name, phone: contact },
     `🧾 سفارشِ تازه — فاکتور ${id}\n\n${lines}`,
     'سفارش');
+
+  /* و فاکتور برای خودِ خریدار، در همان گفتگویی که با آن وصل شده. */
+  const kindOf = { sltg: 'telegram', slbale: 'bale' };
+  const myKind = kindOf[login.platform];
+  if (myKind && login.chat_id) {
+    const ct = slContact(st);
+    await slSend(env, myKind, { chat_id: String(login.chat_id), parse_mode: 'HTML',
+      text: `🧾 <b>فاکتور ${esc(id)}</b>\n\n${esc(lines)}\n` +
+            (st.card ? `💳 کارت: <code>${esc(st.card)}</code>` +
+                       (st.cardName ? `\n به نامِ ${esc(st.cardName)}` : '') + '\n\n' : '') +
+            `مبلغ را کارت‌به‌کارت کن و <b>عکسِ فیش را همین‌جا بفرست</b>.\n` +
+            `بعدش کارتابلت ساخته می‌شود و آدرس و رمزش را همین‌جا می‌گیری.\n\n` +
+            `سؤالی بود همین‌جا بنویس — یا ${esc('@' + (ct.telegram || ''))}` });
+  }
 
   return {
     ok: true, id,

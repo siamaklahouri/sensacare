@@ -1,5 +1,6 @@
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
-import { handleSlUpdate, fromWeb, slContact } from './sltech-bot.js';
+import { handleSlUpdate, fromWeb, slContact,
+         slLoginOptions, SL_NONCE } from './sltech-bot.js';
 import { placeOrder, checkCoupon } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
@@ -930,8 +931,12 @@ async function handleUpdate(env, pf, u) {
   /* کد ورود سایت — یا از لینک «/start کد» می‌آید، یا کاربر خودش
      کد را می‌فرستد. حالت دوم لازم است چون همهٔ پیام‌رسان‌ها لینکِ
      پارامتردار را پشتیبانی نمی‌کنند. */
-  const loginCode = text.startsWith('/start ') ? text.slice(7).trim()
+  let loginCode = text.startsWith('/start ') ? text.slice(7).trim()
                   : (/^[a-z0-9]{10,20}$/i.test(text) ? text : '');
+  /* کدهای «sl…» مالِ رباتِ SLTech‌اند و در همین جدول می‌نشینند. اگر
+     این‌جا قبولشان کنیم، شمارهٔ کاربر زیرِ سکّوی فروشگاه ثبت می‌شود و
+     سایتِ SLTech هیچ‌وقت نمی‌فهمد که کاربر وصل شده. */
+  if (loginCode.toLowerCase().startsWith('sl')) loginCode = '';
   if (loginCode) {
     const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', loginCode);
     if (row && Date.now() - row.created <= 10 * 60000) {
@@ -2616,6 +2621,39 @@ export default {
 
       /* سنجیدنِ کد تخفیف پیش از ثبت — فقط برای نشان دادنِ مبلغ.
          حسابِ نهایی باز هم موقعِ ثبتِ سفارش روی سرور انجام می‌شود. */
+      /* --- اتصال به رباتِ SLTech: مرحلهٔ ۱، ساختنِ کد --- */
+      if (p === '/api/sl/bot/start' && m === 'POST') {
+        const opts = await slLoginOptions(env);
+        if (!Object.keys(opts).length)
+          return bad('اتصال به ربات هنوز آماده نیست. کمی بعد دوباره.', 503);
+        const rl = await rateLimit(env, 'slbotstart:' + clientIp(req), 20, 900);
+        if (!rl.ok) return bad('تلاش زیاد شد. چند دقیقه صبر کنید.', 429);
+        const nonce = SL_NONCE + rndNonce();
+        await run(env, 'INSERT INTO bot_logins(nonce,created,status) VALUES(?,?,?)',
+          nonce, Date.now(), 'pending');
+        ctx.waitUntil(run(env, 'DELETE FROM bot_logins WHERE created < ?', Date.now() - 30 * 60000));
+        const links = {};
+        if (opts.telegram) links.telegram = `https://t.me/${opts.telegram}?start=${nonce}`;
+        if (opts.bale) links.bale = `https://ble.ir/${opts.bale}?start=${nonce}`;
+        return json({ ok: true, nonce, links });
+      }
+
+      /* --- مرحلهٔ ۲: سایت می‌پرسد وصل شد یا نه ---
+         ردیف پاک نمی‌شود: خودِ سفارش دوباره با همین کد سراغش می‌آید و
+         شماره و گفتگو را از دیتابیس برمی‌دارد، نه از حرفِ مرورگر. */
+      if (p === '/api/sl/bot/check' && m === 'GET') {
+        const nonce = url.searchParams.get('nonce') || '';
+        const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', nonce);
+        if (!row) return bad('این درخواست منقضی شده است.', 410);
+        if (Date.now() - row.created > 30 * 60000) {
+          await run(env, 'DELETE FROM bot_logins WHERE nonce=?', nonce);
+          return bad('این درخواست منقضی شده است.', 410);
+        }
+        if (row.status !== 'ready' || !row.phone) return json({ ok: true, status: 'pending' });
+        return json({ ok: true, status: 'ready', name: row.name || '',
+                      phone: row.phone, via: row.platform === 'slbale' ? 'bale' : 'telegram' });
+      }
+
       if (p === '/api/sl/coupon' && m === 'POST') {
         const rl = await rateLimit(env, 'slcoupon:' + clientIp(req), 30, 3600);
         if (!rl.ok) return bad('تلاش زیاد شد. کمی بعد.', 429);

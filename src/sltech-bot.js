@@ -56,13 +56,64 @@ async function botOf(env, kind) {
     : { token: st.tgToken || '', admin: String(st.tgChat || '') };
 }
 
-export async function slSend(env, kind, payload) {
+/* نشانهٔ کدهای ورودِ SLTech. رباتِ فروشگاه و رباتِ این‌جا هر دو از
+   جدولِ bot_logins استفاده می‌کنند؛ بدونِ این پیشوند، رباتِ فروشگاه
+   کدِ این‌جا را هم قبول می‌کرد و شمارهٔ کاربر جای اشتباه می‌نشست. */
+export const SL_NONCE = 'sl';
+
+/* شمارهٔ ایرانی، همان‌طور که فروشگاه هم می‌شناسد. */
+export function slPhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('0098')) d = d.slice(4);
+  else if (d.startsWith('98')) d = d.slice(2);
+  if (d.startsWith('9') && d.length === 10) d = '0' + d;
+  return /^09\d{9}$/.test(d) ? d : null;
+}
+
+/* نامِ کاربریِ ربات — برای ساختنِ لینکِ «t.me/…?start=کد».
+   یک بار از getMe گرفته می‌شود و کنارِ توکن می‌ماند، وگرنه هر بار که
+   کسی دکمهٔ اتصال را بزند یک درخواستِ اضافه به تلگرام می‌رفت. */
+export async function slBotUser(env, kind) {
+  const st = await site(env);
+  const key = kind === 'bale' ? 'baleBotUser' : 'tgBotUser';
+  if (st[key]) return st[key];
+  const { token } = await botOf(env, kind);
+  if (!token) return '';
+  try {
+    const r = await fetch(`${BOT_API[kind](token)}/getMe`);
+    const d = await r.json();
+    const u = d && d.ok && d.result && d.result.username;
+    if (!u) return '';
+    st[key] = u;
+    await setSetting(env, 'sltechSite', st);
+    return u;
+  } catch (e) { return ''; }
+}
+
+/* کدام پیام‌رسان‌ها آمادهٔ اتصال‌اند: توکن دارند و نامِ کاربری‌شان
+   شناخته شده. */
+export async function slLoginOptions(env) {
+  const out = {};
+  for (const kind of ['telegram', 'bale']) {
+    const u = await slBotUser(env, kind);
+    if (u) out[kind] = u;
+  }
+  return out;
+}
+
+/* method را هم می‌گیرد چون فیشِ پرداخت عکس است نه متن، و sendMessage
+   عکس را نمی‌پذیرد — پیش از این بی‌صدا رد می‌شد. */
+export async function slSend(env, kind, payload, method = 'sendMessage') {
   const { token } = await botOf(env, kind);
   if (!token) return { ok: false, skipped: true };
   const body = Object.assign({}, payload);
-  if (kind === 'bale') { body.text = plain(body.text); delete body.parse_mode; }
+  if (kind === 'bale') {
+    if (body.text != null) body.text = plain(body.text);
+    if (body.caption != null) body.caption = plain(body.caption);
+    delete body.parse_mode;
+  }
   try {
-    const r = await fetch(`${BOT_API[kind](token)}/sendMessage`, {
+    const r = await fetch(`${BOT_API[kind](token)}/${method}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
@@ -135,8 +186,43 @@ export async function handleSlUpdate(env, kind, update) {
   const msg = update && (update.message || update.edited_message);
   if (!msg) return;
   const chat = String(msg.chat && msg.chat.id || '');
+  if (!chat) return;
   const text = String(msg.text || '').trim();
-  if (!chat || !text) return;
+
+  /* --- شماره‌ای که کاربر با دکمهٔ «ارسال شمارهٔ من» می‌فرستد ---
+     پیشِ گاردِ متن می‌آید، چون این پیام اصلاً متن ندارد. */
+  if (msg.contact && msg.contact.phone_number) {
+    await slTakeContact(env, kind, chat, msg);
+    return;
+  }
+
+  /* --- فیشِ پرداخت --- */
+  if (msg.photo || msg.document) {
+    await slTakeReceipt(env, kind, chat, msg);
+    return;
+  }
+  if (!text) return;
+
+  /* --- کدِ اتصال از سایت: «/start sl…» یا خودِ کد --- */
+  const code = text.startsWith('/start ') ? text.slice(7).trim()
+             : (new RegExp('^' + SL_NONCE + '[a-z0-9]{8,24}$', 'i').test(text) ? text : '');
+  if (code && code.toLowerCase().startsWith(SL_NONCE)) {
+    const row = await one(env, 'SELECT * FROM bot_logins WHERE nonce=?', code);
+    if (row && Date.now() - row.created <= 10 * 60000) {
+      await run(env, 'UPDATE bot_logins SET platform=?, chat_id=? WHERE nonce=?',
+        SL_PF[kind], chat, code);
+      await slSend(env, kind, { chat_id: chat,
+        text: 'برای ثبتِ سفارش، دکمهٔ پایین را بزن تا شماره‌ات تأیید شود.',
+        reply_markup: {
+          keyboard: [[{ text: '📱 ارسال شمارهٔ من', request_contact: true }]],
+          resize_keyboard: true, one_time_keyboard: true
+        } });
+      return;
+    }
+    await slSend(env, kind, { chat_id: chat,
+      text: 'این کد منقضی شده. دوباره از سایت روی دکمهٔ اتصال بزن.' });
+    return;
+  }
 
   const pf = SL_PF[kind];
   const { admin } = await botOf(env, kind);
@@ -236,6 +322,87 @@ export async function handleSlUpdate(env, kind, update) {
   await slSend(env, kind, { chat_id: chat,
     text: sent ? '✅ پیامت رسید. به‌زودی جواب می‌دهیم.'
                : '⚠️ فعلاً نتوانستیم پیامت را برسانیم. کمی بعد دوباره بفرست.' });
+}
+
+/* ---------- فیشِ پرداخت ----------
+   عکسی که خریدار می‌فرستد به آخرین سفارشِ خودش می‌چسبد و همان‌جا
+   برای مدیر فرستاده می‌شود. اگر سفارشی نداشته باشد، عکس را مثل هر
+   پیامِ دیگری به پشتیبانی می‌دهیم، نه اینکه بی‌جواب بماند. */
+async function slTakeReceipt(env, kind, chat, msg) {
+  const pf = SL_PF[kind];
+  const fileId = msg.photo
+    ? msg.photo[msg.photo.length - 1].file_id
+    : (msg.document && msg.document.file_id);
+  const row = await one(env,
+    `SELECT id, plan, price FROM sl_orders WHERE pf=? AND chat=?
+     ORDER BY created DESC LIMIT 1`, pf, chat).catch(() => null);
+  const who = {
+    pf, chat,
+    name: [msg.from && msg.from.first_name, msg.from && msg.from.last_name]
+      .filter(Boolean).join(' ') || '',
+    phone: ''
+  };
+  const cap = String(msg.caption || '').trim();
+  await toAdmin(env, who,
+    (row ? `🧾 فیشِ پرداخت برای فاکتور ${row.id} — ${row.plan}` : '🧾 فیشِ پرداخت')
+    + (cap ? `\n\n${cap}` : ''), 'فیش');
+  /* خودِ عکس هم برای مدیر می‌رود، وگرنه مدیر فقط خبرش را داشت. */
+  const { admin } = await botOf(env, kind);
+  if (admin && fileId) {
+    await slSend(env, kind, msg.photo
+      ? { chat_id: admin, photo: fileId,
+          caption: row ? `فیشِ فاکتور ${row.id}` : 'فیشِ پرداخت' }
+      : { chat_id: admin, document: fileId,
+          caption: row ? `فیشِ فاکتور ${row.id}` : 'فیشِ پرداخت' },
+      msg.photo ? 'sendPhoto' : 'sendDocument');
+  }
+  if (row) {
+    await run(env, "UPDATE sl_orders SET status='paid', updated=? WHERE id=? AND status='new'",
+      Date.now(), row.id).catch(() => {});
+  }
+  await slSend(env, kind, { chat_id: chat,
+    text: row ? `✅ فیش برای فاکتور ${row.id} رسید. بررسی می‌کنیم و کارتابلت را همین‌جا می‌دهیم.`
+              : '✅ رسید. بررسی می‌کنیم.' });
+}
+
+/* ---------- شمارهٔ کاربر، از دکمهٔ «ارسال شمارهٔ من» ----------
+   فقط وقتی پذیرفته می‌شود که همین گفتگو چند دقیقه پیش کدی از سایت
+   گرفته باشد. بدونِ آن، هر کسی می‌توانست شماره بفرستد و سفارشی که
+   منتظرِ تأیید است را به نامِ خودش تمام کند. */
+async function slTakeContact(env, kind, chat, msg) {
+  const pf = SL_PF[kind];
+  const phone = slPhone(msg.contact.phone_number);
+  if (!phone) {
+    await slSend(env, kind, { chat_id: chat, reply_markup: { remove_keyboard: true },
+      text: 'شماره‌ات ایرانی نیست و فعلاً پشتیبانی نمی‌شود.' });
+    return;
+  }
+  /* شمارهٔ کسِ دیگر به درد نمی‌خورد: دکمهٔ تلگرام شمارهٔ خودِ فرستنده
+     را می‌دهد، ولی کاربر می‌تواند مخاطبِ دیگری را هم دستی بفرستد. */
+  const own = !msg.contact.user_id ||
+              String(msg.contact.user_id) === String(msg.from && msg.from.id);
+  if (!own) {
+    await slSend(env, kind, { chat_id: chat, reply_markup: { remove_keyboard: true },
+      text: 'این شمارهٔ خودت نیست. دکمهٔ «ارسال شمارهٔ من» را بزن.' });
+    return;
+  }
+  const pend = await one(env,
+    `SELECT * FROM bot_logins WHERE platform=? AND chat_id=? AND status='pending'
+     ORDER BY created DESC LIMIT 1`, pf, chat);
+  if (!pend || Date.now() - pend.created > 10 * 60000) {
+    await slSend(env, kind, { chat_id: chat, reply_markup: { remove_keyboard: true },
+      text: 'درخواستی پیدا نکردم یا وقتش گذشته. دوباره از سایت دکمهٔ اتصال را بزن.' });
+    return;
+  }
+  const name = [msg.contact.first_name, msg.contact.last_name].filter(Boolean).join(' ');
+  await run(env, "UPDATE bot_logins SET phone=?, name=?, status='ready' WHERE nonce=?",
+    phone, name, pend.nonce);
+  /* گفتگو ثبت می‌شود تا فاکتور و خبرِ سفارش به همین‌جا برگردد. */
+  await run(env, `INSERT INTO bot_chats(platform,chat_id,role,phone,created) VALUES(?,?,?,?,?)
+    ON CONFLICT(platform,chat_id) DO UPDATE SET phone=excluded.phone`,
+    pf, chat, 'customer', phone, Date.now());
+  await slSend(env, kind, { chat_id: chat, reply_markup: { remove_keyboard: true },
+    text: '✅ وصل شدی. برگرد به صفحهٔ سایت — سفارشت را همان‌جا تمام کن.' });
 }
 
 /* ---------- پیامِ فرمِ سایت ----------

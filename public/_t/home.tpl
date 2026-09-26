@@ -268,6 +268,28 @@ footer{ padding:34px 0 46px; text-align:center; color:var(--ink-faint); font-siz
 footer a{ color:var(--ink-soft); text-decoration:none; }
 footer a:hover{ color:var(--brand); }
 footer .sep{ opacity:.5; margin:0 8px; }
+/* ---------- اتصال به ربات، بالای فرمِ سفارش ---------- */
+.conn{ border:1px solid var(--line); border-radius:14px; padding:14px;
+  background:var(--paper-2, rgba(127,127,127,.05)); margin-bottom:14px; }
+.conn-head{ display:flex; gap:11px; align-items:flex-start; margin-bottom:11px; }
+.conn-step{ width:26px; height:26px; flex:none; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; font-size:12.5px; font-weight:700;
+  background:var(--btn, #123e80); color:#fff; }
+.conn-head b{ font-size:13.5px; }
+.conn-head p{ margin:3px 0 0; font-size:12px; line-height:1.9; opacity:.75; }
+.conn-btns{ display:flex; gap:8px; flex-wrap:wrap; }
+.conn-b{ text-decoration:none; }
+.conn-load{ opacity:.6; font-size:13px; }
+.conn-wait{ display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+  margin-top:10px; font-size:12px; opacity:.8; }
+.conn-wait .dot{ width:7px; height:7px; border-radius:50%; background:var(--btn, #123e80);
+  animation:connPulse 1.2s ease-in-out infinite; }
+@keyframes connPulse{ 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion:reduce){ .conn-wait .dot{ animation:none; opacity:.7; } }
+.conn-ok{ font-size:13px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.linkish{ border:0; background:none; padding:0; cursor:pointer; font:inherit;
+  font-size:12px; color:var(--btn, #123e80); text-decoration:underline; }
+
 </style>
 </head>
 <body>
@@ -459,9 +481,27 @@ footer .sep{ opacity:.5; margin:0 8px; }
 
     <form class="order card" id="orderForm" hidden>
       <h3 id="orderHead"></h3>
+      <!-- اتصال به ربات: تا وصل نشود، شماره‌ای برای خبر دادن نداریم و
+           فاکتور جایی نمی‌رود. برای همین اول از هر چیزِ دیگری می‌آید. -->
+      <div class="conn" id="oConn">
+        <div class="conn-head">
+          <span class="conn-step">۱</span>
+          <div>
+            <b>اول وصل شوید</b>
+            <p>سفارش و فاکتور از همین راه به خودتان می‌رسد. شماره‌تان را خودِ پیام‌رسان تأیید می‌کند.</p>
+          </div>
+        </div>
+        <div class="conn-btns" id="oConnBtns"></div>
+        <div class="conn-wait" id="oConnWait" hidden>
+          <span class="dot"></span> منتظرِ تأییدِ شما در پیام‌رسان…
+          <button type="button" class="linkish" id="oConnAgain">لینک دوباره</button>
+        </div>
+        <div class="conn-ok" id="oConnOk" hidden></div>
+        <div class="ask-note" id="oConnNote"></div>
+      </div>
+
       <div class="ask-row">
         <input type="text" id="oName" placeholder="نام و نام خانوادگی" autocomplete="name">
-        <input type="text" id="oContact" placeholder="تلگرام، شماره یا ایمیل" dir="ltr" autocomplete="off">
       </div>
       <div class="ask-row">
         <select id="oKind">
@@ -669,6 +709,10 @@ function showPlans(plans){
       f.hidden = false;
       document.getElementById("orderHead").textContent =
         "سفارشِ پلنِ «" + PICKED.name + "»";
+      /* کدِ اتصال همان لحظه ساخته می‌شود تا کاربر منتظرِ کلیکِ دوم
+         نماند؛ اگر قبلاً وصل شده، دست نمی‌خورد. */
+      connPaint();
+      if(!CONN.ready) connStart();
       sumUp();
       f.scrollIntoView({ behavior:"smooth", block:"center" });
     };
@@ -680,6 +724,7 @@ function showPlans(plans){
   });
   document.getElementById("oCancel").onclick = ()=>{
     document.getElementById("orderForm").hidden = true; PICKED = null;
+    connStop();
   };
 }
 
@@ -733,6 +778,79 @@ async function applyCoupon(){
   sumUp();
 }
 
+/* ---------- اتصال به رباتِ SLTech ----------
+   سایت کدی می‌گیرد، کاربر با آن به ربات می‌رود و شماره‌اش را تأیید
+   می‌کند، و ما هر چند ثانیه می‌پرسیم تمام شد یا نه. شماره هیچ‌وقت از
+   این‌جا فرستاده نمی‌شود — سرور خودش از همان کد برش می‌دارد. */
+const CONN = { nonce:"", ready:false, phone:"", name:"", via:"" };
+let connTimer = null;
+
+function connStop(){ if(connTimer){ clearInterval(connTimer); connTimer = null; } }
+
+function connPaint(){
+  const btns = document.getElementById("oConnBtns");
+  const wait = document.getElementById("oConnWait");
+  const okb  = document.getElementById("oConnOk");
+  if(CONN.ready){
+    btns.hidden = true; wait.hidden = true; okb.hidden = false;
+    okb.innerHTML = "✅ وصل شدید — <b>" + escH(faD(CONN.phone)) + "</b>" +
+      (CONN.name ? " (" + escH(CONN.name) + ")" : "") +
+      ' <button type="button" class="linkish" id="oConnOff">تغییر</button>';
+    document.getElementById("oConnOff").onclick = ()=>{
+      connStop(); CONN.nonce=""; CONN.ready=false; CONN.phone=""; CONN.name="";
+      document.getElementById("oConnNote").textContent = "";
+      connPaint();
+    };
+    return;
+  }
+  okb.hidden = true; btns.hidden = false;
+}
+
+async function connStart(){
+  const note = document.getElementById("oConnNote");
+  const btns = document.getElementById("oConnBtns");
+  note.textContent = "";
+  btns.innerHTML = '<span class="conn-load">…</span>';
+  try{
+    const r = await fetch("/api/sl/bot/start", { method:"POST" });
+    const d = await r.json().catch(()=>({}));
+    if(!(r.ok && d.ok)){
+      btns.innerHTML = "";
+      note.textContent = d.error || "اتصال آماده نیست.";
+      return;
+    }
+    CONN.nonce = d.nonce;
+    const L = d.links || {};
+    btns.innerHTML =
+      (L.telegram ? `<a class="btn btn-main conn-b" target="_blank" rel="noopener" href="${escH(L.telegram)}">ادامه با تلگرام</a>` : "") +
+      (L.bale ? `<a class="btn conn-b" target="_blank" rel="noopener" href="${escH(L.bale)}">ادامه با بله</a>` : "");
+    document.getElementById("oConnWait").hidden = false;
+    connStop();
+    connTimer = setInterval(connPoll, 3000);
+    setTimeout(connStop, 10 * 60000);
+  }catch(e){ btns.innerHTML = ""; note.textContent = "نشد. اتصالتان را ببینید."; }
+}
+
+async function connPoll(){
+  if(!CONN.nonce || CONN.ready) return connStop();
+  try{
+    const r = await fetch("/api/sl/bot/check?nonce=" + encodeURIComponent(CONN.nonce));
+    const d = await r.json().catch(()=>({}));
+    if(r.status === 410){ connStop(); CONN.nonce = "";
+      document.getElementById("oConnWait").hidden = true;
+      document.getElementById("oConnNote").textContent = "وقتش گذشت — دوباره بزنید."; return; }
+    if(d && d.status === "ready"){
+      connStop();
+      CONN.ready = true; CONN.phone = d.phone || ""; CONN.name = d.name || ""; CONN.via = d.via || "";
+      const nm = document.getElementById("oName");
+      if(nm && !nm.value.trim() && CONN.name) nm.value = CONN.name;
+      connPaint();
+    }
+  }catch(e){ /* شبکه لغزید؛ دورِ بعد */ }
+}
+
+document.getElementById("oConnAgain").onclick = connStart;
+
 document.getElementById("orderForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   if(!PICKED) return;
@@ -740,13 +858,14 @@ document.getElementById("orderForm").addEventListener("submit", async (e)=>{
   const btn = document.getElementById("oGo");
   const g = id => document.getElementById(id).value.trim();
   note.textContent = "";
+  if(!CONN.ready){ note.textContent = "اول با تلگرام یا بله وصل شوید."; 
+    document.getElementById("oConn").scrollIntoView({behavior:"smooth", block:"center"}); return; }
   if(!g("oName")){ note.textContent = "نامتان را بنویسید."; return; }
-  if(!g("oContact")){ note.textContent = "یک راهِ تماس بگذارید."; return; }
   btn.disabled = true; btn.textContent = "…";
   try{
     const r = await fetch("/api/sl/order", { method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ plan: PICKED.name, name: g("oName"), contact: g("oContact"),
+      body: JSON.stringify({ plan: PICKED.name, name: g("oName"), nonce: CONN.nonce,
         kind: g("oKind"), job: g("oJob"), seats: g("oSeats"), note: g("oNote"),
         coupon: g("oCoupon") }) });
     const d = await r.json().catch(()=>({}));
