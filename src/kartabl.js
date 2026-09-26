@@ -116,7 +116,7 @@ export const VIEWS = {
     { id: 'servers',   label: 'سرورها و بکاپ' },
     { id: 'companies', label: 'شرکت‌ها' },
     { id: 'mvpn',      label: 'سرویس MVPN' },
-    { id: 'datetools', label: 'تبدیل تاریخ' },
+    { id: 'datetools', label: 'تبدیل' },
     { id: 'report',    label: 'گزارش‌ساز' }
   ],
   fin: [
@@ -128,7 +128,7 @@ export const VIEWS = {
     { id: 'bank',            label: 'حساب‌های بانکی' },
     { id: 'budget',          label: 'بودجه‌بندی ماهانه' },
     { id: 'parties',         label: 'طرف‌حساب‌ها' },
-    { id: 'datetools',       label: 'تبدیل تاریخ' },
+    { id: 'datetools',       label: 'تبدیل' },
     { id: 'report',          label: 'گزارش‌ساز' }
   ],
   /* «عمومی» از همان قالبِ IT ساخته می‌شود، پس همان بخش‌ها را هم

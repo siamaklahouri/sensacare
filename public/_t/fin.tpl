@@ -239,6 +239,28 @@ window.KARTABL_UNTIL = {{UNTIL}};
     background:var(--white); color:var(--ink);
   }
 {{PART:vaultcss}}
+
+  /* ---------- تبدیل واحد ---------- */
+  .cv-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .cv-row select, .cv-row input{
+    border:1px solid var(--card-border); border-radius:9px; padding:9px 10px;
+    font-family:var(--font-body); font-size:12.5px; background:var(--white); color:var(--ink);
+    min-width:0;
+  }
+  .cv-row input{ flex:1 1 120px; }
+  .cv-row select{ flex:0 1 auto; }
+  .cv-lb{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .cv-out{
+    font-family:var(--font-display); font-size:17px; color:var(--ink);
+    padding:12px 14px; border-radius:11px; background:var(--paper);
+    border:1px solid var(--card-border); line-height:1.9; overflow-wrap:anywhere;
+  }
+  .cv-note{ font-size:11.5px; color:var(--red-ink,#A6222B); margin-top:7px; min-height:16px; }
+  @media (max-width:560px){
+    .cv-row select, .cv-row input{ flex:1 1 100%; }
+    .cv-out{ font-size:15px; }
+  }
+
   .sidebar-foot{
     flex:0 0 auto; margin-top:12px; padding-top:14px;
     border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); line-height:1.7;
@@ -684,7 +706,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <button class="navbtn" data-view="budget" data-feat="view:budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
     <button class="navbtn" data-view="parties" data-feat="view:parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
-    <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+    <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
@@ -1114,8 +1136,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:settings}}
     <!-- DATE TOOLS -->
     <section class="view" id="view-datetools" data-feat="view:datetools">
-      <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
-      <div class="section-sub">تبدیل دوطرفه‌ی تاریخ شمسی و میلادی، و محاسبه‌ی فاصله‌ی بین دو تاریخ شمسی</div>
+      <div class="section-title">🧮 تبدیل</div>
+      <div class="section-sub">واحدها و تاریخ — وزن، طول، مساحت، حجم، دما، داده، زمان، واحد پولی، و تبدیل تاریخ</div>
+
+      <!-- تبدیلِ واحدها و ماه؛ محتوایش را پارهٔ convert می‌سازد تا یک
+           نسخه باشد نه دو تا. -->
+      <div id="convBox"></div>
 
       <div class="grid2">
         <div class="panel">
@@ -3941,6 +3967,7 @@ function applyDbSnapshot(c){
   }
 
 {{PART:cloudpush}}
+{{PART:convert}}
 {{PART:vault}}
 /* گرفتن و برگرداندن فایل پشتیبان JSON. کارتابل مالی این دو دکمه را
    نداشت و تنها راه بیرون بردن داده، «اتصال به پوشه» بود که فقط در
@@ -4019,7 +4046,7 @@ async function init(){
       try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     }
     /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود. */
-    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupDateTools, setupChecklist,
+    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupDateTools, setupConvert, setupChecklist,
      setupDaily, setupReminders, setupParties, setupInvoices, setupPayables,
      setupPayableNotes, setupReceivableNotes, setupExpenses, setupBank,
      setupBudget, setupSettings, setupToolbar, setupTheme, setupAssistant,

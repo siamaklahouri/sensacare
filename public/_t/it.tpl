@@ -821,6 +821,28 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
   footer.appfoot{ text-align:center; color:var(--ink-faint); font-size:11px; padding:18px 0 6px; }
 {{PART:vaultcss}}
+
+  /* ---------- تبدیل واحد ---------- */
+  .cv-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .cv-row select, .cv-row input{
+    border:1px solid var(--card-border); border-radius:9px; padding:9px 10px;
+    font-family:var(--font-body); font-size:12.5px; background:var(--white); color:var(--ink);
+    min-width:0;
+  }
+  .cv-row input{ flex:1 1 120px; }
+  .cv-row select{ flex:0 1 auto; }
+  .cv-lb{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .cv-out{
+    font-family:var(--font-display); font-size:17px; color:var(--ink);
+    padding:12px 14px; border-radius:11px; background:var(--paper);
+    border:1px solid var(--card-border); line-height:1.9; overflow-wrap:anywhere;
+  }
+  .cv-note{ font-size:11.5px; color:var(--red-ink,#A6222B); margin-top:7px; min-height:16px; }
+  @media (max-width:560px){
+    .cv-row select, .cv-row input{ flex:1 1 100%; }
+    .cv-out{ font-size:15px; }
+  }
+
 {{PART:mobilecss}}
 {{PART:navcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
@@ -915,7 +937,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
-      <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل تاریخ</button>
+      <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
@@ -1191,8 +1213,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
     <!-- DATE TOOLS -->
     <section class="view" id="view-datetools" data-feat="view:datetools">
-      <div class="section-title">🧮 تبدیل تاریخ و محاسبه‌ی بین دو تاریخ</div>
-      <div class="section-sub">تبدیل دوطرفه‌ی تاریخ شمسی و میلادی، و محاسبه‌ی فاصله‌ی بین دو تاریخ شمسی</div>
+      <div class="section-title">🧮 تبدیل</div>
+      <div class="section-sub">واحدها و تاریخ — وزن، طول، مساحت، حجم، دما، داده، زمان، واحد پولی، و تبدیل تاریخ</div>
+
+      <!-- تبدیلِ واحدها و ماه؛ محتوایش را پارهٔ convert می‌سازد تا یک
+           نسخه باشد نه دو تا. -->
+      <div id="convBox"></div>
 
       <div class="grid2">
         <div class="panel">
@@ -4146,6 +4172,7 @@ function setupRemote(){
   if(!document.getElementById("refreshRemoteBtn")) return;
   document.getElementById("refreshRemoteBtn").addEventListener("click", loadDatabase);
 }
+{{PART:convert}}
 {{PART:vault}}
 function renderAll(){
   renderDashHero();
@@ -4421,7 +4448,7 @@ async function init(){
        یک‌بار همین اتفاق افتاد و نیمی از صفحه بی‌صدا راه نیفتاد. */
     [renderMeta, setupNav, setupMeta, setupToolbar, setupTheme, setupAssistant,
      setupAiSettings, showLastLogin, showExpiryWarning, setupBackup, setupServers, setupCompanies,
-     setupMvpn, setupRemote, setupChartModal, setupDateTools, setupSettings,
+     setupMvpn, setupRemote, setupChartModal, setupDateTools, setupConvert, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
      renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });

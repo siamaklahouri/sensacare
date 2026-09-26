@@ -15,6 +15,7 @@
 
 import p_aiassist from '../public/_t/p/aiassist.tpl';
 import p_cellpop from '../public/_t/p/cellpop.tpl';
+import p_convert from '../public/_t/p/convert.tpl';
 import p_cellpopcss from '../public/_t/p/cellpopcss.tpl';
 import p_chartlib from '../public/_t/p/chartlib.tpl';
 import p_charttone from '../public/_t/p/charttone.tpl';
@@ -46,6 +47,7 @@ import t_home from '../public/_t/home.tpl';
 export const PARTS = new Map([
   ['aiassist', p_aiassist],
   ['cellpop', p_cellpop],
+  ['convert', p_convert],
   ['cellpopcss', p_cellpopcss],
   ['chartlib', p_chartlib],
   ['charttone', p_charttone],
