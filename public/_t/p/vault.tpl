@@ -788,6 +788,13 @@ function addJalaliMonths(y, m, d, n){
   const maxD = daysInJalaliMonth(ny, nm);
   return { y:ny, m:nm, d:Math.min(d, maxD) };
 }
+/* مقایسهٔ دو تاریخِ شمسی. هر دو طرف {y,m,d} دارند — «today» هم با
+   همان شکل ساخته می‌شود — پس یک تابع برای هر دو بس است. */
+function cmpJalali(a, b){
+  const A = (a.y||a.year)*10000 + (a.m||a.month)*100 + (a.d||a.day);
+  const B = (b.y||b.year)*10000 + (b.m||b.month)*100 + (b.d||b.day);
+  return A - B;
+}
 function formatJalaliYMD(y,m,d){
   return fa(y)+"/"+fa(String(m).padStart(2,"0"))+"/"+fa(String(d).padStart(2,"0"));
 }
@@ -816,14 +823,29 @@ function renderPersonalInstallments(){
   const today = { year: parseInt(todayParts.year)||1405, month: todayParts.monthNum||1, day: todayParts.day||1 };
   const nDaysStart = daysInJalaliMonth(today.year, today.month);
 
+  const nextUp = [];
+  let sumRemaining = 0, sumLeftCount = 0;
   const cardsHtml = instRows().map((plan, pIdx)=>{
     const { per, total } = calcInstallment(plan.principal, plan.count, plan.percent);
     const paidCount = plan.paid.filter(Boolean).length;
     const remaining = total - (per*paidCount);
+    sumRemaining += remaining;
+    sumLeftCount += (plan.count - paidCount);
+    /* قسطِ پیشِ رو = اولین قسطِ پرداخت‌نشده. همین یکی است که آدم
+       دنبالش می‌گردد، پس بالای صفحه می‌آید و از آن‌جا می‌شود پرید
+       سرِ خودش. */
+    let nextIdx = -1;
+    for(let i=0;i<plan.count;i++) if(!plan.paid[i]){ nextIdx = i; break; }
+    if(nextIdx >= 0){
+      const d = addJalaliMonths(plan.startY, plan.startM, plan.startD, nextIdx);
+      nextUp.push({ pIdx, i: nextIdx, title: plan.title || 'بدون عنوان',
+                    y:d.y, m:d.m, d:d.d, amount: per,
+                    late: cmpJalali(d, today) < 0 });
+    }
     const scheduleRows = Array.from({length:plan.count}, (_,i)=>{
       const due = addJalaliMonths(plan.startY, plan.startM, plan.startD, i);
       const isPaid = !!plan.paid[i];
-      return `<tr class="${isPaid?'paid':''}">
+      return `<tr id="inst-${pIdx}-${i}" class="${isPaid?'paid':''}${i===nextIdx?' inst-next':''}">
         <td>${fa(i+1)}</td>
         <td>${formatJalaliYMD(due.y,due.m,due.d)}</td>
         <td>${fa(Math.round(per).toLocaleString("en-US"))}</td>
@@ -848,7 +870,35 @@ function renderPersonalInstallments(){
       </div>`;
   }).join("");
 
-  body.innerHTML = `
+  /* خلاصهٔ بالای صفحه. وقتی هیچ وامی نیست، اصلاً نمی‌آید — یک کادرِ
+     خالیِ صفر تومانی به کسی چیزی نمی‌گوید. */
+  const lateCount = nextUp.filter(x=> x.late).length;
+  nextUp.sort((a,b)=> cmpJalali(a,b));
+  const boxHtml = nextUp.length ? `
+    <div class="inst-box">
+      <div class="inst-box-head">
+        <h4>📋 خلاصهٔ اقساط</h4>
+        <span class="inst-box-sum">
+          <b>${fa(nextUp.length)}</b> وام ·
+          <b>${fa(sumLeftCount)}</b> قسط مانده ·
+          <b>${fa(Math.round(sumRemaining).toLocaleString("en-US"))}</b> تومان
+          ${lateCount ? `· <span class="inst-late-n">${fa(lateCount)} قسط عقب‌افتاده</span>` : ""}
+        </span>
+      </div>
+      <div class="inst-box-grid">
+        ${nextUp.map(x=> `
+          <button type="button" class="inst-next-chip${x.late?' late':''}"
+                  data-goto-plan="${x.pIdx}" data-goto-inst="${x.i}"
+                  title="رفتن به همین قسط در فهرست">
+            <span class="inb-title">${escapeHtml(x.title)}</span>
+            <span class="inb-date">${formatJalaliYMD(x.y,x.m,x.d)}</span>
+            <span class="inb-meta">قسط ${fa(x.i+1)} · ${fa(Math.round(x.amount).toLocaleString("en-US"))} تومان</span>
+            ${x.late ? `<span class="inb-flag">عقب‌افتاده</span>` : ""}
+          </button>`).join("")}
+      </div>
+    </div>` : "";
+
+  body.innerHTML = boxHtml + `
     <div class="panel" style="padding:16px; margin-bottom:16px;">
       <h4 style="margin:0 0 10px; font-family:var(--font-display); font-size:14px;">＋ افزودن وام/قسط جدید</h4>
       <div class="inst-form">
@@ -909,6 +959,21 @@ function renderPersonalInstallments(){
       renderPersonalInstallments();
     });
   });
+  /* از کادرِ بالا، پریدن سرِ خودِ قسط در فهرست — و یک چشمک، وگرنه
+     در فهرستی با بیست ردیف معلوم نیست کجا رفتیم. */
+  body.querySelectorAll("[data-goto-plan]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = "inst-" + btn.getAttribute("data-goto-plan") + "-" + btn.getAttribute("data-goto-inst");
+      const row = document.getElementById(id);
+      if(!row) return;
+      row.scrollIntoView({ behavior:"smooth", block:"center" });
+      row.classList.remove("inst-flash");
+      void row.offsetWidth;          /* تا انیمیشن دوباره از اول بیفتد */
+      row.classList.add("inst-flash");
+      setTimeout(()=> row.classList.remove("inst-flash"), 2400);
+    });
+  });
+
   body.querySelectorAll("[data-pay-plan]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const pIdx = parseInt(btn.getAttribute("data-pay-plan"));

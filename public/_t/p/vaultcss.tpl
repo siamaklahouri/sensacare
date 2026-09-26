@@ -64,6 +64,55 @@
     font-size:12.5px; background:var(--white);
   }
   .inst-note{ font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; line-height:1.8; }
+  /* ---------- خلاصهٔ اقساط، بالای صفحه ---------- */
+  .inst-box{
+    border:1px solid var(--card-border); border-radius:12px; padding:14px 16px;
+    margin-bottom:16px; background:var(--paper);
+  }
+  .inst-box-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-bottom:12px;
+  }
+  .inst-box-head h4{ margin:0; font-family:var(--font-display); font-size:14px; color:var(--ink); }
+  .inst-box-sum{ font-size:12px; color:var(--ink-soft); }
+  .inst-box-sum b{ color:var(--ink); }
+  .inst-late-n{ color:var(--red-ink,#A6222B); }
+  /* کاشی‌ها خودشان جا باز می‌کنند: با یک وام یک کاشی، با شش تا سه
+     ستون — بدونِ اینکه عرضِ ثابتی به کسی تحمیل شود. */
+  .inst-box-grid{
+    display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
+  }
+  .inst-next-chip{
+    display:flex; flex-direction:column; gap:3px; text-align:start;
+    border:1px solid var(--card-border); border-radius:10px; padding:10px 12px;
+    background:var(--white); cursor:pointer; font-family:var(--font-body);
+    transition:border-color .15s, transform .15s;
+  }
+  .inst-next-chip:hover{ border-color:var(--brass); transform:translateY(-1px); }
+  .inst-next-chip .inb-title{ font-size:12.5px; color:var(--ink-soft); }
+  .inst-next-chip .inb-date{
+    font-family:var(--font-display); font-size:16px; color:var(--ink); letter-spacing:.3px;
+  }
+  .inst-next-chip .inb-meta{ font-size:11px; color:var(--ink-faint); }
+  .inst-next-chip.late{ border-color:var(--red,#A6222B); }
+  .inst-next-chip.late .inb-date{ color:var(--red-ink,#A6222B); }
+  .inst-next-chip .inb-flag{
+    align-self:flex-start; font-size:10.5px; padding:1px 7px; border-radius:6px;
+    background:var(--red-bg,#FBECED); color:var(--red-ink,#A6222B);
+  }
+  /* ردیفِ قسطِ پیشِ رو در خودِ فهرست، و چشمکش وقتی از بالا پریدیم */
+  table.inst-schedule tr.inst-next td{ background:var(--paper-deep,rgba(0,0,0,.03)); }
+  @keyframes instFlash{
+    0%, 100%{ background:transparent; }
+    20%, 60%{ background:var(--brass-bg,rgba(176,141,87,.22)); }
+  }
+  table.inst-schedule tr.inst-flash td{ animation:instFlash 2.2s ease; }
+  @media (prefers-reduced-motion:reduce){
+    table.inst-schedule tr.inst-flash td{ animation:none; outline:2px solid var(--brass); }
+    .inst-next-chip:hover{ transform:none; }
+  }
+
   .inst-card{
     border:1px solid var(--card-border); border-radius:12px; padding:16px; margin-bottom:14px; background:var(--paper);
   }

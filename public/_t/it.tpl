@@ -3225,13 +3225,20 @@ function parseCompaniesSheet(wb){
   const rows = sheetToMatrix(wb, "Companies");
   const out = {};
   if(!rows) return out;
+  /* ردیفِ بی‌تاریخ وارد نمی‌شود — ولی بی‌صدا هم رد نمی‌شود، وگرنه
+     کاربر فکر می‌کند همه‌چیز آمده. */
+  let skipped = 0;
   for(let r=1;r<rows.length;r++){
     const row = rows[r]||[];
     const company = row[0];
     if(!company) continue;
+    const dateStr = String(row[1]==null ? "" : row[1]).trim();
     if(!out[company]) out[company] = [];
-    out[company].push({ dateStr: String(row[1]||""), time: String(row[2]||""), type: String(row[3]||"") });
+    if(!dateStr){ skipped++; continue; }
+    out[company].push({ dateStr, time: String(row[2]||""), type: String(row[3]||"") });
   }
+  if(skipped) setTimeout(()=> alert(
+    fa(skipped) + " ردیف بدونِ تاریخ در شیت Companies بود و وارد نشد."), 0);
   Object.keys(out).forEach(name=> out[name].sort((a,b)=> a.dateStr.localeCompare(b.dateStr)));
   return out;
 }
@@ -3723,6 +3730,15 @@ const TYPE_OPTIONS = ["Remote","Person","Remote+Person"];
 
 function commitCompanyVisitCell(name, idx, field, value){
   if(!companiesData || !companiesData.companies[name] || !companiesData.companies[name][idx]) return;
+  /* بازدیدِ بی‌تاریخ بازدید نیست: در فهرست یک ردیفِ خالی می‌ماند، در
+     شمارش یکی اضافه می‌کند و در نمودارِ نوع یک «نامشخص» می‌سازد.
+     دکمهٔ ＋ جلویش را می‌گرفت ولی ویرایشِ درجا نه — خانه را که خالی
+     می‌کردی، خالی ذخیره می‌شد. */
+  if(field === "dateStr" && !String(value||"").trim()){
+    alert("تاریخ بازدید نمی‌تواند خالی بماند. اگر این بازدید اشتباه ثبت شده، با ✕ حذفش کنید.");
+    renderCompanies();
+    return;
+  }
   companiesData.companies[name][idx][field] = value;
   saveCompaniesSheet();
 }
