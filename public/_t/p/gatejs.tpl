@@ -36,6 +36,7 @@ async function apiCall(path, opts){
 function takenOver(d){
   if(KARTABL_TAKEN) return;
   KARTABL_TAKEN = true;
+  stopBeat();
   const dev = (d && d.dev) ? String(d.dev) : "";
   const at  = (d && d.at)  ? Number(d.at)  : 0;
   const el = document.createElement("div");
@@ -64,6 +65,34 @@ function takenOver(d){
     '</div>';
   document.body.appendChild(el);
   el.querySelector("#takenBack").addEventListener("click", ()=> location.reload());
+}
+
+/* ---------- ضربانِ نشست ----------
+   قفل سمتِ سرور کار می‌کرد، ولی دستگاهِ کنارگذاشته‌شده تا وقتی خودش
+   چیزی از سرور نمی‌خواست، خبردار نمی‌شد. کارتابلی که بخشِ مشترک دارد
+   هر سی ثانیه خبرها را می‌پرسید و همان‌جا می‌فهمید؛ کارتابلی که
+   نداشت، یک تبِ بازِ بی‌کار تا ابد باز می‌ماند و کاربر می‌دید که «قفل
+   کار نمی‌کند».
+
+   پس خودِ نشست ضربان دارد: هر بیست ثانیه یک /me، که سبک‌ترین مسیرِ
+   سرور است. تبِ پنهان نمی‌پرسد — وقتی برگشت، همان لحظه می‌پرسد. */
+const BEAT_MS = 20000;
+let beatTimer = null;
+
+async function sessionBeat(){
+  if(KARTABL_TAKEN) return stopBeat();
+  if(document.hidden) return;
+  try{ await apiCall("/me"); }catch(e){ /* شبکه قطع بود؛ دفعهٔ بعد */ }
+}
+function stopBeat(){
+  if(beatTimer){ clearInterval(beatTimer); beatTimer = null; }
+}
+function startBeat(){
+  if(beatTimer || KARTABL_TAKEN) return;
+  beatTimer = setInterval(sessionBeat, BEAT_MS);
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden) sessionBeat();
+  });
 }
 
 /* تاریخ و ساعتِ فارسی برای پیامِ «آخرین ورود». این‌جا بالای گیت لازم
@@ -166,6 +195,9 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
     /* خودِ گره می‌ماند (جاهایی به وجودش تکیه شده) ولی محتوایش می‌رود:
        کادرِ رمز باید از صفحه برود، نه فقط پنهان شود. */
     try{ screenEl.innerHTML = ""; }catch(e){}
+    /* از همین‌جا نشست ضربان می‌گیرد. نسخهٔ آفلاینِ پشتیبان سروری ندارد،
+       پس آن‌جا خاموش می‌ماند. */
+    if(!window.KARTABL_OFFLINE) startBeat();
   }
 
   if(window.KARTABL_OFFLINE){
