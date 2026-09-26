@@ -85,11 +85,16 @@ function disabledPanelPage(panel) {
 }
 
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
-         renderPanelPage, withParts, assetReq } from './kartabl.js';
+         renderPanelPage, withParts, assetReq, useBundledTemplates } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
 import { seedIfEmpty } from './seed.js';
+
+/* قالب‌ها داخلِ باندل‌اند تا خواندنشان زیرْدرخواست خرج نکند؛ همین‌جا
+   به kartabl.js معرفی می‌شوند. */
+import { PARTS as BUNDLED_PARTS, PAGES as BUNDLED_PAGES } from './templates.js';
+useBundledTemplates(BUNDLED_PARTS, BUNDLED_PAGES);
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
