@@ -18,7 +18,7 @@ import { buildKartablWorkbook, buildSinaWorkbook, buildGeneralWorkbook } from '.
 import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
-import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow } from './shared.js';
+import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum } from './shared.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -967,18 +967,24 @@ export const BOT_API = {
   bale: t => 'https://tapi.bale.ai/bot' + t
 };
 
+/* شناسهٔ گفتگو عددی است که تلگرام می‌فهمد، پس باید لاتین باشد. کادرش
+   در پنل با data-ascii نشان شده، ولی اگر روزی مقداری با رقمِ فارسی
+   ذخیره شده باشد، این‌جا هم برمی‌گردد — وگرنه ربات «chat not found»
+   می‌دهد و پشتیبان بی‌صدا نمی‌رود. */
+const chatId = v => latinNum(String(v == null ? '' : v)).replace(/\s+/g, '');
+
 export async function siteBots(env) {
   const st = await getSetting(env, 'sltechSite', {}) || {};
   const out = [];
   if (st.tgToken && st.tgChat)
-    out.push({ kind: 'telegram', token: st.tgToken, chat: String(st.tgChat) });
+    out.push({ kind: 'telegram', token: String(st.tgToken).trim(), chat: chatId(st.tgChat) });
   if (st.baleToken && st.baleChat)
-    out.push({ kind: 'bale', token: st.baleToken, chat: String(st.baleChat) });
+    out.push({ kind: 'bale', token: String(st.baleToken).trim(), chat: chatId(st.baleChat) });
   const old = await kartablBot(env);
   /* همان گفتگوی قبلی دوباره حساب نشود */
   if (old.token && old.chat &&
-      !out.some(b => b.kind === 'telegram' && b.token === old.token && b.chat === String(old.chat)))
-    out.push({ kind: 'telegram', token: old.token, chat: String(old.chat) });
+      !out.some(b => b.kind === 'telegram' && b.token === old.token && b.chat === chatId(old.chat)))
+    out.push({ kind: 'telegram', token: String(old.token).trim(), chat: chatId(old.chat) });
   return out;
 }
 
@@ -1130,13 +1136,48 @@ export async function buildAllBackup(env, req) {
   return { zip, name: 'sltech-backup-' + stamp + '.zip', parts, failed, stamp };
 }
 
+/* آخرین تلاشِ پشتیبانِ همگانی — موفق یا ناموفق — یک‌جا ثبت می‌شود.
+   پیش از این، سه راهِ خروج بی‌صدا بود: ربات تنظیم نبود، زیپ ساخته
+   نمی‌شد، یا استثنایی می‌افتاد. هر سه چیزی ننوشته برمی‌گشتند و کسی
+   خبردار نمی‌شد که پشتیبان نرفته. */
+export const BK_LAST = 'kartablBackupAll';
+
+async function markBackup(env, v) {
+  try { await setSetting(env, BK_LAST, v); } catch (e) { /* ثبت نشد، ولی کار متوقف نشود */ }
+  return v;
+}
+
+/* وقتی پشتیبان نمی‌رود، دست‌کم خبرش برود. متنِ کوتاه سبک است و
+   همان‌جایی می‌رسد که خودِ پشتیبان قرار بود برسد. */
+async function tellBackupFailed(env, why, note) {
+  try {
+    const bots = await siteBots(env);
+    for (const bot of bots) {
+      const text = '⚠️ پشتیبانِ کارتابل‌ها فرستاده نشد' + (note ? ' (' + note + ')' : '') +
+                   '\n\n' + why;
+      await fetch(`${BOT_API[bot.kind](bot.token)}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: bot.chat, text })
+      }).catch(() => {});
+    }
+  } catch (e) { /* اگر خبر هم نرفت، ثبتِ بالا سرِ جایش هست */ }
+}
+
 export async function sendAllBackup(env, req, note = '') {
+  const at = Date.now();
   const bots = await siteBots(env);
-  if (!bots.length) return { ok: false,
-    error: 'هیچ رباتی تنظیم نشده. از پنل مدیر، سربرگ «تنظیمات سایت»، توکن و شناسهٔ گفتگو را بگذارید.' };
+  if (!bots.length) {
+    const error = 'هیچ رباتی تنظیم نشده. از پنل مدیر، سربرگ «تنظیمات سایت»، توکن و شناسهٔ گفتگو را بگذارید.';
+    await markBackup(env, { at, ok: false, error, note });
+    return { ok: false, error };
+  }
 
   const built = await buildAllBackup(env, req);
-  if (built.error) return { ok: false, error: built.error };
+  if (built.error) {
+    await markBackup(env, { at, ok: false, error: built.error, note });
+    await tellBackupFailed(env, built.error, note);
+    return { ok: false, error: built.error };
+  }
   const { zip, name, parts, failed } = built;
 
   const caption =
@@ -1162,13 +1203,20 @@ export async function sendAllBackup(env, req, note = '') {
     } catch (e) { bad.push(bot.kind + ': ' + e.message); }
   }
   /* هر کارتابل وضعیتِ خودش را نگه می‌دارد، تا پنل مثل قبل بتواند
-     بگوید آخرین پشتیبانِ هرکدام کِی رفت. */
-  const at = Date.now();
+     بگوید آخرین پشتیبانِ هرکدام کِی رفت. همان «at»ِ ابتدای تلاش، تا
+     ثبتِ هر کارتابل و ثبتِ کلی یک زمان داشته باشند. */
   for (const x of parts)
     await setSetting(env, x.panel.keys.last,
       sent.length ? { at, size: zip.length, ok: true, to: sent, failed: bad, all: true }
                   : { at, ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' });
-  if (!sent.length) return { ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' };
+  if (!sent.length) {
+    const error = bad.join(' — ') || 'هیچ رباتی نگرفت.';
+    await markBackup(env, { at, ok: false, error, note, size: zip.length, count: parts.length });
+    await tellBackupFailed(env, error, note);
+    return { ok: false, error };
+  }
+  await markBackup(env, { at, ok: true, note, size: zip.length, name,
+                          count: parts.length, to: sent, failed: bad });
   return { ok: true, size: zip.length, name, count: parts.length, to: sent, failed: bad };
 }
 
@@ -1181,8 +1229,17 @@ export async function nightlyKartablBackup(env, slot) {
      Request لازم است. یکی می‌سازیم. */
   const req = new Request('https://' + (env.PANEL_HOST || env.PUBLIC_HOST || 'sltech.ir') + '/');
   const when = SLOT_NAME[slot] || slot || '';
-  return await sendAllBackup(env, req, 'خودکار' + (when ? ' — ' + when : ''))
-    .catch(e => ({ ok: false, error: e.message }));
+  const note = 'خودکار' + (when ? ' — ' + when : '');
+  /* استثنا هم باید همان‌قدر دیده شود که «نپذیرفت»: پیش از این این‌جا
+     بی‌صدا به یک شیء تبدیل می‌شد و دور ریخته می‌شد. */
+  const r = await sendAllBackup(env, req, note).catch(async e => {
+    const error = e && e.message ? e.message : 'خطای ناشناخته';
+    await markBackup(env, { at: Date.now(), ok: false, error, note });
+    await tellBackupFailed(env, error, note);
+    return { ok: false, error };
+  });
+  /* خروجی به بالا می‌رود تا نوبت را در صورتِ شکست آزاد کند */
+  return r;
 }
 
 /* ---------- مسیرها ---------- */

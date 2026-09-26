@@ -16,7 +16,7 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl, buildAllBackup, sendAllBackup
+  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
@@ -408,7 +408,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       ],
       /* بخش‌های خودِ کارتابل، جدا برای هر نوع */
       views: VIEWS,
-      escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null))
+      escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null)),
+      /* آخرین تلاشِ پشتیبانِ همگانی — تا اگر نرفته، همین‌جا دیده شود
+         و لازم نباشد کسی حدس بزند چرا چیزی نیامده. */
+      backupAll: await getSetting(env, BK_LAST, null)
     });
   }
 

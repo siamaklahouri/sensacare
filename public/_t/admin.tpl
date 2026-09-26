@@ -1219,12 +1219,6 @@ function setupTabs(){
   /* ---- پشتیبانِ همهٔ کارتابل‌ها ----
      فهرست را سرور همان لحظه از پایگاه‌داده می‌خواند، پس کارتابلی که
      همین امروز ساخته شده هم داخلش هست — جایی ثبت‌نام نمی‌خواهد. */
-  const bkNote = (t, cls)=>{
-    const el = document.getElementById("bkAllNote");
-    if(!el) return;
-    el.textContent = t || "";
-    el.className = "bk-note" + (cls ? " " + cls : "");
-  };
   const bkAll = document.getElementById("bkAll");
   if(bkAll) bkAll.addEventListener("click", async ()=>{
     const n = (DATA.items || []).filter(x=> !x.disabled).length;
@@ -1251,6 +1245,32 @@ function setupTabs(){
 }
 
 /* ---------- فهرست ---------- */
+/* یادداشتِ زیرِ دکمه‌های پشتیبان. هم setupTabs از آن استفاده می‌کند هم
+   loadPlanners، پس این‌جاست نه داخلِ یکی از آن دو. */
+function bkNote(t, cls){
+  const el = document.getElementById("bkAllNote");
+  if(!el) return;
+  el.textContent = t || "";
+  el.className = "bk-note" + (cls ? " " + cls : "");
+}
+
+/* آخرین تلاشِ پشتیبانِ همگانی — چه رفته باشد چه نه. پیش از این،
+   پشتیبانی که نمی‌رفت هیچ ردی نمی‌گذاشت و کسی نمی‌فهمید چرا چیزی
+   نیامده. */
+function bkLast(){
+  const b = DATA.backupAll;
+  if(!b || !b.at) return;
+  const when = faDateTime(b.at);
+  if(b.ok){
+    bkNote("آخرین پشتیبان: " + when + " — " + fa(b.count || 0) + " کارتابل، " +
+           fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
+           ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""), "good");
+  } else {
+    bkNote("آخرین پشتیبان نرفت — " + when + (b.note ? " (" + b.note + ")" : "") +
+           " — " + (b.error || "بی‌دلیلِ ثبت‌شده"), "bad");
+  }
+}
+
 async function loadPlanners(){
   const r = await api("/planners");
   if(!r.ok){ say(r.data.error || "فهرست نیامد.", true); return; }
@@ -1260,6 +1280,7 @@ async function loadPlanners(){
   renderNewViews();
   renderPlanners();
   renderEscrowState();
+  bkLast();
 }
 
 function fillSelect(id, items){

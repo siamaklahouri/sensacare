@@ -339,6 +339,14 @@ async function claimOnce(env, key) {
   } catch (e) { return true; }   /* اگر جدول نبود، جلوی کار شبانه را نگیر */
 }
 
+/* نوبت پیش از کار گرفته می‌شود (وگرنه دو اجرای هم‌زمان هر دو کار
+   می‌کردند)، ولی اگر کار نگرفت باید پس داده شود — نه اینکه شکست، نوبت
+   را مصرف کند و تا فردا هیچ اتفاقی نیفتد. */
+async function releaseOnce(env, key) {
+  try { await env.DB.prepare('DELETE FROM job_runs WHERE k=?').bind(key).run(); }
+  catch (e) { /* پاک نشد؛ بدتر از این نمی‌شود */ }
+}
+
 /* فیش پرداخت را به‌صورت عکس برای مدیرها می‌فرستد.
    عکس جایی ذخیره نمی‌شود؛ همان‌جا در پیام‌رسان می‌ماند — همان جایی که
    قرار است دیده شود. */
@@ -1611,8 +1619,17 @@ export default {
        گرینویچِ همین اجراست — چهار عددِ متفاوت، چهار قفلِ متفاوت. */
     const slot = String(new Date(event.scheduledTime || Date.now()).getUTCHours()).padStart(2, '0');
     const twice = (name, fn) => ctx.waitUntil((async () => {
-      if (!(await claimOnce(env, `${name}:${day}:${slot}`))) return;
-      await fn(env, slot);
+      const key = `${name}:${day}:${slot}`;
+      if (!(await claimOnce(env, key))) return;
+      /* کاری که خودش خطا را می‌گیرد و {ok:false} برمی‌گرداند هم شکست
+         است: نوبتش پس داده می‌شود تا اجرای بعدی دوباره تلاش کند. */
+      let r;
+      try { r = await fn(env, slot); }
+      catch (e) { await releaseOnce(env, key); throw e; }
+      if (r && r.ok === false) {
+        await releaseOnce(env, key);
+        console.log(name, 'failed:', r.error || '');
+      }
     })().catch(e => console.log(name, e.message)));
 
     once('backup', runBackup);
