@@ -169,6 +169,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
     cursor:pointer; white-space:nowrap;
   }
   .tsz-fit:hover{ border-color:var(--brass); color:var(--brass); }
+  /* قابِ جدول به اندازهٔ خودِ جدول جمع می‌شود، نه تمامِ عرضِ کارت. */
+  .tbl-wrap.tsz-hug{ width:max-content; max-width:100%; }
   /* جدولی که موتورِ پهنا رویش سوار است: خانه‌ها از ستونِ خودشان
      بیرون نمی‌زنند، و کادرِ داخلِ خانه تا لبهٔ ستون پُر می‌شود — وگرنه
      کشویی‌ای به پهنای پنجاه پیکسل وسطِ ستونی سیصد پیکسلی شناور
