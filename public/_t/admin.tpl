@@ -910,8 +910,18 @@ table.inv-tab td.desc{ text-align:right; }
           <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
         <div><button class="btn" id="stBaleTest">پیام آزمایشی</button></div>
       </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="fld"><label>رباتِ قدیمیِ کارتابل <span id="stOldHas" class="hint2"></span></label>
+          <input type="text" id="stOldToken" dir="ltr" autocomplete="off"
+                 placeholder="خالی = دست نخورد، «-» = برداشته شود" data-ascii></div>
+        <div class="fld"><label>گفتگوی رباتِ قدیمی</label>
+          <input type="text" id="stOldChat" dir="ltr" readonly tabindex="-1" data-ascii></div>
+      </div>
       <div class="hint">شناسهٔ گفتگو را از خودِ ربات می‌گیرید: یک پیام به ربات بدهید و
-        بعد «پیام آزمایشی» را بزنید تا مطمئن شوید به همان‌جا می‌رسد.</div>
+        بعد «پیام آزمایشی» را بزنید تا مطمئن شوید به همان‌جا می‌رسد.
+        <br>رباتِ قدیمیِ کارتابل از صفحهٔ تنظیماتِ خودِ کارتابل‌ها گذاشته شده و پشتیبان
+        <b>به آن هم</b> می‌رود؛ پس اگر توکنش مرده باشد، عوض‌کردنِ توکنِ بالا جلوی
+        خطا را نمی‌گیرد. برای برداشتنش یک خط تیره بنویسید.</div>
       <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line-soft);">
         <button class="btn" id="stHook">وصل کردن ربات‌ها به سایت</button>
         <span class="hint2" id="stHookNote" style="margin-inline-start:10px;"></span>
@@ -2786,6 +2796,9 @@ function paintBots(bots){
   };
   mark(document.getElementById("stTgHas"), bots && bots.telegram);
   mark(document.getElementById("stBaleHas"), bots && bots.bale);
+  mark(document.getElementById("stOldHas"), bots && bots.old);
+  const oc = document.getElementById("stOldChat");
+  if(oc) oc.value = (bots && bots.old && bots.old.chat) || "";
 }
 
 function paintSite(d){
@@ -2894,6 +2907,7 @@ async function setupSite(){
       tgChat: g("stTgChat"), baleChat: g("stBaleChat"),
       /* توکن فقط وقتی می‌رود که چیزی تایپ شده باشد */
       tgToken: g("stTgToken"), baleToken: g("stBaleToken"),
+      oldToken: g("stOldToken"),
       plans: readPlans()
     })});
     btn.disabled = false; btn.textContent = "ذخیرهٔ تنظیمات";
@@ -2901,6 +2915,7 @@ async function setupSite(){
     /* کادرِ توکن خالی می‌شود تا کسی از روی صفحه نخواندش */
     document.getElementById("stTgToken").value = "";
     document.getElementById("stBaleToken").value = "";
+    document.getElementById("stOldToken").value = "";
     paintSite(r.data);
     say("تنظیمات ذخیره شد.");
   };

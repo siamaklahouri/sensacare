@@ -123,9 +123,21 @@ const publicSite = st => ({
 
 /* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */
 const tail = t => (typeof t === 'string' && t.length > 4) ? t.slice(-4) : '';
-const botState = st => ({
+/* رباتِ قدیمیِ کارتابل کلیدِ خودش را دارد (kartablBotToken) و پشتیبان
+   به آن هم می‌رود. تا وقتی این‌جا دیده نمی‌شد، یک توکنِ مرده بی‌صدا
+   خطا می‌داد و هیچ جای پنل نمی‌شد برش داشت. */
+const botState = (st, old) => ({
   telegram: { set: !!st.tgToken, tail: tail(st.tgToken) },
-  bale: { set: !!st.baleToken, tail: tail(st.baleToken) }
+  bale: { set: !!st.baleToken, tail: tail(st.baleToken) },
+  old: { set: !!(old && old.token), tail: tail(old && old.token),
+         chat: (old && old.chat) || '' }
+});
+
+/* توکنِ رباتِ قدیمی و گفتگویش، همان‌جا که kartablBot می‌خواندشان */
+const OLD_BOT = ['kartablBotToken', 'kartablChatId'];
+const oldBot = async env => ({
+  token: await getSetting(env, OLD_BOT[0], ''),
+  chat: await getSetting(env, OLD_BOT[1], '')
 });
 
 function cleanSite(body, cur) {
@@ -637,7 +649,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
      توکن را بردارد و ببرد. */
   if (p === '/site' && m === 'GET') {
     const st = await getSetting(env, SITE_KEY, {});
-    return json({ ok: true, site: publicSite(st), bots: botState(st) });
+    return json({ ok: true, site: publicSite(st), bots: botState(st, await oldBot(env)) });
   }
 
   if (p === '/site' && m === 'PUT') {
@@ -645,8 +657,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const next = cleanSite(body, cur);
     if (next.error) return bad(next.error);
     await setSetting(env, SITE_KEY, next.site);
+    /* «-» رباتِ قدیمی را برمی‌دارد — توکن و گفتگو با هم، چون نیمه‌اش
+       فقط یک خطای دیگر است. */
+    if (String(body.oldToken || '').trim() === '-')
+      for (const k of OLD_BOT) await setSetting(env, k, '');
     await log(env, 'site', '', Object.keys(body || {}).join(','));
-    return json({ ok: true, site: publicSite(next.site), bots: botState(next.site) });
+    return json({ ok: true, site: publicSite(next.site),
+                  bots: botState(next.site, await oldBot(env)) });
   }
 
   /* پیامِ آزمایشی، تا معلوم شود توکن درست است و ربات جواب می‌دهد */
