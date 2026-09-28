@@ -20,7 +20,8 @@ import {
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
-import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon } from './sltech-shop.js';
+import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
+         VIEW_LABEL as SL_VIEW_LABEL, FREE_VIEWS as SL_FREE_VIEWS } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 
@@ -122,7 +123,12 @@ const publicSite = st => ({
   /* قیمتِ بخش‌هایی که جزو دیفالت نیستند. صفر یعنی «هنوز نگذاشته‌ام»،
      و سایت همان را نشان می‌دهد تا کسی سرِ قیمت غافلگیر نشود. */
   extraPrice: Number(st.extraPrice || 0),
-  customPrice: Number(st.customPrice || 0)
+  customPrice: Number(st.customPrice || 0),
+  viewPrices: (st.viewPrices && typeof st.viewPrices === 'object') ? st.viewPrices : {},
+  /* نامِ بخش‌ها و رایگان‌ها از همان جایی می‌آیند که صفحهٔ خرید
+     می‌خواند — تا پنل و سایت یک فهرست داشته باشند. */
+  viewLabels: SL_VIEW_LABEL,
+  freeViews: SL_FREE_VIEWS
 });
 
 /* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */
@@ -170,6 +176,24 @@ function cleanSite(body, cur) {
     if (!Number.isFinite(v) || v < 0 || v > 1e12)
       return { error: 'قیمتِ بخش‌ها درست نیست.' };
     site[key] = Math.round(v);
+  }
+
+  /* قیمتِ جدا برای هر بخش. خالی گذاشتن یعنی «همان قیمتِ عمومی» — پس
+     لازم نیست برای همه عدد نوشت، فقط برای آن‌هایی که فرق دارند. */
+  if (body.viewPrices !== undefined) {
+    if (!body.viewPrices || typeof body.viewPrices !== 'object')
+      return { error: 'قیمتِ بخش‌ها درست نیست.' };
+    const out = {};
+    for (const [k, raw] of Object.entries(body.viewPrices).slice(0, 60)) {
+      const id = String(k).trim().slice(0, 30);
+      if (!/^[a-z0-9_-]+$/i.test(id)) continue;
+      if (raw === '' || raw === null || raw === undefined) continue;
+      const v = Number(raw);
+      if (!Number.isFinite(v) || v < 0 || v > 1e12)
+        return { error: 'قیمتِ بخشِ «' + id + '» درست نیست.' };
+      out[id] = Math.round(v);
+    }
+    site.viewPrices = out;
   }
 
   if (body.plans !== undefined) {

@@ -354,9 +354,33 @@ a{ color:var(--brass-ink); }
   font-family:var(--font); font-size:13px; }
 .mreply .rtext:focus{ outline:none; border-color:var(--brass); box-shadow:var(--glow); }
 /* یک ردیفِ پلن: نام، قیمت، مدت، توضیح، و دکمهٔ برداشتن */
+/* هشت خانه: نام، نوع، قیمتِ پایه، تا چند نفر، هر نفرِ اضافه، روز،
+   توضیح، و دکمهٔ حذف. پیش از این پنج ستون بود و سه فیلدِ تازه
+   سطرِ دوم را به‌هم می‌ریخت. */
 .planrow{ display:grid; gap:8px; align-items:center; margin-bottom:8px;
-  grid-template-columns: 1.3fr .9fr .6fr 1.6fr auto; }
-@media (max-width:760px){ .planrow{ grid-template-columns:1fr 1fr; } }
+  grid-template-columns: 1.2fr 1.1fr .85fr .6fr .8fr .5fr 1.2fr auto; }
+@media (max-width:1100px){ .planrow{ grid-template-columns:1fr 1fr 1fr auto; } }
+@media (max-width:640px){ .planrow{ grid-template-columns:1fr 1fr; } }
+.planrow select{ width:100%; padding:9px 8px; border:1px solid var(--line);
+  border-radius:9px; font-family:inherit; font-size:12.5px;
+  background:var(--white); color:var(--ink); }
+
+/* ---------- قیمتِ آپشن‌ها ----------
+   سه گروه کنارِ هم؛ داخلِ هر گروه، هر بخش یک سطر با نام در یک سو و
+   کادرِ قیمت در سوی دیگر. بدونِ این، همه پشتِ هم در یک خط می‌نشستند. */
+.vprice{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); }
+.vprice-g{ border:1px solid var(--line); border-radius:12px; padding:12px 13px;
+  background:var(--paper,#F6F8FB); }
+.vprice-g > b{ display:block; font-size:12.5px; margin-bottom:9px; color:var(--ink); }
+.vprice-row{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:5px 0; font-size:12.5px; }
+.vprice-row + .vprice-row{ border-top:1px solid var(--line); }
+.vprice-row > span{ flex:1 1 auto; min-width:0; color:var(--ink-soft); }
+.vprice-row input{ flex:0 0 110px; width:110px; padding:7px 9px;
+  border:1px solid var(--line); border-radius:8px; font-family:inherit;
+  font-size:12px; background:var(--white); color:var(--ink); }
+.vprice-row em{ flex:0 0 auto; font-style:normal; font-size:11.5px; color:var(--ink-faint); }
+.vprice-row.free > span{ color:var(--ink-faint); }
 .planrow input{ width:100%; padding:9px 11px; border:1px solid var(--line);
   border-radius:var(--r-sm); background:var(--paper-2); color:var(--ink);
   font-family:var(--font); font-size:13px; }
@@ -937,15 +961,22 @@ table.inv-tab td.desc{ text-align:right; }
       <div id="stPlans"></div>
       <div style="margin-top:10px;"><button class="btn" id="stAddPlan">＋ پلن تازه</button></div>
 
-      <h3 style="margin-top:20px;">قیمتِ بخش‌ها</h3>
-      <p class="sub">بخش‌هایی که در قیمتِ پایه نیستند، هرکدام این‌قدر حساب می‌شوند.
+    </div>
+
+    <div class="panel">
+      <h2>قیمتِ آپشن‌ها</h2>
+      <p class="sub">هر بخشی که در قیمتِ پایه نیست، این‌قدر حساب می‌شود.
         خریدار همین عددها را در صفحهٔ خرید می‌بیند و فاکتورش هم با همین‌ها بسته می‌شود.</p>
       <div class="findbar">
-        <label>هر بخشِ اضافه
+        <label>قیمتِ پیش‌فرضِ هر بخش
           <input type="number" id="stExtraPrice" dir="ltr" min="0" placeholder="۲۵۰۰۰۰"></label>
         <label>سفارشی‌سازیِ یک بخش
           <input type="number" id="stCustomPrice" dir="ltr" min="0" placeholder="۴۰۰۰۰۰"></label>
       </div>
+      <p class="sub" style="margin-top:14px;">اگر بخشی قیمتِ جدا دارد، این‌جا بنویسید.
+        خالی یعنی همان قیمتِ پیش‌فرضِ بالا. بخش‌هایی که «در قیمت» هستند رایگان‌اند و
+        عددی نمی‌گیرند.</p>
+      <div class="vprice" id="stViewPrices"></div>
     </div>
 
     <div class="panel">
@@ -2958,6 +2989,44 @@ function renderPlans(list){
   (list && list.length ? list : [null]).forEach(pl=> box.appendChild(planRow(pl)));
 }
 
+/* فهرستِ همهٔ بخش‌ها با قیمتِ هرکدام. نام‌ها و رایگان‌ها از سرور
+   می‌آیند تا با صفحهٔ خرید یکی بماند. */
+const VIEW_ORDER = [
+  ["قالبِ عمومی", ["servers","companies","mvpn","assets","vendors","tickets","contracts","tasks2"]],
+  ["قالبِ مالی",  ["invoices","payables","payablenotes","receivablenotes",
+                   "expenses","bank","budget","parties","cheques","payroll"]],
+  ["در همهٔ شغل‌ها", ["datetools","report"]]
+];
+
+function renderViewPrices(){
+  const box = document.getElementById("stViewPrices");
+  const labels = SITE.viewLabels || {};
+  const free = SITE.freeViews || ["datetools"];
+  const have = SITE.viewPrices || {};
+  box.innerHTML = VIEW_ORDER.map(([group, ids])=>{
+    const rows = ids.filter(v => labels[v]).map(v=>{
+      const isFree = free.indexOf(v) >= 0;
+      return `<label class="vprice-row${isFree ? " free" : ""}">
+        <span>${esc(labels[v] || v)}</span>
+        ${isFree
+          ? `<em>در قیمت — رایگان</em>`
+          : `<input type="number" dir="ltr" min="0" data-vp="${esc(v)}"
+                    placeholder="پیش‌فرض" value="${have[v] ?? ""}">`}
+      </label>`;
+    }).join("");
+    return rows ? `<div class="vprice-g"><b>${esc(group)}</b>${rows}</div>` : "";
+  }).join("");
+}
+
+function readViewPrices(){
+  const out = {};
+  document.querySelectorAll("#stViewPrices [data-vp]").forEach(i=>{
+    const v = i.value.trim();
+    if(v !== "") out[i.dataset.vp] = Number(v);
+  });
+  return out;
+}
+
 function readPlans(){
   return Array.from(document.querySelectorAll("#stPlans .planrow")).map(r=>{
     const tier = r.querySelector(".p-tier").value === "org" ? "org" : "personal";
@@ -2999,6 +3068,7 @@ function paintSite(d){
   renderPlans(SITE.plans);
   document.getElementById("stExtraPrice").value = SITE.extraPrice || "";
   document.getElementById("stCustomPrice").value = SITE.customPrice || "";
+  renderViewPrices();
   paintBots(d.bots);
 }
 
@@ -3100,7 +3170,8 @@ async function setupSite(){
       oldToken: g("stOldToken"),
       plans: readPlans(),
       extraPrice: Number(g("stExtraPrice") || 0),
-      customPrice: Number(g("stCustomPrice") || 0)
+      customPrice: Number(g("stCustomPrice") || 0),
+      viewPrices: readViewPrices()
     })});
     btn.disabled = false; btn.textContent = "ذخیرهٔ تنظیمات";
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }

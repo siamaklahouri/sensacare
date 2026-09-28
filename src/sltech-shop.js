@@ -129,17 +129,29 @@ export async function checkCoupon(env, rawCode, total) {
 
    این‌جا و در صفحهٔ خرید یک حساب اجرا می‌شود؛ ولی آن‌که فاکتور را
    می‌سازد همین است، نه مرورگر. */
-export function planTotal(plan, st, { seats = 1, extras = 0, customs = 0 } = {}) {
+/* قیمتِ یک بخش. اگر برایش قیمتِ جدا گذاشته شده باشد همان، وگرنه
+   قیمتِ عمومیِ بخش‌ها. این‌طور می‌شود «شرکت‌ها» را ارزان و «گزارش‌ساز»
+   را گران گذاشت، بدونِ اینکه لازم باشد برای همه عدد نوشت. */
+export function viewPrice(st, v) {
+  const map = (st && st.viewPrices) || {};
+  const own = Number(map[v]);
+  if (Number.isFinite(own) && own >= 0) return Math.round(own);
+  return Math.max(0, Math.round(Number(st && st.extraPrice) || 0));
+}
+
+export function planTotal(plan, st, { seats = 1, views = [], customs = [] } = {}) {
   const base = Math.max(0, Number(plan.price || 0));
   const baseSeats = Math.max(1, Math.round(Number(plan.baseSeats) || 1));
   const perSeat = Math.max(0, Math.round(Number(plan.perSeat) || 0));
   const n = Math.max(1, Math.round(Number(seats) || 1));
+  const arr = v => Array.isArray(v) ? v : [];
 
   const seatPart = base + Math.max(0, n - baseSeats) * perSeat;
-  const extraPart = Math.max(0, Math.round(Number(extras) || 0)) *
-                    Math.max(0, Number(st.extraPrice || 0));
-  const customPart = Math.max(0, Math.round(Number(customs) || 0)) *
-                     Math.max(0, Number(st.customPrice || 0));
+  /* هر بخش قیمتِ خودش. پیش از این همه یک عدد بودند و نمی‌شد گفت
+     «این یکی گران‌تر است». */
+  const extraPart = arr(views).reduce((t, v) => t + viewPrice(st, v), 0);
+  const customPart = arr(customs).length *
+                     Math.max(0, Math.round(Number(st && st.customPrice) || 0));
 
   return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
 }
@@ -197,7 +209,7 @@ export async function placeOrder(env, body) {
   await ensure(env);
   const id = newInvoice();
   const now = Date.now();
-  const bill = planTotal(plan, st, { seats, extras: views.length, customs: customs.length });
+  const bill = planTotal(plan, st, { seats, views, customs });
   const full = bill.total;
 
   /* کدِ نامعتبر سفارش را رد نمی‌کند، فقط تخفیف نمی‌دهد و همان را

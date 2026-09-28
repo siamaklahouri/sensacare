@@ -208,29 +208,41 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 /* شش پلن روی یک شبکهٔ سه‌ستونه: سه بالا، سه پایین. auto-fit پیش از
    این چهار تا را بالا می‌چید و دو تا را پایین، که هم بی‌قواره بود هم
    ستونِ آخر را تنها می‌گذاشت. */
-.plans{ display:grid; gap:16px; grid-template-columns:repeat(3, minmax(0,1fr)); }
-@media (max-width:980px){ .plans{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
-@media (max-width:620px){ .plans{ grid-template-columns:1fr; } }
+/* دو کارت، وسطِ صفحه. شبکهٔ سه‌ستونی برای شش کارت بود؛ با دو کارت
+   همان شبکه آن‌ها را به لبه می‌چسباند و ستونِ سوم خالی می‌ماند. حالا
+   هر کارت عرضِ خودش را دارد و مجموعشان وسط می‌نشیند. */
+.plans{ display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch;
+  gap:20px; max-width:760px; margin-inline:auto; }
+.plans > .plan{ flex:1 1 320px; max-width:360px; }
+@media (max-width:620px){ .plans{ gap:16px; } .plans > .plan{ flex:1 1 100%; max-width:none; } }
 /* کارت‌ها ستونی‌اند تا قدشان با هم یکی شود و دکمه‌ها در یک خط بنشینند —
    بدون آن، هر کارت به اندازهٔ متنِ خودش بلند می‌شد. */
 .plan{ display:flex; flex-direction:column; position:relative; overflow:hidden;
   background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
-  padding:26px 22px 22px; text-align:center; box-shadow:var(--sh-1);
+  padding:30px 26px 24px; text-align:center; box-shadow:var(--sh-1);
   transition:transform .18s, box-shadow .18s, border-color .18s; }
-.plan::before{ content:""; position:absolute; inset-inline:0; top:0; height:3px;
+.plan::before{ content:""; position:absolute; inset-inline:0; top:0; height:4px;
   background:linear-gradient(90deg, var(--brand), var(--brand-deep)); }
 .plan:hover{ transform:translateY(-3px); box-shadow:var(--sh-2); border-color:var(--brand); }
-/* عنوان‌ها یک تا دو خطی‌اند؛ ارتفاعِ ثابت یعنی قیمتِ همهٔ کارت‌ها
-   روی یک خط می‌افتد. */
-.plan h3{ margin:0; font-size:16.5px; line-height:1.75; min-height:3.5em;
-  display:flex; align-items:center; justify-content:center; }
-.plan .price{ font-size:26px; font-weight:700; color:var(--brand); margin:8px 0 2px;
-  font-variant-numeric:tabular-nums; }
-.plan .per{ font-size:12.5px; color:var(--ink-faint); }
+/* کارتِ سازمانی برجسته‌تر است، چون گران‌تر و کامل‌تر است و معمولاً
+   همان چیزی است که سازمان‌ها دنبالش می‌آیند. */
+.plan-org{ border-color:var(--brand); box-shadow:var(--sh-2); }
+.plan-org::after{ content:"برای تیم‌ها"; position:absolute; top:14px; inset-inline-start:14px;
+  font-size:10.5px; font-weight:700; letter-spacing:.02em;
+  color:var(--brand); background:var(--brand-bg,rgba(26,79,163,.10));
+  border-radius:999px; padding:4px 10px; }
+
+.plan h3{ margin:0 0 4px; font-size:18px; font-weight:700; line-height:1.7; }
+.plan .price{ font-size:30px; font-weight:800; color:var(--brand); margin:10px 0 4px;
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+/* خطِ اول زیرِ قیمت می‌گوید عدد بابتِ چیست؛ خطِ دوم مدت. اولی مهم‌تر
+   است، پس پررنگ‌تر می‌ماند. */
+.plan .per{ font-size:12.5px; color:var(--ink-soft); line-height:1.95; }
+.plan .per + .per{ color:var(--ink-faint); font-size:11.5px; }
 .plan .pnote{ flex:1; font-size:13.5px; color:var(--ink-soft); line-height:2;
-  text-align:start; margin:15px 0 18px; padding-top:15px;
+  text-align:center; margin:16px 0 20px; padding-top:16px;
   border-top:1px dashed var(--line); }
-.plan .btn{ width:100%; }
+.plan .btn{ width:100%; padding-block:12px; font-size:14px; }
 .order{ max-width:620px; margin:22px auto 0; }
 .order h3{ margin:0 0 14px; font-size:16px; }
 .order .ask-row{ display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-bottom:10px; }
@@ -835,6 +847,14 @@ function tuneForm(){
 /* بخش‌های شغلِ انتخاب‌شده. آن‌هایی که در قیمت هستند تیکِ قفل دارند؛
    بقیه هرکدام قیمتِ خودش را نشان می‌دهد، و کنارِ هرکدام گزینهٔ
    «سفارشی» که هزینهٔ جداگانه دارد. */
+/* قیمتِ یک بخش: اگر قیمتِ جدا دارد همان، وگرنه قیمتِ پیش‌فرض.
+   همان قاعده‌ای که سرور دارد — این‌جا فقط برای نشان دادن. */
+function viewPrice(v){
+  const own = Number((SITE.viewPrices || {})[v]);
+  if(Number.isFinite(own) && own >= 0) return Math.round(own);
+  return Math.max(0, Math.round(Number(SITE.extraPrice) || 0));
+}
+
 function paintSections(){
   const jid = document.getElementById("oJob").value;
   const job = JOBS.find(j => j.id === jid);
@@ -844,9 +864,7 @@ function paintSections(){
 
   box.hidden = false;
   document.getElementById("oSecHint").textContent =
-    SITE.extraPrice ? "هر بخشِ اضافه " + money(SITE.extraPrice) +
-                      (SITE.customPrice ? " — سفارشی‌سازی " + money(SITE.customPrice) : "")
-                    : "";
+    SITE.customPrice ? "سفارشی‌سازیِ هر بخش " + money(SITE.customPrice) : "";
 
   list.innerHTML = job.views.map(v=>{
     const free = FREE.indexOf(v) >= 0;
@@ -854,7 +872,7 @@ function paintSections(){
     return `<label class="osec-item${free ? " free" : ""}">
       <input type="checkbox" data-view="${escH(v)}"${free ? " checked disabled" : ""}>
       <span class="osec-nm">${escH(nm)}</span>
-      <span class="osec-pr">${free ? "در قیمت" : escH(money(SITE.extraPrice))}</span>
+      <span class="osec-pr">${free ? "در قیمت" : escH(money(viewPrice(v)))}</span>
       ${free ? "" : `<label class="osec-cu"><input type="checkbox" data-custom="${escH(v)}" disabled>
          سفارشی</label>`}
     </label>`;
@@ -890,7 +908,7 @@ function calcTotal(){
   const baseSeats = Math.max(1, Number(PICKED.baseSeats) || 1);
   const per = Math.max(0, Number(PICKED.perSeat) || 0);
   const seatPart = base + Math.max(0, seatCount() - baseSeats) * per;
-  const extraPart = pickedViews().length * Math.max(0, Number(SITE.extraPrice) || 0);
+  const extraPart = pickedViews().reduce((t, v)=> t + viewPrice(v), 0);
   const customPart = pickedCustoms().length * Math.max(0, Number(SITE.customPrice) || 0);
   return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
 }

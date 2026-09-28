@@ -2630,7 +2630,8 @@ export default {
           phone: st.phone || '', email: st.email || '',
           plans: Array.isArray(st.plans) ? st.plans : [],
           extraPrice: Number(st.extraPrice || 0),
-          customPrice: Number(st.customPrice || 0)
+          customPrice: Number(st.customPrice || 0),
+          viewPrices: st.viewPrices || {}
         }, slContact(st)), jobs, freeViews: SL_FREE_VIEWS, viewLabels: SL_VIEW_LABEL });
       }
 
@@ -2680,9 +2681,8 @@ export default {
         /* همان حسابِ ثبتِ سفارش، نه یک فرمولِ دوم — وگرنه تخفیف روی
            مبلغی سنجیده می‌شد که با فاکتور یکی نیست و کاربر عددِ
            دیگری می‌دید. */
-        const nArr = v => Array.isArray(v) ? v.length : 0;
         const { total } = planTotal(plan, st,
-          { seats, extras: nArr(body.views), customs: nArr(body.customs) });
+          { seats, views: body.views, customs: body.customs });
         const r = await checkCoupon(env, body.code, total);
         return r.error ? bad(r.error) : json({ ok: true, ...r, total });
       }
