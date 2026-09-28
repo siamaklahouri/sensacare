@@ -224,12 +224,23 @@
        رنگِ کم‌رنگ، عملاً خوانده نمی‌شد: روی صفحهٔ معمولی فقط چند نقطه
        دیده می‌شد و کاربر پرسید «این نقطه بالای گروه مالی چیست؟».
        سرفصلی که خوانده نشود از نبودنش بدتر است. */
-    ".sh-org{font-size:11.5px;font-weight:700;letter-spacing:.01em;color:var(--ink-soft);",
-    "  padding:13px 10px 6px;margin-top:4px;border-top:1px solid var(--card-border,rgba(11,37,69,.08));",
-    "  display:flex;align-items:center;gap:6px;",
+    /* خطِ جداکنندهٔ بالای هر سرفصل، فهرست را به چند تکهٔ بی‌ربط
+       می‌شکست: با دو گروه، سه خطِ افقی در یک ستونِ باریک می‌نشست و
+       کارتابل به‌هم‌ریخته به نظر می‌رسید. حالا جدا شدنِ گروه‌ها را
+       فاصله نشان می‌دهد نه خط، و بخش‌های هر گروه با یک ریلِ نازکِ
+       عمودی به سرفصلشان وصل می‌مانند. */
+    ".sh-org{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ink-faint);",
+    "  padding:6px 12px 5px;margin:14px 0 2px;",
+    "  display:flex;align-items:center;gap:7px;",
     "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-    ".sh-org::before{content:\"\";width:5px;height:5px;border-radius:2px;flex:none;",
-    "  background:var(--brass,#1A4FA3);opacity:.75}",
+    ".sh-org::before{content:\"\";width:4px;height:4px;border-radius:50%;flex:none;",
+    "  background:var(--brass,#1A4FA3);opacity:.7}",
+    /* ریل از کنارِ بخش‌های گروه رد می‌شود و آن‌ها را کمی تورفته
+       نگه می‌دارد، تا در یک نگاه معلوم باشد کدام زیرِ کدام است. */
+    ".navbtn.sh-ingroup{width:calc(100% - 9px);margin-inline-start:9px;padding-inline-start:13px;",
+    "  border-inline-start:1px solid var(--card-border,rgba(11,37,69,.10));",
+    "  border-radius:0 11px 11px 0}",
+    ".navbtn.sh-ingroup.active{border-inline-start-color:var(--brass,#B08D57)}",
     /* ردیفی که از روی خبر آمده‌ایم سراغش. چند ثانیه چشمک می‌زند و
        بعد یک نوارِ کناری می‌ماند تا وقتی صفحه عوض شود — وگرنه در
        فهرستی با بیست ردیف معلوم نیست کدام بود. */
@@ -288,6 +299,7 @@
         nav.insertBefore(head, before || null);
       }
       /* بعد از سرفصلِ خودش، نه ته فهرست */
+      btn.classList.add("sh-ingroup");
       var cur = nav.querySelector('[data-shorg="' + key + '"]');
       while (cur.nextElementSibling &&
              cur.nextElementSibling.classList.contains("navbtn") &&
