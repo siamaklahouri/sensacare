@@ -171,9 +171,9 @@ function setupConvert() {
           return '<option value="' + k + '">' + escapeHtml(CONV[k].t) + "</option>";
         }).join("") + "</select>" +
         '<input type="text" id="cvVal" inputmode="decimal" placeholder="عدد" dir="ltr">' +
-        '<select id="cvFrom"></select>' +
+        '<select id="cvFrom" class="cv-unit"></select>' +
         '<button type="button" class="btn btn-sm" id="cvSwap" title="جابه‌جا">⇄</button>' +
-        '<select id="cvTo"></select>' +
+        '<select id="cvTo" class="cv-unit"></select>' +
       "</div>" +
       '<div class="cv-row" id="cvRateBox" hidden>' +
         '<label class="cv-lb">نرخ (هر واحد چند تومان)</label>' +

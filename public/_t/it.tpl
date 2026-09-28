@@ -822,26 +822,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   footer.appfoot{ text-align:center; color:var(--ink-faint); font-size:11px; padding:18px 0 6px; }
 {{PART:vaultcss}}
 
-  /* ---------- تبدیل واحد ---------- */
-  .cv-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
-  .cv-row select, .cv-row input{
-    border:1px solid var(--card-border); border-radius:9px; padding:9px 10px;
-    font-family:var(--font-body); font-size:12.5px; background:var(--white); color:var(--ink);
-    min-width:0;
-  }
-  .cv-row input{ flex:1 1 120px; }
-  .cv-row select{ flex:0 1 auto; }
-  .cv-lb{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
-  .cv-out{
-    font-family:var(--font-display); font-size:17px; color:var(--ink);
-    padding:12px 14px; border-radius:11px; background:var(--paper);
-    border:1px solid var(--card-border); line-height:1.9; overflow-wrap:anywhere;
-  }
-  .cv-note{ font-size:11.5px; color:var(--red-ink,#A6222B); margin-top:7px; min-height:16px; }
-  @media (max-width:560px){
-    .cv-row select, .cv-row input{ flex:1 1 100%; }
-    .cv-out{ font-size:15px; }
-  }
+{{PART:convertcss}}
 
 {{PART:mobilecss}}
 {{PART:navcss}}
