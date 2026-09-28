@@ -14,7 +14,8 @@ const t = (category, task, owner, deadline, priority) =>
 export const JOBS = {
   hr: {
     label: 'منابع انسانی',
-    views: [],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['جذب و استخدام', 'حقوق و دستمزد', 'آموزش', 'ارزیابی عملکرد',
                  'روابط کارکنان', 'امور اداری', 'قوانین و بیمه', 'سایر'],
     tasks: [
@@ -38,7 +39,8 @@ export const JOBS = {
 
   sales: {
     label: 'فروش و بازاریابی',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['هدف‌گذاری و گزارش', 'مشتریان فعلی', 'مشتریان جدید', 'قیمت و تخفیف',
                  'بازاریابی و تبلیغات', 'رقبا و بازار', 'وصول مطالبات', 'سایر'],
     tasks: [
@@ -61,7 +63,8 @@ export const JOBS = {
 
   wh: {
     label: 'انبار و تدارکات',
-    views: ['companies'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['موجودی و شمارش', 'خرید و تأمین', 'ورود و خروج کالا', 'انبارش و چیدمان',
                  'کیفیت و مرجوعی', 'ایمنی', 'مستندات', 'سایر'],
     tasks: [
@@ -84,7 +87,8 @@ export const JOBS = {
 
   ceo: {
     label: 'مدیرعامل / مدیریت کلان',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'servers', 'datetools', 'report'],
     categories: ['مالی و بودجه', 'فروش و بازار', 'عملیات', 'منابع انسانی',
                  'جلسات و تصمیم‌ها', 'پروژه‌ها', 'حقوقی و قراردادها', 'سایر'],
     tasks: [
@@ -107,7 +111,8 @@ export const JOBS = {
 
   acc: {
     label: 'حسابداری',
-    views: ['datetools'],
+    kind: 'fin',
+    views: ['invoices', 'payables', 'payablenotes', 'receivablenotes', 'expenses', 'bank', 'budget', 'parties', 'datetools', 'report'],
     categories: ['ثبت اسناد', 'مغایرت‌گیری', 'مالیات و بیمه', 'حقوق و دستمزد',
                  'خزانه و بانک', 'انبار و بهای تمام‌شده', 'گزارش‌ها', 'سایر'],
     tasks: [
@@ -131,7 +136,8 @@ export const JOBS = {
 
   support: {
     label: 'پشتیبانی فنی و هلپ‌دسک',
-    views: ['servers', 'companies', 'mvpn', 'datetools'],
+    kind: 'gen',
+    views: ['servers', 'companies', 'mvpn', 'datetools', 'report'],
     categories: ['تیکت‌ها', 'تماس و پیگیری', 'نصب و راه‌اندازی', 'آموزش کاربر',
                  'مستندسازی', 'گزارش و کیفیت', 'سایر'],
     tasks: [
@@ -153,7 +159,8 @@ export const JOBS = {
 
   marketing: {
     label: 'بازاریابی دیجیتال و محتوا',
-    views: [],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['تقویم محتوا', 'شبکه‌های اجتماعی', 'تبلیغات', 'سایت و سئو',
                  'ایمیل و پیامک', 'تحلیل و گزارش', 'سایر'],
     tasks: [
@@ -176,7 +183,8 @@ export const JOBS = {
 
   pm: {
     label: 'مدیریت پروژه',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['برنامه‌ریزی', 'اجرا و پیگیری', 'تیم و منابع', 'ریسک و مسائل',
                  'کارفرما و ذی‌نفعان', 'کیفیت و تحویل', 'مستندات', 'سایر'],
     tasks: [
@@ -199,7 +207,8 @@ export const JOBS = {
 
   prod: {
     label: 'تولید و کارخانه',
-    views: ['servers'],
+    kind: 'gen',
+    views: ['servers', 'companies', 'datetools', 'report'],
     categories: ['برنامهٔ تولید', 'ماشین‌آلات', 'مواد اولیه', 'نیروی انسانی',
                  'کیفیت', 'ایمنی و محیط زیست', 'گزارش‌ها', 'سایر'],
     tasks: [
@@ -222,7 +231,8 @@ export const JOBS = {
 
   qc: {
     label: 'کنترل کیفیت',
-    views: [],
+    kind: 'gen',
+    views: ['servers', 'companies', 'datetools', 'report'],
     categories: ['بازرسی ورودی', 'کنترل حین تولید', 'بازرسی نهایی', 'شکایات مشتری',
                  'کالیبراسیون', 'مستندات و استاندارد', 'اقدام اصلاحی', 'سایر'],
     tasks: [
@@ -244,7 +254,8 @@ export const JOBS = {
 
   logistics: {
     label: 'حمل‌ونقل و توزیع',
-    views: ['companies'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['برنامهٔ ارسال', 'ناوگان و رانندگان', 'هزینه‌ها', 'مشتری و تحویل',
                  'مرجوعی', 'اسناد', 'سایر'],
     tasks: [
@@ -265,7 +276,8 @@ export const JOBS = {
 
   procure: {
     label: 'خرید خارجی و ترخیص',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['استعلام و سفارش', 'ثبت سفارش و ارز', 'حمل بین‌الملل', 'گمرک و ترخیص',
                  'تأمین‌کنندگان', 'هزینه و قیمت تمام‌شده', 'مدارک', 'سایر'],
     tasks: [
@@ -286,7 +298,8 @@ export const JOBS = {
 
   clinic: {
     label: 'مطب و کلینیک',
-    views: ['datetools'],
+    kind: 'fin',
+    views: ['invoices', 'receivablenotes', 'expenses', 'bank', 'parties', 'datetools', 'report'],
     categories: ['نوبت‌دهی', 'بیماران', 'دارو و تجهیزات', 'مالی و بیمه',
                  'پرسنل', 'بهداشت و ایمنی', 'مجوزها', 'سایر'],
     tasks: [
@@ -308,7 +321,8 @@ export const JOBS = {
 
   retail: {
     label: 'فروشگاه و خرده‌فروشی',
-    views: ['datetools'],
+    kind: 'fin',
+    views: ['invoices', 'expenses', 'bank', 'budget', 'parties', 'datetools', 'report'],
     categories: ['موجودی و سفارش', 'فروش و صندوق', 'چیدمان و ویترین', 'مشتریان',
                  'پرسنل', 'نظافت و نگهداری', 'گزارش‌ها', 'سایر'],
     tasks: [
@@ -329,7 +343,8 @@ export const JOBS = {
 
   legal: {
     label: 'حقوقی و قراردادها',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['قراردادها', 'پرونده‌ها', 'مطالبات', 'انطباق و مقررات',
                  'مشاوره داخلی', 'مدارک', 'سایر'],
     tasks: [
@@ -350,7 +365,8 @@ export const JOBS = {
 
   office: {
     label: 'امور اداری و دفتری',
-    views: ['companies', 'datetools'],
+    kind: 'gen',
+    views: ['companies', 'datetools', 'report'],
     categories: ['مکاتبات', 'تدارکات دفتر', 'جلسات', 'ساختمان و خدمات',
                  'بایگانی', 'هماهنگی‌ها', 'سایر'],
     tasks: [
@@ -371,7 +387,8 @@ export const JOBS = {
 
   blank: {
     label: 'بدون چک‌لیست آماده',
-    views: [],
+    kind: 'gen',
+    views: ['datetools', 'report'],
     categories: ['کارهای ماه', 'پیگیری‌ها', 'جلسات', 'سایر'],
     tasks: []
   }

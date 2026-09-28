@@ -1,7 +1,8 @@
+import { JOBS } from './kartabl-jobs.js';
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb, slContact,
          slLoginOptions, SL_NONCE } from './sltech-bot.js';
-import { placeOrder, checkCoupon } from './sltech-shop.js';
+import { placeOrder, checkCoupon, planTotal, FREE_VIEWS as SL_FREE_VIEWS, VIEW_LABEL as SL_VIEW_LABEL } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -2619,10 +2620,18 @@ export default {
          از تنظیمات (شمارهٔ کارت و توکن این‌جا کاری ندارند). */
       if (p === '/api/sl/site' && m === 'GET') {
         const st = (await getSetting(env, 'sltechSite', {})) || {};
+        /* شغل‌ها و بخش‌هایشان از همان جایی می‌آیند که کارتابل از آن
+           ساخته می‌شود، نه از فهرستی جدا در صفحه — وگرنه دو فهرست
+           می‌شد و روزی یکی‌شان عقب می‌ماند. */
+        const jobs = Object.entries(JOBS).map(([id, j]) => ({
+          id, label: j.label || id, kind: j.kind || 'gen', views: j.views || []
+        }));
         return json({ ok: true, site: Object.assign({
           phone: st.phone || '', email: st.email || '',
-          plans: Array.isArray(st.plans) ? st.plans : []
-        }, slContact(st)) });
+          plans: Array.isArray(st.plans) ? st.plans : [],
+          extraPrice: Number(st.extraPrice || 0),
+          customPrice: Number(st.customPrice || 0)
+        }, slContact(st)), jobs, freeViews: SL_FREE_VIEWS, viewLabels: SL_VIEW_LABEL });
       }
 
       /* سنجیدنِ کد تخفیف پیش از ثبت — فقط برای نشان دادنِ مبلغ.
@@ -2668,7 +2677,12 @@ export default {
         const plan = plans.find(x => x.name === String(body.plan || '').trim());
         if (!plan) return bad('این پلن را نمی‌شناسم.');
         const seats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
-        const total = Number(plan.price || 0) * seats;
+        /* همان حسابِ ثبتِ سفارش، نه یک فرمولِ دوم — وگرنه تخفیف روی
+           مبلغی سنجیده می‌شد که با فاکتور یکی نیست و کاربر عددِ
+           دیگری می‌دید. */
+        const nArr = v => Array.isArray(v) ? v.length : 0;
+        const { total } = planTotal(plan, st,
+          { seats, extras: nArr(body.views), customs: nArr(body.customs) });
         const r = await checkCoupon(env, body.code, total);
         return r.error ? bad(r.error) : json({ ok: true, ...r, total });
       }

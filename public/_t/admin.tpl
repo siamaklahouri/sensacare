@@ -936,6 +936,16 @@ table.inv-tab td.desc{ text-align:right; }
         صفر یعنی بی‌مهلت. پلنی که نامش خالی باشد ذخیره نمی‌شود.</p>
       <div id="stPlans"></div>
       <div style="margin-top:10px;"><button class="btn" id="stAddPlan">＋ پلن تازه</button></div>
+
+      <h3 style="margin-top:20px;">قیمتِ بخش‌ها</h3>
+      <p class="sub">بخش‌هایی که در قیمتِ پایه نیستند، هرکدام این‌قدر حساب می‌شوند.
+        خریدار همین عددها را در صفحهٔ خرید می‌بیند و فاکتورش هم با همین‌ها بسته می‌شود.</p>
+      <div class="findbar">
+        <label>هر بخشِ اضافه
+          <input type="number" id="stExtraPrice" dir="ltr" min="0" placeholder="۲۵۰۰۰۰"></label>
+        <label>سفارشی‌سازیِ یک بخش
+          <input type="number" id="stCustomPrice" dir="ltr" min="0" placeholder="۴۰۰۰۰۰"></label>
+      </div>
     </div>
 
     <div class="panel">
@@ -2928,7 +2938,13 @@ function planRow(pl){
   d.className = "planrow";
   d.innerHTML = `
     <input class="p-name"  type="text"   placeholder="نام پلن (لازم)" value="${esc(pl.name||"")}">
-    <input class="p-price" type="number" dir="ltr" min="0" placeholder="قیمت (تومان)" value="${pl.price ?? ""}">
+    <select class="p-tier" title="نوعِ پلن">
+      <option value="personal"${pl.tier === "org" ? "" : " selected"}>شخصی — به ازای هر کارتابل</option>
+      <option value="org"${pl.tier === "org" ? " selected" : ""}>سازمانی — قیمتِ پایه برای چند نفر</option>
+    </select>
+    <input class="p-price" type="number" dir="ltr" min="0" placeholder="قیمتِ پایه (تومان)" value="${pl.price ?? ""}">
+    <input class="p-base"  type="number" dir="ltr" min="1" max="200" placeholder="تا چند نفر" value="${pl.baseSeats ?? ""}">
+    <input class="p-per"   type="number" dir="ltr" min="0" placeholder="هر نفرِ اضافه" value="${pl.perSeat ?? ""}">
     <input class="p-days"  type="number" dir="ltr" min="0" max="3650" placeholder="روز" value="${pl.days ?? ""}">
     <input class="p-note"  type="text"   placeholder="یک خط توضیح (اختیاری)" value="${esc(pl.note||"")}">
     <button type="button" class="x" title="بردار">✕</button>`;
@@ -2943,12 +2959,23 @@ function renderPlans(list){
 }
 
 function readPlans(){
-  return Array.from(document.querySelectorAll("#stPlans .planrow")).map(r=>({
-    name: r.querySelector(".p-name").value.trim(),
-    price: Number(r.querySelector(".p-price").value || 0),
-    days: Number(r.querySelector(".p-days").value || 0),
-    note: r.querySelector(".p-note").value.trim()
-  })).filter(p=> p.name);
+  return Array.from(document.querySelectorAll("#stPlans .planrow")).map(r=>{
+    const tier = r.querySelector(".p-tier").value === "org" ? "org" : "personal";
+    const price = Number(r.querySelector(".p-price").value || 0);
+    const base = Number(r.querySelector(".p-base").value || 0);
+    const per = r.querySelector(".p-per").value;
+    return {
+      name: r.querySelector(".p-name").value.trim(),
+      tier, price,
+      /* خالی گذاشتن باید کارِ درست را بکند، نه اینکه پلن را بشکند:
+         شخصی یعنی یک کارتابل و همان قیمت برای هرکدام؛ سازمانی یعنی
+         دو نفرِ پایه. */
+      baseSeats: base > 0 ? base : (tier === "org" ? 2 : 1),
+      perSeat: per === "" ? (tier === "org" ? 0 : price) : Number(per || 0),
+      days: Number(r.querySelector(".p-days").value || 0),
+      note: r.querySelector(".p-note").value.trim()
+    };
+  }).filter(p=> p.name);
 }
 
 function paintBots(bots){
@@ -2970,6 +2997,8 @@ function paintSite(d){
   v("stCard", SITE.card);         v("stCardName", SITE.cardName);
   v("stTgChat", SITE.tgChat);     v("stBaleChat", SITE.baleChat);
   renderPlans(SITE.plans);
+  document.getElementById("stExtraPrice").value = SITE.extraPrice || "";
+  document.getElementById("stCustomPrice").value = SITE.customPrice || "";
   paintBots(d.bots);
 }
 
@@ -3069,7 +3098,9 @@ async function setupSite(){
       /* توکن فقط وقتی می‌رود که چیزی تایپ شده باشد */
       tgToken: g("stTgToken"), baleToken: g("stBaleToken"),
       oldToken: g("stOldToken"),
-      plans: readPlans()
+      plans: readPlans(),
+      extraPrice: Number(g("stExtraPrice") || 0),
+      customPrice: Number(g("stCustomPrice") || 0)
     })});
     btn.disabled = false; btn.textContent = "ذخیرهٔ تنظیمات";
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }

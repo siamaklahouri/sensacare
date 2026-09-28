@@ -118,7 +118,11 @@ const publicSite = st => ({
   card: st.card || '', cardName: st.cardName || '',
   /* هر ربات گفتگوی خودش را دارد: پشتیبان و پیام‌ها به هر دو می‌روند. */
   tgChat: st.tgChat || '', baleChat: st.baleChat || '',
-  plans: Array.isArray(st.plans) ? st.plans : []
+  plans: Array.isArray(st.plans) ? st.plans : [],
+  /* قیمتِ بخش‌هایی که جزو دیفالت نیستند. صفر یعنی «هنوز نگذاشته‌ام»،
+     و سایت همان را نشان می‌دهد تا کسی سرِ قیمت غافلگیر نشود. */
+  extraPrice: Number(st.extraPrice || 0),
+  customPrice: Number(st.customPrice || 0)
 });
 
 /* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */
@@ -157,6 +161,17 @@ function cleanSite(body, cur) {
     site.card = card;
   }
 
+  /* قیمتِ بخشِ اضافه و بخشِ سفارشی‌شده. یک بار این‌جا نوشته می‌شود و
+     هم صفحهٔ خرید و هم حسابِ سرور از همین می‌خوانند — تا قیمتی که
+     مشتری می‌بیند همان باشد که فاکتور می‌شود. */
+  for (const key of ['extraPrice', 'customPrice']) {
+    if (body[key] === undefined) continue;
+    const v = Number(body[key]);
+    if (!Number.isFinite(v) || v < 0 || v > 1e12)
+      return { error: 'قیمتِ بخش‌ها درست نیست.' };
+    site[key] = Math.round(v);
+  }
+
   if (body.plans !== undefined) {
     if (!Array.isArray(body.plans)) return { error: 'فهرست پلن‌ها درست نیست.' };
     const plans = [];
@@ -169,8 +184,20 @@ function cleanSite(body, cur) {
         return { error: 'قیمتِ «' + name + '» درست نیست.' };
       if (!Number.isFinite(days) || days < 0 || days > 3650)
         return { error: 'مدتِ «' + name + '» باید بین ۰ تا ۳۶۵۰ روز باشد.' };
+      /* دو نوع پلن: «شخصی» که به ازای هر کارتابل حساب می‌شود، و
+         «سازمانی» که تا تعدادِ پایه یک قیمتِ ثابت دارد و بعد از آن
+         نفر به نفر. یک فرمول هر دو را می‌پوشاند:
+             قیمت = price + max(۰، نفرات − baseSeats) × perSeat
+         شخصی یعنی baseSeats=۱ و perSeat برابرِ price. */
+      const tier = raw.tier === 'org' ? 'org' : 'personal';
+      let baseSeats = Math.round(Number(raw.baseSeats));
+      if (!Number.isFinite(baseSeats) || baseSeats < 1) baseSeats = tier === 'org' ? 2 : 1;
+      if (baseSeats > 200) baseSeats = 200;
+      let perSeat = Math.round(Number(raw.perSeat));
+      if (!Number.isFinite(perSeat) || perSeat < 0) perSeat = tier === 'org' ? 0 : Math.round(price);
+      if (perSeat > 1e12) return { error: 'قیمتِ هر نفرِ اضافهٔ «' + name + '» درست نیست.' };
       plans.push({ name, price: Math.round(price), days: Math.round(days),
-                   note: txt(raw.note, 120) });
+                   tier, baseSeats, perSeat, note: txt(raw.note, 120) });
     }
     site.plans = plans;
   }

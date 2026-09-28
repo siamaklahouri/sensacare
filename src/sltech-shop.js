@@ -19,6 +19,22 @@ import { JOBS } from './kartabl-jobs.js';
 
 const KINDS = { gen: 'عمومی', it: 'مدیر IT', fin: 'مالی' };
 
+/* بخش‌هایی که در قیمتِ پایه هستند و پول نمی‌گیرند. بقیهٔ بخش‌های هر
+   شغل، هرکدام جداگانه حساب می‌شوند. «تبدیل» این‌جاست چون در همهٔ
+   شغل‌ها هست و رایگان است؛ «گزارش‌ساز» نیست، پس اضافه حساب می‌شود. */
+export const FREE_VIEWS = ['datetools'];
+
+/* نامِ فارسیِ بخش‌ها، برای فاکتور و پیامِ مدیر. */
+export const VIEW_LABEL = {
+  servers: 'سرورها و بکاپ', companies: 'شرکت‌ها', mvpn: 'سرویس MVPN',
+  datetools: 'تبدیل', report: 'گزارش‌ساز',
+  invoices: 'سررسید اسناد دریافتنی', payables: 'بدهی‌ها و پرداخت‌ها',
+  payablenotes: 'اسناد پرداختنی', receivablenotes: 'اسناد دریافتنی',
+  expenses: 'منابع و مصارف', bank: 'حساب‌های بانکی',
+  budget: 'بودجه‌بندی ماهانه', parties: 'طرف‌حساب‌ها'
+};
+const viewName = v => VIEW_LABEL[v] || v;
+
 /* شمارهٔ فاکتور: کوتاه و بی‌ابهام. حرف‌های هم‌شکل (I, O, ۰, ۱) نیستند
    چون این شماره را آدم با دست در پیام می‌نویسد. */
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -57,7 +73,15 @@ async function ensure(env) {
     /* گفتگوی خریدار در ربات: فاکتور و خبرِ وضعیت به همین‌جا برمی‌گردد،
        و فیشی که می‌فرستد به همین سفارش می‌چسبد. */
     "ALTER TABLE sl_orders ADD COLUMN pf TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE sl_orders ADD COLUMN chat TEXT NOT NULL DEFAULT ''"
+    "ALTER TABLE sl_orders ADD COLUMN chat TEXT NOT NULL DEFAULT ''",
+    /* نوعِ پلن، بخش‌های انتخابی، و — برای سفارشِ سازمانی — نامِ سازمان
+       و توضیحِ بخشِ مشترک. بدونِ این‌ها فاکتور می‌گفت «چند نفر» ولی
+       نمی‌گفت «چه چیزی». */
+    "ALTER TABLE sl_orders ADD COLUMN tier TEXT NOT NULL DEFAULT 'personal'",
+    "ALTER TABLE sl_orders ADD COLUMN views TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE sl_orders ADD COLUMN customs TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE sl_orders ADD COLUMN orgname TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE sl_orders ADD COLUMN sharednote TEXT NOT NULL DEFAULT ''"
   ]) { try { await run(env, sql); } catch (e) { /* از قبل بود */ } }
 
   try {
@@ -93,6 +117,33 @@ export async function checkCoupon(env, rawCode, total) {
   return { off, code, kind: c.kind, value: Number(c.value || 0), final: total - off };
 }
 
+/* ---------- حسابِ قیمت ----------
+   یک فرمول برای هر دو نوعِ پلن:
+
+     پایه   = price + max(۰، نفرات − baseSeats) × perSeat
+     اضافه  = تعدادِ بخش‌های غیرِ دیفالت × extraPrice
+     سفارشی = تعدادِ بخش‌هایی که کاستوم می‌شوند × customPrice
+
+   «شخصی» یعنی baseSeats=۱ و perSeat=price، پس همان «هر کارتابل یک
+   قیمت» می‌شود. «سازمانی» تا تعدادِ پایه ثابت است و بعد نفر به نفر.
+
+   این‌جا و در صفحهٔ خرید یک حساب اجرا می‌شود؛ ولی آن‌که فاکتور را
+   می‌سازد همین است، نه مرورگر. */
+export function planTotal(plan, st, { seats = 1, extras = 0, customs = 0 } = {}) {
+  const base = Math.max(0, Number(plan.price || 0));
+  const baseSeats = Math.max(1, Math.round(Number(plan.baseSeats) || 1));
+  const perSeat = Math.max(0, Math.round(Number(plan.perSeat) || 0));
+  const n = Math.max(1, Math.round(Number(seats) || 1));
+
+  const seatPart = base + Math.max(0, n - baseSeats) * perSeat;
+  const extraPart = Math.max(0, Math.round(Number(extras) || 0)) *
+                    Math.max(0, Number(st.extraPrice || 0));
+  const customPart = Math.max(0, Math.round(Number(customs) || 0)) *
+                     Math.max(0, Number(st.customPrice || 0));
+
+  return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
+}
+
 /* ---------- ثبت سفارش ---------- */
 export async function placeOrder(env, body) {
   const st = (await getSetting(env, 'sltechSite', {})) || {};
@@ -122,6 +173,22 @@ export async function placeOrder(env, body) {
   if (!name) return { error: 'نامتان را بنویسید.' };
   if (job && !JOBS[job]) return { error: 'شغلِ انتخاب‌شده را نمی‌شناسم.' };
 
+  /* بخش‌هایی که خریدار خواسته. فقط آن‌هایی پذیرفته می‌شوند که واقعاً
+     بخشی از همین شغل‌اند — وگرنه کسی می‌توانست بخشی را سفارش دهد که
+     در قالبِ کارتابلش اصلاً وجود ندارد و بعد پولش را داده باشد. */
+  const jobViews = job && JOBS[job] ? (JOBS[job].views || []) : [];
+  const pickList = (v, pool) => {
+    const seen = new Set();
+    return (Array.isArray(v) ? v : [])
+      .map(x => txt(x, 30))
+      .filter(x => x && pool.includes(x) && !seen.has(x) && seen.add(x))
+      .slice(0, 30);
+  };
+  const views = pickList(body.views, jobViews.filter(v => !FREE_VIEWS.includes(v)));
+  const customs = pickList(body.customs, views);
+  const orgName = txt(body.orgName, 80);
+  const sharedNote = txt(body.sharedNote, 300);
+
   /* پلن با نامش می‌آید ولی قیمت از سرور خوانده می‌شود، نه از مرورگر —
      وگرنه هر کسی می‌توانست قیمتِ دلخواهش را بفرستد. */
   const plan = plans.find(p => p.name === txt(body.plan, 40));
@@ -130,7 +197,8 @@ export async function placeOrder(env, body) {
   await ensure(env);
   const id = newInvoice();
   const now = Date.now();
-  const full = Number(plan.price || 0) * seats;
+  const bill = planTotal(plan, st, { seats, extras: views.length, customs: customs.length });
+  const full = bill.total;
 
   /* کدِ نامعتبر سفارش را رد نمی‌کند، فقط تخفیف نمی‌دهد و همان را
      می‌گوید — وگرنه کسی که کدِ منقضی داشته، کلِ خریدش می‌پرید. */
@@ -139,22 +207,34 @@ export async function placeOrder(env, body) {
   const price = full - off;
   try {
     await run(env,
-      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount,pf,chat)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?,?,?)`,
+      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount,pf,chat,tier,views,customs,orgname,sharednote)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?,?,?,?,?,?,?,?)`,
       id, now, plan.name, price, Number(plan.days || 0), kind, job, name, contact, seats, note, now,
-      off ? cp.code : '', off, login.platform || '', String(login.chat_id || ''));
+      off ? cp.code : '', off, login.platform || '', String(login.chat_id || ''),
+      plan.tier === 'org' ? 'org' : 'personal',
+      JSON.stringify(views), JSON.stringify(customs), orgName, sharedNote);
     if (off) await run(env, 'UPDATE sl_coupons SET used = used + 1 WHERE code=?', cp.code);
   } catch (e) {
     return { error: 'سفارش ثبت نشد: ' + e.message, status: 500 };
   }
 
   /* خبرش به هر دو ربات — همان‌جایی که فیش هم قرار است بیاید. */
+  const unit = plan.tier === 'org' ? 'نفر' : 'کارتابل';
   const lines =
-    `پلن: ${plan.name}${seats > 1 ? ` × ${fa(seats)} نفر` : ''}\n` +
-    (off ? `مبلغ: ${money(full)}\nتخفیف (${cp.code}): ${money(off)}\nقابل پرداخت: ${money(price)}\n`
-         : `مبلغ: ${money(price)}\n`) +
-    `نوع کارتابل: ${KINDS[kind]}${job && JOBS[job] ? ` — ${JOBS[job].label}` : ''}\n` +
-    `مدت: ${plan.days ? fa(plan.days) + ' روز' : 'بی‌مهلت'}\n` +
+    `پلن: ${plan.name}${seats > 1 ? ` × ${fa(seats)} ${unit}` : ''}\n` +
+    (orgName ? `سازمان: ${orgName}\n` : '') +
+    `شغل: ${job && JOBS[job] ? JOBS[job].label : KINDS[kind]}\n` +
+    (views.length
+      ? `بخش‌های اضافه: ${views.map(viewName).join('، ')}\n` +
+        (customs.length ? `سفارشی‌سازی: ${customs.map(viewName).join('، ')}\n` : '')
+      : '') +
+    (sharedNote ? `بخشِ مشترک: ${sharedNote}\n` : '') +
+    `مدت: ${plan.days ? fa(plan.days) + ' روز' : 'بی‌مهلت'}\n\n` +
+    `پایه: ${money(bill.seatPart)}\n` +
+    (bill.extraPart ? `بخش‌های اضافه: ${money(bill.extraPart)}\n` : '') +
+    (bill.customPart ? `سفارشی‌سازی: ${money(bill.customPart)}\n` : '') +
+    (off ? `جمع: ${money(full)}\nتخفیف (${cp.code}): ${money(off)}\nقابل پرداخت: ${money(price)}\n`
+         : `قابل پرداخت: ${money(price)}\n`) +
     (note ? `\nتوضیح خریدار:\n${note}\n` : '');
   /* خبر به مدیر — با گفتگوی واقعیِ خریدار، پس ریپلای هم به خودش
      می‌رسد؛ برخلافِ پیامِ فرمِ سایت که گفتگویی نداشت. */

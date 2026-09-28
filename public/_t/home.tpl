@@ -234,6 +234,55 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 .order{ max-width:620px; margin:22px auto 0; }
 .order h3{ margin:0 0 14px; font-size:16px; }
 .order .ask-row{ display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-bottom:10px; }
+/* ردیف‌هایی که فقط برای یک نوعِ پلن‌اند با صفتِ hidden بسته می‌شوند،
+   ولی display در CSS بر hidden می‌چربد و همیشه دیده می‌شدند. */
+.order .ask-row[hidden], .ask-row[hidden]{ display:none; }
+.order input[hidden]{ display:none; }
+
+/* ---------- انتخابِ بخش‌ها ----------
+   کاربر باید در یک نگاه ببیند چه چیزی در قیمت هست و چه چیزی نیست؛
+   پس قیمتِ هر بخش کنارِ خودش می‌نشیند، نه در یک جدولِ جدا. */
+.oseat{ display:flex; align-items:center; gap:9px; }
+.oseat label{ font-size:12.5px; color:var(--ink-soft); white-space:nowrap; }
+.oseat input{ flex:1 1 auto; min-width:0; }
+
+.osec{ border:1px solid var(--card-border); border-radius:12px;
+       padding:12px 13px; margin-bottom:10px; background:var(--paper); }
+.osec-head{ display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; margin-bottom:9px; }
+.osec-head b{ font-size:13px; }
+.osec-head span{ font-size:11.5px; color:var(--ink-faint); }
+.osec-list{ display:grid; gap:7px; }
+/* جدول، نه flex: با flex هر ردیف عرضِ خودش را می‌گرفت و نام‌ها
+   وسطِ ردیف دو خطی می‌شدند. این‌طور چهار ستون در همهٔ ردیف‌ها
+   هم‌تراز می‌مانند و نام جای کافی دارد. */
+.osec-item{
+  display:grid; grid-template-columns:auto 1fr auto auto;
+  align-items:center; gap:10px; cursor:pointer;
+  border:1px solid var(--card-border); border-radius:10px;
+  padding:9px 11px; background:var(--white); font-size:12.5px;
+}
+.osec-item > input[type=checkbox]{ margin:0; }
+.osec-item:hover{ border-color:var(--brass,#1A4FA3); }
+/* بخشِ داخلِ قیمت انتخابی نیست، پس نباید شبیهِ دکمه باشد. */
+.osec-item.free{ cursor:default; opacity:.8; background:transparent; }
+.osec-item.free:hover{ border-color:var(--card-border); }
+.osec-nm{ min-width:0; }
+.osec-pr{ font-size:11.5px; color:var(--ink-soft); white-space:nowrap; }
+.osec-cu{ display:flex; align-items:center; gap:5px; font-size:11.5px;
+          color:var(--ink-faint); white-space:nowrap; cursor:pointer; }
+.osec-cu input:disabled + *, .osec-cu input:disabled{ cursor:not-allowed; }
+
+/* تفکیکِ مبلغ — تا «۷٬۰۵۰٬۰۰۰» عددی از ناکجا نباشد. */
+.obill{ display:grid; gap:4px; margin:2px 0 10px; }
+.obill div{ display:flex; justify-content:space-between; gap:12px;
+            font-size:12px; color:var(--ink-soft); }
+.obill b{ color:var(--ink); font-weight:600; }
+
+/* روی موبایل «سفارشی» زیرِ همان ردیف می‌رود، وگرنه نام له می‌شود. */
+@media (max-width:520px){
+  .osec-item{ grid-template-columns:auto 1fr auto; row-gap:6px; }
+  .osec-cu{ grid-column:2 / -1; justify-self:start; }
+}
 @media (max-width:520px){ .order .ask-row{ grid-template-columns:1fr; } }
 .order input, .order select, .order textarea{ width:100%; padding:11px 13px;
   border:1px solid var(--line); border-radius:var(--r); background:var(--paper-2);
@@ -502,17 +551,34 @@ footer .sep{ opacity:.5; margin:0 8px; }
 
       <div class="ask-row">
         <input type="text" id="oName" placeholder="نام و نام خانوادگی" autocomplete="name">
+        <!-- فقط برای پلنِ سازمانی؛ برای شخصی پنهان می‌ماند. -->
+        <input type="text" id="oOrgName" placeholder="نام سازمان" hidden>
       </div>
       <div class="ask-row">
-        <select id="oKind">
-          <option value="gen">کارتابل عمومی</option>
-          <option value="it">کارتابل مدیر IT</option>
-          <option value="fin">کارتابل مالی</option>
-        </select>
-        <select id="oJob"><option value="">— چک‌لیست آماده (اختیاری) —</option></select>
+        <select id="oJob"><option value="">— شغل را انتخاب کنید —</option></select>
+        <div class="oseat">
+          <label for="oSeats" id="oSeatLb">تعداد کارتابل</label>
+          <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr">
+        </div>
       </div>
+
+      <!-- بخش‌های همان شغل. آن‌هایی که در قیمت هستند نشان داده می‌شوند
+           ولی تیکشان قفل است؛ بقیه هرکدام قیمتِ خودش را دارد. -->
+      <div class="osec" id="oSecBox" hidden>
+        <div class="osec-head">
+          <b>بخش‌های کارتابل</b>
+          <span id="oSecHint"></span>
+        </div>
+        <div class="osec-list" id="oSecList"></div>
+      </div>
+
+      <div class="ask-row" id="oSharedRow" hidden>
+        <input type="text" id="oSharedNote"
+               placeholder="بخشِ مشترکِ سازمان — چه چیزی بین نفرات مشترک باشد؟">
+      </div>
+
+      <div class="obill" id="oBill"></div>
       <div class="ask-row">
-        <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr" placeholder="چند نفر؟">
         <div class="osum" id="oSum"></div>
       </div>
       <div class="ask-row cprow">
@@ -664,15 +730,10 @@ document.getElementById("askForm").addEventListener("submit", async (e)=>{
 /* ---------- پلن‌ها و سفارش ----------
    پلن‌ها از تنظیماتِ پنل می‌آیند. اگر پلنی تعریف نشده باشد، این بخش
    اصلاً نشان داده نمی‌شود — بهتر از یک فهرستِ خالیِ «به‌زودی». */
-const JOB_LIST = [
-  ["hr","منابع انسانی"], ["sales","فروش و بازاریابی"], ["acc","حسابداری"],
-  ["support","پشتیبانی فنی و هلپ‌دسک"], ["ceo","مدیرعامل و مدیریت کلان"],
-  ["wh","انبار و تدارکات"], ["pm","مدیریت پروژه"], ["prod","تولید و کارخانه"],
-  ["marketing","بازاریابی دیجیتال و محتوا"], ["qc","کنترل کیفیت"],
-  ["clinic","مطب و کلینیک"], ["logistics","حمل‌ونقل و توزیع"],
-  ["procure","خرید خارجی و ترخیص"], ["retail","فروشگاه و خرده‌فروشی"],
-  ["legal","حقوقی و قراردادها"], ["office","امور اداری و دفتری"]
-];
+/* شغل‌ها و بخش‌هایشان از سرور می‌آیند (همان جایی که کارتابل از آن
+   ساخته می‌شود). پیش از این یک نسخهٔ دستی هم این‌جا بود و با اضافه
+   شدنِ هر شغل، یکی‌شان عقب می‌ماند. */
+let JOBS = [], SITE = { extraPrice: 0, customPrice: 0 }, FREE = ["datetools"], VLB = {};
 const faD = n => String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]);
 const money = n => faD(Number(n||0).toLocaleString("en-US")) + " تومان";
 const escH = t => String(t==null?"":t).replace(/[<>&"]/g,
@@ -684,20 +745,32 @@ function showPlans(plans){
   if(!PLANS.length) return;
   document.getElementById("buy").hidden = false;
   document.querySelectorAll(".buyLink").forEach(a=> a.hidden = false);
-  document.getElementById("planList").innerHTML = PLANS.map((p,i)=>`
-    <div class="plan">
+  document.getElementById("planList").innerHTML = PLANS.map((p,i)=>{
+    const org = p.tier === "org";
+    const base = Math.max(1, Number(p.baseSeats) || 1);
+    const per  = Number(p.perSeat) || 0;
+    /* زیرِ قیمت باید بگوید این عدد بابتِ چیست، وگرنه «۴ میلیون» کنارِ
+       «۱ میلیون» گران به نظر می‌رسد بی‌آنکه معلوم باشد چند نفر است. */
+    const per1 = org
+      ? "برای " + faD(base) + " نفر" + (per ? " — هر نفرِ اضافه " + money(per) : "")
+      : "برای هر کارتابل";
+    return `
+    <div class="plan${org ? " plan-org" : ""}">
       <h3>${escH(p.name)}</h3>
       <div class="price">${escH(money(p.price))}</div>
+      <div class="per">${escH(per1)}</div>
       <div class="per">${p.days ? faD(p.days) + " روز" : "بی‌مهلت"}</div>
       <div class="pnote">${escH(p.note || "")}</div>
       <button class="btn btn-main" data-plan="${i}">انتخاب</button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   const jobSel = document.getElementById("oJob");
-  JOB_LIST.forEach(([id,label])=>{
-    const o = document.createElement("option"); o.value = id; o.textContent = label;
+  JOBS.forEach(j=>{
+    const o = document.createElement("option"); o.value = j.id; o.textContent = j.label;
     jobSel.appendChild(o);
   });
+  jobSel.addEventListener("change", paintSections);
 
   document.querySelectorAll("[data-plan]").forEach(b=>{
     b.onclick = ()=>{
@@ -709,6 +782,7 @@ function showPlans(plans){
       f.hidden = false;
       document.getElementById("orderHead").textContent =
         "سفارشِ پلنِ «" + PICKED.name + "»";
+      tuneForm();
       /* کدِ اتصال همان لحظه ساخته می‌شود تا کاربر منتظرِ کلیکِ دوم
          نماند؛ اگر قبلاً وصل شده، دست نمی‌خورد. */
       connPaint();
@@ -734,18 +808,118 @@ function seatCount(){
   return Math.max(1, Math.min(200, Number(document.getElementById("oSeats").value)||1));
 }
 
+/* فرم را به نوعِ پلن تنظیم می‌کند. «شخصی» و «سازمانی» فیلدهای متفاوتی
+   می‌خواهند: سازمانی نامِ سازمان و بخشِ مشترک دارد، و شمارشگرش «نفر»
+   است نه «کارتابل». */
+function tuneForm(){
+  if(!PICKED) return;
+  const org = PICKED.tier === "org";
+  const base = Math.max(1, Number(PICKED.baseSeats) || 1);
+
+  document.getElementById("oOrgName").hidden  = !org;
+  document.getElementById("oSharedRow").hidden = !org;
+  document.getElementById("oSeatLb").textContent = org ? "تعداد نفرات" : "تعداد کارتابل";
+
+  /* سازمانی از تعدادِ پایه شروع می‌شود؛ کمتر از آن معنایی ندارد و
+     قیمت را هم کم نمی‌کند، پس نگذاریم کاربر عددِ گمراه‌کننده بزند. */
+  /* تعداد از پایهٔ همین پلن شروع می‌شود. اگر عددِ پلنِ قبلی بماند،
+     کاربر کارتی را انتخاب می‌کند که «۴ میلیون» نوشته و فرم مبلغِ
+     دیگری نشان می‌دهد — و دلیلش هیچ‌جا پیدا نیست. */
+  const seat = document.getElementById("oSeats");
+  seat.min = org ? String(base) : "1";
+  seat.value = String(org ? base : 1);
+
+  paintSections();
+}
+
+/* بخش‌های شغلِ انتخاب‌شده. آن‌هایی که در قیمت هستند تیکِ قفل دارند؛
+   بقیه هرکدام قیمتِ خودش را نشان می‌دهد، و کنارِ هرکدام گزینهٔ
+   «سفارشی» که هزینهٔ جداگانه دارد. */
+function paintSections(){
+  const jid = document.getElementById("oJob").value;
+  const job = JOBS.find(j => j.id === jid);
+  const box = document.getElementById("oSecBox");
+  const list = document.getElementById("oSecList");
+  if(!job || !(job.views||[]).length){ box.hidden = true; list.innerHTML = ""; sumUp(); return; }
+
+  box.hidden = false;
+  document.getElementById("oSecHint").textContent =
+    SITE.extraPrice ? "هر بخشِ اضافه " + money(SITE.extraPrice) +
+                      (SITE.customPrice ? " — سفارشی‌سازی " + money(SITE.customPrice) : "")
+                    : "";
+
+  list.innerHTML = job.views.map(v=>{
+    const free = FREE.indexOf(v) >= 0;
+    const nm = VLB[v] || v;
+    return `<label class="osec-item${free ? " free" : ""}">
+      <input type="checkbox" data-view="${escH(v)}"${free ? " checked disabled" : ""}>
+      <span class="osec-nm">${escH(nm)}</span>
+      <span class="osec-pr">${free ? "در قیمت" : escH(money(SITE.extraPrice))}</span>
+      ${free ? "" : `<label class="osec-cu"><input type="checkbox" data-custom="${escH(v)}" disabled>
+         سفارشی</label>`}
+    </label>`;
+  }).join("");
+
+  list.querySelectorAll("[data-view]").forEach(cb=>{
+    cb.addEventListener("change", ()=>{
+      /* «سفارشی» فقط وقتی معنا دارد که خودِ بخش خریده شده باشد. */
+      const cu = list.querySelector('[data-custom="' + cb.dataset.view + '"]');
+      if(cu){ cu.disabled = !cb.checked; if(!cb.checked) cu.checked = false; }
+      sumUp();
+    });
+  });
+  list.querySelectorAll("[data-custom]").forEach(cb=> cb.addEventListener("change", sumUp));
+  sumUp();
+}
+
+/* بخش‌هایی که کاربر انتخاب کرده — رایگان‌ها شمرده نمی‌شوند. */
+function pickedViews(){
+  return [...document.querySelectorAll('#oSecList [data-view]')]
+    .filter(cb => cb.checked && !cb.disabled).map(cb => cb.dataset.view);
+}
+function pickedCustoms(){
+  return [...document.querySelectorAll('#oSecList [data-custom]')]
+    .filter(cb => cb.checked && !cb.disabled).map(cb => cb.dataset.custom);
+}
+
+/* همان فرمولِ سرور. این‌جا فقط برای نشان دادن است؛ فاکتور را سرور
+   می‌سازد و اگر جایی فرق کند، حرفِ سرور درست است. */
+function calcTotal(){
+  if(!PICKED) return { seatPart:0, extraPart:0, customPart:0, total:0 };
+  const base = Math.max(0, Number(PICKED.price) || 0);
+  const baseSeats = Math.max(1, Number(PICKED.baseSeats) || 1);
+  const per = Math.max(0, Number(PICKED.perSeat) || 0);
+  const seatPart = base + Math.max(0, seatCount() - baseSeats) * per;
+  const extraPart = pickedViews().length * Math.max(0, Number(SITE.extraPrice) || 0);
+  const customPart = pickedCustoms().length * Math.max(0, Number(SITE.customPrice) || 0);
+  return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
+}
+
 function sumUp(){
   if(!PICKED) return;
-  const full = PICKED.price * seatCount();
+  const b = calcTotal();
+  const full = b.total;
+
+  /* تفکیک، تا معلوم باشد این عدد از کجا آمده. */
+  const rows = [];
+  const unit = PICKED.tier === "org" ? "نفر" : "کارتابل";
+  rows.push(["پایه — " + faD(seatCount()) + " " + unit, b.seatPart]);
+  if(b.extraPart)  rows.push(["بخش‌های اضافه", b.extraPart]);
+  if(b.customPart) rows.push(["سفارشی‌سازی", b.customPart]);
+  document.getElementById("oBill").innerHTML =
+    rows.length > 1
+      ? rows.map(r=>`<div><span>${escH(r[0])}</span><b>${escH(money(r[1]))}</b></div>`).join("")
+      : "";
+
   const box = document.getElementById("oSum");
   if(COUPON && COUPON.off > 0 && COUPON.total === full){
     box.innerHTML = `<span class="was">${escH(money(full))}</span>` + escH(money(full - COUPON.off));
   } else {
-    /* تعداد که عوض شود، تخفیفِ قبلی دیگر مالِ این مبلغ نیست. */
+    /* هر چیزی که مبلغ را عوض کند، تخفیفِ قبلی را بی‌اعتبار می‌کند. */
     if(COUPON && COUPON.total !== full){
       COUPON = null;
       const n = document.getElementById("oCpNote");
-      n.className = "cpnote"; n.textContent = "تعداد عوض شد — کد را دوباره اعمال کنید.";
+      n.className = "cpnote"; n.textContent = "مبلغ عوض شد — کد را دوباره اعمال کنید.";
     }
     box.textContent = money(full);
   }
@@ -762,7 +936,8 @@ async function applyCoupon(){
   try{
     const r = await fetch("/api/sl/coupon", { method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ code, plan: PICKED.name, seats: seatCount() }) });
+      body: JSON.stringify({ code, plan: PICKED.name, seats: seatCount(),
+        views: pickedViews(), customs: pickedCustoms() }) });
     const d = await r.json().catch(()=>({}));
     if(r.ok && d.ok){
       COUPON = { code: d.code, off: d.off, total: d.total };
@@ -866,7 +1041,12 @@ document.getElementById("orderForm").addEventListener("submit", async (e)=>{
     const r = await fetch("/api/sl/order", { method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ plan: PICKED.name, name: g("oName"), nonce: CONN.nonce,
-        kind: g("oKind"), job: g("oJob"), seats: g("oSeats"), note: g("oNote"),
+        /* قالبِ کارتابل از خودِ شغل می‌آید، نه از یک کشوی جدا — کاربر
+           نباید بداند «مالی» یا «عمومی» یعنی چه؛ شغلش را می‌گوید. */
+        kind: (JOBS.find(j=>j.id===g("oJob"))||{}).kind || "gen",
+        job: g("oJob"), seats: g("oSeats"), note: g("oNote"),
+        views: pickedViews(), customs: pickedCustoms(),
+        orgName: g("oOrgName"), sharedNote: g("oSharedNote"),
         coupon: g("oCoupon") }) });
     const d = await r.json().catch(()=>({}));
     if(!(r.ok && d.ok)){ note.textContent = d.error || "نشد. کمی بعد دوباره."; }
@@ -925,6 +1105,10 @@ function showInvoice(d){
     if(s.phone)    out.push(link("tel:" + s.phone, s.phone));
     if(s.email)    out.push(link("mailto:" + s.email, s.email));
     box.innerHTML = out.join("");
+    SITE = s;
+    JOBS = Array.isArray(d.jobs) ? d.jobs : [];
+    FREE = Array.isArray(d.freeViews) ? d.freeViews : ["datetools"];
+    VLB  = d.viewLabels || {};
     showPlans(s.plans);
   }catch(e){ /* نبودنش صفحه را خراب نمی‌کند */ }
 })();
