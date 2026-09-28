@@ -929,7 +929,16 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
 /* یکی برای هر سه کارتابل، مثل توکنِ ربات — یک کلید بس است */
 const AI_KEY_SETTING = 'kartablAiKey';
 
-const TG = t => `https://api.telegram.org/bot${t}`;
+/* آدرسِ پایهٔ ربات‌ها، در یک جا.
+   روی کلادفلر همان آدرسِ خودشان است. روی سرورِ ایرانی، تلگرام بسته
+   است و باید از یک رله رد شود؛ TG_BASE در تنظیمات همین را عوض می‌کند.
+   پیش از این، آدرس چهار جای جدا نوشته شده بود و فقط یکی‌شان این
+   تنظیم را می‌خواند — یعنی پشتیبان و «آزمایشِ ربات» مستقیم می‌رفتند و
+   روی سرورِ ایران می‌شکستند. حالا همه از همین دو تابع می‌گذرند. */
+export const tgBase   = () => globalThis.__TGBASE   || 'https://api.telegram.org';
+export const baleBase = () => globalThis.__BALEBASE || 'https://tapi.bale.ai';
+
+const TG = t => `${tgBase()}/bot${t}`;
 
 export async function kartablBot(env) {
   return { token: await getSetting(env, 'kartablBotToken', ''),
@@ -943,8 +952,8 @@ export async function kartablBot(env) {
    ربات قدیمیِ کارتابل هم اگر تنظیم باشد سرِ جایش می‌ماند، وگرنه با
    این تغییر پشتیبانِ کسی که هنوز تنظیمات تازه را پر نکرده قطع می‌شد. */
 export const BOT_API = {
-  telegram: t => 'https://api.telegram.org/bot' + t,
-  bale: t => 'https://tapi.bale.ai/bot' + t
+  telegram: t => `${tgBase()}/bot` + t,
+  bale: t => `${baleBase()}/bot` + t
 };
 
 /* شناسهٔ گفتگو عددی است که تلگرام می‌فهمد، پس باید لاتین باشد. کادرش

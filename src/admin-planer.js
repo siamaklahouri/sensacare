@@ -16,7 +16,7 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST
+  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
@@ -675,9 +675,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                  (which === 'bale' ? st.baleChat : st.tgChat) || '';
     if (!token) return bad('اول توکنِ این ربات را بگذارید.');
     if (!chat) return bad('شناسهٔ گفتگو را بنویسید.');
-    const base = which === 'bale'
-      ? 'https://tapi.bale.ai/bot' + token
-      : 'https://api.telegram.org/bot' + token;
+    /* از همان جایی که بقیهٔ کد می‌رود، نه آدرسِ دستی — وگرنه این دکمه
+       رله را دور می‌زند و روی سرورِ ایران «نرسیدیم» می‌دهد در حالی که
+       خودِ ربات سالم است. */
+    const base = BOT_API[which](token);
     try {
       const r = await fetch(base + '/sendMessage', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

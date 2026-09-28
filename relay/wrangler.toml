@@ -25,6 +25,10 @@ compatibility_date = "2026-09-01"
 # باشد که به DNS زون کاری ندارد.
 workers_dev = true
 
+# هر نسخه آدرسِ پیش‌نمایشِ جداگانه‌ای می‌گیرد که همان کار را می‌کند.
+# برای یک رله، این فقط سطحِ باز را زیاد می‌کند بی‌آنکه چیزی بدهد.
+preview_urls = false
+
 [[routes]]
 pattern = "tg.sltech.ir"
 custom_domain = true

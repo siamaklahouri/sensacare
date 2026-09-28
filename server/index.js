@@ -166,7 +166,13 @@ server.listen(PORT, BIND, () => {
   console.log(`دیتابیس: ${DB_FILE}`);
   console.log(`فایل‌ها: ${PUBLIC}`);
   console.log(`کرون (UTC): ${SLOTS.map(s => s.join(':')).join('، ')}`);
-  console.log(`تلگرام از راهِ: ${cfg.TG_BASE || 'api.telegram.org (مستقیم)'}`);
+  /* فقط نامِ میزبان، نه کلِ آدرس: رمزِ رله داخلِ مسیرِ TG_BASE است و
+     لاگ جایی است که کپی می‌شود و دست‌به‌دست می‌گردد. */
+  let tgWhere = 'api.telegram.org (مستقیم)';
+  if (cfg.TG_BASE) {
+    try { tgWhere = new URL(cfg.TG_BASE).host + ' (رله)'; } catch { tgWhere = 'رله'; }
+  }
+  console.log(`تلگرام از راهِ: ${tgWhere}`);
   setInterval(cronTick, 20000);
 });
 

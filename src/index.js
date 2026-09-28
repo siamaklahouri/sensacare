@@ -1617,6 +1617,12 @@ async function reorderReminders(env) {
 export default {
   /* هر شب یک بار: پشتیبان کامل را در تلگرام و بله می‌فرستد */
   async scheduled(event, env, ctx) {
+    /* همان تنظیمِ آدرسِ ربات‌ها که در fetch هم هست. بدونِ این، کرون
+       مستقیم سراغِ تلگرام می‌رفت — یعنی دقیقاً پشتیبان‌ها، که کارِ
+       اصلیِ کرون‌اند، تنها چیزی می‌شدند که از رله رد نمی‌شوند. */
+    if (env.TG_BASE) globalThis.__TGBASE = env.TG_BASE;
+    if (env.BALE_BASE) globalThis.__BALEBASE = env.BALE_BASE;
+
     /* هرکدام جدا قفل می‌شود تا اگر یکی نشد، بقیه سرِ وقت انجام شوند. */
     const day = today();
     const once = (name, fn) => ctx.waitUntil((async () => {
