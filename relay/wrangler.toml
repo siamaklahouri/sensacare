@@ -1,0 +1,23 @@
+# رلهٔ تلگرام — یک ورکرِ کوچک و جدا از سایت.
+#
+# چرا جداست و داخلِ ورکرِ اصلی نرفت: ورکرِ اصلی سایتِ sensacare.ir را
+# سرو می‌کند و قرار است دست نخورد. این هم چیزی از آن نمی‌خواهد.
+#
+# استقرار:
+#   cd relay
+#   npx wrangler deploy
+#   npx wrangler secret put RELAY_SECRET      # رمز را همان‌جا پیست کنید
+#
+# RELAY_SECRET هیچ‌وقت داخلِ این فایل نوشته نمی‌شود؛ secret است، نه var.
+
+name = "sltech-relay"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[observability]
+enabled = true
+
+[vars]
+# جایی که وب‌هوکِ تلگرام باید به آن برسد — سایتِ روی سرورِ ایران.
+# تا وقتی دامنه جابه‌جا نشده، زیردامنهٔ آزمایشی این‌جا می‌نشیند.
+ORIGIN = "https://new.sltech.ir"
