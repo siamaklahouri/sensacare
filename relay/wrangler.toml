@@ -14,6 +14,14 @@ name = "sltech-relay"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
+# روی زیردامنهٔ خودِ سایت، نه روی workers.dev. علتش این است که
+# workers.dev آدرسِ مشترکِ همه است و هر وقت جایی فیلتر شود، رلهٔ ما هم
+# با آن می‌رود؛ زیردامنهٔ خودمان این ریسک را ندارد. رکوردِ DNS را خودِ
+# استقرار می‌سازد.
+[[routes]]
+pattern = "tg.sltech.ir"
+custom_domain = true
+
 [observability]
 enabled = true
 
