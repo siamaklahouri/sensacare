@@ -840,9 +840,24 @@ export async function restoreKartablSnapshot(env, panel, id) {
   let value;
   try { value = JSON.parse(row.v); } catch (e) { return { ok: false, error: 'این نسخه خوانا نیست.' }; }
   /* بدون baseRev می‌نویسیم — خودِ همین نوشتن هم از نسخهٔ فعلی عکس می‌گیرد،
-     پس اگر اشتباهی برگرداندید، برگشتنش هم ممکن است. */
+     پس اگر اشتباهی برگرداندید، برگشتنش هم ممکن است.
+
+     و با force: برگرداندنِ نسخهٔ قدیمی تقریباً همیشه یعنی کم شدنِ
+     محتوا، و محافظِ نوشتن درست همان را می‌گیرد. تا امروز این‌جا force
+     نبود، و نتیجه‌اش از رد شدن بدتر بود: saveKartabl چیزی نمی‌نوشت و
+     {loss} برمی‌گرداند، ولی این تابع بی‌آنکه نگاهش کند {ok:true}
+     می‌داد. صفحه می‌گفت «✓ برگشت»، خودش را دوباره باز می‌کرد، و همان
+     دادهٔ قبلی سرِ جایش بود. یعنی دکمهٔ بازیابی بی‌صدا کار نمی‌کرد —
+     دقیقاً همان‌جا که آدم بیش از هر وقت به آن نیاز دارد.
+
+     force این‌جا بی‌احتیاطی نیست: کاربر خودش نسخه را از فهرست انتخاب
+     کرده، و عکسِ وضعِ فعلی هم پیش از نوشتن گرفته می‌شود. */
   const which = row.k === panel.keys.state ? 'state' : 'db';
-  const r = await saveKartabl(env, panel, { [which]: value });
+  const r = await saveKartabl(env, panel, { [which]: value, force: true });
+  if (r.broken)   return { ok: false, error: 'دادهٔ روی سرور خوانا نیست؛ تا روشن نشدنش نوشتنی انجام نمی‌شود.' };
+  if (r.conflict) return { ok: false, error: 'همین حالا از جای دیگری ذخیره شد. دوباره امتحان کنید.' };
+  if (r.loss)     return { ok: false, error: r.loss };
+  if (!r.rev)     return { ok: false, error: 'نوشتن انجام نشد.' };
   return { ok: true, which, rev: r.rev };
 }
 
