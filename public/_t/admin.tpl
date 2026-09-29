@@ -2389,7 +2389,7 @@ function orgForm(cur, parentId){
   };
 }
 
-let SH_TYPES = [], SH_RULES = [];
+let SH_TYPES = [], SH_RULES = [], PRESETS = [];
 
 async function loadShared(){
   const box = document.getElementById("shList");
@@ -2398,6 +2398,7 @@ async function loadShared(){
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   SH_TYPES = r.data.types || [];
   SH_RULES = r.data.rules || [];
+  PRESETS  = r.data.presets || [];
   const items = r.data.items || [];
   if(!items.length){
     box.innerHTML = '<div class="hint">هنوز بخشِ مشترکی ساخته نشده. ' +
@@ -2481,7 +2482,18 @@ function shForm(cur){
             "</option>").join("")}
       </select>
       <div class="shcols" id="shCols"></div></div>
-    <div class="fld" id="shColWrap" hidden><label>ستون‌ها را یکی‌یکی اضافه کنید</label>
+    <div class="fld" id="shColWrap" hidden>
+      <label>از روی یک الگوی آماده شروع کنید — یا ستون‌ها را خودتان بنویسید</label>
+      <div class="coladd">
+        <select id="shPreset">
+          <option value="">— الگوی آماده —</option>
+          ${PRESETS.map(p=> '<option value="' + esc(p.id) + '">' + esc(p.label) +
+              "</option>").join("")}
+        </select>
+        <button type="button" class="btn btn-sm" id="shPresetGo">بگذار</button>
+      </div>
+      <div class="hint" id="shPresetHint"></div>
+      <label style="margin-top:12px;">ستون‌ها</label>
       <div class="coladd">
         <input type="text" id="shColNew" maxlength="30" autocomplete="off"
                placeholder="نامِ ستون، مثلاً: مشتری">
@@ -2625,6 +2637,21 @@ function shForm(cur){
     t: c.t, kind: c.kind || "text", opts: (c.opts || []).join("/") }));
   const specCols = ()=> CUS.map(c=> ({ k: "@" + c.t, t: c.t, edit: "", cus: c }));
 
+  /* الگو ستون‌ها را یک‌جا می‌گذارد. جایگزین می‌کند، نه اضافه — وگرنه
+     با دو بار زدن، ستون‌ها دوتا می‌شوند. */
+  const applyPreset = ()=>{
+    const sel = document.getElementById("shPreset");
+    const p = PRESETS.find(x=> x.id === sel.value);
+    if(!p) return;
+    if(CUS.length && !confirm("ستون‌های فعلی با الگوی «" + p.label + "» جایگزین شوند؟")) return;
+    CUS.length = 0;
+    p.cols.forEach(c=> CUS.push({ t: c.t, kind: c.kind || "text",
+                                  opts: (c.opts || []).join("/") }));
+    const ttl = document.getElementById("shTitle");
+    if(!ttl.value.trim()) ttl.value = p.label;
+    showCols();
+  };
+
   const addCol = ()=>{
     const el = document.getElementById("shColNew");
     const t = (el.value || "").trim().slice(0, 30);
@@ -2760,6 +2787,14 @@ function shForm(cur){
     };
     document.getElementById("shTitle").addEventListener("input", suggest);
     document.getElementById("shType").addEventListener("change", suggest);
+  }
+  const pgo = document.getElementById("shPresetGo");
+  if(pgo){
+    pgo.onclick = applyPreset;
+    document.getElementById("shPreset").addEventListener("change", ()=>{
+      const p = PRESETS.find(x=> x.id === document.getElementById("shPreset").value);
+      document.getElementById("shPresetHint").textContent = p ? p.hint : "";
+    });
   }
 
   document.getElementById("shSave").onclick = async ()=>{
@@ -2992,10 +3027,14 @@ function renderPlans(list){
 /* فهرستِ همهٔ بخش‌ها با قیمتِ هرکدام. نام‌ها و رایگان‌ها از سرور
    می‌آیند تا با صفحهٔ خرید یکی بماند. */
 const VIEW_ORDER = [
-  ["قالبِ عمومی", ["servers","companies","mvpn","assets","vendors","tickets","contracts","tasks2"]],
+  /* فقط بخش‌های واقعیِ هر قالب. نام‌های آماده گروهِ خودشان را دارند و
+     اگر این‌جا هم بیایند، دو بار در فهرست می‌نشینند و دو کادرِ قیمت
+     برای یک چیز ساخته می‌شود. */
+  ["قالبِ عمومی", ["servers","companies","mvpn"]],
   ["قالبِ مالی",  ["invoices","payables","payablenotes","receivablenotes",
-                   "expenses","bank","budget","parties","cheques","payroll"]],
-  ["در همهٔ شغل‌ها", ["datetools","report"]]
+                   "expenses","bank","budget","parties"]],
+  ["در همهٔ شغل‌ها", ["datetools","report"]],
+  ["بخش‌های آماده", ["contracts","assets","vendors","meetings","feedback","training"]]
 ];
 
 function renderViewPrices(){
@@ -3003,6 +3042,7 @@ function renderViewPrices(){
   const labels = SITE.viewLabels || {};
   const free = SITE.freeViews || ["datetools"];
   const have = SITE.viewPrices || {};
+  const dflt = SITE.viewPriceDefaults || {};
   box.innerHTML = VIEW_ORDER.map(([group, ids])=>{
     const rows = ids.filter(v => labels[v]).map(v=>{
       const isFree = free.indexOf(v) >= 0;
@@ -3011,7 +3051,7 @@ function renderViewPrices(){
         ${isFree
           ? `<em>در قیمت — رایگان</em>`
           : `<input type="number" dir="ltr" min="0" data-vp="${esc(v)}"
-                    placeholder="پیش‌فرض" value="${have[v] ?? ""}">`}
+                    placeholder="پیش‌فرض" value="${have[v] ?? (dflt[v] ?? "")}">`}
       </label>`;
     }).join("");
     return rows ? `<div class="vprice-g"><b>${esc(group)}</b>${rows}</div>` : "";

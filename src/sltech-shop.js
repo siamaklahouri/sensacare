@@ -16,6 +16,7 @@
 import { getSetting, all, one, run } from './kartabl.js';
 import { toAdmin, slContact, slSend, SL_PF } from './sltech-bot.js';
 import { JOBS } from './kartabl-jobs.js';
+import { PRESET_LABEL } from './sections.js';
 
 const KINDS = { gen: 'عمومی', it: 'مدیر IT', fin: 'مالی' };
 
@@ -33,6 +34,7 @@ export const VIEW_LABEL = {
   expenses: 'منابع و مصارف', bank: 'حساب‌های بانکی',
   budget: 'بودجه‌بندی ماهانه', parties: 'طرف‌حساب‌ها'
 };
+Object.assign(VIEW_LABEL, PRESET_LABEL);
 const viewName = v => VIEW_LABEL[v] || v;
 
 /* شمارهٔ فاکتور: کوتاه و بی‌ابهام. حرف‌های هم‌شکل (I, O, ۰, ۱) نیستند
@@ -132,11 +134,22 @@ export async function checkCoupon(env, rawCode, total) {
 /* قیمتِ یک بخش. اگر برایش قیمتِ جدا گذاشته شده باشد همان، وگرنه
    قیمتِ عمومیِ بخش‌ها. این‌طور می‌شود «شرکت‌ها» را ارزان و «گزارش‌ساز»
    را گران گذاشت، بدونِ اینکه لازم باشد برای همه عدد نوشت. */
+/* قیمتِ پیشنهادیِ چند بخش، تا سایت از روزِ اول عددِ معقول نشان دهد
+   حتی پیش از آنکه ادمین چیزی نوشته باشد. هر کدام در پنل قابلِ
+   عوض کردن است و عددِ پنل همیشه می‌چربد. */
+export const DEFAULT_VIEW_PRICE = {
+  report: 450000,
+  contracts: 350000, assets: 300000, vendors: 300000,
+  meetings: 250000, feedback: 250000, training: 250000
+};
+
 export function viewPrice(st, v) {
   const map = (st && st.viewPrices) || {};
   const own = Number(map[v]);
   if (Number.isFinite(own) && own >= 0) return Math.round(own);
-  return Math.max(0, Math.round(Number(st && st.extraPrice) || 0));
+  const std = Number(st && st.extraPrice);
+  if (Number.isFinite(std) && std > 0) return Math.round(std);
+  return Math.max(0, Math.round(DEFAULT_VIEW_PRICE[v] || 0));
 }
 
 export function planTotal(plan, st, { seats = 1, views = [], customs = [] } = {}) {
@@ -188,7 +201,10 @@ export async function placeOrder(env, body) {
   /* بخش‌هایی که خریدار خواسته. فقط آن‌هایی پذیرفته می‌شوند که واقعاً
      بخشی از همین شغل‌اند — وگرنه کسی می‌توانست بخشی را سفارش دهد که
      در قالبِ کارتابلش اصلاً وجود ندارد و بعد پولش را داده باشد. */
-  const jobViews = job && JOBS[job] ? (JOBS[job].views || []) : [];
+  /* آنچه می‌شود سفارش داد: بخش‌های خودِ قالب، به‌علاوهٔ بخش‌های آماده
+     که از روی الگو ساخته می‌شوند. */
+  const j = job && JOBS[job] ? JOBS[job] : null;
+  const jobViews = j ? [...(j.views || []), ...(j.extras || [])] : [];
   const pickList = (v, pool) => {
     const seen = new Set();
     return (Array.isArray(v) ? v : [])

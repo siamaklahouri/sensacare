@@ -21,9 +21,11 @@ import {
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
-         VIEW_LABEL as SL_VIEW_LABEL, FREE_VIEWS as SL_FREE_VIEWS } from './sltech-shop.js';
+         VIEW_LABEL as SL_VIEW_LABEL, FREE_VIEWS as SL_FREE_VIEWS,
+         DEFAULT_VIEW_PRICE as SL_DEFAULT_VIEW_PRICE } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
+import { SECTION_PRESETS } from './sections.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -128,7 +130,11 @@ const publicSite = st => ({
   /* نامِ بخش‌ها و رایگان‌ها از همان جایی می‌آیند که صفحهٔ خرید
      می‌خواند — تا پنل و سایت یک فهرست داشته باشند. */
   viewLabels: SL_VIEW_LABEL,
-  freeViews: SL_FREE_VIEWS
+  freeViews: SL_FREE_VIEWS,
+  /* عددهای پیشنهادی. پنل آن‌ها را در کادرها می‌گذارد تا ادمین
+     ببیندشان و با یک ذخیره قطعی‌شان کند — نه اینکه جایی پنهان
+     بمانند و بعد سرِ فاکتور معلوم شوند. */
+  viewPriceDefaults: SL_DEFAULT_VIEW_PRICE
 });
 
 /* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */
@@ -807,7 +813,12 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         /* نوعِ دلخواه ستون‌های ثابت ندارد؛ پنل خودش از آنچه ادمین
            می‌نویسد می‌سازدشان، و این‌ها فقط ستون‌فقرات‌اند. */
         custom: !!t.custom,
-        cols: t.cols.map(c => ({ k: c.k || '', t: c.t, edit: c.edit || '' })) })) });
+        cols: t.cols.map(c => ({ k: c.k || '', t: c.t, edit: c.edit || '' })) })),
+      /* الگوهای آماده: پنل با یک کلیک ستون‌هایشان را می‌گذارد، تا
+         لازم نباشد هشت ستون را دستی و هر بار از نو نوشت. */
+      presets: Object.entries(SECTION_PRESETS).map(([id, p]) => ({
+        id, label: p.label, hint: p.hint || '',
+        cols: p.cols.map(c => ({ t: c.t, kind: c.kind, opts: c.opts || [] })) })) });
   }
 
   /* ---------- گروه‌های سازمانی ----------

@@ -2624,7 +2624,8 @@ export default {
            ساخته می‌شود، نه از فهرستی جدا در صفحه — وگرنه دو فهرست
            می‌شد و روزی یکی‌شان عقب می‌ماند. */
         const jobs = Object.entries(JOBS).map(([id, j]) => ({
-          id, label: j.label || id, kind: j.kind || 'gen', views: j.views || []
+          id, label: j.label || id, kind: j.kind || 'gen',
+          views: [...(j.views || []), ...(j.extras || [])]
         }));
         return json({ ok: true, site: Object.assign({
           phone: st.phone || '', email: st.email || '',
