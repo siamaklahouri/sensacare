@@ -126,12 +126,26 @@ step3() {
   say "nginx"
   [ -f "/etc/letsencrypt/live/$CERT/fullchain.pem" ] || die "گواهی نیست. اول مرحلهٔ ۲."
   install -d /var/www/acme
-  cp -f /etc/nginx/sites-available/sltech "/etc/nginx/sites-available/sltech.bak.$(date +%s)" 2>/dev/null
+  local bak="/etc/nginx/sites-available/sltech.bak.$(date +%s)"
+  cp -f /etc/nginx/sites-available/sltech "$bak" 2>/dev/null
   install -m 644 "$APP/server/nginx-sltech.conf" /etc/nginx/sites-available/sltech
   ln -sf /etc/nginx/sites-available/sltech /etc/nginx/sites-enabled/sltech
   rm -f /etc/nginx/sites-enabled/default
 
-  nginx -t || die "تنظیماتِ nginx ایراد دارد. خروجی را بفرست — فایلِ قبلی هنوز سرِ جایش است."
+  # اگر تنظیمات ایراد داشت، فایلِ معیوب نباید بماند. nginxِ در حالِ
+  # کار با تنظیماتِ قبلی زنده است و چیزی نمی‌افتد، ولی اولین restart —
+  # حتی یکی که certbot موقعِ تمدید می‌زند — سایت را می‌خواباند. پس
+  # همان‌جا برمی‌گردانیم.
+  if ! nginx -t; then
+    if [ -f "$bak" ]; then
+      cp -f "$bak" /etc/nginx/sites-available/sltech
+      bad "تنظیماتِ تازه برگردانده شد؛ فایلِ قبلی دوباره سرِ جایش است."
+    else
+      rm -f /etc/nginx/sites-enabled/sltech
+      bad "تنظیماتِ تازه برداشته شد."
+    fi
+    die "تنظیماتِ nginx ایراد دارد. متنِ بالا را بفرست."
+  fi
   systemctl reload nginx
   ok "nginx بارگذاری شد"
 
