@@ -285,6 +285,12 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
 .osec-cu input:disabled + *, .osec-cu input:disabled{ cursor:not-allowed; }
 
 /* تفکیکِ مبلغ — تا «۷٬۰۵۰٬۰۰۰» عددی از ناکجا نباشد. */
+/* پیغامِ «کمتر از پایه» زیرِ شمارشگر. جا همیشه هست تا با آمدنش
+   فرم بالا و پایین نپرد. */
+.seatnote{ min-height:17px; font-size:11.5px; color:var(--bad,#A6222B);
+  margin:-4px 0 8px; }
+.order input.bad{ border-color:var(--bad,#A6222B); }
+
 .obill{ display:grid; gap:4px; margin:2px 0 10px; }
 .obill div{ display:flex; justify-content:space-between; gap:12px;
             font-size:12px; color:var(--ink-soft); }
@@ -573,6 +579,7 @@ footer .sep{ opacity:.5; margin:0 8px; }
           <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr">
         </div>
       </div>
+      <div class="seatnote" id="oSeatNote"></div>
 
       <!-- بخش‌های همان شغل. آن‌هایی که در قیمت هستند نشان داده می‌شوند
            ولی تیکشان قفل است؛ بقیه هرکدام قیمتِ خودش را دارد. -->
@@ -803,7 +810,18 @@ function showPlans(plans){
       f.scrollIntoView({ behavior:"smooth", block:"center" });
     };
   });
-  document.getElementById("oSeats").addEventListener("input", sumUp);
+  /* عددِ کمتر از پایه را همان‌جا می‌گوییم، نه سرِ ثبتِ سفارش —
+     صفتِ min جلوی تایپ را نمی‌گیرد، فقط اعتبارسنجیِ فرم را. */
+  document.getElementById("oSeats").addEventListener("input", ()=>{
+    const el = document.getElementById("oSeats");
+    const lo = seatMin();
+    const n = Number(el.value) || 0;
+    const note = document.getElementById("oSeatNote");
+    note.textContent = (el.value !== "" && n < lo)
+      ? "این پلن از " + faD(lo) + " نفر به بالاست." : "";
+    el.classList.toggle("bad", el.value !== "" && n < lo);
+    sumUp();
+  });
   document.getElementById("oCpGo").addEventListener("click", applyCoupon);
   document.getElementById("oCoupon").addEventListener("keydown", e=>{
     if(e.key === "Enter"){ e.preventDefault(); applyCoupon(); }
@@ -816,8 +834,15 @@ function showPlans(plans){
 
 let COUPON = null;   /* {code, off} — فقط بعد از تأییدِ سرور پر می‌شود */
 
+/* کمترین تعدادِ این پلن. سازمانی از تعدادِ پایه شروع می‌شود. */
+function seatMin(){
+  if(!PICKED) return 1;
+  return PICKED.tier === "org" ? Math.max(1, Number(PICKED.baseSeats) || 1) : 1;
+}
+
 function seatCount(){
-  return Math.max(1, Math.min(200, Number(document.getElementById("oSeats").value)||1));
+  const n = Number(document.getElementById("oSeats").value) || 0;
+  return Math.max(seatMin(), Math.min(200, n));
 }
 
 /* فرم را به نوعِ پلن تنظیم می‌کند. «شخصی» و «سازمانی» فیلدهای متفاوتی

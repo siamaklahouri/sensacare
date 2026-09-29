@@ -22,7 +22,8 @@ import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
          VIEW_LABEL as SL_VIEW_LABEL, FREE_VIEWS as SL_FREE_VIEWS,
-         DEFAULT_VIEW_PRICE as SL_DEFAULT_VIEW_PRICE } from './sltech-shop.js';
+         DEFAULT_VIEW_PRICE as SL_DEFAULT_VIEW_PRICE,
+         DEFAULT_PLANS as SL_DEFAULT_PLANS } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 import { SECTION_PRESETS } from './sections.js';
@@ -134,7 +135,8 @@ const publicSite = st => ({
   /* عددهای پیشنهادی. پنل آن‌ها را در کادرها می‌گذارد تا ادمین
      ببیندشان و با یک ذخیره قطعی‌شان کند — نه اینکه جایی پنهان
      بمانند و بعد سرِ فاکتور معلوم شوند. */
-  viewPriceDefaults: SL_DEFAULT_VIEW_PRICE
+  viewPriceDefaults: SL_DEFAULT_VIEW_PRICE,
+  planDefaults: SL_DEFAULT_PLANS
 });
 
 /* «هست یا نیست» و چهار رقمِ آخر — نه خودِ توکن. */

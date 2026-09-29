@@ -137,6 +137,18 @@ export async function checkCoupon(env, rawCode, total) {
 /* قیمتِ پیشنهادیِ چند بخش، تا سایت از روزِ اول عددِ معقول نشان دهد
    حتی پیش از آنکه ادمین چیزی نوشته باشد. هر کدام در پنل قابلِ
    عوض کردن است و عددِ پنل همیشه می‌چربد. */
+/* دو پلنِ پیشنهادی. پنل با یک دکمه همین‌ها را در فرم می‌گذارد تا
+   لازم نباشد هفت خانه را دستی و بی‌اشتباه پر کرد. عددها همان‌هایی‌اند
+   که قرار شد؛ هر کدام در پنل قابلِ عوض کردن است. */
+export const DEFAULT_PLANS = [
+  { name: 'پلنر شخصی', tier: 'personal',
+    price: 1000000, baseSeats: 1, perSeat: 1000000, days: 30,
+    note: 'برای یک نفر — هر شغلی' },
+  { name: 'سازمانی', tier: 'org',
+    price: 4000000, baseSeats: 2, perSeat: 750000, days: 30,
+    note: 'از دو نفر به بالا' }
+];
+
 export const DEFAULT_VIEW_PRICE = {
   report: 450000,
   contracts: 350000, assets: 300000, vendors: 300000,
@@ -193,7 +205,7 @@ export async function placeOrder(env, body) {
   const job = txt(body.job, 30);
   const kind = KINDS[body.kind] ? body.kind : 'gen';
   const note = txt(body.note, 500);
-  const seats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
+  const rawSeats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
 
   if (!name) return { error: 'نامتان را بنویسید.' };
   if (job && !JOBS[job]) return { error: 'شغلِ انتخاب‌شده را نمی‌شناسم.' };
@@ -221,6 +233,14 @@ export async function placeOrder(env, body) {
      وگرنه هر کسی می‌توانست قیمتِ دلخواهش را بفرستد. */
   const plan = plans.find(p => p.name === txt(body.plan, 40));
   if (!plan) return { error: 'این پلن را نمی‌شناسم.' };
+
+  /* پلنِ سازمانی از تعدادِ پایه شروع می‌شود و کمتر از آن معنا ندارد.
+     صفحه هم همین را می‌گذارد، ولی حرفِ مرورگر سند نیست: بی این،
+     می‌شد سفارشِ «سازمانی، ۱ نفر» فرستاد و فاکتور همان را می‌نوشت. */
+  const minSeats = Math.max(1, Math.round(Number(plan.baseSeats) || 1));
+  if (rawSeats < minSeats)
+    return { error: 'این پلن از ' + fa(minSeats) + ' نفر به بالاست.' };
+  const seats = rawSeats;
 
   await ensure(env);
   const id = newInvoice();

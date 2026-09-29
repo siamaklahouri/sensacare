@@ -959,7 +959,13 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">تا شش پلن. «مدت» همان تعداد روزی است که کارتابل باز می‌ماند —
         صفر یعنی بی‌مهلت. پلنی که نامش خالی باشد ذخیره نمی‌شود.</p>
       <div id="stPlans"></div>
-      <div style="margin-top:10px;"><button class="btn" id="stAddPlan">＋ پلن تازه</button></div>
+      <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" id="stAddPlan">＋ پلن تازه</button>
+        <button class="btn btn-brass" id="stStdPlans">پلن‌های پیشنهادی را بگذار</button>
+      </div>
+      <p class="sub" style="margin-top:8px;">دکمهٔ دوم دو پلنِ «شخصی» و «سازمانی» را با
+        قیمت‌های توافق‌شده در فرم می‌گذارد — جای پلن‌های فعلی. تا «ذخیرهٔ تنظیمات» را
+        نزنید چیزی روی سایت عوض نمی‌شود.</p>
 
     </div>
 
@@ -3162,6 +3168,20 @@ async function setupSite(){
     loadCoupons();
   };
   loadCoupons();
+
+  document.getElementById("stStdPlans").onclick = ()=>{
+    const std = SITE.planDefaults || [];
+    if(!std.length){ say("پلنِ پیشنهادی‌ای تعریف نشده.", true); return; }
+    const cur = readPlans();
+    /* جایگزین می‌کند، نه اضافه — وگرنه پلن‌های قدیمی می‌مانند و سایت
+       چهار کارت نشان می‌دهد. پس اول می‌پرسد. */
+    if(cur.length && !confirm(
+        "پلن‌های فعلی (" + cur.map(p=> p.name).join("، ") + ") برداشته و " +
+        "دو پلنِ پیشنهادی جایشان گذاشته شود؟\n\nتا «ذخیرهٔ تنظیمات» را نزنید " +
+        "روی سایت چیزی عوض نمی‌شود.")) return;
+    renderPlans(std);
+    say("گذاشته شد. نگاهی بیندازید و «ذخیرهٔ تنظیمات» را بزنید.");
+  };
 
   document.getElementById("stAddPlan").onclick = ()=>{
     const box = document.getElementById("stPlans");
