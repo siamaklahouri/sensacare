@@ -3144,7 +3144,8 @@ async function loadState(){
 
 /* ---------------- Monthly data helpers ---------------- */
 function monthKeyOf(month, year){
-  return (String(year||"").trim()||"?") + "|" + (String(month||"").trim()||"?");
+  /* سال همیشه با رقمِ انگلیسی در کلید می‌نشیند، هرچه تایپ شده باشد. */
+  return (faToEn(year).trim()||"?") + "|" + (String(month||"").trim()||"?");
 }
 function monthLabelOf(key){
   const parts = String(key).split("|");
@@ -3152,6 +3153,7 @@ function monthLabelOf(key){
 }
 function ensureMonthsMigration(){
   if(!state.monthsData || typeof state.monthsData!=="object") state.monthsData = {};
+  normalizeMonthKeys();
   // the old unnamed placeholder month (from early versions, before a month was ever named) —
   // remove the key itself, but keep any real data it holds by merging it into the active month
   const stray = state.monthsData["?|?"];

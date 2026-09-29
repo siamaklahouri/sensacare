@@ -1,3 +1,39 @@
+/* ---------- رقمِ سال، فارسی یا انگلیسی، یک ماه است ----------
+   کلیدِ هر ماه از نام و سالی ساخته می‌شود که کاربر تایپ کرده، و کادرِ
+   «سال» در راهنمایش «مثلاً ۱۴۰۴» را با رقمِ فارسی نشان می‌دهد. پس یکی
+   «۱۴۰۵» می‌نویسد و یکی «1405»، و دو کلیدِ متفاوت ساخته می‌شود که روی
+   صفحه عینِ هم دیده می‌شوند.
+
+   اثرش بدتر از یک فهرستِ دوتایی است: currentMonthKey به کلیدی اشاره
+   می‌کند که در نقشه نیست، و ensureMonthsMigration هر بار که صفحه باز
+   می‌شود یک ماهِ تازه می‌سازد. کارتابلِ یکی از کاربرها به همین شکل
+   سی‌ودو ماه پیدا کرده بود. */
+function faToEn(s){
+  return String(s == null ? "" : s)
+    .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0))
+    .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660));
+}
+
+/* کلیدهایی که از قبل با رقمِ فارسی ساخته شده‌اند یکدست می‌شوند. اگر
+   کلیدِ یکدست از قبل پر باشد دست نمی‌خورد و هر دو می‌مانند — جابه‌جا
+   کردنِ سطر بینِ دو ماه کارِ این تابع نیست و بی‌صدا انجام نمی‌شود. */
+function normalizeMonthKeys(){
+  if(!state || !state.monthsData || typeof state.monthsData !== "object") return;
+  for(const k of Object.keys(state.monthsData)){
+    const parts = String(k).split("|");
+    const fixed = faToEn(parts[0]) + "|" + (parts[1] || "");
+    if(fixed === k || state.monthsData[fixed]) continue;
+    state.monthsData[fixed] = state.monthsData[k];
+    delete state.monthsData[k];
+    if(state.currentMonthKey === k) state.currentMonthKey = fixed;
+  }
+  if(state.currentMonthKey){
+    const p = String(state.currentMonthKey).split("|");
+    state.currentMonthKey = faToEn(p[0]) + "|" + (p[1] || "");
+  }
+  if(state.meta && state.meta.year) state.meta.year = faToEn(state.meta.year);
+}
+
 /* ---------- یک نسخه، نه دو تا ----------
    برنامهٔ روزانه و چک‌لیست دو جا نگه داشته می‌شدند: «state.days» که
    جدول روی آن کار می‌کند، و «monthsData[ماهِ جاری]» که بایگانی است.

@@ -1528,7 +1528,8 @@ async function writeToFolder(){
 /* ---------------- Monthly data (checklist + daily plan are per-month) ---------------- */
 
 function monthKeyOf(month, year){
-  return (String(year||"").trim()||"?") + "|" + (String(month||"").trim()||"?");
+  /* سال همیشه با رقمِ انگلیسی در کلید می‌نشیند، هرچه تایپ شده باشد. */
+  return (faToEn(year).trim()||"?") + "|" + (String(month||"").trim()||"?");
 }
 function monthLabelOf(key){
   const parts = String(key).split("|");
@@ -1536,6 +1537,7 @@ function monthLabelOf(key){
 }
 function ensureMonthsMigration(){
   if(!state.monthsData || typeof state.monthsData!=="object") state.monthsData = {};
+  normalizeMonthKeys();
   if(!state.currentMonthKey || !state.monthsData[state.currentMonthKey]){
     // first run after upgrade, or missing key: adopt whatever tasks/days are already loaded as "the current month"
     const key = monthKeyOf(state.meta && state.meta.month, state.meta && state.meta.year);
