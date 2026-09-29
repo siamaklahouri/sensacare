@@ -1645,6 +1645,9 @@ async function loadState(){
 }
 
 function scheduleSave(){
+  /* همين يك خط جلوى آن پنجاه سطر را مى‌گيرد: نسخهٔ محلى و
+     نسخهٔ سرور هر دو با بايگانىِ تازه نوشته مى‌شوند. */
+  try{ syncWorkingMonth(); }catch(e){}
   const hint = document.getElementById("saveHint");
   if(hint) hint.textContent = "در حال ذخیره...";
   clearTimeout(saveTimer);

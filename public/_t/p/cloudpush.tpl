@@ -9,6 +9,9 @@
     inFlight = true;
     setHint("در حال ذخیره روی سرور...");
     try{
+      /* بايگانىِ ماهِ جارى از روى نسخهٔ در دستِ كار تازه شود،
+         وگرنه چيزى كه بالا مى‌رود يك نسخهٔ كهنه هم با خود مى‌برد. */
+      try{ syncWorkingMonth(); }catch(e){}
       const payload = { state: state, db: dbSnapshot() };
       if(rev !== null) payload.baseRev = rev;
       if(confirmed) payload.force = true;

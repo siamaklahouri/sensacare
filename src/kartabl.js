@@ -552,12 +552,46 @@ export async function loadKartabl(env, panel) {
    نهایی نیست — فقط بی‌صدا نیست. */
 const LOSS_LIMIT = 0.4;     /* بیش از چهل درصدِ محتوا؟ بپرس */
 
+/* چند سطر ناپدید شود تا بپرسیم.
+
+   این عدد عمداً درصد نیست. چهار بار داده رفت و هر چهار بار من یک
+   درصدِ تازه گذاشتم و بارِ بعد از کنارِ همان رد شد. آخرین‌بار ماهی که
+   ۵۰۷ خانه داشت به ۲۰۷ رسید — ۴۱٪ ماند و آستانهٔ ۲۵٪ ساکت ماند. درصد
+   همیشه یک شکاف دارد، چون معنایش به اندازهٔ ماه بستگی دارد.
+
+   شمارِ سطر این وابستگی را ندارد. کاربر سطرها را یکی‌یکی پاک می‌کند،
+   پس رفتنِ شش سطرِ دارای محتوا در یک ذخیره نه در ماهی با ده سطر کارِ
+   عادی است نه در ماهی با پانصد سطر. و ویرایشِ سلول این عدد را تکان
+   نمی‌دهد، پس هشدارِ الکی هم نمی‌دهد. */
+const ROW_LOSS = 5;
+
 function countFilled(rows) {
   let n = 0;
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!row || typeof row !== 'object') continue;
     for (const v of Object.values(row))
       if (v !== '' && v !== null && v !== undefined && v !== false && v !== 0) n++;
+  }
+  return n;
+}
+
+/* کلیدهایی که خودِ صفحه می‌گذارد، نه کاربر. سطرِ تازه‌ای که کاربر با
+   دکمهٔ «+» می‌سازد شمارهٔ روز و تاریخِ امروز را از همان اول دارد، پس
+   اگر این‌ها را محتوا حساب کنیم، ساختن و بعد پاک کردنِ شش سطرِ خالی
+   هشدار می‌داد — و هشدارِ بی‌جا آدم را عادت می‌دهد که بی‌خواندن
+   «بله» بزند. همان چیزی که این محافظ را بی‌فایده می‌کند. */
+const ROW_META = new Set(['day', 'createdDate', 'id', 'rid', 'idx', 'order',
+                          'important', 'reminderAt', 'reminderFired']);
+
+/* سطرهایی که کاربر چیزی در آن‌ها نوشته. */
+function countRows(rows) {
+  let n = 0;
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row || typeof row !== 'object') continue;
+    for (const [k, v] of Object.entries(row)) {
+      if (ROW_META.has(k)) continue;
+      if (v !== '' && v !== null && v !== undefined && v !== false && v !== 0) { n++; break; }
+    }
   }
   return n;
 }
@@ -572,14 +606,15 @@ function monthMap(st) {
 function stateStats(st) {
   const s = st && typeof st === 'object' ? st : {};
   const months = monthMap(s);
-  const per = {};
+  const per = {}, rows = {};
   let filled = 0;
   for (const [k, m] of Object.entries(months)) {
     per[k] = countFilled(m && m.tasks) + countFilled(m && m.days);
+    rows[k] = countRows(m && m.tasks) + countRows(m && m.days);
     filled += per[k];
   }
   filled += countFilled(s.remoteCheckDates ? [Object.assign({}, s.remoteCheckDates)] : []);
-  return { months: Object.keys(months).length, filled, per,
+  return { months: Object.keys(months).length, filled, per, rows,
            vault: !!(s.personalVault && s.personalVault.cipher) };
 }
 
@@ -595,15 +630,21 @@ const DB_SECTIONS = [
 
 function dbStats(d) {
   const c = d && typeof d === 'object' ? d : {};
-  const per = {};
+  const per = {}, rows = {};
   let filled = 0;
-  for (const [k] of DB_SECTIONS) { per[k] = countFilled(c[k]); filled += per[k]; }
-  per.companies = 0;
-  for (const v of Object.values(c.companies || {})) per.companies += countFilled(v);
-  per.dailyLog = 0;
-  for (const v of Object.values(c.dailyLog || {})) per.dailyLog += countFilled(v);
+  for (const [k] of DB_SECTIONS) {
+    per[k] = countFilled(c[k]); rows[k] = countRows(c[k]); filled += per[k];
+  }
+  per.companies = 0; rows.companies = 0;
+  for (const v of Object.values(c.companies || {})) {
+    per.companies += countFilled(v); rows.companies += countRows(v);
+  }
+  per.dailyLog = 0; rows.dailyLog = 0;
+  for (const v of Object.values(c.dailyLog || {})) {
+    per.dailyLog += countFilled(v); rows.dailyLog += countRows(v);
+  }
   filled += per.companies + per.dailyLog;
-  return { filled, per, groups: Object.keys(c.companies || {}).length };
+  return { filled, per, rows, groups: Object.keys(c.companies || {}).length };
 }
 
 const DB_LABEL = Object.assign(
@@ -649,6 +690,12 @@ function lossReason(before, after, kind) {
     for (const [key, bf] of Object.entries(b.per || {})) {
       if (renamed.has(key)) continue;
       const af = (a.per || {})[key] || 0;
+      /* شمارِ سطر اول سنجیده می‌شود، چون این همانی است که درصد از
+         کنارش رد شد: ماهِ شهریورِ کارتابلِ سیامک ۵۰ سطر از دست داد و
+         هنوز ۴۱٪ خانه‌هایش مانده بود. */
+      const br = (b.rows || {})[key] || 0, ar = (a.rows || {})[key] || 0;
+      if (br - ar > ROW_LOSS)
+        return `${br - ar} سطر از ماه «${monthLabel(key)}» ناپدید می‌شود (${br} سطر به ${ar} می‌رسد)`;
       if (bf >= 10 && af < bf * 0.25)
         return `محتوای ماه «${monthLabel(key)}» تقریباً خالی می‌شود (${bf} خانه به ${af} می‌رسد)`;
     }
@@ -661,6 +708,9 @@ function lossReason(before, after, kind) {
   if (kind === 'db') {
     for (const [key, bf] of Object.entries(b.per || {})) {
       const af = (a.per || {})[key] || 0;
+      const br = (b.rows || {})[key] || 0, ar = (a.rows || {})[key] || 0;
+      if (br - ar > ROW_LOSS)
+        return `${br - ar} سطر از بخش «${DB_LABEL[key] || key}» ناپدید می‌شود (${br} سطر به ${ar} می‌رسد)`;
       if (bf >= 10 && af < bf * 0.25)
         return `بخش «${DB_LABEL[key] || key}» تقریباً خالی می‌شود (${bf} خانه به ${af} می‌رسد)`;
     }
@@ -707,7 +757,11 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
        خودِ کاربر را بشکند: مکانیزمِ پشتیبان هیچ‌وقت نباید مسیرِ اصلی را
        زمین بزند. نبودنِ یک عکس بد است، از کار افتادنِ ذخیره فاجعه. */
     try {
-      const h = await histStatements(env, panel, current, now);
+      /* وقتی کاربر هشدارِ از دست رفتن را دیده و باز گفته «بنویس»،
+         فاصلهٔ ده‌دقیقه‌ای کنار می‌رود. دقیقاً همان ذخیره‌ای که ممکن
+         است بعداً پشیمانی بیاورد، نباید همانی باشد که عکسش گرفته
+         نشد. */
+      const h = await histStatements(env, panel, current, now, force);
       if (h.length) await env.DB.batch(h);
     } catch (e) { console.log('kartabl-hist', e.message); }
     await env.DB.batch(stmts);
@@ -724,14 +778,16 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
    می‌سازد و جدول را پر می‌کرد. پس فاصلهٔ حداقلی می‌گذاریم و در عوض
    عمقِ تاریخچه را بیشتر نگه می‌داریم. */
 const HIST_GAP  = 10 * 60 * 1000;   /* دست‌کم ده دقیقه بین دو عکس */
-const HIST_KEEP = 60;               /* آخرین شصت عکسِ هر کلید */
+const HIST_KEEP = 120;              /* آخرین صد و بیست عکسِ هر کلید */
 
-async function histStatements(env, panel, current, now) {
+async function histStatements(env, panel, current, now, always) {
   const out = [];
   for (const [k, v] of [[panel.keys.state, current.state], [panel.keys.db, current.db]]) {
     if (v == null) continue;            /* چیزی نبوده که عکسش را بگیریم */
-    const last = await one(env, 'SELECT at FROM kartabl_hist WHERE k=? ORDER BY at DESC LIMIT 1', k);
-    if (last && now - last.at < HIST_GAP) continue;
+    if (!always) {
+      const last = await one(env, 'SELECT at FROM kartabl_hist WHERE k=? ORDER BY at DESC LIMIT 1', k);
+      if (last && now - last.at < HIST_GAP) continue;
+    }
     out.push(env.DB.prepare('INSERT INTO kartabl_hist(k,v,rev,at) VALUES(?,?,?,?)')
       .bind(k, JSON.stringify(v), current.rev, now));
     out.push(env.DB.prepare(
