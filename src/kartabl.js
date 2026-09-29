@@ -1282,13 +1282,24 @@ export async function sendAllBackup(env, req, note = '') {
 
 /* چهار نوبت در شبانه‌روز، هر شش ساعت. نامِ نوبت از ساعتِ تهران
    می‌آید نه گرینویچ، چون همان است که در پیام دیده می‌شود. */
-const SLOT_NAME = { '02': 'بامداد', '08': 'صبح', '14': 'ظهر', '20': 'شب' };
+/* نامِ نوبت. چهار اسم برای چهار نوبت بس بود؛ حالا بیست‌وچهارتاست و
+   اسم‌های «صبح» و «ظهر» دیگر چیزی را روشن نمی‌کنند. ساعتِ تهران را
+   می‌نویسیم که بشود دو نسخهٔ پشتِ هم را از هم جدا کرد.
+
+   نوبت‌ها سرِ دقیقهٔ سیِ گرینویچ‌اند و تهران ۳:۳۰ جلوتر است، پس
+   ساعتِ H گرینویچ می‌شود سرِ ساعتِ H+4 تهران. */
+const slotName = slot => {
+  const h = Number(slot);
+  if (!Number.isInteger(h) || h < 0 || h > 23) return String(slot || '');
+  const t = String((h + 4) % 24).padStart(2, '0') + ':00';
+  return t.replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+};
 
 export async function nightlyKartablBackup(env, slot) {
   /* ورکر در cron درخواستی ندارد، ولی برای گرفتن فایل HTML از ASSETS یک
      Request لازم است. یکی می‌سازیم. */
   const req = new Request('https://' + (env.PANEL_HOST || env.PUBLIC_HOST || 'sltech.ir') + '/');
-  const when = SLOT_NAME[slot] || slot || '';
+  const when = slot ? slotName(slot) : '';
   const note = 'خودکار' + (when ? ' — ' + when : '');
   /* استثنا هم باید همان‌قدر دیده شود که «نپذیرفت»: پیش از این این‌جا
      بی‌صدا به یک شیء تبدیل می‌شد و دور ریخته می‌شد. */

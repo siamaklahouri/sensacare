@@ -1,11 +1,12 @@
 [Unit]
-Description=SLTech database backup, nightly
+Description=SLTech database backup, hourly
 
 [Timer]
-# ساعت ۳:۳۰ بامداد به وقتِ تهران — سرور روی همین منطقه تنظیم است
-OnCalendar=*-*-* 03:30:00
+# هر ساعت سرِ دقیقهٔ ۲۵. عمداً نه سرِ ساعت: کرونِ خودِ برنامه سرِ
+# دقیقهٔ سی کار می‌کند و بهتر است نسخه پیش از آن گرفته شود، نه وسطش.
+OnCalendar=*-*-* *:25:00
 Persistent=true
-RandomizedDelaySec=300
+RandomizedDelaySec=60
 
 [Install]
 WantedBy=timers.target

@@ -1649,14 +1649,24 @@ export default {
       }
     })().catch(e => console.log(name, e.message)));
 
-    once('backup', runBackup);
+    /* پشتیبانِ کارتابل‌ها هر ساعت. */
     twice('kartablBackup', nightlyKartablBackup);
-    once('reorder', reorderReminders);
-    once('cart', cartNudges);
-    once('pay', payNudges);
-    once('stock', stockAlert);
-    once('digest', dailyDigest);
-    once('bothealth', botHealth);
+
+    /* و کارهای روزانه، که یکی‌شان برای آدم پیام می‌فرستد.
+       کرون حالا ساعتی است، پس اولین نوبتِ روز ۰۰:۳۰ گرینویچ است —
+       چهارِ صبحِ تهران. قفلشان روزانه است و همان اولین نوبت مصرفشان
+       می‌کرد، یعنی خلاصهٔ روز سرِ صبحِ خواب می‌رسید. از نوبتِ ۰۲ به
+       بعد امتحان می‌شوند تا مثل قبل ۰۲:۳۰ گرینویچ (ششِ صبحِ تهران)
+       بروند، و نوبت‌های بعد هم اگر آن یکی نرسید جایش را بگیرند. */
+    if (slot >= '02') {
+      once('backup', runBackup);
+      once('reorder', reorderReminders);
+      once('cart', cartNudges);
+      once('pay', payNudges);
+      once('stock', stockAlert);
+      once('digest', dailyDigest);
+      once('bothealth', botHealth);
+    }
     /* ردیف‌های کهنه لازم نیستند */
     ctx.waitUntil(run(env, 'DELETE FROM job_runs WHERE at < ?', Date.now() - 30 * 86400000)
       .catch(() => {}));

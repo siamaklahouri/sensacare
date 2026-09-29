@@ -8,6 +8,7 @@ User=sltech
 Group=sltech
 Environment=DB_FILE=/var/lib/sltech/sltech.db
 Environment=BACKUP_DIR=/var/backups/sltech
+Environment=BACKUP_KEEP_HOURLY_DAYS=7
 Environment=BACKUP_KEEP_DAYS=30
 ExecStart=/opt/sltech/app/server/backup.sh
 Nice=10

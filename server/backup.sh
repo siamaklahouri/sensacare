@@ -8,18 +8,28 @@
 # دربیاید. «‎.backup‎» از خودِ SQLite نسخه‌ای می‌گیرد که همیشه سالم
 # است، حتی وقتی سرویس در حالِ نوشتن است.
 #
-# نسخه‌ها فشرده می‌شوند و از سی روز که گذشت پاک. هر شب یک بار.
+# هر ساعت یک نسخه. روزی یک بار هم همان نسخه در پوشهٔ «daily» کپی
+# می‌شود.
+#
+# دو دورهٔ نگه‌داری، چون دو جور از دست دادن هست: یکی که همان ساعت
+# می‌فهمی و یکی که یک هفته بعد. نسخه‌های ساعتی هفت روز می‌مانند و
+# روزانه‌ها سی روز — وگرنه یا دیسک پر می‌شد یا تاریخچه کوتاه.
 
 set -u
 DB="${DB_FILE:-/var/lib/sltech/sltech.db}"
 OUT="${BACKUP_DIR:-/var/backups/sltech}"
-KEEP="${BACKUP_KEEP_DAYS:-30}"
+KEEP="${BACKUP_KEEP_HOURLY_DAYS:-7}"
+KEEPD="${BACKUP_KEEP_DAYS:-30}"
 STAMP=$(date +%Y-%m-%d_%H%M)
-TMP="$OUT/.tmp-$STAMP.db"
+DAY=$(date +%Y-%m-%d)
+# شمارهٔ پروسه در نامِ فایلِ موقت: اگر کسی دستی اجرا کند درست وقتی
+# زمان‌سنج هم می‌رود، دو نسخه روی یک فایلِ موقت نمی‌نویسند.
+TMP="$OUT/.tmp-$STAMP-$$.db"
 FINAL="$OUT/sltech-$STAMP.db.gz"
+DAILY="$OUT/daily/sltech-$DAY.db.gz"
 
-mkdir -p "$OUT"
-chmod 700 "$OUT"
+mkdir -p "$OUT/daily"
+chmod 700 "$OUT" "$OUT/daily"
 
 if [ ! -f "$DB" ]; then
   echo "دیتابیس پیدا نشد: $DB" >&2
@@ -45,9 +55,15 @@ gzip -9 -c "$TMP" > "$FINAL"
 rm -f "$TMP"
 chmod 600 "$FINAL"
 
-# قدیمی‌ها
-find "$OUT" -name 'sltech-*.db.gz' -type f -mtime "+$KEEP" -delete 2>/dev/null
+# نسخهٔ روزانه: اولین نسخهٔ هر روز کپی می‌شود و بس. «-f» یعنی اگر
+# امروز از قبل هست، دست نمی‌خورد.
+[ -f "$DAILY" ] || cp -f "$FINAL" "$DAILY"
+
+# قدیمی‌ها — هر کدام با دورهٔ خودش
+find "$OUT" -maxdepth 1 -name 'sltech-*.db.gz' -type f -mtime "+$KEEP" -delete 2>/dev/null
+find "$OUT/daily" -name 'sltech-*.db.gz' -type f -mtime "+$KEEPD" -delete 2>/dev/null
 
 SIZE=$(du -h "$FINAL" | cut -f1)
-COUNT=$(find "$OUT" -name 'sltech-*.db.gz' -type f | wc -l)
-echo "پشتیبان: $FINAL ($SIZE) — $COUNT نسخه روی سرور"
+NH=$(find "$OUT" -maxdepth 1 -name 'sltech-*.db.gz' -type f | wc -l)
+ND=$(find "$OUT/daily" -name 'sltech-*.db.gz' -type f | wc -l)
+echo "پشتیبان: $FINAL ($SIZE) — $NH نسخهٔ ساعتی، $ND نسخهٔ روزانه"

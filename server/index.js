@@ -130,10 +130,15 @@ server.keepAliveTimeout = 65000;
 server.headersTimeout   = 70000;
 
 /* ---------- کرون ----------
-   همان چهار نوبتِ wrangler.toml، به وقتِ گرینویچ:
-   ۲:۳۰ و ۸:۳۰ و ۱۴:۳۰ و ۲۰:۳۰ = ۶ و ۱۲ و ۱۸ و ۲۴ به وقتِ تهران. */
-const SLOTS = (cfg.CRON_UTC || '2:30,8:30,14:30,20:30')
-  .split(',').map(s => s.trim().split(':').map(Number)).filter(a => a.length === 2);
+   همان چیزی که در wrangler.toml است: هر ساعت، سرِ دقیقهٔ سی گرینویچ.
+   کارهای روزانه خودشان قفلِ روزانه دارند و در src/index.js از نوبتِ
+   ۰۲ به بعد امتحان می‌شوند، پس این‌جا چیزی جدا لازم نیست.
+
+   CRON_UTC اگر تنظیم شده باشد بر این می‌چربد، و «-» یعنی هیچ. */
+const HOURLY = Array.from({ length: 24 }, (_, h) => h + ':30').join(',');
+const SLOTS = (cfg.CRON_UTC || HOURLY)
+  .split(',').map(s => s.trim().split(':').map(Number))
+  .filter(a => a.length === 2 && a.every(Number.isInteger));
 
 let lastFired = '';
 async function fireScheduled(now = new Date()) {
@@ -165,7 +170,9 @@ server.listen(PORT, BIND, () => {
   console.log(`sltech روی http://${BIND}:${PORT}`);
   console.log(`دیتابیس: ${DB_FILE}`);
   console.log(`فایل‌ها: ${PUBLIC}`);
-  console.log(`کرون (UTC): ${SLOTS.map(s => s.join(':')).join('، ')}`);
+  console.log(SLOTS.length === 24 ? 'کرون: هر ساعت، سرِ دقیقهٔ سی گرینویچ'
+    : SLOTS.length ? `کرون (UTC): ${SLOTS.map(s => s.join(':')).join('، ')}`
+    : 'کرون: خاموش');
   /* فقط نامِ میزبان، نه کلِ آدرس: رمزِ رله داخلِ مسیرِ TG_BASE است و
      لاگ جایی است که کپی می‌شود و دست‌به‌دست می‌گردد. */
   let tgWhere = 'api.telegram.org (مستقیم)';
