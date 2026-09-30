@@ -1,0 +1,27 @@
+[Unit]
+Description=SensaCare shop (sensacare.ir)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sltech
+Group=sltech
+WorkingDirectory=/opt/sltech/app
+Environment=NODE_ENV=production
+Environment=SLTECH_ENV=/etc/sensa/env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=3
+
+# همان کدِ سرویسِ اس‌ال‌تک است، فقط با تنظیمات و دیتابیسِ دیگر. دو
+# سرویسِ جدا نه از سرِ زیاده‌روی: اگر یکی بیفتد آن یکی سرِ پا می‌ماند،
+# و هیچ‌کدام نمی‌تواند به دیتابیسِ آن یکی برسد.
+ReadWritePaths=/var/lib/sensa /var/backups/sensa
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
