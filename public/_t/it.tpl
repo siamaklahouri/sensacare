@@ -858,6 +858,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
 {{PART:mobilecss}}
 {{PART:navcss}}
+{{PART:colorcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
   .theme-btn:active{ transform:scale(.94); }
   /* نوار کناریِ این پلنر پردهٔ سفیدِ نیمه‌شفاف روی صفحه است، نه توکن؛
