@@ -165,7 +165,7 @@ function setupConvert() {
   var ty = parseInt(today.year, 10) || 1405;
   box.innerHTML =
     '<div class="panel">' +
-      "<h3>🔄 تبدیل واحد</h3>" +
+      '<h3><span class="cv-ico">🔄</span> تبدیل واحد</h3>' +
       '<div class="cv-row">' +
         '<select id="cvCat">' + Object.keys(CONV).map(function (k) {
           return '<option value="' + k + '">' + escapeHtml(CONV[k].t) + "</option>";
@@ -182,8 +182,8 @@ function setupConvert() {
       '<div class="cv-out" id="cvOut">—</div>' +
       '<div class="cv-note" id="cvNote"></div>' +
     "</div>" +
-    '<div class="panel" style="margin-top:16px;">' +
-      "<h3>🗓 ماهِ شمسی روی تقویمِ میلادی</h3>" +
+    '<div class="panel" style="margin-top:12px;">' +
+      '<h3><span class="cv-ico">🗓</span> ماهِ شمسی روی تقویمِ میلادی</h3>' +
       '<div class="cv-row">' +
         '<select id="cvMY"></select>' +
         '<select id="cvMM">' + CONV_JM.map(function (n, i) {
