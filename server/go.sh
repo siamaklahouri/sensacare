@@ -624,6 +624,27 @@ step14() {
     else bad "SHOP_JOBS=off در $ENVF نیست — اجرای دستی ممکن است به مشتری پیام بدهد"
   fi
 
+  # اینجا بود که بارِ اول کم آوردم: نوبت‌ها را نشان می‌دادم ولی
+  # نتیجه‌شان را نه. و «نوبت ثبت شده» یعنی دستِ‌کم یک ربات گرفته،
+  # نه هر دو — کد فقط وقتی شکست اعلام می‌کند که هیچ‌کدام نگیرند.
+  # پس اگر بله بگیرد و تلگرام نگیرد، همه‌چیز سبز به نظر می‌رسد و
+  # صاحبش که در تلگرام نگاه می‌کند چیزی نمی‌بیند.
+  say "آخرین پشتیبان، و اینکه به کدام ربات رسید"
+  sqlite3 "$DBF" "SELECT v FROM settings WHERE k='kartablBackupAll';" 2>/dev/null \
+  | node -e '
+      let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+        if (!s.trim()) return console.log("        هیچ رکوردی نیست");
+        let v; try { v = JSON.parse(s); } catch (e) { return console.log("        " + s.trim().slice(0,200)); }
+        const t = v.at ? new Date(v.at + 3.5 * 3600e3).toISOString().replace("T", " ").slice(0, 16) : "?";
+        console.log("        زمان   : " + t + "  (تهران)");
+        console.log("        نوبت   : " + (v.note || "-"));
+        console.log("        نتیجه  : " + (v.ok ? "موفق" : "ناموفق"));
+        console.log("        رسید به: " + ((v.to || []).join("، ") || "هیچ‌کدام"));
+        const f = v.failed || [];
+        console.log("        نرسید  : " + (f.length ? f.join(" | ") : "-"));
+        if (v.error) console.log("        خطا    : " + v.error);
+      });' 2>/dev/null
+
   say "نوبت‌های ثبت‌شده (به وقتِ تهران)"
   sqlite3 "$DBF" \
     "SELECT k || '   ' || datetime(at/1000,'unixepoch','+3 hours','+30 minutes')
