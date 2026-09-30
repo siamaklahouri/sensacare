@@ -922,8 +922,29 @@
     }, POLL_MS);
   }
 
+  /* ---------- همین کار، برای نمای مدیر ----------
+     نمای هر بخش هر شش ثانیه تازه می‌شد، ولی نمای مدیر فقط یک بار
+     موقعِ کلیک خوانده می‌شد و بعد تا رفرشِ صفحه دست نمی‌خورد. یعنی
+     کسی که این نما را باز گذاشته بود، کارِ تازهٔ بقیه را نمی‌دید —
+     و این‌جا دقیقاً همان جایی است که آدم می‌نشیند و نگاه می‌کند.
+
+     نوبت‌های بعدی افزایشی‌اند نه کامل: بارِ اول باید کلِ ردیف‌ها
+     بیاید، ولی تکرارِ آن هر شش ثانیه یعنی خواندنِ همهٔ جدول‌ها از
+     اول. ردیف‌ها در STATE می‌مانند، پس بعدش فقط تغییرها لازم است. */
+  var MGR = { timer: null };
+
   function stopAll() {
     for (var k in STATE) if (STATE[k].timer) { clearInterval(STATE[k].timer); STATE[k].timer = null; }
+    if (MGR.timer) { clearInterval(MGR.timer); MGR.timer = null; }
+  }
+
+  function startMgrPoll() {
+    stopAll();
+    MGR.timer = setInterval(function () {
+      var sec = document.getElementById("view-shared-mgr");
+      if (!sec || !sec.classList.contains("active") || document.hidden) return;
+      mgrRefresh(false);
+    }, POLL_MS);
   }
 
   /* وقتی کاربر از این بخش بیرون می‌رود، تایمر هم خاموش می‌شود */
@@ -937,6 +958,9 @@
       var sec = document.getElementById("view-shared-" + k);
       if (sec && sec.classList.contains("active")) pull(k, false);
     }
+    /* برگشتن به تب هم مثلِ نوبتِ تایمر است؛ نمای مدیر هم باید جا بیفتد */
+    var mg = document.getElementById("view-shared-mgr");
+    if (mg && mg.classList.contains("active")) mgrRefresh(false);
   });
 
 
@@ -1322,16 +1346,26 @@
       var vs = document.querySelectorAll(".view");
       for (var j = 0; j < vs.length; j++) vs[j].classList.remove("active");
       sec.classList.add("active");
-      mgrRefresh();
+      mgrRefresh(true);
+      startMgrPoll();
     });
   }
 
   /* ردیف‌های همهٔ جدول‌های زیرِ دستِ مدیر را می‌خواند. هر بخش یک
-     درخواست — با since=0 چون این نما کلِ تصویر را می‌خواهد، نه تغییرها. */
-  async function mgrRefresh() {
-    var boxes = mgrBoxes();
-    await Promise.all(boxes.map(function (b) { return pull(b.id, true); }));
-    mgrPaint();
+     درخواست.
+
+     بارِ اول کامل (since=0)، چون این نما کلِ تصویر را می‌خواهد. ولی
+     نوبت‌های تایمر افزایشی‌اند: ردیف‌ها در STATE مانده‌اند و فقط
+     تغییرها لازم است. اگر این‌جا هم کامل می‌خواند، هر شش ثانیه همهٔ
+     جدول‌ها از اول خوانده می‌شدند. */
+  async function mgrRefresh(full) {
+    if (mgrRefresh.busy) return;
+    mgrRefresh.busy = true;
+    try {
+      var boxes = mgrBoxes();
+      await Promise.all(boxes.map(function (b) { return pull(b.id, full !== false); }));
+      mgrPaint();
+    } finally { mgrRefresh.busy = false; }
   }
 
   var MG_FILTER = "all";
