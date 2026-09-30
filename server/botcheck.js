@@ -65,6 +65,19 @@ const fingerprint = t => {
   return `${id}:…  (${s.length} نویسه)`;
 };
 
+/* این‌جا یک بار لغزیدم و باید جلویش گرفته شود: توکن را با احتیاط
+   نشان می‌دادم ولی دو راز دیگر را کامل چاپ می‌کردم.
+     • آدرسِ وب‌هوک، که رمزش را در «s=» دارد — همان رمزی که نبودنش
+       یعنی هر کسی می‌تواند پیامِ جعلی به سایت بفرستد.
+     • TG_BASE، که مسیرِ مخفیِ رله در خودش دارد.
+   خروجیِ این ابزار همان‌جایی می‌رود که آدم کپی‌اش می‌کند و برای
+   دیگری می‌فرستد، پس باید خودش تمیز باشد. */
+const hideS = u => String(u || '').replace(/([?&]s=)[^&]*/gi, '$1…');
+const hidePath = u => {
+  try { const x = new URL(u); return x.origin + (x.pathname === '/' ? '' : '/…'); }
+  catch { return String(u || ''); }
+};
+
 let db = null;
 try { db = new DatabaseSync(DBF, { readOnly: true }); }
 catch (e) { bad(`دیتابیس باز نشد: ${DBF} — ${e.message}`); process.exit(1); }
@@ -116,7 +129,7 @@ for (const b of BOTS) {
     bad(`${bs.key} تنظیم نشده، پس مستقیم به ${bs.direct} می‌رود.`);
     note('و آن از ایران بسته است — خروجی در سکوت شکست می‌خورد.');
   } else {
-    ok(`راهِ خروج: ${base}`);
+    ok(`راهِ خروج: ${hidePath(base)}`);
   }
 
   if (OFFLINE) continue;
@@ -139,7 +152,7 @@ for (const b of BOTS) {
       bad('وب‌هوک تنظیم نشده — پیامِ کاربرها به این سرور نمی‌رسد.');
       note('در پنل، «وصل کردن ربات‌ها به سایت» را بزن.');
     } else {
-      ok(`وب‌هوک: ${w.url}`);
+      ok(`وب‌هوک: ${hideS(w.url)}`);
       if (w.pending_update_count) note(`${w.pending_update_count} پیامِ معطل`);
       if (w.last_error_message) {
         problems++;
