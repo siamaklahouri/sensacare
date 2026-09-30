@@ -840,11 +840,43 @@
     var s = st(box.id);
     if (!r.ok) { flash(tr, false); kept(box, null); return; }
     var was = s.rows[rid] || {};
+    var wasDone = rowDone(box, was);
     s.rows[rid] = { rid: rid, v: r.data.v || v, updated: r.data.updated,
                     by: me(), dead: false,
                     owner: r.data.owner || was.owner || me(),
                     created: r.data.created || was.created || Date.now() };
     s.since = Math.max(s.since, r.data.updated || 0);
+
+    /* «انجام شد» که خورد، ردیف باید خط بخورد و قفل شود. تا پیش از
+       این هیچ‌کدام نمی‌شد تا وقتی صفحه رفرش شود — چون این‌جا عمداً
+       کلِ ردیف از نو کشیده نمی‌شود (تا تمرکز نپرد) و paint هم فقط
+       ردیف‌هایی را از نو می‌سازد که از سرور «تغییرکرده» آمده باشند،
+       و تغییرِ خودِ آدم از سرور برنمی‌گردد.
+
+       پس فقط وقتی حالتِ تمام‌شدن عوض شده باشد ردیف از نو ساخته
+       می‌شود — هم خط می‌خورد، هم خانه‌هایی که دیگر دستِ کسی نیست
+       کادرشان برداشته می‌شود. */
+    if (rowDone(box, s.rows[rid]) !== wasDone) {
+      var atK = document.activeElement && tr.contains(document.activeElement)
+        ? document.activeElement.getAttribute("data-k") : null;
+      var holder = document.createElement("tbody");
+      holder.innerHTML = rowHtml(box, s.rows[rid]);
+      var next = holder.firstElementChild;
+      tr.replaceWith(next);
+      tr = next;
+      wire(box, tr);
+      /* اگر انگشتِ کاربر داخلِ همین ردیف بود، به همان ستون برش
+         می‌گردانیم — مگر آن خانه حالا قفل شده باشد. */
+      if (atK) {
+        var back = tr.querySelector('[data-k="' + atK + '"]');
+        if (back && typeof back.focus === "function") { try { back.focus(); } catch (e) {} }
+      }
+      kept(box, r.data.kept);
+      flash(tr, !(r.data.kept && r.data.kept.length));
+      summary(box);
+      if (window.tableSizeSweep) window.tableSizeSweep();
+      return;
+    }
 
     /* اگر سرور چیزی را نپذیرفت، همان خانه را برمی‌گردانیم سرِ مقدارِ
        واقعی‑اش. کلِ ردیف از نو کشیده نمی‌شود چون انگشتِ کاربر همین

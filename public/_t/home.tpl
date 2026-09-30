@@ -79,6 +79,32 @@ body{
   box-shadow:0 3px 10px rgba(18,46,110,.28); }
 .brand b{ font-size:17px; letter-spacing:.1em; }
 .top .sp{ flex:1; }
+
+/* ---------- منوی بالا ----------
+   روی صفحهٔ باریک یک ردیفِ لغزان می‌شود، نه اینکه بشکند و نوار را
+   دو طبقه کند. ماسکِ لبه نشان می‌دهد که هنوز چیزی آن طرف هست. */
+.topnav{ display:flex; align-items:center; gap:2px; min-width:0;
+  overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+  scroll-snap-type:x proximity; margin-inline-start:6px; }
+.topnav::-webkit-scrollbar{ display:none; }
+.topnav a{ flex:0 0 auto; scroll-snap-align:center; white-space:nowrap;
+  text-decoration:none; color:var(--ink-soft); font-size:13.5px; font-weight:600;
+  padding:7px 11px; border-radius:999px; position:relative;
+  transition:color .15s, background .15s; }
+.topnav a:hover{ color:var(--brand); background:var(--brand-soft); }
+.topnav a[hidden]{ display:none; }
+/* بخشی که همین حالا جلوِ چشم است پررنگ می‌شود — وگرنه منو می‌گوید
+   کجا می‌شود رفت ولی نمی‌گوید کجا هستیم. */
+.topnav a.on{ color:var(--brand); background:var(--brand-soft); }
+@media (max-width:980px){
+  .topnav{ order:3; flex-basis:100%; margin-inline-start:0;
+    -webkit-mask-image:linear-gradient(to left, transparent 0, #000 16px,
+                        #000 calc(100% - 16px), transparent 100%);
+            mask-image:linear-gradient(to left, transparent 0, #000 16px,
+                        #000 calc(100% - 16px), transparent 100%); }
+  .top .wrap{ flex-wrap:wrap; padding-bottom:6px; }
+  .top .sp{ order:2; }
+}
 .icon-btn{ width:38px; height:38px; border-radius:50%; border:1px solid var(--line);
   background:var(--white); color:var(--ink); cursor:pointer; font-size:15px; line-height:1;
   display:grid; place-items:center; }
@@ -107,8 +133,21 @@ body{
    می‌کرد. این حاشیه فقط برای پرشِ لنگر است، نه برای چیدمان. */
 section{ padding:52px 0; scroll-margin-top:86px; }
 .sec-head{ margin-bottom:28px; }
-.sec-head h2{ font-size:25px; margin:0 0 8px; }
+/* هر بخش یک نشانِ رنگی می‌گیرد. تا پیش از این همهٔ تیترها یک‌جور
+   سرمه‌ای بودند و صفحه از بالا تا پایین یک رنگ به نظر می‌رسید. */
+.sec-head h2{ font-size:25px; margin:0 0 8px; display:flex; align-items:center; gap:10px; }
+.sec-head h2::before{ content:""; flex:0 0 auto; width:5px; height:24px; border-radius:99px;
+  background:linear-gradient(180deg, var(--tone, var(--brand)),
+             color-mix(in srgb, var(--tone, var(--brand)) 55%, transparent)); }
 .sec-head p{ color:var(--ink-soft); margin:0; max-width:640px; }
+#why   { --tone:#C0532B; }
+#what  { --tone:var(--brand); }
+#kinds { --tone:var(--s-gen); }
+#jobs  { --tone:var(--s-it); }
+#safe  { --tone:#1E7A4A; }
+#buy   { --tone:var(--s-fin); }
+#how   { --tone:var(--brand); }
+#faq   { --tone:var(--s-gen); }
 @media (max-width:640px){ section{ padding:38px 0; } .sec-head h2{ font-size:21px; } }
 
 .grid{ display:grid; gap:15px; }
@@ -119,10 +158,28 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 @media (max-width:620px){ .g2, .g3{ grid-template-columns:1fr; } }
 
 .card{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
-  padding:21px; box-shadow:var(--sh-1); }
-.card h3{ margin:0 0 7px; font-size:16.5px; display:flex; align-items:center; gap:8px; }
+  padding:21px; box-shadow:var(--sh-1);
+  transition:border-color .15s, box-shadow .18s, transform .15s; }
+.card:hover{ transform:translateY(-2px); box-shadow:var(--sh-2);
+  border-color:color-mix(in srgb, var(--tone, var(--brand)) 40%, var(--line)); }
+.card h3{ margin:0 0 7px; font-size:16.5px; display:flex; align-items:center; gap:9px; }
 .card p{ margin:0; color:var(--ink-soft); font-size:13.8px; }
-.card .ic{ font-size:19px; line-height:1; }
+/* ایموجیِ تنها روی کارتِ سفید گم می‌شد. حالا داخلِ یک مربعِ رنگی
+   می‌نشیند و هر کارت رنگِ خودش را دارد — رنگ‌ها از همان پالتی که
+   داخلِ کارتابل هم هست، نه چیزی تازه. */
+.card .ic{ font-size:17px; line-height:1; flex:0 0 auto;
+  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+  background:color-mix(in srgb, var(--tone, var(--brand)) 13%, var(--white));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--brand)) 22%, transparent); }
+
+/* شش رنگ که پشتِ سرِ هم روی کارت‌ها می‌افتند، پس هر شبکه‌ای
+   رنگارنگ می‌شود بی‌آنکه لازم باشد به هر کارت دستی رنگ بدهیم. */
+.grid > .card:nth-child(6n+1){ --tone:var(--brand); }
+.grid > .card:nth-child(6n+2){ --tone:var(--s-it); }
+.grid > .card:nth-child(6n+3){ --tone:var(--s-fin); }
+.grid > .card:nth-child(6n+4){ --tone:var(--s-gen); }
+.grid > .card:nth-child(6n+5){ --tone:#1E7A4A; }
+.grid > .card:nth-child(6n+6){ --tone:#C0532B; }
 
 /* مشکل‌ها — کارت‌های کم‌رنگ‌تر، چون حرفِ خوشایندی نیستند */
 .pain{ background:transparent; border-style:dashed; box-shadow:none; }
@@ -142,11 +199,23 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 /* ---------- شغل‌ها ---------- */
 .jobs{ display:grid; gap:9px; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
 .job{ display:flex; align-items:center; gap:10px; background:var(--white);
-  border:1px solid var(--line); border-radius:var(--r); padding:12px 14px; }
+  border:1px solid var(--line); border-radius:var(--r); padding:12px 14px;
+  transition:border-color .15s, box-shadow .15s; }
+.job:hover{ border-color:color-mix(in srgb, var(--tone, var(--brand)) 45%, var(--line));
+  box-shadow:var(--sh-1); }
 .job .n{ font-weight:600; font-size:14px; flex:1; min-width:0; }
-.job .c{ font-size:11.5px; color:var(--brand-ink); background:var(--brand-soft);
-  padding:2px 9px; border-radius:999px; white-space:nowrap; }
-.job .e{ font-size:17px; line-height:1; }
+.job .c{ font-size:11.5px; white-space:nowrap; padding:2px 9px; border-radius:999px;
+  color:var(--tone, var(--brand-ink));
+  background:color-mix(in srgb, var(--tone, var(--brand)) 13%, var(--white)); }
+.job .e{ font-size:16px; line-height:1; flex:0 0 auto;
+  width:30px; height:30px; border-radius:9px; display:grid; place-items:center;
+  background:color-mix(in srgb, var(--tone, var(--brand)) 13%, var(--white)); }
+/* شغل‌ها زیادند و یک‌دست آبی بودنشان فهرست را یکنواخت می‌کرد. */
+.jobs > .job:nth-child(5n+1){ --tone:var(--brand); }
+.jobs > .job:nth-child(5n+2){ --tone:var(--s-it); }
+.jobs > .job:nth-child(5n+3){ --tone:var(--s-fin); }
+.jobs > .job:nth-child(5n+4){ --tone:var(--s-gen); }
+.jobs > .job:nth-child(5n+5){ --tone:#1E7A4A; }
 
 /* ---------- گام‌ها ---------- */
 .steps{ counter-reset:s; display:grid; gap:14px; grid-template-columns:repeat(3,1fr); }
@@ -156,8 +225,16 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 .step::before{ counter-increment:s; content:counter(s);
   position:absolute; inset-block-start:-13px; inset-inline-start:21px;
   width:30px; height:30px; border-radius:50%; display:grid; place-items:center;
-  background:linear-gradient(145deg, var(--brand), var(--brand-deep)); color:#fff;
+  background:linear-gradient(145deg, var(--tone, var(--brand)),
+             color-mix(in srgb, var(--tone, var(--brand)) 70%, #000)); color:#fff;
   font-weight:700; font-size:14px; box-shadow:0 3px 10px rgba(18,62,128,.3); }
+/* سه گام، سه رنگ — پیشرفت را دیدنی‌تر می‌کند تا سه دایرهٔ یک‌شکل. */
+.steps > .step:nth-child(1){ --tone:var(--brand); }
+.steps > .step:nth-child(2){ --tone:var(--s-it); }
+.steps > .step:nth-child(3){ --tone:#1E7A4A; }
+.step{ transition:border-color .15s, box-shadow .15s; }
+.step:hover{ border-color:color-mix(in srgb, var(--tone, var(--brand)) 40%, var(--line));
+  box-shadow:var(--sh-1); }
 .step h3{ margin:9px 0 6px; font-size:16px; }
 .step p{ margin:0; color:var(--ink-soft); font-size:13.8px; }
 
@@ -366,6 +443,16 @@ footer .sep{ opacity:.5; margin:0 8px; }
     <img src="/icon-sl.3.png" alt="SLTech" width="38" height="38">
     <b>SLTech</b>
   </a>
+  <!-- تا پیش از این نوارِ بالا فقط لوگو و دکمهٔ ورود بود. صفحه هشت
+       بخش دارد و هیچ راهی به آن‌ها نبود جز اسکرول کردن تا ته. -->
+  <nav class="topnav" id="topnav" aria-label="بخش‌های صفحه">
+    <a href="#why">چرا؟</a>
+    <a href="#kinds">انواع</a>
+    <a href="#jobs">شغل‌ها</a>
+    <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
+    <a href="#how">شروع</a>
+    <a href="#faq">پرسش‌ها</a>
+  </nav>
   <div class="sp"></div>
   <button class="icon-btn" id="themeBtn" title="تم روز و شب" aria-label="تم روز و شب">🌙</button>
   <a class="btn btn-main" href="/login">ورود به کارتابل</a>
@@ -717,6 +804,82 @@ footer .sep{ opacity:.5; margin:0 8px; }
     try{ localStorage.setItem("sltech:theme", dark ? "light" : "dark"); }catch(e){}
     paint();
   });
+})();
+
+/* ---------- منوی بالا ----------
+   کدام بخش جلوِ چشم است؟ IntersectionObserver این را ارزان می‌گوید،
+   بی‌آنکه لازم باشد در رویدادِ اسکرول هر بار موقعیتِ همه حساب شود.
+
+   نوارِ بالا چسبان است و حدودِ ۸۶px از دید را می‌گیرد، پس مرزِ بالا
+   همان‌قدر پایین آورده می‌شود — وگرنه بخشی که زیرِ نوار پنهان است
+   «فعال» حساب می‌شد. */
+(function(){
+  const nav = document.getElementById("topnav");
+  if(!nav || !("IntersectionObserver" in window)) return;
+  const links = [...nav.querySelectorAll("a[href^='#']")];
+  const byId = {};
+  links.forEach(a => { byId[a.getAttribute("href").slice(1)] = a; });
+
+  /* روی صفحهٔ باریک نوار می‌لغزد و تبِ فعال ممکن است بیرون از دید
+     باشد؛ خودش را وسط می‌آورد. همان کاری که نوارِ کارتابل می‌کند. */
+  const show = a => {
+    if(!a || nav.scrollWidth <= nav.clientWidth + 2) return;
+    try{ a.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" }); }catch(e){}
+  };
+
+  let current = null;
+  const mark = id => {
+    if(id === current) return;
+    current = id;
+    links.forEach(a => a.classList.remove("on"));
+    const a = byId[id];
+    if(a){ a.classList.add("on"); show(a); }
+  };
+
+  /* از میانِ بخش‌هایی که همین حالا دیده می‌شوند بالاترین انتخاب
+     می‌شود: وقتی دو بخش هم‌زمان در دیدند، آن که خوانده می‌شود
+     بالایی است. ترتیب از خودِ منو می‌آید، نه از ترتیبِ رویدادها. */
+  const order = links.map(a => a.getAttribute("href").slice(1));
+
+  /* اول با IntersectionObserver نوشته بودمش و جواب نداد: با حاشیهٔ
+     پایینی، کادرِ دید آن‌قدر کوچک می‌شد که بخش‌های آخر اصلاً داخلش
+     نمی‌افتادند و منو روی «شروع» گیر می‌کرد. تنظیمِ آن حاشیه هم یعنی
+     حدس زدنِ عددی که با بلند و کوتاه شدنِ بخش‌ها عوض می‌شود.
+
+     این ساده‌تر است و حدس ندارد: «بخشِ جاری» آخرین بخشی است که سرش
+     از زیرِ نوارِ بالا رد شده. هشت تا getBoundingClientRect در هر
+     قابِ اسکرول هزینه‌ای ندارد. */
+  const LINE = 96;                       /* کمی پایین‌ترِ نوارِ چسبان */
+  const atEnd = () =>
+    innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
+
+  const pick = () => {
+    let best = null;
+    for(const id of order){
+      const el = document.getElementById(id);
+      if(!el || el.hidden) continue;
+      if(el.getBoundingClientRect().top <= LINE) best = id;
+    }
+    /* ته صفحه استثناست: آخرین بخش هیچ‌وقت سرش به آن خط نمی‌رسد،
+       چون جایی برای اسکرول کردن نمانده. */
+    if(atEnd()){
+      for(let i = order.length - 1; i >= 0; i--){
+        const el = document.getElementById(order[i]);
+        if(el && !el.hidden){ best = order[i]; break; }
+      }
+    }
+    if(best) mark(best);
+  };
+
+  let queued = false;
+  const onScroll = () => {
+    if(queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued = false; pick(); });
+  };
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  pick();
 })();
 
 /* ---------- فرمِ تماس ----------
