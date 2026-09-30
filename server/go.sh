@@ -39,6 +39,28 @@ bad()  { printf '   \033[31mBAD\033[0m  %s\n' "$*"; }
 note() { printf '        %s\n' "$*"; }
 die()  { printf '\n\033[31m%s\033[0m\n\n' "$*"; exit 1; }
 
+# شمردنِ سطرهای یک جدول، در ROWS.
+#
+# جوابش تصمیم می‌گیرد که کاری دوباره انجام شود یا نه، و «صفر» یعنی
+# انجام شده. پس اگر شمردن نشود — sqlite3 نباشد، فایل قفل باشد، جدول
+# نباشد — نباید صفر برگرداند: با آن صفرِ دروغین، جدا کردنِ دیتابیسِ
+# کارتابل بی‌صدا رد می‌شد و دو سایت روی یک داده می‌ماندند. پس فقط
+# «فایل نیست» صفرِ واقعی است؛ بقیه ایستادنِ کار است.
+#
+# و در ROWS، نه با echo: die داخلِ $( ) فقط زیرپوسته را می‌کشد و
+# کارِ اصلی با دستِ خالی جلو می‌رود.
+ROWS=0
+rows() {
+  ROWS=0
+  [ -s "$1" ] || return 0
+  local n
+  n=$(sqlite3 "$1" "SELECT COUNT(*) FROM \"$2\";" 2>/dev/null)
+  case "$n" in
+    '' | *[!0-9]*) die "شمردنِ جدولِ «$2» در $1 نشد. sqlite3 نصب است؟ فایل قفل نیست؟" ;;
+  esac
+  ROWS=$n
+}
+
 [ "$(id -u)" = 0 ] || die "با کاربرِ root اجرا کن."
 [ -d "$APP" ]      || die "برنامه در $APP نیست."
 
@@ -220,7 +242,7 @@ step4() {
 step5() {
   say "بعد از DNS"
   local ip code
-  ip=$(getent hosts sltech.ir | awk '{print $1}' | head -1)
+  ip=$(getent ahostsv4 sltech.ir | awk '{print $1}' | head -1)
   note "sltech.ir الان به $ip می‌رسد"
   if [ "$ip" != "185.231.112.152" ]; then
     bad "هنوز به این سرور نرسیده. چند دقیقه صبر کن و دوباره بزن."
@@ -283,27 +305,42 @@ step6() {
   install -d -m 755 /etc/sensa
   install -d -m 700 -o sltech -g sltech /var/lib/sensa /var/backups/sensa /var/backups/sensa/daily
 
-  say "خروجی گرفتن از D1"
-  local out=/var/lib/sensa/d1-$(date +%Y%m%d-%H%M).sql
-  ( cd "$APP" && CLOUDFLARE_API_TOKEN="$tok" \
-    npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) \
-    || die "خروجیِ D1 گرفته نشد."
-  [ -s "$out" ] || die "فایلِ خروجی خالی است."
-  ok "گرفته شد ($(du -h "$out" | cut -f1))"
+  # این مرحله باید بشود دوباره زد. بارِ اول همین‌جا تا نیمه رفت و روی
+  # فایلِ تنظیمات افتاد؛ اگر کلِ کار را از نو می‌کرد، یعنی یک خروجیِ
+  # دیگر از D1 و یک بار دیگر خواباندنِ کارتابل، بی‌هیچ سودی. دادهٔ تازه
+  # هم مهم نیست: مرحلهٔ ۹ درست پیش از تعویضِ DNS دوباره می‌گیرد.
+  rows "$SDBF" products
+  local have=$ROWS
+  if [ "$have" -gt 0 ]; then
+    ok "دیتابیسِ فروشگاه از قبل هست ($have محصول) — دوباره نمی‌گیریم"
+  else
+    say "خروجی گرفتن از D1"
+    local out=/var/lib/sensa/d1-$(date +%Y%m%d-%H%M).sql
+    ( cd "$APP" && CLOUDFLARE_API_TOKEN="$tok" \
+      npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) \
+      || die "خروجیِ D1 گرفته نشد."
+    [ -s "$out" ] || die "فایلِ خروجی خالی است."
+    ok "گرفته شد ($(du -h "$out" | cut -f1))"
 
-  say "ساختنِ دیتابیسِ فروشگاه"
-  DB_FILE="$SDBF" node "$APP/server/import-d1.js" "$out" || die "وارد کردن نشد."
+    say "ساختنِ دیتابیسِ فروشگاه"
+    DB_FILE="$SDBF" node "$APP/server/import-d1.js" "$out" || die "وارد کردن نشد."
 
-  say "جدا کردنِ داده — جدول‌های کارتابل از این نسخه می‌روند"
-  node "$APP/server/split-db.js" "$SDBF" shop --yes || die "جدا کردن نشد."
+    say "جدا کردنِ داده — جدول‌های کارتابل از این نسخه می‌روند"
+    node "$APP/server/split-db.js" "$SDBF" shop --yes || die "جدا کردن نشد."
+  fi
 
-  say "و از سمتِ کارتابل، جدول‌های فروشگاه"
-  systemctl stop sltech
-  node "$APP/server/split-db.js" "$DBF" panel --yes || { systemctl start sltech; die "جدا کردن نشد."; }
-  chown sltech:sltech "$DBF"
-  systemctl start sltech
-  sleep 3
-  [ "$(systemctl is-active sltech)" = active ] && ok "کارتابل دوباره بالا آمد" || bad "کارتابل بالا نیامد"
+  rows "$DBF" products
+  if [ "$ROWS" -eq 0 ]; then
+    ok "سمتِ کارتابل از قبل جدا شده — دست نمی‌زنیم"
+  else
+    say "و از سمتِ کارتابل، جدول‌های فروشگاه"
+    systemctl stop sltech
+    node "$APP/server/split-db.js" "$DBF" panel --yes || { systemctl start sltech; die "جدا کردن نشد."; }
+    chown sltech:sltech "$DBF"
+    systemctl start sltech
+    sleep 3
+    [ "$(systemctl is-active sltech)" = active ] && ok "کارتابل دوباره بالا آمد" || die "کارتابل بالا نیامد"
+  fi
 
   say "تنظیماتِ سرویسِ فروشگاه"
   if [ ! -f "$SENVF" ]; then
@@ -319,11 +356,24 @@ step6() {
       # کلیدهایی که از تنظیماتِ کارتابل برمی‌داریم — رله و رمزها.
       grep -E '^(TG_BASE|BALE_BASE|JWT_SECRET|SMS_|ADMIN_|BOT_SECRET)' "$ENVF" 2>/dev/null
     } > "$SENVF"
-    chmod 600 "$SENVF"
     ok "$SENVF ساخته شد"
   else
     ok "$SENVF از قبل هست، دست نخورد"
   fi
+
+  # سرویس با کاربرِ sltech بالا می‌آید، نه root. اگر این فایل ۶۰۰ و مالِ
+  # root بماند، سرویس با EACCES می‌افتد — همان چیزی که یک بار خورد.
+  # گروهش sltech و حالتش ۶۴۰: سرویس می‌خواند، بقیه نه.
+  chown root:sltech "$SENVF"
+  chmod 640 "$SENVF"
+  if command -v runuser >/dev/null 2>&1; then
+    runuser -u sltech -- test -r "$SENVF" \
+      || die "کاربرِ sltech نمی‌تواند $SENVF را بخواند"
+    ok "برای کاربرِ sltech خواندنی است"
+  else
+    note "runuser نبود؛ خواندنی بودنِ $SENVF چک نشد"
+  fi
+
   chown sltech:sltech "$SDBF"
 
   install -m 644 "$APP/server/sensa.service" /etc/systemd/system/
@@ -349,6 +399,25 @@ step6() {
 step7() {
   say "۷ · گواهی برای sensacare.ir"
   [ -s "$CFINI" ] || die "$CFINI نیست."
+  # توکنی که برای sltech.ir ساخته شده بود فقط همان zone را می‌دید، و
+  # certbot با «Unable to determine zone_id» می‌افتاد — پیامی که معلوم
+  # نمی‌کند اشکال از توکن است. پس اول خودمان می‌پرسیم.
+  local tok zones
+  tok=$(sed -n 's/^dns_cloudflare_api_token *= *//p' "$CFINI" | head -1)
+  [ -n "$tok" ] || die "توکنی در $CFINI نیست."
+  zones=$(curl -s -H "Authorization: Bearer $tok" \
+    'https://api.cloudflare.com/client/v4/zones?name=sensacare.ir' \
+    | grep -o '"id":"[0-9a-f]\{32\}"' | head -1)
+  if [ -z "$zones" ]; then
+    bad "توکنِ کلادفلر دامنهٔ sensacare.ir را نمی‌بیند."
+    note "در کلادفلر → My Profile → API Tokens توکن را Edit کن و"
+    note "در Zone Resources، هم sltech.ir و هم sensacare.ir را بده"
+    note "(یا All zones). دسترسی: Zone → DNS → Edit."
+    note "بعد توکنِ تازه را در $CFINI بگذار و همین مرحله را دوباره بزن."
+    exit 1
+  fi
+  ok "توکن، zone فروشگاه را می‌بیند"
+
   # روشِ فایلی کار نمی‌کند: تا رکورد عوض نشده، sensacare.ir به ورکر
   # می‌رود نه به این سرور. پس DNS-01، مثل دفعهٔ قبل.
   certbot certonly --dns-cloudflare \
@@ -417,7 +486,22 @@ step9() {
   chown sltech:sltech "$SDBF"
   systemctl start sensa
   sleep 3
-  [ "$(systemctl is-active sensa)" = active ] && ok "سرویس دوباره بالا آمد" || bad "بالا نیامد"
+  # اینجا دیگر bad بس نیست. قدمِ بعدی تعویضِ DNS است؛ اگر سرویس بالا
+  # نیامده باشد و ما دستورِ DNS را چاپ کنیم، فروشگاه را با دستِ خودمان
+  # از دسترسِ مشتری در می‌آوریم. پس تا سالم نشود، از اینجا جلوتر نمی‌رود.
+  if [ "$(systemctl is-active sensa)" != active ]; then
+    journalctl -u sensa -n 20 --no-pager
+    die "سرویسِ فروشگاه بالا نیامد — DNS را عوض نکن."
+  fi
+  ok "سرویس دوباره بالا آمد"
+
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: sensacare.ir' "http://127.0.0.1:$SPORT/")
+  [ "$code" = 200 ] || die "فروشگاه $code داد نه ۲۰۰ — DNS را عوض نکن."
+  if curl -s -H 'Host: sensacare.ir' "http://127.0.0.1:$SPORT/" | grep -q planList; then
+    die "محتوا اس‌ال‌تک است نه فروشگاه — DNS را عوض نکن."
+  fi
+  ok "و با دادهٔ تازه، فروشگاه را می‌دهد ($code)"
 
   say "حالا DNS — این تنها قدمی است که مشتری‌ها می‌بینند"
   note "در کلادفلر، دامنهٔ sensacare.ir:"
@@ -431,7 +515,7 @@ step9() {
 step10() {
   say "۱۰ · بعد از DNS"
   local ip code
-  ip=$(getent hosts sensacare.ir | awk '{print $1}' | head -1)
+  ip=$(getent ahostsv4 sensacare.ir | awk '{print $1}' | head -1)
   note "sensacare.ir الان به $ip می‌رسد"
   [ "$ip" = "185.231.112.152" ] || { bad "هنوز نرسیده. چند دقیقه صبر کن."; exit 1; }
   ok "روی همین سرور نشست"
