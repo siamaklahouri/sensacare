@@ -123,7 +123,10 @@ body{
 .topnav a[hidden]{ display:none; }
 /* بخشی که همین حالا جلوِ چشم است پررنگ می‌شود — وگرنه منو می‌گوید
    کجا می‌شود رفت ولی نمی‌گوید کجا هستیم. */
-.topnav a.on{ color:var(--brand); background:var(--brand-soft); }
+/* پس‌زمینه‌اش را قرصِ لغزان می‌دهد، نه خودش — وگرنه دو نشانه روی هم
+   می‌افتاد. اگر آن قرص بالا نیامد، این قاعده برش می‌گردانَد. */
+.topnav a.on{ color:var(--brand); }
+html:not(.hasdot) .topnav a.on{ background:var(--brand-soft); }
 @media (max-width:980px){
   .topnav{ order:3; flex-basis:100%; margin-inline-start:0;
     -webkit-mask-image:linear-gradient(to left, transparent 0, #000 16px,
@@ -543,6 +546,62 @@ html.anim .job.rv.in{ transform:none; }
   html.anim .hero::before{ animation:none; }
   html.anim .rv, html.anim .job.rv{ opacity:1; transform:none; transition:none; }
 }
+/* ---------- نوارِ پیشرفتِ خواندن ----------
+   یک خطِ نازک لبهٔ پایینِ نوارِ چسبان که می‌گوید چقدر از صفحه خوانده
+   شده. در راست‌به‌چپ از راست پر می‌شود، پس لنگرش راست است. */
+.prog{
+  position:absolute; inset-inline:0; bottom:-1px; height:2.5px; z-index:1;
+  background:linear-gradient(90deg, var(--s-it), var(--brand));
+  transform:scaleX(0); transform-origin:right center;
+  transition:transform .1s linear; pointer-events:none;
+}
+
+/* ---------- قرصِ لغزانِ بخشِ جاری ----------
+   به‌جای اینکه قرص برای هر گزینه خاموش و روشن شود، یک قرص است که
+   می‌لغزد. اولِ فهرست در DOM می‌نشیند تا زیرِ نوشته‌ها بماند نه رویشان؛
+   پس‌زمینهٔ خودِ لینک‌ها شفاف است و متن از رویش خوانده می‌شود. */
+.topnav{ position:relative; }
+.navdot{
+  /* left فیزیکی، نه inset-inline-start: در راست‌به‌چپ آن یعنی right و
+     قرص از لبهٔ راست شروع می‌شد، در حالی که offsetLeft همیشه از چپ
+     سنجیده می‌شود — قرص ۲۸۷ پیکسل بیرونِ نوار می‌افتاد. */
+  position:absolute; inset-block:2px; left:0; width:0;
+  border-radius:999px; opacity:0; pointer-events:none;
+  background:var(--brand-soft);
+  transition:width .34s cubic-bezier(.22,.61,.36,1),
+             transform .34s cubic-bezier(.22,.61,.36,1),
+             opacity .2s;
+}
+
+/* ---------- موجِ زیرِ کلمهٔ کلیدی ----------
+   تا دیروز همان اول آن‌جا بود. حالا بعد از نشستنِ تیتر کشیده می‌شود،
+   از راست به چپ — مثل کسی که زیرِ کلمه خط می‌کشد. */
+@keyframes swashDraw{ from{ transform:scaleX(0); opacity:0; } to{ transform:scaleX(1); opacity:1; } }
+html.anim .hero h1 .hl::after{
+  transform-origin:right center;
+  animation:swashDraw .5s cubic-bezier(.22,.61,.36,1) .52s backwards;
+}
+
+/* ---------- پرسش‌ها ----------
+   جوابْ باز که می‌شود سُر می‌خورد پایین، و نشانهٔ + با یک چرخش به −
+   می‌رسد. بسته‌شدن فوری می‌ماند: محتوای details وقتی بسته است اصلاً
+   کشیده نمی‌شود، پس چیزی نیست که آرام برود. */
+@keyframes faqIn{ from{ opacity:0; transform:translateY(-7px); } to{ opacity:1; transform:none; } }
+@keyframes markPop{ from{ transform:scale(.45) rotate(-90deg); } to{ transform:none; } }
+html.anim details[open] > *:not(summary){
+  animation:faqIn .3s cubic-bezier(.22,.61,.36,1) backwards;
+}
+html.anim details[open] summary::after{
+  animation:markPop .26s cubic-bezier(.34,1.56,.64,1);
+}
+
+@media (prefers-reduced-motion:reduce){
+  .prog{ transition:none; }
+  .navdot{ transition:none; }
+  html.anim .hero h1 .hl::after{ animation:none; }
+  html.anim details[open] > *:not(summary),
+  html.anim details[open] summary::after{ animation:none; }
+}
 </style>
 </head>
 <body>
@@ -555,6 +614,7 @@ html.anim .job.rv.in{ transform:none; }
   <!-- تا پیش از این نوارِ بالا فقط لوگو و دکمهٔ ورود بود. صفحه هشت
        بخش دارد و هیچ راهی به آن‌ها نبود جز اسکرول کردن تا ته. -->
   <nav class="topnav" id="topnav" aria-label="بخش‌های صفحه">
+    <span class="navdot" id="navdot" aria-hidden="true"></span>
     <a href="#why">چرا؟</a>
     <a href="#kinds">انواع</a>
     <a href="#jobs">شغل‌ها</a>
@@ -565,7 +625,7 @@ html.anim .job.rv.in{ transform:none; }
   <div class="sp"></div>
   <button class="icon-btn" id="themeBtn" title="تم روز و شب" aria-label="تم روز و شب">🌙</button>
   <a class="btn btn-main" href="/login">ورود به کارتابل</a>
-</div></div>
+</div><div class="prog" id="prog" aria-hidden="true"></div></div>
 
 <div class="wrap">
 
@@ -1468,8 +1528,13 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
   var io = new IntersectionObserver(function(es){
     for(var i = 0; i < es.length; i++){
       if(!es[i].isIntersecting) continue;
-      es[i].target.classList.add("in");
-      io.unobserve(es[i].target);
+      var el = es[i].target;
+      el.classList.add("in");
+      io.unobserve(el);
+      /* عدد با همان تأخیرِ خودِ چیپ شروع می‌شود، نه زودتر */
+      if(window.countUpIn && el.classList.contains("job"))
+        window.countUpIn(el.querySelector(".c"),
+                         parseInt(el.style.getPropertyValue("--d"), 10) || 0);
     }
   }, { rootMargin: "0px 0px -6% 0px", threshold: .05 });
 
@@ -1502,6 +1567,90 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
      نامرئی می‌ماندند. این‌طور هر شکستی به حالتِ «همه‌چیز پیدا» ختم
      می‌شود. */
   try{ clearTimeout(window.__animGuard); }catch(e){}
+})();
+
+/* ---------- نوارِ پیشرفت و خطِ لغزانِ منو ----------
+   این دو به کلاسِ anim بسته نیستند: پیشرفتِ خواندن و «کجاییم» خبرند،
+   نه تزئین. کسی که حرکت نمی‌خواهد، همان‌ها را بی‌لغزش می‌بیند —
+   شیوه‌نامه گذارشان را برمی‌دارد، نه خودشان را. */
+(function(){
+  var prog = document.getElementById("prog");
+  var nav  = document.getElementById("topnav");
+  var dot  = document.getElementById("navdot");
+  if(!prog && !nav) return;
+
+  function paintProg(){
+    if(!prog) return;
+    var d = document.documentElement;
+    var h = d.scrollHeight - innerHeight;
+    var f = h > 4 ? Math.min(1, Math.max(0, (scrollY || d.scrollTop) / h)) : 0;
+    prog.style.transform = "scaleX(" + f.toFixed(4) + ")";
+  }
+
+  /* offsetLeft نسبت به خودِ نوار سنجیده می‌شود، چون نوار position:relative
+     است — پس در هر دو جهت و با نوارِ لغزانِ موبایل هم درست می‌نشیند. */
+  function paintDot(){
+    if(!nav || !dot) return;
+    var a = nav.querySelector("a.on");
+    if(!a || a.hidden){ dot.style.opacity = "0"; dot.style.width = "0"; return; }
+    dot.style.width = a.offsetWidth + "px";
+    dot.style.transform = "translateX(" + a.offsetLeft + "px)";
+    dot.style.opacity = "1";
+    /* حالا که قرص واقعاً نشست، پس‌زمینهٔ پشتیبانِ .on لازم نیست */
+    document.documentElement.classList.add("hasdot");
+  }
+
+  var queued = false;
+  function tick(){
+    if(queued) return;
+    queued = true;
+    requestAnimationFrame(function(){ queued = false; paintProg(); paintDot(); });
+  }
+  addEventListener("scroll", tick, { passive:true });
+  addEventListener("resize", tick);
+  if(nav) nav.addEventListener("scroll", tick, { passive:true });
+
+  /* کدام بخش «جاری» است را اسکریپتِ منو تصمیم می‌گیرد. به‌جای دست‌بردن
+     در آن، همین‌جا تماشا می‌کنیم کِی کلاسِ on جابه‌جا می‌شود. */
+  if(nav && "MutationObserver" in window)
+    new MutationObserver(tick).observe(nav,
+      { attributes:true, subtree:true, attributeFilter:["class","hidden"] });
+
+  tick();
+  addEventListener("load", tick);
+})();
+
+/* ---------- شمردنِ عددِ چیپ‌های شغل ----------
+   «۱۵ وظیفه» از صفر بالا می‌آید، همان لحظه‌ای که چیپ می‌رسد — نه زودتر،
+   وگرنه پشتِ شفافیت تمام می‌شود و کسی نمی‌بیندش. */
+(function(){
+  if(!document.documentElement.classList.contains("anim")) return;
+  var FA = "۰۱۲۳۴۵۶۷۸۹";
+  var faOf = function(n){ return String(n).replace(/[0-9]/g, function(d){ return FA[+d]; }); };
+
+  window.countUpIn = function(el, delay){
+    try{
+      if(!el || el.__counted) return;
+      var txt = el.textContent, m = txt.match(/[۰-۹0-9]+/);
+      if(!m) return;
+      var target = Number(m[0].replace(/[۰-۹]/g, function(d){ return String(FA.indexOf(d)); }));
+      if(!isFinite(target) || target < 2 || target > 999) return;
+      el.__counted = true;
+      var head = txt.slice(0, m.index), tail = txt.slice(m.index + m[0].length);
+      var put = function(n){ el.textContent = head + faOf(n) + tail; };
+      put(0);
+      setTimeout(function(){
+        var t0 = 0, dur = 620;
+        var step = function(ts){
+          if(!t0) t0 = ts;
+          var k = Math.min(1, (ts - t0) / dur);
+          put(Math.round(target * (1 - Math.pow(1 - k, 3))));
+          if(k < 1) requestAnimationFrame(step); else put(target);
+        };
+        requestAnimationFrame(step);
+      }, delay || 0);
+    }catch(e){ /* شمردن که نشد، عدد سرِ جایش است */ }
+  };
 })();
 </script>
 
