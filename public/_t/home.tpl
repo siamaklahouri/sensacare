@@ -8,6 +8,24 @@ try{ const t = localStorage.getItem("sltech:theme");
   if(t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches))
     document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
 </script>
+<script>
+/* ---------- جانِ صفحه ----------
+   بخش‌ها موقعِ رسیدن به دید آرام بالا می‌آیند. این تصمیم همین‌جا در
+   head گرفته می‌شود، نه پایینِ صفحه: اگر پایین گرفته شود، مرورگر یک
+   بار همه‌چیز را کشیده و بعد پنهانشان می‌کنیم — یعنی یک پرشِ زشت.
+
+   و یک نگهبان: اگر به هر دلیلی اسکریپتِ پایین بالا نیامد، صفحه نباید
+   نامرئی بماند. بعد از دو ثانیه کلاس برداشته می‌شود و همه‌چیز سرِ
+   جایش است. اسکریپتِ پایین که راه بیفتد، خودش نگهبان را می‌خواباند. */
+try{
+  var __d = document.documentElement;
+  if("IntersectionObserver" in window &&
+     !matchMedia("(prefers-reduced-motion: reduce)").matches){
+    __d.classList.add("anim");
+    window.__animGuard = setTimeout(function(){ __d.classList.remove("anim"); }, 2200);
+  }
+}catch(e){}
+</script>
 <title>کارتابل ماهانه SLTech — برنامهٔ ماه هر شغلی، یک‌جا</title>
 <meta name="description" content="کارتابل ماهانه: چک‌لیست آمادهٔ شغل خودتان، برنامهٔ روزانه، داشبورد، و بخش رمزدار شخصی. برای مدیر IT، مالی، منابع انسانی، فروش، انبار، پشتیبانی و ده شغل دیگر.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.3.png">
@@ -479,6 +497,52 @@ footer .sep{ opacity:.5; margin:0 8px; }
 .linkish{ border:0; background:none; padding:0; cursor:pointer; font:inherit;
   font-size:12px; color:var(--btn, #123e80); text-decoration:underline; }
 
+/* ==================== حرکت ====================
+   سه چیز، و هر سه فقط وقتی که کاربر حرکت را نخواسته باشد کنار می‌روند:
+
+   یک) سربرگِ صفحه پشتِ سر هم می‌آید — تیتر، بعد متن، بعد دکمه‌ها.
+   دو) هر دسته که به دید می‌رسد، آرام بالا می‌آید؛ اعضای یک دسته با
+       فاصلهٔ کوتاه، پس شانزده چیپِ شغل‌ها موج‌وار می‌آیند نه یک‌باره.
+   سه) هالهٔ پشتِ سربرگ خیلی آهسته نفس می‌کشد. بیست ثانیه یک رفت‌وبرگشت
+       — آن‌قدر کند که موقع خواندن حواس را پرت نکند.
+
+   هیچ‌کدام روی hover نیست: چیزی که زیرِ موس تکان بخورد، آزاردهنده است
+   نه زنده. */
+@keyframes heroIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:none; } }
+html.anim .hero h1,
+html.anim .hero p.lead,
+html.anim .hero .cta,
+html.anim .hero p.note{ animation:heroIn .62s cubic-bezier(.22,.61,.36,1) backwards; }
+html.anim .hero h1{ animation-delay:.06s; }
+html.anim .hero p.lead{ animation-delay:.16s; }
+html.anim .hero .cta{ animation-delay:.26s; }
+html.anim .hero p.note{ animation-delay:.36s; }
+
+@keyframes auroraBreathe{
+  from{ transform:translate3d(0,0,0) scale(1); }
+  to{ transform:translate3d(0,-7px,0) scale(1.02); }
+}
+html.anim .hero::before{ animation:auroraBreathe 20s ease-in-out infinite alternate; }
+
+/* پنهان‌شدن فقط با کلاسِ .rv است که جاوااسکریپت می‌گذارد؛ پس اگر
+   اسکریپت نرسید یا نگهبان کلاسِ anim را برداشت، چیزی گم نمی‌شود. */
+html.anim .rv{ opacity:0; transform:translateY(16px); }
+html.anim .rv.in{
+  opacity:1; transform:none;
+  transition:opacity .55s cubic-bezier(.22,.61,.36,1) var(--d,0ms),
+             transform .55s cubic-bezier(.22,.61,.36,1) var(--d,0ms);
+}
+/* چیپ‌های شغل کوچک‌اند؛ از پایین که بیایند زیادی است، کمی هم باز شوند
+   بهتر می‌نشیند. */
+html.anim .job.rv{ transform:translateY(10px) scale(.96); }
+html.anim .job.rv.in{ transform:none; }
+
+@media (prefers-reduced-motion:reduce){
+  html.anim .hero h1, html.anim .hero p.lead,
+  html.anim .hero .cta, html.anim .hero p.note{ animation:none; }
+  html.anim .hero::before{ animation:none; }
+  html.anim .rv, html.anim .job.rv{ opacity:1; transform:none; transition:none; }
+}
 </style>
 </head>
 <body>
@@ -1391,6 +1455,54 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
     window.scrollTo({ top:y, behavior:"smooth" });
   });
 });
+
+/* ---------- آوردنِ بخش‌ها ----------
+   یک ناظر برای همهٔ صفحه: هرچه به دید برسد یک بار می‌آید و از فهرستِ
+   تماشا بیرون می‌رود. پلن‌ها بعداً و با جاوااسکریپت ساخته می‌شوند، پس
+   ناظرِ دومی هم هست که هر چیزِ تازه‌ای را به اولی معرفی می‌کند —
+   این‌طور جایی که پلن‌ها ساخته می‌شود لازم نیست چیزی از این‌جا بداند. */
+(function(){
+  if(!document.documentElement.classList.contains("anim")) return;
+
+  var SEL = ".sec-head, .card, .job, .step, .safe li, #faq details, .plan";
+  var io = new IntersectionObserver(function(es){
+    for(var i = 0; i < es.length; i++){
+      if(!es[i].isIntersecting) continue;
+      es[i].target.classList.add("in");
+      io.unobserve(es[i].target);
+    }
+  }, { rootMargin: "0px 0px -6% 0px", threshold: .05 });
+
+  /* فاصلهٔ کوتاه بینِ اعضای یک دسته. سقف دارد، وگرنه چیپِ شانزدهم
+     سه‌چهارم ثانیه بعد از اولی می‌آمد و دیگر «موج» نبود، «تأخیر» بود. */
+  function scan(){
+    var els = document.querySelectorAll(SEL), seen = [], counts = [];
+    for(var i = 0; i < els.length; i++){
+      var el = els[i];
+      if(el.classList.contains("rv")) continue;
+      var p = el.parentNode, k = seen.indexOf(p);
+      if(k < 0){ k = seen.push(p) - 1; counts[k] = 0; }
+      el.style.setProperty("--d", Math.min(counts[k]++, 7) * 45 + "ms");
+      el.classList.add("rv");
+      io.observe(el);
+    }
+  }
+  scan();
+
+  var t = null;
+  new MutationObserver(function(){
+    clearTimeout(t); t = setTimeout(scan, 120);
+  }).observe(document.body, { childList:true, subtree:true });
+
+  window.revealScan = scan;
+
+  /* نگهبان را تازه حالا می‌خوابانیم، نه اولِ کار.
+     اگر بالاتر از این خط چیزی می‌شکست و نگهبان از قبل خوابیده بود،
+     ردیف‌هایی که scan علامت زده ولی به ناظر نرسانده بود برای همیشه
+     نامرئی می‌ماندند. این‌طور هر شکستی به حالتِ «همه‌چیز پیدا» ختم
+     می‌شود. */
+  try{ clearTimeout(window.__animGuard); }catch(e){}
+})();
 </script>
 
 </body>
