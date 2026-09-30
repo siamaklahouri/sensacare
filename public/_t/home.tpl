@@ -61,9 +61,19 @@ body{
   font-family:Vazirmatn, Tahoma, "Segoe UI", Arial, sans-serif;
   background:var(--paper); color:var(--ink); line-height:2;
   font-size:15px; -webkit-font-smoothing:antialiased;
+  /* پیش از این دو لکهٔ آبیِ پنج تا هشت درصدی بود — یعنی عملاً هیچ، و
+     همان یک آبی. حالا سه رنگ از خودِ پالت با هم می‌آیند و صفحه از
+     بالا تا پایین یک خاکستریِ تخت نیست.
+
+     color-mix به جای rgba ثابت: در تم شب همین‌ها با رنگ‌های شب
+     ساخته می‌شوند، وگرنه لکه‌های آبیِ روشن روی زمینهٔ تیره می‌ماند. */
   background-image:
-    radial-gradient(900px 480px at 100% -10%, rgba(26,79,163,.08), transparent 60%),
-    radial-gradient(700px 400px at 0% 0%, rgba(26,79,163,.05), transparent 55%);
+    radial-gradient(760px 420px at 96% -6%,
+      color-mix(in srgb, var(--brand) 20%, transparent), transparent 62%),
+    radial-gradient(680px 380px at 4% 6%,
+      color-mix(in srgb, var(--s-it) 15%, transparent), transparent 58%),
+    radial-gradient(900px 520px at 50% 108%,
+      color-mix(in srgb, var(--s-gen) 13%, transparent), transparent 60%);
   background-attachment:fixed;
 }
 .wrap{ max-width:1080px; margin:0 auto; padding:0 var(--gut); }
@@ -120,9 +130,30 @@ body{
 .btn-main:hover{ box-shadow:0 6px 18px rgba(18,62,128,.34); border-color:transparent; }
 
 /* ---------- سرصفحه ---------- */
-.hero{ padding:68px 0 54px; text-align:center; }
+/* سرصفحه یک میدانِ خالیِ خاکستری بود. حالا روی یک تختهٔ نرم با
+   هالهٔ رنگی می‌نشیند — همان سه رنگِ پالت، نرم‌تر. */
+.hero{ padding:68px 0 54px; text-align:center; position:relative; }
+.hero::before{
+  content:""; position:absolute; inset:14px -14px 22px; z-index:-1;
+  border-radius:34px;
+  background:
+    radial-gradient(520px 280px at 72% 18%,
+      color-mix(in srgb, var(--brand) 16%, transparent), transparent 66%),
+    radial-gradient(460px 260px at 22% 78%,
+      color-mix(in srgb, var(--s-it) 14%, transparent), transparent 64%),
+    color-mix(in srgb, var(--white) 55%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--brand) 9%, transparent);
+}
 .hero h1{ font-size:37px; line-height:1.55; margin:0 0 16px; letter-spacing:-.01em; }
-.hero h1 .hl{ color:var(--brand); }
+/* کلمهٔ کلیدی فقط آبی بود و در متنِ سرمه‌ای گم می‌شد؛ حالا زیرش یک
+   موجِ رنگی دارد. */
+.hero h1 .hl{ color:var(--brand); position:relative; white-space:nowrap; }
+.hero h1 .hl::after{
+  content:""; position:absolute; inset-inline:-2px; bottom:2px; height:.36em;
+  border-radius:99px; z-index:-1;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--s-it) 38%, transparent),
+    color-mix(in srgb, var(--brand) 30%, transparent)); }
 .hero p.lead{ font-size:17px; color:var(--ink-soft); max-width:660px; margin:0 auto 28px; }
 .hero .cta{ display:flex; gap:11px; justify-content:center; flex-wrap:wrap; }
 .hero .note{ margin-top:16px; font-size:12.5px; color:var(--ink-faint); }
@@ -136,9 +167,10 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 /* هر بخش یک نشانِ رنگی می‌گیرد. تا پیش از این همهٔ تیترها یک‌جور
    سرمه‌ای بودند و صفحه از بالا تا پایین یک رنگ به نظر می‌رسید. */
 .sec-head h2{ font-size:25px; margin:0 0 8px; display:flex; align-items:center; gap:10px; }
-.sec-head h2::before{ content:""; flex:0 0 auto; width:5px; height:24px; border-radius:99px;
+.sec-head h2::before{ content:""; flex:0 0 auto; width:7px; height:30px; border-radius:99px;
   background:linear-gradient(180deg, var(--tone, var(--brand)),
-             color-mix(in srgb, var(--tone, var(--brand)) 55%, transparent)); }
+             color-mix(in srgb, var(--tone, var(--brand)) 45%, transparent));
+  box-shadow:0 2px 10px color-mix(in srgb, var(--tone, var(--brand)) 40%, transparent); }
 .sec-head p{ color:var(--ink-soft); margin:0; max-width:640px; }
 #why   { --tone:#C0532B; }
 #what  { --tone:var(--brand); }
@@ -168,9 +200,18 @@ section{ padding:52px 0; scroll-margin-top:86px; }
    می‌نشیند و هر کارت رنگِ خودش را دارد — رنگ‌ها از همان پالتی که
    داخلِ کارتابل هم هست، نه چیزی تازه. */
 .card .ic{ font-size:17px; line-height:1; flex:0 0 auto;
-  width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
-  background:color-mix(in srgb, var(--tone, var(--brand)) 13%, var(--white));
-  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--brand)) 22%, transparent); }
+  width:36px; height:36px; border-radius:11px; display:grid; place-items:center;
+  background:linear-gradient(145deg,
+    color-mix(in srgb, var(--tone, var(--brand)) 26%, var(--white)),
+    color-mix(in srgb, var(--tone, var(--brand)) 13%, var(--white)));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--brand)) 30%, transparent),
+             0 2px 8px color-mix(in srgb, var(--tone, var(--brand)) 18%, transparent); }
+/* نوارِ باریکِ رنگی بالای هر کارت — از دور هم پیداست که کارت‌ها
+   یک‌دست نیستند. */
+.card{ position:relative; overflow:hidden; }
+.card::after{ content:""; position:absolute; inset-inline:0; top:0; height:3px;
+  background:linear-gradient(90deg, var(--tone, var(--brand)),
+    color-mix(in srgb, var(--tone, var(--brand)) 35%, transparent)); }
 
 /* شش رنگ که پشتِ سرِ هم روی کارت‌ها می‌افتند، پس هر شبکه‌ای
    رنگارنگ می‌شود بی‌آنکه لازم باشد به هر کارت دستی رنگ بدهیم. */
@@ -181,8 +222,12 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 .grid > .card:nth-child(6n+5){ --tone:#1E7A4A; }
 .grid > .card:nth-child(6n+6){ --tone:#C0532B; }
 
-/* مشکل‌ها — کارت‌های کم‌رنگ‌تر، چون حرفِ خوشایندی نیستند */
-.pain{ background:transparent; border-style:dashed; box-shadow:none; }
+/* مشکل‌ها — کارت‌های کم‌رنگ‌تر، چون حرفِ خوشایندی نیستند. ولی
+   بی‌رنگ هم نه: لبهٔ گرم می‌گوید این‌ها دردند، نه امکانات. */
+.pain{ background:color-mix(in srgb, #C0532B 4%, transparent);
+  border-style:dashed; box-shadow:none;
+  border-color:color-mix(in srgb, #C0532B 26%, var(--line)); }
+.pain::after{ display:none; }
 .pain h3{ font-size:15.5px; color:var(--ink); }
 
 /* ---------- سه نوع ---------- */
