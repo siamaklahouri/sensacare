@@ -884,9 +884,26 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     let secret = await getSetting(env, 'slBotSecret', '');
     if (!secret) { secret = newPassword(4, 6); await setSetting(env, 'slBotSecret', secret); }
     const host = env.PANEL_HOST || env.PUBLIC_HOST || new URL(req.url).host;
+
+    /* بله از ایران به سرور می‌رسد؛ تلگرام نه. تا وقتی سایت روی
+       کلادفلر بود هر دو یک آدرس داشتند و کار می‌کرد. حالا که سایت
+       روی سرورِ خودمان است، وب‌هوکِ تلگرام باید از همان رله‌ای بیاید
+       که پیام‌های بیرون‌رو از آن می‌روند — رله روی کلادفلر است و
+       تلگرام به آن می‌رسد، و خودش /api/sl/bot/* را به سرور می‌دهد.
+
+       آدرسِ رله را از TG_BASE درمی‌آوریم، نه از یک متغیرِ تازه: آن
+       متغیر از قبل هست و اگر روزی عوض شود، این هم با آن عوض می‌شود.
+       روی کلادفلر TG_BASE خالی است و هیچ چیز فرق نمی‌کند. */
+    const hookBase = kind => {
+      if (kind === 'telegram' && env.TG_BASE) {
+        try { return 'https://' + new URL(env.TG_BASE).host; } catch (e) { /* بی‌خیال */ }
+      }
+      return 'https://' + host;
+    };
+
     const out = {};
     for (const kind of ['telegram', 'bale'])
-      out[kind] = await setSlWebhook(env, kind, 'https://' + host, secret);
+      out[kind] = await setSlWebhook(env, kind, hookBase(kind), secret);
     await log(env, 'bot-hook', '', Object.keys(out).filter(k => out[k].ok).join(','));
     return json({ ok: true, hooks: out });
   }
