@@ -69,6 +69,19 @@ waitfor() {
   return 1
 }
 
+# یک توکن برای دو کار لازم است و هر بار یکی‌اش کم بود: بارِ اول
+# دسترسیِ zone فروشگاه نبود و certbot افتاد، بارِ دوم توکنِ تازه
+# دسترسیِ D1 نداشت و wrangler افتاد. متنِ خطای wrangler هم فقط
+# می‌گوید «Authentication error». پس خودمان می‌گوییم چه کم است.
+d1hint() {
+  bad "توکنِ کلادفلر دسترسیِ D1 ندارد."
+  note "My Profile → API Tokens → همان توکن → Edit"
+  note "در Permissions یک ردیف اضافه کن:  Account → D1 → Edit"
+  note "ردیفِ Zone → DNS → Edit را هم نگه دار؛ هر دو لازم است."
+  note "توکن عوض نمی‌شود، پس $CFINI دست‌نخورده می‌ماند."
+  die "دسترسی را اضافه کن و همین مرحله را دوباره بزن."
+}
+
 # نام‌های داخلِ گواهیِ فروشگاه — چه با توکن گرفته باشیم چه دستی.
 certnames() {
   local names d
@@ -245,7 +258,7 @@ step4() {
   # می‌تواند رفتارش عوض شود.
   ( cd "$APP" && CLOUDFLARE_API_TOKEN="$tok" \
     npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) \
-    || die "خروجیِ D1 گرفته نشد. توکن باید دسترسیِ D1 داشته باشد."
+    || d1hint
   [ -s "$out" ] || die "فایلِ خروجی خالی است."
   ok "گرفته شد: $out ($(du -h "$out" | cut -f1))"
 
@@ -352,7 +365,7 @@ step6() {
     local out=/var/lib/sensa/d1-$(date +%Y%m%d-%H%M).sql
     ( cd "$APP" && CLOUDFLARE_API_TOKEN="$tok" \
       npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) \
-      || die "خروجیِ D1 گرفته نشد."
+      || d1hint
     [ -s "$out" ] || die "فایلِ خروجی خالی است."
     ok "گرفته شد ($(du -h "$out" | cut -f1))"
 
@@ -572,7 +585,7 @@ step9() {
 
   local out=/var/lib/sensa/d1-$(date +%Y%m%d-%H%M).sql
   ( cd "$APP" && CLOUDFLARE_API_TOKEN="$tok" \
-    npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) || die "خروجیِ D1 نشد."
+    npx --yes wrangler@4 d1 export sensa-db --remote --output "$out" ) || d1hint
   [ -s "$out" ] || die "فایلِ خروجی خالی است."
   ok "گرفته شد ($(du -h "$out" | cut -f1))"
 
