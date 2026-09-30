@@ -570,6 +570,81 @@ step7h() {
 # پس حالا هیچ رمزی چاپ نمی‌شود و هیچ رمزی روی دیسک نمی‌نشیند. رمز را
 # خودت در کلادفلر می‌گذاری و همین‌جا می‌چسبانی؛ ورودی نمایش داده
 # نمی‌شود و در تاریخچهٔ پوسته هم نمی‌ماند.
+# ۱۳ت · کدام طرف عقب مانده؟
+#
+# وقتی رمزِ رله نخواند، getMe جوابِ خالی می‌دهد و از آن معلوم نیست
+# اشکال از رمز است یا از خودِ رله. این‌جا با یک توکنِ قلابی صدا زده
+# می‌شود و کدِ جواب همه‌چیز را می‌گوید:
+#
+#   ۴۰۳  رله خودش رد کرد  -> رمزِ این فایل با کلادفلر یکی نیست
+#   ۴۰۴  رله رد کرد به تلگرام، تلگرام توکنِ قلابی را نپذیرفت
+#        -> یعنی رمز درست است
+#
+# و همین را روی نسخهٔ .bak هم می‌زند. اگر قدیمی ۴۰۴ بدهد و تازه ۴۰۳،
+# یعنی کلادفلر اصلاً عوض نشده. هیچ رمزی چاپ نمی‌شود.
+FAKETOKEN='111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+
+probe() {
+  local f=$1 label=$2 b c
+  [ -f "$f" ] || { note "$label: فایل نیست"; return; }
+  b=$(sed -n 's|^TG_BASE=||p' "$f" | head -1)
+  [ -n "$b" ] || { note "$label: TG_BASE ندارد"; return; }
+  c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' \
+      "${b%/}/bot$FAKETOKEN/getMe")
+  case "$c" in
+    404) ok  "$label: رمزش را رله می‌پذیرد ($c)" ;;
+    403) bad "$label: رله ردش می‌کند ($c) — با کلادفلر یکی نیست" ;;
+    *)   bad "$label: جوابِ نامنتظر ($c)" ;;
+  esac
+}
+
+step13t() {
+  say "۱۳ت · رمزِ کدام طرف عقب مانده؟"
+  local c
+  c=$(curl -s --max-time 20 -o /dev/null -w '%{http_code}' https://tg.sltech.ir/health)
+  [ "$c" = 200 ] && ok "خودِ رله بالاست ($c)" || bad "رله جواب نداد ($c)"
+
+  say "رمزِ فعلی"
+  probe "$ENVF"  "اس‌ال‌تک"
+  probe "$SENVF" "فروشگاه"
+
+  say "رمزِ پیش از مرحلهٔ ۱۳"
+  probe "$ENVF.bak"  "اس‌ال‌تک (قدیمی)"
+  probe "$SENVF.bak" "فروشگاه (قدیمی)"
+
+  say "یعنی چه"
+  note "اگر قدیمی ۴۰۴ و فعلی ۴۰۳ است: کلادفلر عوض نشده یا Deploy نخورده."
+  note "  یا همان‌جا درستش کن و دوباره ۱۳ را بزن،"
+  note "  یا برگرد به رمزِ قبلی:  bash $APP/server/go.sh 13r"
+  note "اگر هر دو ۴۰۳ است: رمزِ کلادفلر چیزِ سومی است."
+}
+
+# ۱۳ر · برگشت به رمزِ قبلی
+step13r() {
+  say "۱۳ر · برگرداندنِ تنظیماتِ پیش از مرحلهٔ ۱۳"
+  local e own mode
+  for e in "$ENVF" "$SENVF"; do
+    [ -s "$e.bak" ] || die "$e.bak نیست."
+  done
+  for e in "$ENVF" "$SENVF"; do
+    own=$(stat -c '%U:%G' "$e"); mode=$(stat -c '%a' "$e")
+    cp -f "$e.bak" "$e"
+    chown "$own" "$e"; chmod "$mode" "$e"
+    ok "$e برگشت"
+  done
+  systemctl restart sltech sensa
+  sleep 4
+  local svc
+  for svc in sltech sensa; do
+    [ "$(systemctl is-active "$svc")" = active ] && ok "$svc بالاست" \
+      || { journalctl -u "$svc" -n 20 --no-pager; die "$svc بالا نیامد."; }
+  done
+  say "و ربات‌ها؟"
+  SLTECH_ENV="$ENVF"  node "$APP/server/botcheck.js" || bad "اس‌ال‌تک هنوز ایراد دارد"
+  SLTECH_ENV="$SENVF" node "$APP/server/botcheck.js" || bad "فروشگاه هنوز ایراد دارد"
+  note "رمزِ سوخته دوباره سرِ جایش است. هر وقت توانستی، ۱۳ را درست بزن."
+}
+
 step13() {
   say "۱۳ · رمزِ تازهٔ رله"
   note "این رمز جهتِ بیرون‌روِ رله را می‌بندد (سایت ← تلگرام)."
@@ -901,5 +976,7 @@ case "$STEP" in
   12d) step12d ;;
   12) step12 ;;
   13) step13 ;;
+  13t) step13t ;;
+  13r) step13r ;;
   *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
