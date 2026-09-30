@@ -96,16 +96,21 @@ console.log(`دیتابیس: ${DBF}`);
 const site = obj('sltechSite');
 
 /* هر ربات: از کجا توکن بگیر، با کدام پایه بیرون برو. */
+/* رمزی که خودِ سرور هنگامِ تحویل چک می‌کند. دو مسیر دو رمزِ جدا
+   دارند: فروشگاه botSecret (یا BOT_SECRET) و اس‌ال‌تک slBotSecret. */
+const shopSecret = str('botSecret') || cfg.BOT_SECRET || '';
+const slSecret   = str('slBotSecret') || '';
+
 const BOTS = [
-  { fa: 'فروشگاه · تلگرام', kind: 'telegram',
+  { fa: 'فروشگاه · تلگرام', kind: 'telegram', secret: shopSecret, sfrom: 'botSecret',
     token: cfg.TELEGRAM_BOT_TOKEN || str('tgToken'),
     from:  cfg.TELEGRAM_BOT_TOKEN ? 'TELEGRAM_BOT_TOKEN' : 'settings.tgToken' },
-  { fa: 'فروشگاه · بله', kind: 'bale',
+  { fa: 'فروشگاه · بله', kind: 'bale', secret: shopSecret, sfrom: 'botSecret',
     token: cfg.BALE_BOT_TOKEN || str('baleToken'),
     from:  cfg.BALE_BOT_TOKEN ? 'BALE_BOT_TOKEN' : 'settings.baleToken' },
-  { fa: 'اس‌ال‌تک · تلگرام', kind: 'telegram',
+  { fa: 'اس‌ال‌تک · تلگرام', kind: 'telegram', secret: slSecret, sfrom: 'slBotSecret',
     token: site.tgToken || '',   from: 'settings.sltechSite.tgToken' },
-  { fa: 'اس‌ال‌تک · بله', kind: 'bale',
+  { fa: 'اس‌ال‌تک · بله', kind: 'bale', secret: slSecret, sfrom: 'slBotSecret',
     token: site.baleToken || '', from: 'settings.sltechSite.baleToken' },
 ];
 
@@ -153,6 +158,26 @@ for (const b of BOTS) {
       note('در پنل، «وصل کردن ربات‌ها به سایت» را بزن.');
     } else {
       ok(`وب‌هوک: ${hideS(w.url)}`);
+
+      /* «وب‌هوک ثبت است» کافی نیست. کدِ تحویل این شکل است:
+             if (secret && s !== secret) return 403
+         یعنی اگر رمزِ سمتِ سرور خالی باشد، شرط اصلاً اجرا نمی‌شود و
+         مسیر برای همه باز است — و از بیرون هیچ فرقی با حالتِ سالم
+         ندارد. یک بار همین‌جا «هیچ ایرادی نیست» گفتم در حالی که مسیر
+         باز بود. پس رمزِ دو سر با هم سنجیده می‌شود. */
+      let sent = '';
+      try { sent = new URL(w.url).searchParams.get('s') || ''; } catch (e) {}
+      if (!b.secret) {
+        problems++;
+        bad(`${b.sfrom} خالی است — این مسیر هیچ محافظی ندارد.`);
+        note('هر کسی آدرس را بداند می‌تواند پیامِ جعلی به سایت بفرستد.');
+      } else if (sent !== b.secret) {
+        problems++;
+        bad('رمزِ داخلِ وب‌هوک با رمزِ سرور یکی نیست — تحویل‌ها ۴۰۳ می‌گیرند.');
+        note('وب‌هوک را دوباره ثبت کن تا با رمزِ تازه بنشیند.');
+      } else {
+        ok('و رمزش با رمزِ سرور می‌خواند');
+      }
       if (w.pending_update_count) note(`${w.pending_update_count} پیامِ معطل`);
       if (w.last_error_message) {
         problems++;
