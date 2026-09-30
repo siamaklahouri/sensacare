@@ -3,7 +3,7 @@ import { JOBS } from './kartabl-jobs.js';
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb, slContact,
          slLoginOptions, SL_NONCE } from './sltech-bot.js';
-import { placeOrder, checkCoupon, planTotal, FREE_VIEWS as SL_FREE_VIEWS, VIEW_LABEL as SL_VIEW_LABEL } from './sltech-shop.js';
+import { placeOrder, checkCoupon, planTotal, viewPrice as slViewPrice, FREE_VIEWS as SL_FREE_VIEWS, VIEW_LABEL as SL_VIEW_LABEL } from './sltech-shop.js';
 
 /* ---------- دو سایتِ جدا، یک ورکر ----------
    فروشگاهِ سِنسا و کارتابل‌ها دو چیزِ جدا با دو برندِ جدا هستند و هر کدام
@@ -2694,12 +2694,20 @@ export default {
           id, label: j.label || id, kind: j.kind || 'gen',
           views: [...(j.views || []), ...(j.extras || [])]
         }));
+        /* قیمتِ هر بخش این‌جا حل می‌شود، نه در مرورگر.
+           پیش از این خامِ st.viewPrices فرستاده می‌شد و صفحه فرمولِ
+           خودش را داشت — ولی آن فرمول با فرمولِ سرور یکی نبود: سرور
+           وقتی نه قیمتِ جدا هست نه extraPrice، به قیمتِ پیش‌فرضِ همان
+           بخش برمی‌گشت و صفحه به صفر. یعنی کاربر «۰ تومان» می‌دید و
+           فاکتور عددِ دیگری می‌زد. حالا یک فرمول هست و همان می‌رود. */
+        const prices = {};
+        for (const v of new Set(jobs.flatMap(j => j.views))) prices[v] = slViewPrice(st, v);
         return json({ ok: true, site: Object.assign({
           phone: st.phone || '', email: st.email || '',
           plans: Array.isArray(st.plans) ? st.plans : [],
           extraPrice: Number(st.extraPrice || 0),
           customPrice: Number(st.customPrice || 0),
-          viewPrices: st.viewPrices || {}
+          viewPrices: prices
         }, slContact(st)), jobs, freeViews: SL_FREE_VIEWS, viewLabels: SL_VIEW_LABEL });
       }
 

@@ -173,8 +173,16 @@ export function planTotal(plan, st, { seats = 1, views = [], customs = [] } = {}
 
   const seatPart = base + Math.max(0, n - baseSeats) * perSeat;
   /* هر بخش قیمتِ خودش. پیش از این همه یک عدد بودند و نمی‌شد گفت
-     «این یکی گران‌تر است». */
-  const extraPart = arr(views).reduce((t, v) => t + viewPrice(st, v), 0);
+     «این یکی گران‌تر است».
+
+     و قیمتِ هر بخش «به ازای هر نفر» است، نه یک‌بار برای کلِ سازمان:
+     بخش را همهٔ کارتابل‌ها می‌گیرند، پس مثلِ خودِ پلن نفر به نفر
+     حساب می‌شود. پیش از این ضرب نمی‌شد، یعنی سازمانِ پنجاه‌نفره
+     بابتِ گزارش‌ساز همان‌قدر می‌داد که سازمانِ دونفره. */
+  const extraPart = n * arr(views).reduce((t, v) => t + viewPrice(st, v), 0);
+  /* ولی سفارشی‌سازی ضرب نمی‌شود: آن هزینهٔ یک‌بارِ ساختنِ آن بخش است،
+     نه اجازهٔ استفاده‌اش. ضرب کردنش یعنی بابتِ یک کارِ توسعه، به
+     تعدادِ نفرات پول گرفتن. */
   const customPart = arr(customs).length *
                      Math.max(0, Math.round(Number(st && st.customPrice) || 0));
 
@@ -279,8 +287,10 @@ export async function placeOrder(env, body) {
     (sharedNote ? `بخشِ مشترک: ${sharedNote}\n` : '') +
     `مدت: ${plan.days ? fa(plan.days) + ' روز' : 'بی‌مهلت'}\n\n` +
     `پایه: ${money(bill.seatPart)}\n` +
-    (bill.extraPart ? `بخش‌های اضافه: ${money(bill.extraPart)}\n` : '') +
-    (bill.customPart ? `سفارشی‌سازی: ${money(bill.customPart)}\n` : '') +
+    /* «× چند نفر» در فاکتور می‌آید، وگرنه عدد با قیمتی که کنارِ هر
+       بخش دیده بود نمی‌خواند و به نظرش اشتباه می‌رسد. */
+    (bill.extraPart ? `بخش‌های اضافه (${fa(seats)} ${unit}): ${money(bill.extraPart)}\n` : '') +
+    (bill.customPart ? `سفارشی‌سازی (یک‌بار): ${money(bill.customPart)}\n` : '') +
     (off ? `جمع: ${money(full)}\nتخفیف (${cp.code}): ${money(off)}\nقابل پرداخت: ${money(price)}\n`
          : `قابل پرداخت: ${money(price)}\n`) +
     (note ? `\nتوضیح خریدار:\n${note}\n` : '');

@@ -874,10 +874,20 @@ function tuneForm(){
    «سفارشی» که هزینهٔ جداگانه دارد. */
 /* قیمتِ یک بخش: اگر قیمتِ جدا دارد همان، وگرنه قیمتِ پیش‌فرض.
    همان قاعده‌ای که سرور دارد — این‌جا فقط برای نشان دادن. */
+/* سرور قیمتِ هر بخش را حل‌شده می‌فرستد، پس این‌جا فقط خوانده می‌شود.
+   پیش از این این تابع فرمولِ خودش را داشت و با سرور یکی نبود — آن‌جا
+   قیمتِ پیش‌فرضِ هر بخش هم بود و این‌جا نه. نتیجه‌اش «۰ تومان» روی
+   صفحه بود و عددی دیگر در فاکتور. */
 function viewPrice(v){
   const own = Number((SITE.viewPrices || {})[v]);
   if(Number.isFinite(own) && own >= 0) return Math.round(own);
   return Math.max(0, Math.round(Number(SITE.extraPrice) || 0));
+}
+
+/* واحدِ شمارش: سازمانی «نفر» می‌شمارد و شخصی «کارتابل». یک جا نوشته
+   شده تا در فهرستِ بخش‌ها و در فاکتور یکی باشد. */
+function unitName(){
+  return PICKED && PICKED.tier === "org" ? "نفر" : "کارتابل";
 }
 
 function paintSections(){
@@ -888,8 +898,11 @@ function paintSections(){
   if(!job || !(job.views||[]).length){ box.hidden = true; list.innerHTML = ""; sumUp(); return; }
 
   box.hidden = false;
+  /* سفارشی‌سازی یک‌بار حساب می‌شود، بخش‌ها نفر به نفر. چون این دو
+     کنارِ هم‌اند و هر دو عدد دارند، باید در خودِ متن فرق بگذارند —
+     وگرنه کاربر یکی را جای دیگری می‌خواند. */
   document.getElementById("oSecHint").textContent =
-    SITE.customPrice ? "سفارشی‌سازیِ هر بخش " + money(SITE.customPrice) : "";
+    SITE.customPrice ? "سفارشی‌سازیِ هر بخش " + money(SITE.customPrice) + " (یک‌بار)" : "";
 
   list.innerHTML = job.views.map(v=>{
     const free = FREE.indexOf(v) >= 0;
@@ -897,7 +910,8 @@ function paintSections(){
     return `<label class="osec-item${free ? " free" : ""}">
       <input type="checkbox" data-view="${escH(v)}"${free ? " checked disabled" : ""}>
       <span class="osec-nm">${escH(nm)}</span>
-      <span class="osec-pr">${free ? "در قیمت" : escH(money(viewPrice(v)))}</span>
+      <span class="osec-pr">${free ? "در قیمت"
+        : escH(money(viewPrice(v)) + " / " + unitName())}</span>
       ${free ? "" : `<label class="osec-cu"><input type="checkbox" data-custom="${escH(v)}" disabled>
          سفارشی</label>`}
     </label>`;
@@ -933,7 +947,8 @@ function calcTotal(){
   const baseSeats = Math.max(1, Number(PICKED.baseSeats) || 1);
   const per = Math.max(0, Number(PICKED.perSeat) || 0);
   const seatPart = base + Math.max(0, seatCount() - baseSeats) * per;
-  const extraPart = pickedViews().reduce((t, v)=> t + viewPrice(v), 0);
+  /* بخش‌ها نفر به نفر، سفارشی‌سازی یک‌بار — عینِ فرمولِ سرور. */
+  const extraPart = seatCount() * pickedViews().reduce((t, v)=> t + viewPrice(v), 0);
   const customPart = pickedCustoms().length * Math.max(0, Number(SITE.customPrice) || 0);
   return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
 }
@@ -945,10 +960,12 @@ function sumUp(){
 
   /* تفکیک، تا معلوم باشد این عدد از کجا آمده. */
   const rows = [];
-  const unit = PICKED.tier === "org" ? "نفر" : "کارتابل";
+  const unit = unitName();
   rows.push(["پایه — " + faD(seatCount()) + " " + unit, b.seatPart]);
-  if(b.extraPart)  rows.push(["بخش‌های اضافه", b.extraPart]);
-  if(b.customPart) rows.push(["سفارشی‌سازی", b.customPart]);
+  /* عدد بدونِ «× چند نفر» گیج‌کننده بود: کاربر قیمتِ کنارِ بخش را
+     می‌دید و جمعِ دیگری در فاکتور. حالا ضرب در خودِ سطر نوشته است. */
+  if(b.extraPart)  rows.push(["بخش‌های اضافه — " + faD(seatCount()) + " " + unit, b.extraPart]);
+  if(b.customPart) rows.push(["سفارشی‌سازی — یک‌بار", b.customPart]);
   document.getElementById("oBill").innerHTML =
     rows.length > 1
       ? rows.map(r=>`<div><span>${escH(r[0])}</span><b>${escH(money(r[1]))}</b></div>`).join("")
