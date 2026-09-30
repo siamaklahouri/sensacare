@@ -492,7 +492,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .edit-switch .track{ position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.18s; cursor:pointer; }
   .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:var(--white); border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
   .edit-switch input:checked + .track{ background:var(--red); }
-  .edit-switch input:checked + .track::before{ transform:translateX(-12px); }
+  /* کلید روشن که می‌شد، دایره‌اش ۱۲ پیکسل به چپ می‌رفت — یعنی از خودِ
+     ریل بیرون، روی نوشتهٔ «حذف/تغییر». ریل ۲۸ پیکسل است و دایره ۱۲ و
+     از left:2 شروع می‌شود، پس سرِ دیگرش +۱۲ است، نه -۱۲. */
+  .edit-switch input:checked + .track::before{ transform:translateX(12px); }
 
   .btn{ font-family:var(--font-body); cursor:pointer; border:none; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; transition:.15s; }
   .btn-brass{ background:var(--brass); color:#fff; }
@@ -515,7 +518,21 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); border-color:var(--red); }
   .btn-del:active{ transform:scale(.94); }
   .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
-  .btn-del[disabled]{ display:none; }
+  /* قفل‌شده یعنی «الان نمی‌شود»، نه «وجود ندارد». پیش‌تر display:none
+     بود و ستونِ حذف کاملاً خالی می‌ماند — صفحه را که باز می‌کردی هیچ
+     دکمه‌ای نبود و خیال می‌کردی حذف خراب است. حالا 🔒ِ کم‌رنگ با قابِ
+     خط‌چین سرِ جایش می‌ماند و می‌گوید فقط قفل است. */
+  .btn-del[disabled]{
+    cursor:not-allowed; font-size:0;
+    background:transparent; border-style:dashed; border-color:var(--line);
+    color:var(--ink-faint);
+  }
+  .btn-del[disabled]::before{ content:"🔒"; font-size:10.5px; line-height:1; }
+  .btn-del[disabled]:hover{ background:transparent; color:var(--ink-faint); border-color:var(--line); }
+  .btn-del[disabled]:active{ transform:none; }
+  /* و کلیدِ همان ستون از دور بگوید باز است یا بسته */
+  .edit-toggle-wrap::before, .del-toggle-wrap::before{ content:"🔒"; font-size:10px; line-height:1; }
+  .edit-toggle-wrap.open::before, .del-toggle-wrap.open::before{ content:"🔓"; }
   .star-btn{
     background:transparent; border:none; cursor:pointer; font-size:16px; padding:4px 6px;
     border-radius:6px; transition:transform .12s, background .12s; color:var(--ink-faint);
@@ -4024,6 +4041,7 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
 {{PART:cellpop}}
+{{PART:dellock}}
 
 {{PART:reportjs}}
 

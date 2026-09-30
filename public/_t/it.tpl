@@ -755,14 +755,31 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); border-color:var(--red); }
   .btn-del:active{ transform:scale(.94); }
   .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
-  .btn-del[disabled]{ display:none; }
+  /* قفل‌شده یعنی «الان نمی‌شود»، نه «وجود ندارد». پیش‌تر display:none
+     بود و ستونِ حذف کاملاً خالی می‌ماند — صفحه را که باز می‌کردی هیچ
+     دکمه‌ای نبود و خیال می‌کردی حذف خراب است. حالا 🔒ِ کم‌رنگ با قابِ
+     خط‌چین سرِ جایش می‌ماند و می‌گوید فقط قفل است. */
+  .btn-del[disabled]{
+    cursor:not-allowed; font-size:0;
+    background:transparent; border-style:dashed; border-color:var(--line);
+    color:var(--ink-faint);
+  }
+  .btn-del[disabled]::before{ content:"🔒"; font-size:10.5px; line-height:1; }
+  .btn-del[disabled]:hover{ background:transparent; color:var(--ink-faint); border-color:var(--line); }
+  .btn-del[disabled]:active{ transform:none; }
+  /* و کلیدِ همان ستون از دور بگوید باز است یا بسته */
+  .edit-toggle-wrap::before, .del-toggle-wrap::before{ content:"🔒"; font-size:10px; line-height:1; }
+  .edit-toggle-wrap.open::before, .del-toggle-wrap.open::before{ content:"🔓"; }
   .del-toggle-wrap, .edit-toggle-wrap{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); user-select:none; white-space:nowrap; }
   .del-switch, .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
   .del-switch input, .edit-switch input{ opacity:0; width:0; height:0; }
   .del-switch .track, .edit-switch .track{ position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.18s; cursor:pointer; }
   .del-switch .track::before, .edit-switch .track::before{ content:""; position:absolute; width:12px; height:12px; left:2px; top:2px; background:var(--white); border-radius:50%; transition:.18s; box-shadow:0 1px 2px rgba(0,0,0,.3); }
   .del-switch input:checked + .track, .edit-switch input:checked + .track{ background:var(--red); }
-  .del-switch input:checked + .track::before, .edit-switch input:checked + .track::before{ transform:translateX(-12px); }
+  /* کلید روشن که می‌شد، دایره‌اش ۱۲ پیکسل به چپ می‌رفت — یعنی از خودِ
+     ریل بیرون، روی نوشتهٔ «حذف/تغییر». ریل ۲۸ پیکسل است و دایره ۱۲ و
+     از left:2 شروع می‌شود، پس سرِ دیگرش +۱۲ است، نه -۱۲. */
+  .del-switch input:checked + .track::before, .edit-switch input:checked + .track::before{ transform:translateX(12px); }
   .add-row input, .add-row select{ background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
   .add-row input:focus, .add-row select:focus{ outline:2px solid var(--brass); }
   .compound-field{ display:flex; align-items:stretch; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--paper); }
@@ -4433,6 +4450,7 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "خطوط MVPN که هنوز فعال نشده‌اند کدام‌اند؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
 {{PART:cellpop}}
+{{PART:dellock}}
 
 {{PART:reportjs}}
 

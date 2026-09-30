@@ -16,6 +16,7 @@
 import p_aiassist from '../public/_t/p/aiassist.tpl';
 import p_cellpop from '../public/_t/p/cellpop.tpl';
 import p_convert from '../public/_t/p/convert.tpl';
+import p_dellock from '../public/_t/p/dellock.tpl';
 import p_convertcss from '../public/_t/p/convertcss.tpl';
 import p_cellpopcss from '../public/_t/p/cellpopcss.tpl';
 import p_chartlib from '../public/_t/p/chartlib.tpl';
@@ -49,6 +50,7 @@ export const PARTS = new Map([
   ['aiassist', p_aiassist],
   ['cellpop', p_cellpop],
   ['convert', p_convert],
+  ['dellock', p_dellock],
   ['convertcss', p_convertcss],
   ['cellpopcss', p_cellpopcss],
   ['chartlib', p_chartlib],
