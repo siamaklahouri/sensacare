@@ -1822,3 +1822,37 @@
     } catch (e) { /* اگر نیامد، کارتابل بدون این بخش کار می‌کند */ }
   };
 })();
+
+/* ==================== نوارِ تبِ گوشی ====================
+   روی صفحهٔ باریک، ستونِ کناری یک ردیفِ افقیِ لغزان می‌شود. آن‌جا تبِ
+   فعال می‌تواند بیرون از دید باشد — مثلاً «تنظیمات» که ته صف است —
+   و کاربر نمی‌فهمد کجاست.
+
+   پس هر بار که تبی فعال می‌شود، خودش را به وسطِ دید می‌آورد. از
+   scrollIntoView استفاده می‌شود نه حسابِ دستیِ scrollLeft: در صفحهٔ
+   راست‌به‌چپ علامتِ scrollLeft بینِ مرورگرها یکی نیست و همین یک جا
+   کافی است که همه‌چیز برعکس شود.
+
+   و فقط وقتی که نوار واقعاً می‌لغزد. روی دسکتاپ ستون عمودی است و
+   این کار هیچ نمی‌کند. */
+(function () {
+  function show(btn) {
+    if (!btn) return;
+    var nav = btn.closest ? btn.closest(".nav-list") : null;
+    if (!nav || nav.scrollWidth <= nav.clientWidth + 2) return;
+    try { btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); }
+    catch (e) { try { btn.scrollIntoView(); } catch (e2) { /* بی‌خیال */ } }
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target && e.target.closest ? e.target.closest(".navbtn") : null;
+    /* بعد از کلیک، چون کلاسِ active را کدِ دیگری می‌گذارد */
+    if (b) setTimeout(function () { show(b); }, 0);
+  });
+  function atStart() { show(document.querySelector(".navbtn.active")); }
+  /* دکمه‌های بخش‌های مشترک بعد از آمدنِ پاسخِ سرور ساخته می‌شوند، پس
+     یک بار دیرتر هم نگاه می‌کنیم. */
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", function () { setTimeout(atStart, 400); });
+  else setTimeout(atStart, 400);
+  setTimeout(atStart, 1500);
+})();

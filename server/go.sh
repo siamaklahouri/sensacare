@@ -215,16 +215,40 @@ step5() {
   fi
   ok "روی همین سرور نشست"
 
-  for u in https://sltech.ir/ https://sltech.ir/login https://www.sltech.ir/; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "$u")
-    case "$code" in 200|301) ok "$u -> $code" ;; *) bad "$u -> $code" ;; esac
-  done
+  # تا پیش از جابه‌جایی، PANEL_HOST روی دامنهٔ آزمایشی بود — وگرنه
+  # new.sltech.ir صفحهٔ کارتابل را نشان نمی‌داد. حالا که دامنهٔ اصلی
+  # به این سرور رسیده، باید همان باشد، وگرنه برنامه sltech.ir را
+  # «دامنهٔ ناشناس» می‌بیند و فروشگاه را سرو می‌کند. یک بار همین اتفاق
+  # افتاد و سایت با آدرسِ درست، محتوای آن یکی سایت را نشان داد.
+  if grep -q '^PANEL_HOST=sltech\.ir$' "$ENVF"; then
+    ok "PANEL_HOST درست است"
+  else
+    if grep -q '^PANEL_HOST=' "$ENVF"; then
+      sed -i 's|^PANEL_HOST=.*|PANEL_HOST=sltech.ir|' "$ENVF"
+    else
+      printf '\nPANEL_HOST=sltech.ir\n' >> "$ENVF"
+    fi
+    ok "PANEL_HOST روی sltech.ir تنظیم شد"
+  fi
 
   say "روشن کردنِ کرون"
   sed -i '/^CRON_UTC=-$/d' "$ENVF"
   systemctl restart sltech
   sleep 3
   systemctl is-active sltech >/dev/null && ok "سرویس با کرونِ ساعتی بالا آمد" || bad "سرویس بالا نیامد"
+
+  for u in https://sltech.ir/ https://sltech.ir/login https://www.sltech.ir/; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' "$u")
+    case "$code" in 200|301) ok "$u -> $code" ;; *) bad "$u -> $code" ;; esac
+  done
+
+  # ۲۰۰ گرفتن کافی نیست: وقتی PANEL_HOST غلط بود، sltech.ir هم ۲۰۰
+  # می‌داد — فقط محتوایش مالِ آن یکی سایت بود. پس محتوا سنجیده می‌شود.
+  if curl -s -H 'Host: sltech.ir' http://127.0.0.1:8787/ | grep -q planList; then
+    ok "و محتوایش واقعاً صفحهٔ SLTech است، نه فروشگاه"
+  else
+    bad "روی sltech.ir محتوای درست سرو نمی‌شود — PANEL_HOST را ببین"
+  fi
   journalctl -u sltech -n 6 --no-pager | grep -i 'کرون' | while read -r l; do note "$l"; done
 
   say "تمام"
