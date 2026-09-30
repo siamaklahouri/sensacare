@@ -49,6 +49,17 @@ die()  { printf '\n\033[31m%s\033[0m\n\n' "$*"; exit 1; }
 #
 # و در ROWS، نه با echo: die داخلِ $( ) فقط زیرپوسته را می‌کشد و
 # کارِ اصلی با دستِ خالی جلو می‌رود.
+# نام‌های داخلِ گواهیِ فروشگاه — چه با توکن گرفته باشیم چه دستی.
+certnames() {
+  local names d
+  names=$(openssl x509 -in "/etc/letsencrypt/live/$SCERT/fullchain.pem" -noout -text \
+          | grep -A1 'Subject Alternative Name' | tail -1 | tr -d ' ')
+  note "$names"
+  for d in sensacare.ir www.sensacare.ir; do
+    case "$names" in *"DNS:$d"*) ok "$d پوشش دارد" ;; *) bad "$d در گواهی نیست" ;; esac
+  done
+}
+
 ROWS=0
 rows() {
   ROWS=0
@@ -427,14 +438,68 @@ step7() {
     --non-interactive --agree-tos --keep-until-expiring --expand \
     || die "گواهی گرفته نشد. متنِ خطا را بفرست."
 
-  local names
-  names=$(openssl x509 -in "/etc/letsencrypt/live/$SCERT/fullchain.pem" -noout -text \
-          | grep -A1 'Subject Alternative Name' | tail -1 | tr -d ' ')
-  note "$names"
-  for d in sensacare.ir www.sensacare.ir; do
-    case "$names" in *"DNS:$d"*) ok "$d پوشش دارد" ;; *) bad "$d در گواهی نیست" ;; esac
-  done
+  certnames
   say "تمام شد. حالا مرحلهٔ ۸."
+}
+
+# ---------------------------------------------------------------
+# ۷م · همان گواهی، بدونِ هیچ توکنی
+#
+# توکنِ کلادفلر فقط zone اس‌ال‌تک را می‌دید و درست کردنش گیر کرد. این
+# راه از توکن رد می‌شود: certbot مقدارِ TXT را می‌دهد، تو در پنلِ
+# کلادفلر می‌گذاری. برای گرفتنِ گواهی پیش از تعویضِ DNS همین بس است.
+#
+# اما این گواهی خودش تازه نمی‌شود، و گواهی‌ای که تازه نشود سه ماهِ بعد
+# سایت را می‌خواباند. پس بعد از تعویضِ DNS، مرحلهٔ ۷ه آن را به روشِ
+# webroot برمی‌گرداند: از آن لحظه دامنه روی همین سرور است، پس خودِ
+# سرور جواب می‌دهد و دیگر نه توکن لازم است نه دستِ تو.
+step7m() {
+  say "۷م · گواهی برای sensacare.ir، با رکوردِ دستی"
+  note "certbot یک یا دو مقدارِ TXT می‌دهد. هر کدام را در کلادفلر،"
+  note "دامنهٔ sensacare.ir، با همان نامی که خودش می‌گوید"
+  note "(_acme-challenge یا _acme-challenge.www) ثبت کن، Save کن،"
+  note "چند ثانیه صبر کن، بعد Enter. تا تمام نشده پنجره را نبند."
+  note ""
+  certbot certonly --manual --preferred-challenges dns \
+    --cert-name "$SCERT" $SDOMAINS \
+    --agree-tos --expand \
+    || die "گواهی گرفته نشد. متنِ خطا را بفرست."
+
+  certnames
+  note "این گواهی خودکار تازه نمی‌شود."
+  note "بعد از تعویضِ DNS حتماً:  bash $APP/server/go.sh 7h"
+  say "تمام شد. حالا مرحلهٔ ۸."
+}
+
+# ---------------------------------------------------------------
+step7h() {
+  say "۷ه · برگرداندنِ گواهیِ فروشگاه به تازه‌شویِ خودکار"
+  local ip
+  ip=$(getent ahostsv4 sensacare.ir | awk '{print $1}' | head -1)
+  [ "$ip" = "185.231.112.152" ] \
+    || die "sensacare.ir به $ip می‌رسد، نه به این سرور. این مرحله بعد از تعویضِ DNS است."
+  [ -f "/etc/letsencrypt/live/$SCERT/fullchain.pem" ] || die "گواهی نیست. اول مرحلهٔ ۷ یا ۷م."
+
+  install -d /var/www/acme
+  # --force-renewal لازم است: بی آن، certbot می‌بیند گواهی هنوز تازه
+  # است و کاری نمی‌کند، و روشِ تازه‌شوی در پرونده همان --manual می‌ماند.
+  certbot certonly --webroot -w /var/www/acme \
+    --cert-name "$SCERT" $SDOMAINS \
+    --non-interactive --agree-tos --force-renewal \
+    || die "گرفتنِ گواهی با روشِ webroot نشد. متنِ خطا را بفرست."
+
+  certnames
+  systemctl reload nginx
+  ok "nginx با گواهیِ تازه بارگذاری شد"
+
+  if grep -q 'authenticator = webroot' "/etc/letsencrypt/renewal/$SCERT.conf"; then
+    ok "از این پس خودکار تازه می‌شود"
+  else
+    bad "روشِ تازه‌شوی عوض نشد — $SCERT.conf را ببین"
+  fi
+  certbot renew --cert-name "$SCERT" --dry-run \
+    && ok "تازه‌شویِ آزمایشی هم گرفت" || bad "تازه‌شویِ آزمایشی رد شد"
+  say "تمام شد."
 }
 
 # ---------------------------------------------------------------
@@ -562,8 +627,10 @@ case "$STEP" in
   5) step5 ;;
   6) step6 ;;
   7) step7 ;;
+  7m) step7m ;;
+  7h) step7h ;;
   8) step8 ;;
   9) step9 ;;
   10) step10 ;;
-  *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه)" ;;
+  *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
