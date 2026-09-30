@@ -597,6 +597,28 @@ newest() {
   else bad "$(basename "$f")  ($(fa_ago $age)) — باید کمتر از یک ساعت باشد"; fi
 }
 
+# «نوبت ثبت شد» یعنی دستِ‌کم یک ربات گرفته، نه هر دو — کد فقط وقتی
+# شکست اعلام می‌کند که هیچ‌کدام نگیرند. پس اگر بله بگیرد و تلگرام
+# نگیرد، همه‌چیز سبز به نظر می‌رسد و صاحبش که در تلگرام نگاه می‌کند
+# چیزی نمی‌بیند. این تابع همان تفکیک را نشان می‌دهد؛ کد از اول ثبتش
+# می‌کرده و فقط کسی نگاهش نمی‌کرد.
+step14_lastbackup() {
+  sqlite3 "$DBF" "SELECT v FROM settings WHERE k='kartablBackupAll';" 2>/dev/null \
+  | node -e '
+      let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+        if (!s.trim()) return console.log("        هیچ رکوردی نیست");
+        let v; try { v = JSON.parse(s); } catch (e) { return console.log("        " + s.trim().slice(0,200)); }
+        const t = v.at ? new Date(v.at + 3.5 * 3600e3).toISOString().replace("T", " ").slice(0, 16) : "?";
+        console.log("        زمان   : " + t + "  (تهران)");
+        console.log("        نوبت   : " + (v.note || "-"));
+        console.log("        نتیجه  : " + (v.ok ? "موفق" : "ناموفق"));
+        console.log("        رسید به: " + ((v.to || []).join("، ") || "هیچ‌کدام"));
+        const f = v.failed || [];
+        console.log("        نرسید  : " + (f.length ? f.join(" | ") : "-"));
+        if (v.error) console.log("        خطا    : " + v.error);
+      });' 2>/dev/null
+}
+
 step14() {
   say "۱۴ · وضعیتِ پشتیبان"
   note "الان: $(date '+%Y-%m-%d %H:%M %Z')"
@@ -624,26 +646,8 @@ step14() {
     else bad "SHOP_JOBS=off در $ENVF نیست — اجرای دستی ممکن است به مشتری پیام بدهد"
   fi
 
-  # اینجا بود که بارِ اول کم آوردم: نوبت‌ها را نشان می‌دادم ولی
-  # نتیجه‌شان را نه. و «نوبت ثبت شده» یعنی دستِ‌کم یک ربات گرفته،
-  # نه هر دو — کد فقط وقتی شکست اعلام می‌کند که هیچ‌کدام نگیرند.
-  # پس اگر بله بگیرد و تلگرام نگیرد، همه‌چیز سبز به نظر می‌رسد و
-  # صاحبش که در تلگرام نگاه می‌کند چیزی نمی‌بیند.
   say "آخرین پشتیبان، و اینکه به کدام ربات رسید"
-  sqlite3 "$DBF" "SELECT v FROM settings WHERE k='kartablBackupAll';" 2>/dev/null \
-  | node -e '
-      let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
-        if (!s.trim()) return console.log("        هیچ رکوردی نیست");
-        let v; try { v = JSON.parse(s); } catch (e) { return console.log("        " + s.trim().slice(0,200)); }
-        const t = v.at ? new Date(v.at + 3.5 * 3600e3).toISOString().replace("T", " ").slice(0, 16) : "?";
-        console.log("        زمان   : " + t + "  (تهران)");
-        console.log("        نوبت   : " + (v.note || "-"));
-        console.log("        نتیجه  : " + (v.ok ? "موفق" : "ناموفق"));
-        console.log("        رسید به: " + ((v.to || []).join("، ") || "هیچ‌کدام"));
-        const f = v.failed || [];
-        console.log("        نرسید  : " + (f.length ? f.join(" | ") : "-"));
-        if (v.error) console.log("        خطا    : " + v.error);
-      });' 2>/dev/null
+  step14_lastbackup
 
   say "نوبت‌های ثبت‌شده (به وقتِ تهران)"
   sqlite3 "$DBF" \
@@ -665,8 +669,31 @@ step14n() {
   grep -q '^SHOP_JOBS=off' "$ENVF" \
     || die "SHOP_JOBS=off در $ENVF نیست. اجرای دستی کارهای فروشگاه را هم راه می‌اندازد و ممکن است برای مشتری‌ها پیام برود. اول آن را بگذار."
   ok "کارهای فروشگاه خاموش است، پس فقط کارِ کارتابل می‌رود"
+
+  # بارِ اول این مرحله سه ثانیه طول کشید و هیچ کاری نکرد، و هیچ هم
+  # نگفت. چون نوبتِ این ساعت از قبل ثبت شده بود و قفل — که برای
+  # جلوگیری از اجرای دوتایی است — بی‌صدا ردش کرد. یک ابزارِ دستی که
+  # در سکوت هیچ کاری نکند از نبودنش بدتر است.
+  #
+  # پس نوبتِ همین ساعت آزاد می‌شود تا اجرا واقعاً انجام شود. ردیفِ
+  # روزهای قبل با همین ساعت هم پاک می‌شود و بی‌اثر است: آن روز دیگر
+  # برنمی‌گردد.
+  local hh n
+  hh=$(date -u +%H)
+  n=$(sqlite3 "$DBF" "SELECT COUNT(*) FROM job_runs WHERE k LIKE 'kartablBackup:%:$hh';" 2>/dev/null || echo 0)
+  if [ "${n:-0}" -gt 0 ]; then
+    sqlite3 "$DBF" "DELETE FROM job_runs WHERE k LIKE 'kartablBackup:%:$hh';" 2>/dev/null \
+      && ok "نوبتِ ساعتِ $hh گرینویچ آزاد شد ($n ردیف)" \
+      || bad "آزاد کردنِ نوبت نشد — ممکن است اجرا بی‌اثر باشد"
+  else
+    ok "نوبتی برای این ساعت ثبت نشده بود"
+  fi
+
   runuser -u sltech -- env SLTECH_ENV="$ENVF" node "$APP/server/index.js" --cron-now
-  say "تمام. اگر زیپ در پیام‌رسان آمد، مسیر سالم است."
+
+  say "نتیجه"
+  step14_lastbackup
+  note "اگر «رسید به» هر دو ربات را داشت، مسیر سالم است."
 }
 
 # ---------------------------------------------------------------
