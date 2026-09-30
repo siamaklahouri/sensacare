@@ -83,14 +83,47 @@ d1hint() {
 }
 
 # نام‌های داخلِ گواهیِ فروشگاه — چه با توکن گرفته باشیم چه دستی.
+#   certnames <نامِ گواهی> <دامنه> ...
 certnames() {
+  local cert=$1; shift
   local names d
-  names=$(openssl x509 -in "/etc/letsencrypt/live/$SCERT/fullchain.pem" -noout -text \
+  names=$(openssl x509 -in "/etc/letsencrypt/live/$cert/fullchain.pem" -noout -text \
           | grep -A1 'Subject Alternative Name' | tail -1 | tr -d ' ')
   note "$names"
-  for d in sensacare.ir www.sensacare.ir; do
+  for d in "$@"; do
     case "$names" in *"DNS:$d"*) ok "$d پوشش دارد" ;; *) bad "$d در گواهی نیست" ;; esac
   done
+}
+
+# دامنه باید به همین سرور برسد، وگرنه webroot بی‌معنی است.
+resolves() {
+  local ip; ip=$(getent ahostsv4 "$1" | awk '{print $1}' | head -1)
+  [ "$ip" = "185.231.112.152" ] || die "$1 به $ip می‌رسد، نه به این سرور."
+}
+
+# بردنِ یک گواهی از روشِ کلادفلری به webroot:
+#   towebroot <نامِ گواهی> "<آرگومان‌های -d>" <دامنه> ...
+#
+# تا وقتی گواهی‌ها با dns-cloudflare تازه می‌شوند، سرور به توکنِ
+# کلادفلر بند است. حالا که هر دو دامنه روی همین سرورند، خودش جوابِ
+# ACME را می‌دهد و توکن دیگر لازم نیست.
+towebroot() {
+  local cert=$1 doms=$2; shift 2
+  install -d /var/www/acme
+  # --force-renewal لازم است: بی آن certbot می‌بیند گواهی هنوز تازه
+  # است، کاری نمی‌کند، و روشِ تازه‌شوی در پرونده همان قبلی می‌ماند.
+  certbot certonly --webroot -w /var/www/acme \
+    --cert-name "$cert" $doms \
+    --non-interactive --agree-tos --force-renewal \
+    || die "گواهیِ $cert با روشِ webroot گرفته نشد. متنِ خطا را بفرست."
+
+  certnames "$cert" "$@"
+  if grep -q 'authenticator = webroot' "/etc/letsencrypt/renewal/$cert.conf"
+    then ok "$cert از این پس خودکار تازه می‌شود"
+    else bad "روشِ تازه‌شویِ $cert عوض نشد"
+  fi
+  certbot renew --cert-name "$cert" --dry-run >/dev/null 2>&1 \
+    && ok "تازه‌شویِ آزمایشیِ $cert گرفت" || bad "تازه‌شویِ آزمایشیِ $cert رد شد"
 }
 
 ROWS=0
@@ -474,7 +507,7 @@ step7() {
     --non-interactive --agree-tos --keep-until-expiring --expand \
     || die "گواهی گرفته نشد. متنِ خطا را بفرست."
 
-  certnames
+  certnames "$SCERT" sensacare.ir www.sensacare.ir
   say "تمام شد. حالا مرحلهٔ ۸."
 }
 
@@ -501,7 +534,7 @@ step7m() {
     --agree-tos --expand \
     || die "گواهی گرفته نشد. متنِ خطا را بفرست."
 
-  certnames
+  certnames "$SCERT" sensacare.ir www.sensacare.ir
   note "این گواهی خودکار تازه نمی‌شود."
   note "بعد از تعویضِ DNS حتماً:  bash $APP/server/go.sh 7h"
   say "تمام شد. حالا مرحلهٔ ۸."
@@ -509,32 +542,56 @@ step7m() {
 
 # ---------------------------------------------------------------
 step7h() {
-  say "۷ه · برگرداندنِ گواهیِ فروشگاه به تازه‌شویِ خودکار"
-  local ip
-  ip=$(getent ahostsv4 sensacare.ir | awk '{print $1}' | head -1)
-  [ "$ip" = "185.231.112.152" ] \
-    || die "sensacare.ir به $ip می‌رسد، نه به این سرور. این مرحله بعد از تعویضِ DNS است."
+  say "۷ه · گواهیِ فروشگاه، به تازه‌شویِ خودکار"
+  resolves sensacare.ir
   [ -f "/etc/letsencrypt/live/$SCERT/fullchain.pem" ] || die "گواهی نیست. اول مرحلهٔ ۷ یا ۷م."
-
-  install -d /var/www/acme
-  # --force-renewal لازم است: بی آن، certbot می‌بیند گواهی هنوز تازه
-  # است و کاری نمی‌کند، و روشِ تازه‌شوی در پرونده همان --manual می‌ماند.
-  certbot certonly --webroot -w /var/www/acme \
-    --cert-name "$SCERT" $SDOMAINS \
-    --non-interactive --agree-tos --force-renewal \
-    || die "گرفتنِ گواهی با روشِ webroot نشد. متنِ خطا را بفرست."
-
-  certnames
+  towebroot "$SCERT" "$SDOMAINS" sensacare.ir www.sensacare.ir
   systemctl reload nginx
   ok "nginx با گواهیِ تازه بارگذاری شد"
+  say "تمام شد."
+}
 
-  if grep -q 'authenticator = webroot' "/etc/letsencrypt/renewal/$SCERT.conf"; then
-    ok "از این پس خودکار تازه می‌شود"
+# ---------------------------------------------------------------
+# ۱۱ · بریدنِ آخرین بندِ سرور به کلادفلر
+#
+# هر دو گواهی با dns-cloudflare گرفته شده‌اند، یعنی تا ابد برای
+# تازه شدن به آن توکن نیاز دارند. و آن توکن در گفت‌وگو فاش شد، پس
+# باید حذف شود — ولی تا وقتی گواهی‌ها به آن بندند، حذفش یعنی سه ماهِ
+# بعد هر دو سایت با گواهیِ منقضی بخوابند.
+#
+# حالا هر دو دامنه روی همین سرورند، پس خودِ سرور می‌تواند جوابِ ACME
+# را بدهد. این مرحله هر دو را به webroot می‌برد و با یک تازه‌شویِ
+# آزمایشی ثابت می‌کند که واقعاً کار می‌کند — بعد توکن دور ریختنی است.
+step11() {
+  say "۱۱ · هر دو گواهی، بی‌نیاز از کلادفلر"
+  local d code
+  for d in sltech.ir www.sltech.ir new.sltech.ir sensacare.ir www.sensacare.ir; do
+    resolves "$d"
+  done
+  ok "هر پنج نام به همین سرور می‌رسند"
+
+  say "گواهیِ اس‌ال‌تک"
+  towebroot "$CERT" "$DOMAINS" new.sltech.ir sltech.ir www.sltech.ir
+
+  say "گواهیِ فروشگاه"
+  towebroot "$SCERT" "$SDOMAINS" sensacare.ir www.sensacare.ir
+
+  systemctl reload nginx
+  ok "nginx بارگذاری شد"
+
+  code=$(waitfor 200 15 https://sltech.ir/)    && ok "sltech.ir -> $code"    || bad "sltech.ir -> $code"
+  code=$(waitfor 200 15 https://sensacare.ir/) && ok "sensacare.ir -> $code" || bad "sensacare.ir -> $code"
+
+  if grep -rq 'dns_cloudflare' /etc/letsencrypt/renewal/ 2>/dev/null; then
+    bad "هنوز گواهی‌ای به کلادفلر بند است:"
+    grep -rl 'dns_cloudflare' /etc/letsencrypt/renewal/ | while read -r f; do note "$f"; done
   else
-    bad "روشِ تازه‌شوی عوض نشد — $SCERT.conf را ببین"
+    ok "هیچ گواهی‌ای دیگر به کلادفلر بند نیست"
+    say "حالا توکن دور ریختنی است"
+    note "در کلادفلر → My Profile → API Tokens → آن توکن → Delete"
+    note "و بعد روی سرور:   shred -u $CFINI"
+    note "تا وقتی حذف نکرده‌ای، آن توکن هر کاری با DNS هر دو دامنه می‌تواند بکند."
   fi
-  certbot renew --cert-name "$SCERT" --dry-run \
-    && ok "تازه‌شویِ آزمایشی هم گرفت" || bad "تازه‌شویِ آزمایشی رد شد"
   say "تمام شد."
 }
 
@@ -694,5 +751,6 @@ case "$STEP" in
   8) step8 ;;
   9) step9 ;;
   10) step10 ;;
+  11) step11 ;;
   *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
