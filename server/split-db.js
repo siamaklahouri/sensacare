@@ -43,21 +43,67 @@ const PANEL = [
   'sl_orders', 'sl_coupons',
 ];
 
-/* این‌ها مالِ هیچ‌کدام نیستند و در هر دو می‌مانند.
-
-   «settings» عمداً تقسیم نمی‌شود. نودوپنج کلید در یک جدول‌اند و
-   بعضی‌شان — botHealth، backupLast — مالِ هر دو. تقسیمشان یعنی حدس
-   زدن، و حدس زدن سرِ داده همان کاری است که یک بار گران تمام شد. هر
-   سایت نسخهٔ کاملِ خودش را می‌گیرد و از آن لحظه راهِ خودش را می‌رود؛
-   کلیدی که به کارش نیاید فقط چند بایت جا می‌گیرد.
-
-   جدول‌های ربات (bot_chats و بقیه) ستونِ platform دارند و دو سایت را
-   با «tg/bale» و «sltg/slbale» از هم جدا می‌کنند. تقسیمشان ممکن است
-   ولی لازم نیست: هر سایت فقط پیشوندِ خودش را می‌خواند. */
+/* این جدول‌ها هر دوی سایت‌ها را با هم دارند، پس خالی کردنشان غلط
+   است — ولی دست‌نزده رها کردنشان هم غلط بود. */
 const BOTH = [
   'settings', 'admin_log', 'job_runs', 'rate_limits',
   'bot_chats', 'bot_logins', 'support_msgs', 'support_relay',
 ];
+
+/* ---------- ردیف‌های سایتِ دیگر، داخلِ جدول‌های مشترک ----------
+
+   این‌جا اول نوشته بودم «تقسیمشان لازم نیست، هر سایت فقط پیشوندِ
+   خودش را می‌خواند». آن حرف دربارهٔ خواندن درست بود و دربارهٔ چیزی
+   که مهم است غلط: مسئله این نیست که هر سرویس چه می‌خواند، این است
+   که هر دیتابیس چه دارد. و داشت:
+
+     • توکنِ زندهٔ ربات‌های اس‌ال‌تک، داخلِ دیتابیسِ فروشگاه
+       (کلیدِ sltechSite). یعنی سرویسِ فروشگاه می‌توانست جای رباتِ
+       آن یکی سایت حرف بزند.
+     • شمارهٔ تلفن و شناسهٔ گفتگوی مشتری‌های هر سایت، داخلِ دیتابیسِ
+       آن یکی.
+
+   همان وصل بودنی که قرار بود قطع شود.
+
+   چهار جدولِ ربات ستونِ platform دارند و مقدارهایش قطعی است، نه
+   حدسی: «sltg/slbale/slweb» مالِ اس‌ال‌تک و «telegram/bale» مالِ
+   فروشگاه. فقط ردیفی پاک می‌شود که مقدارش در فهرستِ سایتِ دیگر
+   باشد؛ مقدارِ ناشناس دست نمی‌خورد — همان قاعدهٔ جدولِ ناشناس. */
+const PF_TABLES = ['bot_chats', 'bot_logins', 'support_msgs', 'support_relay'];
+const PF = {
+  panel: ['sltg', 'slbale', 'slweb'],
+  shop:  ['telegram', 'bale'],
+};
+
+/* ---------- کلیدهای settings ----------
+
+   این یکی حدس نیست، چون از روی نامِ کلید قضاوت نشده بلکه از روی
+   اینکه کدام فایل می‌نویسدش: PassHash و PassGen و LastBackup فقط در
+   admin-planer.js و kartabl.js نوشته می‌شوند، و escrow: و sid: و
+   vaultEscrow و adminPlaner و sltechSite هم همین‌طور. هیچ‌کدام در
+   کدِ فروشگاه نیستند.
+
+   یک دام سرِ راه بود: «login:» در index.js هم هست، ولی آن‌جا کلیدِ
+   rate_limits است نه settings. این‌جا فقط settings غربال می‌شود.
+
+   kartablAiKey عمداً می‌ماند: فروشگاه وقتی shopAiKey نداشته باشد از
+   همان می‌خواند، و پاک کردنش دستیارِ فروشگاه را بی‌صدا خاموش می‌کرد.
+
+   کلیدی که به هیچ قاعده‌ای نخورد دست نمی‌خورد. */
+const PANEL_KEY = k =>
+  k !== 'kartablAiKey' && (
+    k === 'sltechSite' ||
+    /^vaultEscrow/.test(k) ||
+    /^(escrow|sid|login):/.test(k) ||
+    /^adminPlaner/.test(k) ||
+    /^kartabl/.test(k) ||
+    /(PassHash|PassGen|LastBackup)$/.test(k));
+
+const SHOP_KEY = k => new Set([
+  'shopName', 'shipZones', 'shipExpress', 'freeOver', 'freeOverSet',
+  'refOn', 'refFriend', 'refReward', 'shopAiKey',
+  'tgToken', 'baleToken', 'tgChat', 'baleChat',
+]).has(k);
 
 const fa = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
@@ -106,7 +152,40 @@ const unknown = [...have].filter(t =>
 console.log(`جدول‌هایی که خالی می‌شوند (${fa(drop.length)}):`);
 for (const [mark, t, n] of lines) console.log(`   ${mark.padEnd(4)} ${t.padEnd(18)} ${n}`);
 console.log(`\n   ${fa(willGo)} سطر می‌رود، ${fa(willStay)} سطرِ خودِ این سایت می‌ماند.`);
-console.log(`   ${fa(BOTH.length)} جدولِ مشترک (settings و …) دست نمی‌خورند.`);
+
+/* ---------- و داخلِ جدول‌های مشترک ---------- */
+const dropPf = PF[side === 'shop' ? 'panel' : 'shop'];
+const marks = dropPf.map(() => '?').join(',');
+const pfRows = [];
+for (const t of PF_TABLES) {
+  if (!have.has(t)) continue;
+  let n = 0;
+  try { n = look.prepare(
+    `SELECT COUNT(*) AS n FROM "${t}" WHERE platform IN (${marks})`).get(...dropPf).n; }
+  catch (e) { continue; }
+  if (n) pfRows.push([t, n]);
+}
+
+/* کلیدهای سایتِ دیگر */
+const isOther = side === 'shop' ? PANEL_KEY : SHOP_KEY;
+let keys = [];
+try { keys = look.prepare('SELECT k FROM settings').all().map(r => r.k).filter(isOther); }
+catch (e) {}
+
+const inside = pfRows.reduce((a, [, n]) => a + n, 0) + keys.length;
+if (inside) {
+  console.log(`\nو داخلِ جدول‌های مشترک، ردِ ${other}:`);
+  for (const [t, n] of pfRows)
+    console.log(`   پاک  ${t.padEnd(18)} ${fa(n)} سطر  (platform: ${dropPf.join('، ')})`);
+  if (keys.length) {
+    console.log(`   پاک  ${'settings'.padEnd(18)} ${fa(keys.length)} کلید:`);
+    for (let i = 0; i < keys.length; i += 3)
+      console.log('        ' + keys.slice(i, i + 3).map(k => k.padEnd(24)).join(''));
+  }
+} else {
+  console.log('\nدر جدول‌های مشترک، ردی از آن یکی سایت نماند.');
+}
+console.log(`\n   بقیهٔ جدول‌های مشترک (admin_log، job_runs، rate_limits) دست نمی‌خورند.`);
 if (unknown.length) {
   console.log(`\n   جدول‌هایی که نمی‌شناسم و دست نمی‌زنم: ${unknown.join('، ')}`);
   console.log('   (اگر مالِ یکی از دو سایت‌اند، در split-db.js فهرستشان کن)');
@@ -136,6 +215,10 @@ try {
     db.exec(`DELETE FROM "${t}"`);
     gone++;
   }
+  for (const [t] of pfRows)
+    db.prepare(`DELETE FROM "${t}" WHERE platform IN (${marks})`).run(...dropPf);
+  for (const k of keys)
+    db.prepare('DELETE FROM settings WHERE k = ?').run(k);
   db.exec('COMMIT');
 } catch (e) {
   try { db.exec('ROLLBACK'); } catch (e2) {}
@@ -170,5 +253,7 @@ renameSync(tmp, file);
 for (const s of ['-wal', '-shm']) { try { unlinkSync(file + s); } catch (e) {} }
 
 console.log(`\n✓ ${fa(gone)} جدول خالی شد.`);
+if (inside)
+  console.log(`  و ${fa(pfRows.reduce((a, [, n]) => a + n, 0))} سطر و ${fa(keys.length)} کلیدِ ${other} از جدول‌های مشترک رفت.`);
 console.log(`  قدیمی کنار گذاشته شد: ${bak}`);
 console.log(`  تازه: ${file}  (${fa(Math.round(statSync(file).size / 1024))} کیلوبایت)\n`);

@@ -552,6 +552,53 @@ step7h() {
 }
 
 # ---------------------------------------------------------------
+# ۱۲ · بستنِ آخرین وصل‌بودنِ دو دیتابیس
+#
+# مرحلهٔ ۶ جدول‌ها را جدا کرد، ولی جدول‌های مشترک را دست‌نخورده
+# گذاشت. نتیجه‌اش این شد که دیتابیسِ فروشگاه توکنِ زندهٔ ربات‌های
+# اس‌ال‌تک را داشت، و هر کدام شمارهٔ تلفنِ مشتری‌های آن یکی را.
+#
+# ۱۲گ فقط گزارش می‌دهد و چیزی نمی‌نویسد. اول آن، بعد ۱۲.
+splitdeep() {
+  local svc=$1 dbf=$2 sd=$3
+  systemctl stop "$svc"
+  node "$APP/server/split-db.js" "$dbf" "$sd" --yes \
+    || { systemctl start "$svc"; die "جدا کردنِ $dbf نشد."; }
+  chown sltech:sltech "$dbf"
+  systemctl start "$svc"
+  sleep 3
+  if [ "$(systemctl is-active "$svc")" != active ]; then
+    journalctl -u "$svc" -n 20 --no-pager
+    die "$svc بالا نیامد. نسخهٔ قبلی با پسوندِ .bak کنارِ $dbf است."
+  fi
+  ok "$svc دوباره بالا آمد"
+}
+
+step12d() {
+  say "۱۲گ · گزارش — هیچ چیز نوشته نمی‌شود"
+  node "$APP/server/split-db.js" "$SDBF" shop
+  node "$APP/server/split-db.js" "$DBF"  panel
+  say "اگر درست بود:  bash $APP/server/go.sh 12"
+}
+
+step12() {
+  say "۱۲ · ردِ هر سایت از دیتابیسِ آن یکی پاک می‌شود"
+  splitdeep sensa  "$SDBF" shop
+  splitdeep sltech "$DBF"  panel
+
+  local code
+  code=$(waitfor 200 15 https://sensacare.ir/) && ok "sensacare.ir -> $code" || bad "sensacare.ir -> $code"
+  code=$(waitfor 200 15 https://sltech.ir/)    && ok "sltech.ir -> $code"    || bad "sltech.ir -> $code"
+
+  # مهم‌ترین چک: ربات‌ها باید همان‌طور کار کنند. اگر کلیدی را اشتباه
+  # پاک کرده باشیم، این‌جا معلوم می‌شود نه یک هفتهٔ بعد.
+  say "و ربات‌ها؟"
+  SLTECH_ENV="$SENVF" node "$APP/server/botcheck.js" || bad "ربات‌های فروشگاه ایراد دارند"
+  SLTECH_ENV="$ENVF"  node "$APP/server/botcheck.js" || bad "ربات‌های اس‌ال‌تک ایراد دارند"
+  say "تمام شد."
+}
+
+# ---------------------------------------------------------------
 # ۱۱ · بریدنِ آخرین بندِ سرور به کلادفلر
 #
 # هر دو گواهی با dns-cloudflare گرفته شده‌اند، یعنی تا ابد برای
@@ -752,5 +799,7 @@ case "$STEP" in
   9) step9 ;;
   10) step10 ;;
   11) step11 ;;
+  12d) step12d ;;
+  12) step12 ;;
   *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
