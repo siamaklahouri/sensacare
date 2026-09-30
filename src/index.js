@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import { JOBS } from './kartabl-jobs.js';
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb, slContact,
@@ -533,8 +534,43 @@ async function runBackup(env) {
 /* دستیار فروشگاه. هم صفحهٔ سایت از آن استفاده می‌کند، هم ربات تلگرام
    و بله — تا جواب‌ها یکی باشد و در یک جا نگهداری شود.
    اگر جوابی درنیامد null می‌دهد. */
+/* کلیدِ کلاد برای دستیارِ فروشگاه.
+   «shopAiKey» اولویت دارد و اگر نبود همان کلیدِ کارتابل: یک حساب است
+   و یک صاحب، و مجبور کردنِ آدم به گذاشتنِ دو بارِ یک کلید فقط یک جای
+   دیگر می‌سازد که یادش برود. */
+const SHOP_AI_KEY = 'shopAiKey';
+async function shopAiKey(env) {
+  try {
+    return (await getSetting(env, SHOP_AI_KEY, ''))
+        || (await getSetting(env, 'kartablAiKey', ''));
+  } catch (e) { return ''; }
+}
+
+/* همان کاری که kartabl-ai.js برای کارتابل می‌کند، برای فروشگاه.
+   تا امروز این‌جا فقط env.AI بود — یعنی دستیارِ فروشگاه فقط روی
+   کلادفلر کار می‌کرد و با آمدن به سرورِ خودمان خاموش می‌شد، بی‌آنکه
+   کسی خبردار شود تا اولین مشتری بپرسد. */
+async function askShopClaude(key, system, turns) {
+  try {
+    const client = new Anthropic({ apiKey: key });
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-5-5', max_tokens: 700, system, messages: turns
+    });
+    const text = String((msg.content || [])
+      .filter(b => b.type === 'text').map(b => b.text).join('\n')).trim();
+    if (!text) return null;
+    return { answer: text, model: msg.model || 'claude-sonnet-5-5' };
+  } catch (e) {
+    /* دستیار جزءِ اصلیِ فروشگاه نیست: اگر نشد null، و صفحه خودش
+       پیامِ «در دسترس نیست» را می‌دهد. ولی در لاگ بماند. */
+    console.log('shop-ai', (e && e.message) || e);
+    return null;
+  }
+}
+
 async function askAI(env, q, history = []) {
-  if (!env.AI) return null;
+  const claudeKey = await shopAiKey(env);
+  if (!claudeKey && !env.AI) return null;
 
   /* تاریخچهٔ کوتاه، تا گفتگو رشتهٔ حرف را گم نکند */
   const past = (Array.isArray(history) ? history : [])
@@ -615,7 +651,12 @@ ${catalog || '(فعلاً محصولی ثبت نشده)'}
 ${guides ? `راهنماهای مجله (اینها نوشتهٔ خودِ سِنسا هستند؛ برای سؤال‌های آموزشی از همین‌ها جواب بده):
 ${guides}` : ''}`;
 
-  const messages = [{ role: 'system', content: system }, ...past, { role: 'user', content: q }];
+  /* کلاد «system» را جدا می‌گیرد، نه به‌عنوان اولین پیام. پس همان
+     دو تکه را دو جور می‌بندیم و متنِ راهنما یکی می‌ماند. */
+  const turns = [...past, { role: 'user', content: q }];
+  if (claudeKey) return askShopClaude(claudeKey, system, turns);
+
+  const messages = [{ role: 'system', content: system }, ...turns];
   /* گاهی مدل وسط جملهٔ فارسی یک واژهٔ چینی یا روسی می‌اندازد.
      اگر پیش آمد دوباره می‌پرسیم؛ اگر باز هم بود، همان چند حرف را برمی‌داریم. */
   const attempts = [
@@ -2607,7 +2648,10 @@ export default {
       if (p === '/api/ask' && m === 'POST') {
         const rl = await rateLimit(env, 'ask:' + clientIp(req), 20, 600);
         if (!rl.ok) return tooMany(rl);
-        if (!env.AI) return bad('دستیار فعلاً در دسترس نیست', 503);
+        /* حالا دو راه هست: کلیدِ کلاد یا AIِ کلادفلر. اگر هیچ‌کدام
+           نبود، همان ۵۰۳. */
+        if (!env.AI && !(await shopAiKey(env)))
+          return bad('دستیار فعلاً در دسترس نیست', 503);
         const q = String(body.q || '').trim().slice(0, 500);
         if (!q) return bad('سؤالت را بنویس');
         const history = (Array.isArray(body.history) ? body.history : []).slice(-6);

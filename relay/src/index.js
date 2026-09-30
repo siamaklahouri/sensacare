@@ -68,10 +68,21 @@ export default {
       return pass(req, 'https://api.telegram.org/' + out[2] + url.search);
     }
 
-    /* ---------- ۲) تلگرام → سایت ---------- */
-    if (p.startsWith('/api/sl/bot/')) {
-      if (!env.ORIGIN) return no('origin not set', 503);
-      return pass(req, env.ORIGIN.replace(/\/+$/, '') + p + url.search);
+    /* ---------- ۲) تلگرام → سایت ----------
+       دو سایت پشتِ این رله‌اند و هر کدام مسیرِ وب‌هوکِ خودش را دارد:
+       «/api/sl/bot/…» مالِ sltech.ir است و «/api/bot/…» مالِ
+       sensacare.ir. ترتیبِ این دو شرط مهم است — «/api/bot/» پیشوندِ
+       آن یکی نیست، ولی اگر روزی کسی جایشان را عوض کند، مسیرِ
+       اس‌ال‌تک هم به فروشگاه می‌رفت. پس دقیق‌ترش اول.
+
+       SHOP_ORIGIN اگر تنظیم نشده باشد به ORIGIN برمی‌گردد: تا وقتی
+       فروشگاه هنوز روی کلادفلر است، این مسیر اصلاً صدا زده نمی‌شود. */
+    const to = p.startsWith('/api/sl/bot/') ? env.ORIGIN
+             : p.startsWith('/api/bot/')    ? (env.SHOP_ORIGIN || env.ORIGIN)
+             : null;
+    if (to !== null) {
+      if (!to) return no('origin not set', 503);
+      return pass(req, to.replace(/\/+$/, '') + p + url.search);
     }
 
     return no('not found');
