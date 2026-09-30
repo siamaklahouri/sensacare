@@ -570,6 +570,85 @@ step7h() {
 # پس حالا هیچ رمزی چاپ نمی‌شود و هیچ رمزی روی دیسک نمی‌نشیند. رمز را
 # خودت در کلادفلر می‌گذاری و همین‌جا می‌چسبانی؛ ورودی نمایش داده
 # نمی‌شود و در تاریخچهٔ پوسته هم نمی‌ماند.
+# ---------------------------------------------------------------
+# ۱۴ · چرا پشتیبان نیامد؟
+#
+# دو پشتیبانِ جدا هست و وقتی چیزی نمی‌رسد اول باید معلوم شود کدام:
+#
+#   فایلِ روی دیسک   تایمرِ systemd می‌گیردش
+#   زیپی که می‌رسد   کرونِ خودِ برنامه می‌سازد و ربات می‌فرستد
+#
+# اگر فایل‌ها تازه‌اند و فقط زیپ نرسیده، اشکال در ارسال است نه در
+# گرفتن — یعنی دادهٔ کسی در خطر نیست. برعکسش نگران‌کننده است.
+#
+# نوبتِ کرون سرِ دقیقهٔ ۳۰ گرینویچ است که با اختلافِ ۳:۳۰ می‌شود سرِ
+# ساعتِ تهران. پس «پشتیبانِ ساعتِ ۱۰» یعنی نوبتِ ۰۶:۳۰ گرینویچ.
+fa_ago() {
+  if [ "$1" -lt 60 ]; then echo "$1 دقیقه پیش"
+  else echo "$(( $1 / 60 )) ساعت و $(( $1 % 60 )) دقیقه پیش"; fi
+}
+
+newest() {
+  local d=$1 f age
+  f=$(ls -t "$d"/*.gz 2>/dev/null | head -1)
+  if [ -z "$f" ]; then bad "$d — هیچ فایلی نیست"; return; fi
+  age=$(( ( $(date +%s) - $(stat -c %Y "$f") ) / 60 ))
+  if [ "$age" -le 75 ]; then ok "$(basename "$f")  ($(fa_ago $age))"
+  else bad "$(basename "$f")  ($(fa_ago $age)) — باید کمتر از یک ساعت باشد"; fi
+}
+
+step14() {
+  say "۱۴ · وضعیتِ پشتیبان"
+  note "الان: $(date '+%Y-%m-%d %H:%M %Z')"
+
+  say "فایل‌های روی دیسک"
+  newest /var/backups/sltech
+  newest /var/backups/sensa
+
+  say "تایمرها"
+  systemctl list-timers --all --no-pager 2>/dev/null \
+    | grep -i backup | while read -r l; do note "$l"; done
+
+  say "کرونِ برنامه"
+  local e
+  for e in "$ENVF" "$SENVF"; do
+    if grep -q '^CRON_UTC=-' "$e" 2>/dev/null
+      then bad "$e — کرون خاموش است (CRON_UTC=-)"
+      else ok "$e — کرون روشن"
+    fi
+  done
+  # اگر کارهای فروشگاه روی سرویسِ کارتابل خاموش نباشد، یک اجرای دستی
+  # می‌تواند برای مشتری‌ها پیام بفرستد. پس همین‌جا گفته می‌شود.
+  if grep -q '^SHOP_JOBS=off' "$ENVF" 2>/dev/null
+    then ok "کارهای فروشگاه روی سرویسِ کارتابل خاموش است"
+    else bad "SHOP_JOBS=off در $ENVF نیست — اجرای دستی ممکن است به مشتری پیام بدهد"
+  fi
+
+  say "نوبت‌های ثبت‌شده (به وقتِ تهران)"
+  sqlite3 "$DBF" \
+    "SELECT k || '   ' || datetime(at/1000,'unixepoch','+3 hours','+30 minutes')
+       FROM job_runs WHERE k LIKE 'kartablBackup%' ORDER BY at DESC LIMIT 6;" \
+    2>/dev/null | while read -r l; do note "$l"; done
+
+  say "لاگ"
+  journalctl -u sltech --since '5 hours ago' --no-pager 2>/dev/null \
+    | grep -iE 'cron|backup|پشتیبان|failed' | tail -12 | while read -r l; do note "$l"; done
+
+  say "اگر خواستی همین حالا یک نوبت بگیری"
+  note "bash $APP/server/go.sh 14n"
+}
+
+# ۱۴ن · همین حالا یک نوبت
+step14n() {
+  say "۱۴ن · اجرای دستیِ پشتیبانِ کارتابل"
+  grep -q '^SHOP_JOBS=off' "$ENVF" \
+    || die "SHOP_JOBS=off در $ENVF نیست. اجرای دستی کارهای فروشگاه را هم راه می‌اندازد و ممکن است برای مشتری‌ها پیام برود. اول آن را بگذار."
+  ok "کارهای فروشگاه خاموش است، پس فقط کارِ کارتابل می‌رود"
+  runuser -u sltech -- env SLTECH_ENV="$ENVF" node "$APP/server/index.js" --cron-now
+  say "تمام. اگر زیپ در پیام‌رسان آمد، مسیر سالم است."
+}
+
+# ---------------------------------------------------------------
 # ۱۳ت · کدام طرف عقب مانده؟
 #
 # وقتی رمزِ رله نخواند، getMe جوابِ خالی می‌دهد و از آن معلوم نیست
@@ -1010,5 +1089,7 @@ case "$STEP" in
   13) step13 ;;
   13t) step13t ;;
   13r) step13r ;;
+  14) step14 ;;
+  14n) step14n ;;
   *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
