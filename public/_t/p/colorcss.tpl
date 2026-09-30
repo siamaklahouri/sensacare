@@ -49,11 +49,14 @@
     opacity:1; border-radius:9px;
     background:color-mix(in srgb, var(--nv) 15%, var(--white));
     box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--nv) 32%, transparent);
-    transition:opacity .15s, transform .15s, box-shadow .15s, background .15s;
+    transition:box-shadow .15s, background .15s;
   }
-  .nav-list .navbtn:hover .ic{ transform:scale(1.07);
-    background:color-mix(in srgb, var(--nv) 24%, var(--white));
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--nv) 50%, transparent); }
+  /* بزرگ‌شدنِ چیپ هم همان لرزش را می‌داد — و حالا که چیپ رنگ دارد،
+     ۷ درصد بزرگ‌تر شدنش خیلی بیشتر از قبل به چشم می‌آید. فقط تینت
+     پررنگ‌تر و حلقه ضخیم‌تر می‌شود؛ هیچ‌چیز تکان نمی‌خورد. */
+  .nav-list .navbtn:hover .ic{
+    background:color-mix(in srgb, var(--nv) 26%, var(--white));
+    box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--nv) 55%, transparent); }
 
   /* ---------- ۳) بخشِ باز ----------
      قرصِ تختِ کم‌رنگ بود؛ حالا از رنگِ خودِ همان بخش محو می‌شود، و

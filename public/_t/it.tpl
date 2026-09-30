@@ -220,7 +220,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
     width:100%; text-align:right; border:none; background:transparent;
     font-family:var(--font-body); font-size:13.6px; font-weight:600; color:var(--ink-soft);
     padding:10px 12px; border-radius:11px; cursor:pointer; margin-bottom:3px;
-    transition:background .15s, color .15s, transform .12s, box-shadow .15s;
+    transition:background .15s, color .15s, box-shadow .15s;
     position:relative;
   }
   /* آیکن‌ها قبلاً هر کدام داخل یک مربعِ خاکستری بودند؛ چهارده مربعِ
@@ -231,7 +231,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
     display:flex; align-items:center; justify-content:center;
     background:none; opacity:.62; transition:opacity .15s, transform .15s;
   }
-  .navbtn:hover{ background:rgba(11,37,69,.05); transform:translateX(-2px); }
+  /* hover دکمه را ۲ پیکسل جابه‌جا می‌کرد. وقتی موس از فهرست رد می‌شود،
+     هر ردیف به نوبت سُر می‌خورد و کلِ ستون می‌لرزد. رنگ به‌تنهایی
+     می‌گوید «زیرِ موس این است» — جابه‌جایی لازم نیست. */
+  .navbtn:hover{ background:rgba(11,37,69,.05); }
   .navbtn:hover .ic{ opacity:.9; }
   /* حالتِ فعال هم روشن شد: یک قرصِ کم‌رنگِ رنگِ برند به‌جای تختهٔ
      سرمه‌ای، تا با بقیهٔ صفحه هم‌وزن بماند. */
