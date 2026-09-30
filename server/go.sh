@@ -49,6 +49,26 @@ die()  { printf '\n\033[31m%s\033[0m\n\n' "$*"; exit 1; }
 #
 # و در ROWS، نه با echo: die داخلِ $( ) فقط زیرپوسته را می‌کشد و
 # کارِ اصلی با دستِ خالی جلو می‌رود.
+# curl، ولی صبور: تا کدِ خواسته‌شده بیاید یا مهلت تمام شود. کد را
+# چاپ می‌کند و اگر نرسید ۱ برمی‌گرداند.
+#
+# «systemctl reload nginx» فوری نیست؛ چند لحظه کارگرهای قدیمی با
+# تنظیماتِ قبلی جواب می‌دهند. در آن چند لحظه دامنه‌ای که بلوکش تازه
+# اضافه شده بلوکِ خودش را ندارد و می‌افتد به اولین بلوکِ ۴۴۳ — که
+# اتفاقاً بلوکِ www است و ۳۰۱ می‌دهد. یک بار همین، مرحلهٔ ۸ را واداشت
+# که سایتِ سالم را «خراب» اعلام کند.
+waitfor() {
+  local want=$1 tries=$2; shift 2
+  local i code=000
+  for i in $(seq 1 "$tries"); do
+    code=$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' "$@")
+    if [ "$code" = "$want" ]; then echo "$code"; return 0; fi
+    sleep 1
+  done
+  echo "$code"
+  return 1
+}
+
 # نام‌های داخلِ گواهیِ فروشگاه — چه با توکن گرفته باشیم چه دستی.
 certnames() {
   local names d
@@ -195,13 +215,16 @@ step3() {
   systemctl reload nginx
   ok "nginx بارگذاری شد"
 
-  local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' https://new.sltech.ir/)
-  [ "$code" = 200 ] && ok "new.sltech.ir هنوز ۲۰۰ می‌دهد" || bad "new.sltech.ir -> $code"
-  code=$(curl -sk --resolve sltech.ir:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://sltech.ir/)
-  [ "$code" = 200 ] && ok "sltech.ir روی همین سرور جواب می‌دهد ($code)" || bad "sltech.ir -> $code"
-  code=$(curl -sk --resolve www.sltech.ir:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://www.sltech.ir/)
-  [ "$code" = 301 ] && ok "www به بدونِ www می‌رود ($code)" || bad "www -> $code"
+  local code loc
+  code=$(waitfor 200 15 https://new.sltech.ir/) \
+    && ok "new.sltech.ir هنوز ۲۰۰ می‌دهد" || bad "new.sltech.ir -> $code"
+  code=$(waitfor 200 15 --resolve sltech.ir:443:127.0.0.1 https://sltech.ir/) \
+    && ok "sltech.ir روی همین سرور جواب می‌دهد ($code)" || bad "sltech.ir -> $code"
+  # مقصدِ ۳۰۱ سنجیده می‌شود نه خودش: هر بلوکِ ناشناسی هم ۳۰۱ می‌دهد.
+  loc=$(curl -sk --max-time 10 --resolve www.sltech.ir:443:127.0.0.1 \
+        -o /dev/null -w '%{redirect_url}' https://www.sltech.ir/)
+  [ "$loc" = "https://sltech.ir/" ] \
+    && ok "www به بدونِ www می‌رود ($loc)" || bad "www می‌رود به $loc"
 
   note "برای کاربران هنوز هیچ چیز عوض نشده — DNS هنوز به کلادفلر است."
   say "تمام شد. حالا مرحلهٔ ۴."
@@ -519,13 +542,21 @@ step8() {
   systemctl reload nginx
   ok "nginx بارگذاری شد"
 
-  local code
-  code=$(curl -sk --resolve sensacare.ir:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://sensacare.ir/)
-  [ "$code" = 200 ] && ok "sensacare.ir روی همین سرور جواب می‌دهد ($code)" || bad "-> $code"
-  code=$(curl -sk --resolve www.sensacare.ir:443:127.0.0.1 -o /dev/null -w '%{http_code}' https://www.sensacare.ir/)
-  [ "$code" = 301 ] && ok "www به بدونِ www می‌رود ($code)" || bad "www -> $code"
-  code=$(curl -s -o /dev/null -w '%{http_code}' https://sltech.ir/)
-  [ "$code" = 200 ] && ok "و اس‌ال‌تک دست‌نخورده است ($code)" || bad "sltech.ir -> $code"
+  local code loc
+  code=$(waitfor 200 15 --resolve sensacare.ir:443:127.0.0.1 https://sensacare.ir/) \
+    && ok "sensacare.ir روی همین سرور جواب می‌دهد ($code)" \
+    || bad "sensacare.ir -> $code"
+
+  # این‌جا «۳۰۱ گرفتیم» کافی نیست: اولین بلوکِ ۴۴۳ هم ۳۰۱ می‌دهد، پس
+  # اگر بلوکِ www هنوز زنده نشده باشد همین چک به دلیلِ غلط سبز می‌شود.
+  # مقصدِ ۳۰۱ را می‌سنجیم، نه خودش را.
+  loc=$(curl -sk --max-time 10 --resolve www.sensacare.ir:443:127.0.0.1 \
+        -o /dev/null -w '%{redirect_url}' https://www.sensacare.ir/)
+  [ "$loc" = "https://sensacare.ir/" ] \
+    && ok "www به بدونِ www می‌رود ($loc)" || bad "www می‌رود به $loc"
+
+  code=$(waitfor 200 10 https://sltech.ir/) \
+    && ok "و اس‌ال‌تک دست‌نخورده است ($code)" || bad "sltech.ir -> $code"
 
   note "برای کاربران هنوز هیچ چیز عوض نشده — DNS هنوز به کلادفلر است."
   say "تمام شد. حالا مرحلهٔ ۹."
@@ -585,10 +616,28 @@ step10() {
   [ "$ip" = "185.231.112.152" ] || { bad "هنوز نرسیده. چند دقیقه صبر کن."; exit 1; }
   ok "روی همین سرور نشست"
 
-  for u in https://sensacare.ir/ https://www.sensacare.ir/ https://sltech.ir/; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' "$u")
-    case "$code" in 200|301) ok "$u -> $code" ;; *) bad "$u -> $code" ;; esac
-  done
+  # «۲۰۰ یا ۳۰۱، هر کدام» چکِ نرمی بود که هیچ‌وقت چیزی نمی‌گرفت: اولین
+  # بلوکِ ۴۴۳ به هر نامِ ناشناسی ۳۰۱ می‌دهد و آن ۳۰۱ این چک را سبز
+  # می‌کرد. این‌جا، یک قدم بعد از تعویضِ DNS، دقیقاً همان جایی است که
+  # نباید چیزی را اشتباه سبز ببینیم. پس هر کدام جوابِ خودش را بدهد.
+  local loc
+  code=$(waitfor 200 20 https://sensacare.ir/) \
+    && ok "sensacare.ir -> $code" || bad "sensacare.ir -> $code"
+  if curl -s --max-time 15 https://sensacare.ir/ | grep -q planList
+    then bad "sensacare.ir محتوای اس‌ال‌تک را می‌دهد"
+    else ok "و محتوایش فروشگاه است"
+  fi
+
+  loc=$(curl -s --max-time 15 -o /dev/null -w '%{redirect_url}' https://www.sensacare.ir/)
+  [ "$loc" = "https://sensacare.ir/" ] \
+    && ok "www.sensacare.ir -> $loc" || bad "www.sensacare.ir می‌رود به $loc"
+
+  code=$(waitfor 200 10 https://sltech.ir/) \
+    && ok "sltech.ir -> $code" || bad "sltech.ir -> $code"
+  if curl -s --max-time 15 https://sltech.ir/ | grep -q planList
+    then ok "و اس‌ال‌تک هم صفحهٔ خودش را می‌دهد"
+    else bad "sltech.ir صفحهٔ خودش را نمی‌دهد"
+  fi
 
   say "روشن کردنِ کرونِ فروشگاه"
   sed -i '/^CRON_UTC=-$/d' "$SENVF"
