@@ -467,6 +467,7 @@ a{ color:var(--brass-ink); }
 .bk-note{ font-size:12.5px; line-height:1.9; color:var(--ink-soft); margin:8px 2px 0; min-height:20px; }
 .bk-note.bad{ color:#A6222B; }
 .bk-note.good{ color:#1E7A4A; }
+.bk-note.warn{ color:#B5791B; }
 .findbar input{ flex:1; padding:10px 13px; border:1px solid var(--line);
   border-radius:var(--r); font-family:var(--font); font-size:13px;
   background:var(--white); color:var(--ink); box-shadow:var(--sh-1);
@@ -1398,7 +1399,9 @@ function bellItems(){
         fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
         ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""));
       if((b.failed || []).length)
-        add("warn", "⚠️", "یکی از ربات‌ها نگرفت", (b.failed || []).join(" — "));
+        add("warn", "⚠️", "یکی از ربات‌ها نگرفت",
+          (b.failed || []).join(" — ") + (b.note ? " (" + b.note + ")" : "") +
+          " — همان‌هایی که گرفتند خبر داده شدند.");
       if((b.noHtml || []).length)
         add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند", (b.noHtml || []).join("، "));
     } else {
@@ -1485,8 +1488,15 @@ function bkLast(){
   bellPaint();
   const b = DATA.backupAll;
   if(!b || !b.at) return;
-  bkNote(b.ok ? "آخرین پشتیبان: " + faDateTime(b.at) + " ✓"
-              : "آخرین پشتیبان نرفت — " + faDateTime(b.at), b.ok ? "good" : "bad");
+  /* «رفت ولی نه به همه‌جا» نباید تیکِ سبز بگیرد: تا دیروز همین یک خط
+     سبز بود و فقط زنگوله می‌دانست که یکی از ربات‌ها نگرفته. */
+  const half = b.ok && ((b.partial) || (b.failed || []).length);
+  if(half)
+    bkNote("آخرین پشتیبان رفت، ولی نه به همه‌جا — " + faDateTime(b.at) +
+           " · نرسید به: " + (b.failed || []).join(" | "), "warn");
+  else
+    bkNote(b.ok ? "آخرین پشتیبان: " + faDateTime(b.at) + " ✓"
+                : "آخرین پشتیبان نرفت — " + faDateTime(b.at), b.ok ? "good" : "bad");
 }
 
 async function loadPlanners(){

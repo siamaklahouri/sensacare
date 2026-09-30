@@ -1036,15 +1036,23 @@ const chatId = v => latinNum(String(v == null ? '' : v)).replace(/\s+/g, '');
 export async function siteBots(env) {
   const st = await getSetting(env, 'sltechSite', {}) || {};
   const out = [];
+  /* نامِ فارسی همراهِ خودِ ربات می‌آید، نه جایی که پیام ساخته می‌شود:
+     وقتی می‌خواهیم بگوییم «به کدام نرسید»، «telegram» جوابِ کسی را
+     نمی‌دهد. دو رباتِ تلگرامی هم ممکن است باشد — رباتِ سایت و رباتِ
+     قدیمیِ کارتابل — و باید از هم جدا شوند. */
   if (st.tgToken && st.tgChat)
-    out.push({ kind: 'telegram', token: String(st.tgToken).trim(), chat: chatId(st.tgChat) });
+    out.push({ kind: 'telegram', label: 'تلگرام',
+               token: String(st.tgToken).trim(), chat: chatId(st.tgChat) });
   if (st.baleToken && st.baleChat)
-    out.push({ kind: 'bale', token: String(st.baleToken).trim(), chat: chatId(st.baleChat) });
+    out.push({ kind: 'bale', label: 'بله',
+               token: String(st.baleToken).trim(), chat: chatId(st.baleChat) });
   const old = await kartablBot(env);
   /* همان گفتگوی قبلی دوباره حساب نشود */
   if (old.token && old.chat &&
       !out.some(b => b.kind === 'telegram' && b.token === old.token && b.chat === chatId(old.chat)))
-    out.push({ kind: 'telegram', token: String(old.token).trim(), chat: chatId(old.chat) });
+    out.push({ kind: 'telegram',
+               label: out.some(b => b.kind === 'telegram') ? 'تلگرامِ قدیمی' : 'تلگرام',
+               token: String(old.token).trim(), chat: chatId(old.chat) });
   return out;
 }
 
@@ -1228,6 +1236,26 @@ async function tellBackupFailed(env, why, note) {
   } catch (e) { /* اگر خبر هم نرفت، ثبتِ بالا سرِ جایش هست */ }
 }
 
+/* پشتیبان رفت، ولی نه به همه‌جا.
+   تا امروز این حالت بی‌صدا بود: کد فقط وقتی شکست اعلام می‌کرد که
+   هیچ رباتی نگیرد، پس اگر بله می‌گرفت و تلگرام نه، همه‌چیز سبز بود و
+   کسی که در تلگرام نگاه می‌کرد چیزی نمی‌دید. حالا همان‌هایی که گرفتند
+   خبر می‌دهند کدام نگرفت — فرستادن به رباتِ خراب فایده‌ای ندارد. */
+async function tellBackupPartial(env, okBots, bad, note) {
+  if (!okBots.length || !bad.length) return;
+  const text = '⚠️ پشتیبان به همهٔ ربات‌ها نرسید' + (note ? ' (' + note + ')' : '') +
+    '\n\nرسید به: ' + okBots.map(b => b.label || b.kind).join('، ') +
+    '\nنرسید به: ' + bad.join('\n            ') +
+    '\n\nفایل سالم است و همین‌جا فرستاده شد؛ فقط آن یکی نگرفت. ' +
+    'اگر تکرار شد، توکن و شناسهٔ گفتگویش را در «تنظیمات سایت» ببینید.';
+  for (const bot of okBots) {
+    await fetch(`${BOT_API[bot.kind](bot.token)}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: bot.chat, text })
+    }).catch(() => {});
+  }
+}
+
 export async function sendAllBackup(env, req, note = '') {
   const at = Date.now();
   const bots = await siteBots(env);
@@ -1258,7 +1286,7 @@ export async function sendAllBackup(env, req, note = '') {
     `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. اکسترکت کن و فایلِ HTML هر ` +
     `پوشه را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.`;
 
-  const sent = [], bad = [];
+  const sent = [], bad = [], okBots = [];
   for (const bot of bots) {
     const fd = new FormData();
     fd.append('chat_id', bot.chat);
@@ -1268,16 +1296,17 @@ export async function sendAllBackup(env, req, note = '') {
     try {
       const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
       const d = await r.json().catch(() => ({}));
-      if (d.ok) sent.push(bot.kind);
-      else bad.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
-    } catch (e) { bad.push(bot.kind + ': ' + e.message); }
+      if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); }
+      else bad.push((bot.label || bot.kind) + ' — ' + (d.description || 'نپذیرفت'));
+    } catch (e) { bad.push((bot.label || bot.kind) + ' — ' + e.message); }
   }
   /* هر کارتابل وضعیتِ خودش را نگه می‌دارد، تا پنل مثل قبل بتواند
      بگوید آخرین پشتیبانِ هرکدام کِی رفت. همان «at»ِ ابتدای تلاش، تا
      ثبتِ هر کارتابل و ثبتِ کلی یک زمان داشته باشند. */
   for (const x of parts)
     await setSetting(env, x.panel.keys.last,
-      sent.length ? { at, size: zip.length, ok: true, to: sent, failed: bad, all: true }
+      sent.length ? { at, size: zip.length, ok: true, partial: bad.length > 0,
+                      to: sent, failed: bad, all: true }
                   : { at, ok: false, error: bad.join(' — ') || 'هیچ رباتی نگرفت.' });
   /* کدام کارتابل صفحه نگرفت — در خودِ پاسخ، نه فقط در کپشنِ ربات.
      تا وقتی این فقط داخلِ کپشن بود، تنها راهِ فهمیدنش این بود که کسی
@@ -1289,9 +1318,14 @@ export async function sendAllBackup(env, req, note = '') {
     await tellBackupFailed(env, error, note);
     return { ok: false, error, noHtml };
   }
-  await markBackup(env, { at, ok: true, note, size: zip.length, name,
+  /* «نیمه» یعنی رفت ولی نه به همه‌جا — نه موفقِ تمام است نه ناموفق،
+     و پنل و آزمون باید بتوانند همین را ببینند، نه اینکه از خالی نبودنِ
+     failed حدسش بزنند. */
+  const partial = bad.length > 0;
+  await markBackup(env, { at, ok: true, partial, note, size: zip.length, name,
                           count: parts.length, to: sent, failed: bad, noHtml });
-  return { ok: true, size: zip.length, name, count: parts.length,
+  if (partial) await tellBackupPartial(env, okBots, bad, note);
+  return { ok: true, partial, size: zip.length, name, count: parts.length,
            to: sent, failed: bad, noHtml };
 }
 
