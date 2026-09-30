@@ -503,14 +503,16 @@ window.KARTABL_UNTIL = {{UNTIL}};
   /* دکمهٔ حذف قبلاً همیشه قرمز بود و روی hover هم بزرگ می‌شد — در یک
      جدولِ چهل ردیفی، چهل لکهٔ قرمزِ جهنده. حالا تا دست رویش نرود خاکستریِ
      آرام است و فقط همان لحظه قرمز می‌شود. */
+  /* بی‌قاب که بود، یک ✕ِ خاکستریِ معلق بود نه دکمه — کسی نمی‌دانست
+     زدنی است. یک خطِ نازکِ خنثی کافی است؛ قرمز همچنان فقط روی hover. */
   .btn-del{
     display:inline-flex; align-items:center; justify-content:center;
-    width:28px; height:28px; padding:0; box-sizing:border-box;
-    background:transparent; border:1px solid transparent; border-radius:8px;
-    color:var(--ink-faint); font-size:13px; line-height:1; cursor:pointer;
-    transition:background .14s, color .14s;
+    width:26px; height:26px; padding:0; box-sizing:border-box;
+    background:transparent; border:1px solid var(--line); border-radius:7px;
+    color:var(--ink-soft); font-size:12px; line-height:1; cursor:pointer;
+    transition:background .14s, color .14s, border-color .14s;
   }
-  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); }
+  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); border-color:var(--red); }
   .btn-del:active{ transform:scale(.94); }
   .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
   .btn-del[disabled]{ display:none; }
@@ -777,7 +779,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
           <thead><tr>
             <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th>مسئول</th>
             <th style="width:80px;">مهلت (روز)</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
-            <th>یادداشت</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:30px;"></th>
+            <th>یادداشت</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:40px;" title="حذف">🗑</th>
           </tr></thead>
           <tbody id="checklistBody"></tbody>
         </table>
@@ -3396,9 +3398,14 @@ function renderChecklist(){
     el.addEventListener("change", onTaskFieldChange);
     if(el.tagName==="INPUT") el.addEventListener("input", onTaskFieldChange);
   });
+  /* تنها جدولی بود که بی‌پرسش حذف می‌کرد: یک کلیکِ ناخواسته و ردیف
+     رفته بود، بی‌راهِ برگشت. بقیهٔ جدول‌های همین صفحه می‌پرسند. */
   body.querySelectorAll("[data-del]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const idx = parseInt(btn.getAttribute("data-del"));
+      const name = ((state.tasks[idx]||{}).task || "").trim();
+      if(!confirm(name ? `وظیفهٔ «${name}» از چک‌لیست حذف شود؟`
+                       : "این وظیفه از چک‌لیست حذف شود؟")) return;
       state.tasks.splice(idx,1);
       renderChecklist(); renderCards(); renderCharts();
       scheduleSave();

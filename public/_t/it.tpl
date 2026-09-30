@@ -628,13 +628,26 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .cm-item-title{ font-weight:700; font-size:13px; color:var(--ink); margin-bottom:3px; }
   .cm-item-meta{ display:flex; flex-wrap:wrap; gap:8px; font-size:11px; color:var(--ink-faint); }
   .cm-item-meta span{ display:inline-flex; align-items:center; gap:3px; }
+  /* این خانه یک <input> بود با width:100% داخلِ یک قابِ ۵۸ پیکسلی: متن
+     ۳۰ پیکسل می‌خواست و ۲۲ پیکسل جا داشت، پس «۲۰ ام» می‌شد «٬۰». بدتر
+     اینکه «خانه‌های بلند» همان بیرون‌زدگی را می‌دید و یک پیکانِ ⌄ هم
+     گوشه‌اش می‌گذاشت که به‌جای تقویم، پنجرهٔ متن باز می‌کرد.
+     حالا خودِ خانه یک دکمه است: به‌اندازهٔ متنش، بی‌شکستن، بی‌پیکان. */
   .date-box{
-    display:flex; align-items:center; gap:5px; border:1px solid var(--card-border); border-radius:6px;
-    padding:5px 7px; cursor:pointer; background:var(--white); transition:border-color .15s;
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    width:100%; box-sizing:border-box; min-width:0;
+    border:1px solid var(--card-border); border-radius:7px;
+    padding:5px 6px; cursor:pointer; background:var(--white);
+    font-family:var(--font-body); font-size:12.6px; color:var(--ink);
+    white-space:nowrap; transition:border-color .15s, background .15s, color .15s;
   }
-  .date-box:hover{ border-color:var(--brass); }
-  .date-box .cal-ic{ font-size:12px; flex:0 0 auto; }
-  .date-box input{ border:none; background:transparent; width:100%; font-size:12.6px; text-align:center; cursor:pointer; color:var(--ink); }
+  .date-box:hover{ border-color:var(--brass); background:var(--brass-bg); color:var(--brass-ink); }
+  .date-box:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+  .date-box .cal-ic{ font-size:11.5px; flex:0 0 auto; line-height:1; }
+  .date-box .dv{ font-weight:700; }
+  /* بی‌مهلت: خط‌چین و کم‌رنگ، تا از یک روزِ ثبت‌شده فرق کند */
+  .date-box.empty{ color:var(--ink-faint); border-style:dashed; }
+  .date-box.empty .dv{ font-weight:600; font-size:11.5px; }
   .day-picker-popup{
     position:fixed; z-index:200; background:var(--white); border:1px solid var(--card-border); border-radius:10px;
     box-shadow:0 10px 30px rgba(11,37,69,.25); padding:10px; display:none;
@@ -730,14 +743,16 @@ window.KARTABL_UNTIL = {{UNTIL}};
   /* دکمهٔ حذف قبلاً همیشه قرمز بود و روی hover هم بزرگ می‌شد — در یک
      جدولِ چهل ردیفی، چهل لکهٔ قرمزِ جهنده. حالا تا دست رویش نرود خاکستریِ
      آرام است و فقط همان لحظه قرمز می‌شود. */
+  /* بی‌قاب که بود، یک ✕ِ خاکستریِ معلق بود نه دکمه — کسی نمی‌دانست
+     زدنی است. یک خطِ نازکِ خنثی کافی است؛ قرمز همچنان فقط روی hover. */
   .btn-del{
     display:inline-flex; align-items:center; justify-content:center;
-    width:28px; height:28px; padding:0; box-sizing:border-box;
-    background:transparent; border:1px solid transparent; border-radius:8px;
-    color:var(--ink-faint); font-size:13px; line-height:1; cursor:pointer;
-    transition:background .14s, color .14s;
+    width:26px; height:26px; padding:0; box-sizing:border-box;
+    background:transparent; border:1px solid var(--line); border-radius:7px;
+    color:var(--ink-soft); font-size:12px; line-height:1; cursor:pointer;
+    transition:background .14s, color .14s, border-color .14s;
   }
-  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); }
+  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); border-color:var(--red); }
   .btn-del:active{ transform:scale(.94); }
   .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
   .btn-del[disabled]{ display:none; }
@@ -1020,8 +1035,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <table>
           <thead><tr>
             <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th style="width:120px;">مسئول</th>
-            <th style="width:70px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
-            <th>یادداشت</th><th style="width:30px;"></th>
+            <th style="width:104px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
+            <th>یادداشت</th><th style="width:40px;" title="حذف">🗑</th>
           </tr></thead>
           <tbody id="checklistBody"></tbody>
         </table>
@@ -2366,12 +2381,12 @@ function renderChecklist(){
       </td>
       <td class="editable-text"><input type="text" data-field="task" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text"><input type="text" data-field="owner" value="${escapeHtml(t.owner)}"></td>
-      <td>
-        <div class="date-box" data-idx="${i}">
+      <td data-nocp>
+        <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
+                title="انتخاب روزِ مهلت">
           <span class="cal-ic">📅</span>
-          <input type="text" class="day-picker-input" data-field="deadline" readonly
-                 value="${t.deadline ? fa(t.deadline)+' ام' : ''}" placeholder="انتخاب روز">
-        </div>
+          <span class="dv">${t.deadline ? fa(t.deadline)+' ام' : 'بی‌مهلت'}</span>
+        </button>
       </td>
       <td>
         <select data-field="status" class="st-select">
@@ -2398,9 +2413,14 @@ function renderChecklist(){
       openDayPicker(box, idx);
     });
   });
+  /* تنها جدولی بود که بی‌پرسش حذف می‌کرد: یک کلیکِ ناخواسته و ردیف
+     رفته بود، بی‌راهِ برگشت. بقیهٔ جدول‌های همین صفحه می‌پرسند. */
   body.querySelectorAll("[data-del]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const idx = parseInt(btn.getAttribute("data-del"));
+      const name = ((state.tasks[idx]||{}).task || "").trim();
+      if(!confirm(name ? `وظیفهٔ «${name}» از چک‌لیست حذف شود؟`
+                       : "این وظیفه از چک‌لیست حذف شود؟")) return;
       state.tasks.splice(idx,1);
       renderAll(); scheduleSave();
     });
