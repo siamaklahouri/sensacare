@@ -552,6 +552,97 @@ step7h() {
 }
 
 # ---------------------------------------------------------------
+# ۱۳ · رمزِ تازه برای رله
+#
+# RELAY_SECRET در خروجیِ یکی از ابزارها چاپ شد، پس سوخته است. این رمز
+# فقط جهتِ بیرون‌رو را می‌بندد (سایت → تلگرام)؛ جهتِ ورودی رمزِ خودش
+# را دارد. با آن، هر کسی می‌تواند از رلهٔ ما به تلگرام درخواست بفرستد.
+#
+# عوض کردنش سه جا را همزمان می‌خواهد: ورکرِ رله، و TG_BASE در هر دو
+# فایلِ تنظیمات. اگر یکی جا بماند، پیام‌های بیرون‌روِ آن سرویس ۴۰۳
+# می‌گیرند و — مثلِ همیشه — بی‌صدا.
+#
+# دو نیم‌مرحله است تا رمز دو بار دستی تایپ نشود و تا وقتی کلادفلر
+# آماده نشده، سرویس‌ها روی رمزِ تازه نیفتند:
+#
+#   ۱۳   رمز را می‌سازد، نشان می‌دهد، و برای نیمهٔ بعد نگه می‌دارد
+#   ۱۳ب  بعد از اینکه در کلادفلر گذاشتی، هر دو سرویس را می‌بندد و تست
+PENDING=/root/.secrets/relay.new
+
+step13() {
+  say "۱۳ · رمزِ تازهٔ رله"
+  install -d -m 700 /root/.secrets
+  local s; s=$(openssl rand -hex 24)
+  [ -n "$s" ] || die "openssl رمز نساخت."
+  printf '%s\n' "$s" > "$PENDING"
+  chmod 600 "$PENDING"
+
+  say "این را در کلادفلر بگذار"
+  note "Workers & Pages ← sltech-relay ← Settings ← Variables and Secrets"
+  note "متغیرِ RELAY_SECRET را ویرایش کن (نوعش Secret بماند):"
+  echo
+  echo "        $s"
+  echo
+  bad "این مقدار را در چت یا هیچ جای دیگری نفرست."
+  note "روی همین سرور نگه داشته شد تا نیمهٔ بعد؛ دوباره تایپش نمی‌کنی."
+  note ""
+  note "بعد از Deploy:   bash $APP/server/go.sh 13b"
+}
+
+step13b() {
+  say "۱۳ب · بستنِ رمزِ تازه روی هر دو سرویس"
+  [ -s "$PENDING" ] || die "$PENDING نیست. اول مرحلهٔ ۱۳."
+  local s; s=$(head -1 "$PENDING")
+  [ -n "$s" ] || die "رمزِ نگه‌داشته‌شده خالی است."
+
+  # میزبانِ رله از تنظیماتِ فعلی درمی‌آید، نه از حافظهٔ من.
+  local host
+  host=$(sed -n 's|^TG_BASE=https://\([^/]*\)/.*|\1|p' "$ENVF" | head -1)
+  [ -n "$host" ] || die "TG_BASE در $ENVF پیدا نشد؛ میزبانِ رله معلوم نیست."
+  ok "میزبانِ رله: $host"
+
+  local e own mode
+  for e in "$ENVF" "$SENVF"; do
+    if [ ! -f "$e" ]; then note "$e نیست، رد شد"; continue; fi
+    own=$(stat -c '%U:%G' "$e"); mode=$(stat -c '%a' "$e")
+    cp -f "$e" "$e.bak"; chmod 600 "$e.bak"
+    sed -i '/^TG_BASE=/d' "$e"
+    printf 'TG_BASE=https://%s/tg/%s\n' "$host" "$s" >> "$e"
+    # sed -i فایل را جایگزین می‌کند؛ مالک و حالت را برمی‌گردانیم،
+    # وگرنه سرویس با کاربرِ sltech دیگر نمی‌تواند بخواندش.
+    chown "$own" "$e"; chmod "$mode" "$e"
+    ok "$e به‌روز شد (مالک $own، حالت $mode)"
+  done
+
+  systemctl restart sltech sensa
+  sleep 4
+  local svc
+  for svc in sltech sensa; do
+    if [ "$(systemctl is-active "$svc")" = active ]; then ok "$svc بالاست"
+    else journalctl -u "$svc" -n 20 --no-pager; die "$svc بالا نیامد."; fi
+  done
+
+  # حالا مهم‌ترین چک: آیا واقعاً از رله رد می‌شود؟ botcheck برای هر
+  # ربات getMe را از همان راهِ خروج صدا می‌زند، پس اگر رمز نخواند
+  # همان‌جا معلوم می‌شود.
+  say "و آیا از رله رد می‌شود؟"
+  local sick=0
+  SLTECH_ENV="$ENVF"  node "$APP/server/botcheck.js" || sick=1
+  SLTECH_ENV="$SENVF" node "$APP/server/botcheck.js" || sick=1
+  if [ "$sick" = 1 ]; then
+    bad "چیزی نخواند. اگر getMe رد شد، یعنی رمزِ کلادفلر با این یکی نیست."
+    note "نسخهٔ قبلیِ تنظیمات: $ENVF.bak و $SENVF.bak"
+    die "رمز را در کلادفلر چک کن و دوباره 13b را بزن."
+  fi
+
+  shred -u "$PENDING" 2>/dev/null || rm -f "$PENDING"
+  ok "رمزِ موقت از سرور پاک شد"
+  note "نسخهٔ قبلیِ تنظیمات در $ENVF.bak و $SENVF.bak ماند — رمزِ قدیمی"
+  note "در آن‌هاست، پس وقتی خیالت راحت شد پاکشان کن."
+  say "تمام شد."
+}
+
+# ---------------------------------------------------------------
 # ۱۲ · بستنِ آخرین وصل‌بودنِ دو دیتابیس
 #
 # مرحلهٔ ۶ جدول‌ها را جدا کرد، ولی جدول‌های مشترک را دست‌نخورده
@@ -801,5 +892,7 @@ case "$STEP" in
   11) step11 ;;
   12d) step12d ;;
   12) step12 ;;
+  13) step13 ;;
+  13b) step13b ;;
   *) die "کدام مرحله؟  bash $0 1   (۱ تا ۵ کارتابل، ۶ تا ۱۰ فروشگاه، 7m گواهیِ دستی، 7h برگرداندنش به خودکار)" ;;
 esac
