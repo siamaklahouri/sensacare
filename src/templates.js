@@ -39,6 +39,7 @@ import p_settings from '../public/_t/p/settings.tpl';
 import p_tablecss from '../public/_t/p/tablecss.tpl';
 import p_theme from '../public/_t/p/theme.tpl';
 import p_vault from '../public/_t/p/vault.tpl';
+import p_xlsxmap from '../public/_t/p/xlsxmap.tpl';
 import p_vaultcss from '../public/_t/p/vaultcss.tpl';
 
 import t_it from '../public/_t/it.tpl';
@@ -74,6 +75,7 @@ export const PARTS = new Map([
   ['tablecss', p_tablecss],
   ['theme', p_theme],
   ['vault', p_vault],
+  ['xlsxmap', p_xlsxmap],
   ['vaultcss', p_vaultcss],
 ]);
 

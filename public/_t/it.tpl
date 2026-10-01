@@ -2908,28 +2908,64 @@ async function importDatabaseFromFile(){
        سرِ جایشان بودند، افتِ کل آن‌قدر نبود که نگهبانِ سرور را بیدار
        کند. همین یک خط، داده را می‌برد.
        این چیزی است که کاربر دو بار دیدش: «بازم سرویس MVPN پرید». */
-    const has = n=> (wb.SheetNames||[]).indexOf(n) >= 0;
-    const skipped = [];
-    if(has("Servers")) backupData = { vm: parseServersSheet(wb) }; else skipped.push("سرورها");
-    if(has("DailyBackupLog")) dailyLog = parseDailyLogSheet(wb); else skipped.push("بکاپ روزانه");
-    if(has("Companies")) companiesData = { companies: parseCompaniesSheet(wb) }; else skipped.push("شرکت‌ها");
-    if(has("MVPN")) mvpnData = { lines: parseMvpnSheetFlat(wb) }; else skipped.push("MVPN");
-    if(has("RemoteChecklist")){
-      const remote = parseRemoteChecklistSheet(wb);
+    /* پیش از این فقط برگه‌ای خوانده می‌شد که نامش دقیقاً «Servers» یا
+       «MVPN» بود. فایلی که مردم می‌سازند «Sheet1» نام دارد، پس هیچ‌چیز
+       خوانده نمی‌شد و صفحه با خیالِ راحت می‌گفت «✓ خوانده شد».
+       حالا XMap خودش برگه را پیدا می‌کند: نامِ خواسته‌شده اگر بود،
+       وگرنه برگه‌ای که سرستون‌هایش بیشتر با همین بخش می‌خواند. */
+    for(const k in LAST_READ) delete LAST_READ[k];
+    const got = [], empty = [];
+    const note = (label, r, n)=>{
+      if(r && r.found && n > 0) got.push(label + ": " + fa(n) + " ردیف" +
+        (r.sheet ? " از برگهٔ «" + r.sheet + "»" : "") +
+        (r.extras && r.extras.length ? " + " + fa(r.extras.length) + " ستونِ اضافه" : ""));
+      else empty.push(label);
+    };
+    const vm = parseServersSheet(wb);
+    if(vm.length) backupData = { vm };
+    note("سرورها", LAST_READ.servers, vm.length);
+
+    const dl = parseDailyLogSheet(wb);
+    const dlN = Object.keys(dl||{}).reduce((n,g)=> n + (dl[g]||[]).length, 0);
+    if(dlN) dailyLog = dl;
+    note("بکاپ روزانه", LAST_READ.dailylog, dlN);
+
+    const cp = parseCompaniesSheet(wb);
+    const cpN = Object.keys(cp||{}).length;
+    if(cpN) companiesData = { companies: cp };
+    note("شرکت‌ها", LAST_READ.companies, cpN);
+
+    const mv = parseMvpnSheetFlat(wb);
+    if(mv.length) mvpnData = { lines: mv };
+    note("MVPN", LAST_READ.mvpn, mv.length);
+
+    const remote = parseRemoteChecklistSheet(wb);
+    if(remote && remote.roster && remote.roster.length){
       remoteBackupData = { roster: remote.roster };
       if(remote.dates) state.remoteCheckDates = remote.dates;
       if(remote.checks) state.remoteChecks = remote.checks;
-    } else skipped.push("چک‌لیست ریموت");
+    }
+    note("چک‌لیست ریموت", LAST_READ.remote, (remote && remote.roster || []).length);
     /* بخشِ رمزدار عمداً از فایل خوانده نمی‌شود: کلیدش دستِ خودِ کاربر
        است و اگر این‌جا جایگزین شود، آن‌چه باز کرده بود قفل می‌ماند. */
     dbSyncedAt = new Date().toISOString();
     persistDbCache();
     scheduleSave();
-    renderServers(); renderCompanies(); renderMvpn(); renderRemoteChecklist(); renderCharts();
-    /* صادقانه بگوید چه چیزی را نخوانده، وگرنه آدم فکر می‌کند همه‌چیز
-       از فایل آمده و بعداً سرِ یک بخشِ قدیمی گیج می‌شود. */
-    updateDbStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست." +
-      (skipped.length ? " — این بخش‌ها در فایل نبودند و دست‌نخورده ماندند: " + skipped.join("، ") : ""));
+    /* همه‌جا تازه می‌شود، نه فقط چهار بخش. پیش از این داشبورد و
+       چک‌لیست و برنامهٔ روزانه دست‌نخورده می‌ماندند و داده تا وقتی
+       کاربر بینِ بخش‌ها جابه‌جا نمی‌شد روی صفحه نمی‌نشست. */
+    refreshEverything();
+    /* و راست بگوید. «✓ خوانده شد» وقتی هیچ ردیفی نیامده، بدترین
+       جوابِ ممکن است: کاربر فکر می‌کند کار تمام شده. */
+    if(!got.length){
+      const sheets = (wb.SheetNames||[]).join("، ") || "—";
+      updateDbStatus("⚠️ از «" + file.name + "» هیچ ردیفی خوانده نشد. " +
+        "برگه‌های فایل: " + sheets + ". سطرِ اولِ هر برگه باید نامِ ستون‌ها باشد " +
+        "(مثلاً «شماره تماس»، «مالک»، «مرحله»).");
+    } else {
+      updateDbStatus("✓ از «" + file.name + "» خوانده شد — " + got.join(" · ") +
+        (empty.length ? " · چیزی برای این بخش‌ها نبود و دست‌نخورده ماندند: " + empty.join("، ") : ""));
+    }
   }catch(e){
     console.error(e);
     updateDbStatus("⚠️ فایل خوانده شد ولی ساختارش با کارتابل نمی‌خواند.");
@@ -3128,20 +3164,54 @@ function saveDaysSheet(){
 
 /* ---------------- Servers sheet ---------------- */
 
+/* گزارشِ آخرین خواندن، برای اینکه پیامِ پایان راست بگوید. */
+const LAST_READ = {};
+
+/* ---------- نامِ ستون‌ها در فایلِ اکسل ----------
+   هر ستون چند نام دارد: نامی که خودِ کارتابل می‌نویسد، و نام‌هایی که
+   مردم در فایل‌هایشان می‌گذارند. مقایسه بی‌فاصله و بی‌نیم‌فاصله است،
+   پس «شمارهٔ تماس» و «شماره تماس» یکی‌اند و لازم نیست هر دو بیایند. */
+const XS_SERVERS = [
+  { k:'location',      as:['Location','محل','مکان','سایت','دیتاسنتر','IP','آدرس','آی‌پی'] },
+  { k:'server',        as:['Server','سرور','نام سرور','هاست','ماشین'] },
+  { k:'size',          as:['Size','حجم','حجم کل','اندازه'] },
+  { k:'sizeUsed',      as:['SizeUsed','حجم استفاده‌شده','مصرف','استفاده'] },
+  { k:'schedule',      as:['ScheduleBackup','Schedule','زمان‌بندی','زمان‌بندی بکاپ','دوره'] },
+  { k:'lastRestore',   as:['LastRestore','آخرین ریستور','آخرین بازیابی'] },
+  { k:'lastFullBackup',as:['LastFullBackup','آخرین فول بکاپ','آخرین بکاپ کامل'] },
+  { k:'time',          as:['Time','ساعت','زمان'] },
+  { k:'storage',       as:['Storage','محل ذخیره','استوریج','مقصد'] }
+];
+const XS_MVPN = [
+  { k:'phone',   as:['Phone','شماره تماس','شماره خط','شماره','موبایل','تلفن'] },
+  { k:'owner',   as:['Owner','مالکیت سیم‌کارت','مالک','نام مالک','صاحب خط','کاربر'] },
+  { k:'stage',   as:['Stage','مرحله','وضعیت'] },
+  { k:'ext',     as:['Ext','داخلی','شماره داخلی'] },
+  { k:'extFull', as:['ExtFull','داخلی کامل'] },
+  { k:'plan',    as:['Plan','طرح','طرح انتخابی','بسته'] }
+];
+const XS_COMPANIES = [
+  { k:'company', as:['Company','شرکت','نام شرکت','مشتری'] },
+  { k:'dateStr', as:['Date','تاریخ','تاریخ بازدید'] },
+  { k:'time',    as:['Time','مدت','مدت زمان','ساعت'] },
+  { k:'type',    as:['Type','نوع','نوع بازدید'] }
+];
+const XS_DAILYLOG = [
+  { k:'group', as:['Group','گروه','دسته'] },
+  { k:'year',  as:['Year','سال'] },
+  { k:'month', as:['Month','ماه'] },
+  { k:'day',   as:['Day','روز'] },
+  { k:'done',  as:['Done','انجام شد','انجام','وضعیت'] }
+];
+
 function parseServersSheet(wb){
-  const rows = sheetToMatrix(wb, "Servers");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[1]) continue; // Server name
-    out.push({
-      location: row[0]||"", server: row[1], size: row[2]||0, sizeUsed: row[3]||0,
-      schedule: row[4]||"", lastRestore: row[5]||"", lastFullBackup: row[6]||"",
-      time: row[7]||"", storage: row[8]||""
-    });
-  }
-  return out;
+  const r = XMap.read(wb, "Servers", XS_SERVERS);
+  LAST_READ.servers = r;
+  return r.rows.filter(x=> String(x.server||"").trim()).map(x=>({
+    location: x.location||"", server: String(x.server), size: x.size||0, sizeUsed: x.sizeUsed||0,
+    schedule: x.schedule||"", lastRestore: x.lastRestore||"", lastFullBackup: x.lastFullBackup||"",
+    time: x.time||"", storage: x.storage||"", _x: x._x
+  }));
 }
 
 function serversToAOA(){
@@ -3179,16 +3249,15 @@ function addServerRow(vals){
 /* ---------------- DailyBackupLog sheet (shared روزانه یک‌بار / روزانه دوبار) ---------------- */
 
 function parseDailyLogSheet(wb){
-  const rows = sheetToMatrix(wb, "DailyBackupLog");
+  const r0 = XMap.read(wb, "DailyBackupLog", XS_DAILYLOG);
+  LAST_READ.dailylog = r0;
   const out = { "روزانه یک‌بار": [], "روزانه دوبار": [] };
-  if(!rows) return out;
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    const group = row[0];
+  for(const x of r0.rows){
+    const group = x.group;
     if(!group || !out[group]) continue;
-    const year = parseInt(row[1],10), month = parseInt(row[2],10), day = parseInt(row[3],10);
+    const year = parseInt(x.year,10), month = parseInt(x.month,10), day = parseInt(x.day,10);
     if(isNaN(year)||isNaN(month)||isNaN(day)) continue;
-    const done = String(row[4]).trim().toUpperCase()==="TRUE";
+    const done = String(x.done).trim().toUpperCase()==="TRUE" || x.done === true;
     out[group].push({year, month, day, done});
   }
   Object.keys(out).forEach(g=> out[g].sort((a,b)=> (a.year*10000+a.month*100+a.day) - (b.year*10000+b.month*100+b.day)));
@@ -3275,20 +3344,19 @@ function shiftDailyCalMonth(group, delta){
 /* ---------------- Companies sheet ---------------- */
 
 function parseCompaniesSheet(wb){
-  const rows = sheetToMatrix(wb, "Companies");
+  const r = XMap.read(wb, "Companies", XS_COMPANIES);
+  LAST_READ.companies = r;
   const out = {};
-  if(!rows) return out;
   /* ردیفِ بی‌تاریخ وارد نمی‌شود — ولی بی‌صدا هم رد نمی‌شود، وگرنه
      کاربر فکر می‌کند همه‌چیز آمده. */
   let skipped = 0;
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    const company = row[0];
+  for(const x of r.rows){
+    const company = x.company;
     if(!company) continue;
-    const dateStr = String(row[1]==null ? "" : row[1]).trim();
+    const dateStr = String(x.dateStr==null ? "" : x.dateStr).trim();
     if(!out[company]) out[company] = [];
     if(!dateStr){ skipped++; continue; }
-    out[company].push({ dateStr, time: String(row[2]||""), type: String(row[3]||"") });
+    out[company].push({ dateStr, time: String(x.time||""), type: String(x.type||""), _x: x._x });
   }
   if(skipped) setTimeout(()=> alert(
     fa(skipped) + " ردیف بدونِ تاریخ در شیت Companies بود و وارد نشد."), 0);
@@ -3363,15 +3431,13 @@ function removeCompanyVisit(name, idx){
 /* ---------------- MVPN sheet ---------------- */
 
 function parseMvpnSheetFlat(wb){
-  const rows = sheetToMatrix(wb, "MVPN");
-  const out = [];
-  if(!rows) return out;
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0]) continue;
-    out.push({ phone:String(row[0]), owner:row[1]||"", stage:row[2]||"", ext: row[3]!=null?String(row[3]):"", extFull: row[4]!=null?String(row[4]):"", plan:row[5]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "MVPN", XS_MVPN);
+  LAST_READ.mvpn = r;
+  return r.rows.filter(x=> String(x.phone||"").trim()).map(x=>({
+    phone: String(x.phone), owner: x.owner||"", stage: x.stage||"",
+    ext: x.ext!=null ? String(x.ext) : "", extFull: x.extFull!=null ? String(x.extFull) : "",
+    plan: x.plan||"", _x: x._x
+  }));
 }
 
 function mvpnToAOA(){
@@ -3402,7 +3468,12 @@ function addMvpnLine(vals){
 /* ---------------- RemoteChecklist sheet ---------------- */
 
 function parseRemoteChecklistSheet(wb){
-  const rows = sheetToMatrix(wb, "RemoteChecklist");
+  /* این برگه ستونِ ثابت ندارد — ستونِ اول نامِ سرور است و بقیه تاریخ.
+     پس فقط پیدا کردنِ خودِ برگه از XMap می‌آید، نه نگاشتِ ستون‌ها. */
+  const name = XMap.pickSheet(wb, "RemoteChecklist",
+    [{ k:'server', as:['Server','سرور','نام سرور'] }], true);
+  const rows = name ? XMap.matrix(wb, name) : null;
+  LAST_READ.remote = { found: !!rows, sheet: name, extras: [] };
   if(!rows) return { roster: [], dates: null, checks: null };
   const header = rows[0]||[];
   const dateCols = [];
@@ -3652,6 +3723,9 @@ function renderServers(){
   `;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این فیلتر پیدا نشد</td></tr>`) + addRow;
+  /* ستونی که در فایل بود و ما نمی‌شناختیم، این‌جا به جدول می‌چسبد —
+     به همان ترتیبی که ردیف‌ها کشیده شده‌اند. */
+  XMap.paintExtras(body.closest("table"), bodyRows ? vm : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=>{
@@ -3994,6 +4068,7 @@ function renderMvpn(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="6" style="color:var(--ink-faint);">موردی با این فیلتر پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? lines : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=>{
@@ -4209,6 +4284,20 @@ function renderAll(){
   renderChecklist();
   renderDaily();
   renderRemindersBanner();
+}
+
+/* بعد از خواندن از فایل، هر جدولی که ممکن است عوض شده باشد از نو
+   کشیده می‌شود — چه نمای باز باشد چه نباشد. تا دیروز فقط چهار تا از
+   این‌ها صدا زده می‌شد و بقیه تا جابه‌جا شدنِ کاربر کهنه می‌ماندند. */
+function refreshEverything(){
+  const safe = f => { try{ if(typeof f === "function") f(); }catch(e){ console.error(e); } };
+  safe(renderAll);
+  safe(renderServers);
+  safe(renderCompanies);
+  safe(renderMvpn);
+  safe(renderRemoteChecklist);
+  safe(window.tableSizeSweep);
+  safe(window.cellPopScan);
 }
 {{PART:noautofill}}
 /* ---------------- Navigation ---------------- */
@@ -4453,6 +4542,7 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "کدام شرکت‌ها بیشترین بازدید را داشته‌اند؟",
   "خطوط MVPN که هنوز فعال نشده‌اند کدام‌اند؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
+{{PART:xlsxmap}}
 {{PART:cellpop}}
 {{PART:dellock}}
 
