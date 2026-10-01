@@ -6,13 +6,14 @@ let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 
+/* وسطِ خانه را می‌زند، نه لبه‌اش: کاربر گفت «بارِ اول که تاریخ را
+   می‌زنم باید تقویم را ببینم»، پس هر جای خانه باید بازش کند. */
 const tap = async (p, sel) => {
   const box = await p.evaluate(s => {
     const el = document.querySelector(s);
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    const rtl = getComputedStyle(el).direction === 'rtl';
-    return { x: rtl ? r.left + 8 : r.right - 8, y: r.top + r.height / 2 };
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, sel);
   if (!box) throw new Error('خانه پیدا نشد: ' + sel);
   await p.mouse.click(box.x, box.y);
@@ -86,7 +87,7 @@ console.log('— کارتابل IT —');
 
   await tap(p, '#view-companies [data-field="dateStr"]');
   let s = await popState(p);
-  t(s.open, 'با زدنِ نشانه تقویم باز می‌شود');
+  t(s.open, 'با همان اولین کلیکِ وسطِ خانه تقویم باز می‌شود');
   t(/شهریور ۱۴۰۴/.test(s.ttl || ''), 'روی ماهِ خودِ آن تاریخ', s.ttl);
   t(s.days === 31, 'شهریور ۳۱ روز دارد', s.days + '');
   t(s.on === '۲', 'و روزِ ثبت‌شده نشان‌دار است', s.on);

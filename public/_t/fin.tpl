@@ -836,6 +836,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">فهرست فاکتورهای صادرشده و وضعیت وصول مطالبات</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshInvoicesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleInvoicesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="invoicesSyncStatus"></span>
       </div>
       <div class="cards" id="invoiceCards"></div>
@@ -877,6 +878,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">فهرست بدهی‌ها به تامین‌کنندگان به تفکیک پروژه</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshPayablesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="samplePayablesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="payablesSyncStatus"></span>
       </div>
       <div class="cards" id="payableCards"></div>
@@ -917,6 +919,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">چک‌ها و اسنادی که شرکت به دیگران بدهکار است</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshPayableNotesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="samplePayableNotesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="payableNotesSyncStatus"></span>
       </div>
       <div class="cards" id="payableNotesCards"></div>
@@ -955,6 +958,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">چک‌ها و اسنادی که دیگران به شرکت بدهکارند</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshReceivableNotesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleReceivableNotesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="receivableNotesSyncStatus"></span>
       </div>
       <div class="cards" id="receivableNotesCards"></div>
@@ -993,6 +997,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">ثبت منابع (دریافت‌ها و ورودی‌های نقدی) و مصارف (هزینه‌ها و خروجی‌های نقدی)</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshExpensesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleExpensesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="expensesSyncStatus"></span>
       </div>
       <div class="cards" id="expenseCards"></div>
@@ -1034,6 +1039,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">فهرست حساب‌ها و موجودی هرکدام</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshBankBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleBankBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="bankSyncStatus"></span>
       </div>
       <div class="cards" id="bankCards"></div>
@@ -1066,6 +1072,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">مقایسه‌ی بودجه‌ی مصوب با هزینه‌ی واقعی هر دسته</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshBudgetBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleBudgetBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="budgetSyncStatus"></span>
       </div>
       <div class="panel">
@@ -1097,6 +1104,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="section-sub">فهرست مشتریان و تامین‌کنندگان</div>
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshPartiesBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="samplePartiesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="partiesSyncStatus"></span>
       </div>
       <div class="panel">
@@ -4156,6 +4164,68 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
 {{PART:xlsxmap}}
 {{PART:datepick}}
+
+/* ---------- نمونهٔ اکسل ----------
+   هر بخش یک فایلِ آماده با همان سرستون‌ها و دو ردیفِ نمونه می‌دهد. */
+const XSAMPLE = {
+  samplePartiesBtn: { sheet:"طرف‌حساب‌ها", schema:()=>XS_PARTIES, file:"نمونه-طرف‌حساب‌ها.xlsx", rows:[
+    { name:"شرکت نمونه", type:"مشتری", phone:"۰۲۱۱۲۳۴۵۶۷۸", contact:"نام رابط", note:"", enteredBy:"" },
+    { name:"تأمین‌کنندهٔ نمونه", type:"تأمین‌کننده", phone:"۰۹۱۲۰۰۰۰۰۰۰", contact:"", note:"", enteredBy:"" }
+  ]},
+  sampleInvoicesBtn: { sheet:"اسناد دریافتنی از مشتری", schema:()=>XS_INVOICES, file:"نمونه-اسناد-دریافتنی.xlsx", rows:[
+    { invoiceNo:"۱۰۰۱", customer:"شرکت نمونه", date:"۱۴۰۵/۰۷/۰۱", dueDate:"۱۴۰۵/۰۸/۰۱",
+      amount:50000000, paid:0, status:"باز", enteredBy:"" },
+    { invoiceNo:"۱۰۰۲", customer:"شرکت نمونه", date:"۱۴۰۵/۰۷/۰۵", dueDate:"۱۴۰۵/۰۸/۰۵",
+      amount:32000000, paid:32000000, status:"پرداخت‌شده", enteredBy:"" }
+  ]},
+  samplePayablesBtn: { sheet:"بدهی و پرداخت", schema:()=>XS_PAYABLES, file:"نمونه-بدهی-و-پرداخت.xlsx", rows:[
+    { beneficiary:"تأمین‌کنندهٔ نمونه", project:"پروژهٔ الف", dueDate:"۱۴۰۵/۰۷/۲۵",
+      subject:"خرید تجهیزات", amount:18000000, enteredBy:"" },
+    { beneficiary:"پیمانکار نمونه", project:"پروژهٔ ب", dueDate:"۱۴۰۵/۰۸/۱۰",
+      subject:"حق‌الزحمه", amount:9500000, enteredBy:"" }
+  ]},
+  samplePayableNotesBtn: { sheet:"اسناد پرداختنی نزد دیگران", schema:()=>XS_PNOTES, file:"نمونه-اسناد-پرداختنی.xlsx", rows:[
+    { checkNo:"۸۸۱۲۳۴", dueDate:"۱۴۰۵/۰۸/۱۵", amount:25000000, beneficiary:"تأمین‌کنندهٔ نمونه", subject:"بابت فاکتور ۱۰۰۱", enteredBy:"" },
+    { checkNo:"۸۸۱۲۳۵", dueDate:"۱۴۰۵/۰۹/۰۱", amount:12000000, beneficiary:"پیمانکار نمونه", subject:"", enteredBy:"" }
+  ]},
+  sampleReceivableNotesBtn: { sheet:"اسناد دریافتنی شرکت", schema:()=>XS_RNOTES, file:"نمونه-اسناد-دریافتنی-شرکت.xlsx", rows:[
+    { checkNo:"۷۷۴۴۲۱", dueDate:"۱۴۰۵/۰۸/۲۰", amount:40000000, buyer:"شرکت نمونه", subject:"بابت فاکتور ۱۰۰۲", enteredBy:"" },
+    { checkNo:"۷۷۴۴۲۲", dueDate:"۱۴۰۵/۰۹/۱۰", amount:15000000, buyer:"شرکت نمونه", subject:"", enteredBy:"" }
+  ]},
+  sampleExpensesBtn: { sheet:"منابع و مصارف", schema:()=>XS_EXPENSES, file:"نمونه-منابع-و-مصارف.xlsx", rows:[
+    { date:"۱۴۰۵/۰۷/۰۱", type:"منابع", category:"فروش", description:"وصول فاکتور ۱۰۰۲", amount:32000000, paymentMethod:"واریز بانکی", enteredBy:"" },
+    { date:"۱۴۰۵/۰۷/۰۳", type:"مصارف", category:"اجاره", description:"اجارهٔ دفتر", amount:18000000, paymentMethod:"چک", enteredBy:"" }
+  ]},
+  sampleBankBtn: { sheet:"حساب‌های بانکی", schema:()=>XS_BANK, file:"نمونه-حساب‌های-بانکی.xlsx", rows:[
+    { accountName:"جاری اصلی", bank:"ملت", accountNumber:"۱۲۳۴۵۶۷۸۹۰", balance:250000000, note:"", enteredBy:"" },
+    { accountName:"پس‌انداز", bank:"سامان", accountNumber:"۹۸۷۶۵۴۳۲۱۰", balance:80000000, note:"", enteredBy:"" }
+  ]},
+  sampleBudgetBtn: { sheet:"بودجه‌بندی", schema:()=>XS_BUDGET, file:"نمونه-بودجه‌بندی.xlsx", rows:[
+    { period:"مهر ۱۴۰۵", category:"بازاریابی", budgetAmount:20000000, actualAmount:17500000, enteredBy:"" },
+    { period:"مهر ۱۴۰۵", category:"حقوق و دستمزد", budgetAmount:120000000, actualAmount:120000000, enteredBy:"" }
+  ]}
+};
+
+async function downloadSample(id){
+  const spec = XSAMPLE[id];
+  if(!spec) return;
+  updateAllSyncStatus("در حال ساختنِ فایلِ نمونه...");
+  const ok = await ensureXlsxLib();
+  if(!ok){ updateAllSyncStatus("⚠️ کتابخانه‌ی اکسل بارگذاری نشد (اینترنت را بررسی کنید)."); return; }
+  try{
+    XMap.sample(spec.sheet, spec.schema(), spec.rows, spec.file);
+    updateAllSyncStatus("✓ «" + spec.file + "» دانلود شد. ردیف‌های نمونه را پاک کنید، " +
+      "دادهٔ خودتان را بنویسید و با «⬆ خواندن از فایل اکسل» برگردانید.");
+  }catch(e){
+    console.error(e);
+    updateAllSyncStatus("⚠️ ساختنِ فایلِ نمونه نشد.");
+  }
+}
+Object.keys(XSAMPLE).forEach(id=>{
+  const b = document.getElementById(id);
+  if(b) b.addEventListener("click", ()=> downloadSample(id));
+});
+
 {{PART:cellpop}}
 {{PART:dellock}}
 

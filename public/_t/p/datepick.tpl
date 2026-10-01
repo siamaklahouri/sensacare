@@ -256,23 +256,21 @@
     host.__dpFor = el;
   }
 
-  /* آیا کلیک روی نوارِ تقویم بود؟ در راست‌به‌چپ لبهٔ شروع سمت چپ است. */
-  function inZone(host, x){
-    var r = host.getBoundingClientRect();
-    var rtl = getComputedStyle(host).direction === "rtl";
-    return rtl ? (x <= r.left + ZONE) : (x >= r.right - ZONE);
-  }
+  /* کلیک روی هر جای خانهٔ تاریخ تقویم را باز می‌کند، نه فقط روی
+     نشانه. کاربر گفت «بارِ اول که تاریخ را می‌زنم باید ببینمش» — و
+     حق داشت: نوارِ باریکِ لبهٔ خانه را کسی پیدا نمی‌کند.
 
-  /* mousedown نه click: باید پیش از آنکه خانه به حالتِ ویرایش برود
-     جلویش گرفته شود، وگرنه نشانه‌گرِ متن می‌پرد وسطِ تاریخ. */
+     جلوی فوکوس را نمی‌گیریم: نشانه‌گر سرِ جایش می‌رود و اگر کسی
+     بخواهد با دست بنویسد می‌تواند. تقویم یک پیشنهاد است که جلوِ چشم
+     باز می‌شود، نه دری که راهِ دیگر را ببندد. */
   document.addEventListener("mousedown", function(e){
     var host = e.target.closest ? e.target.closest(".dp-host") : null;
     if(!host || !host.__dpFor) return;
-    if(!inZone(host, e.clientX)) return;
-    e.preventDefault(); e.stopPropagation();
     var el = host.__dpFor;
-    if(!pop || pop.hidden || target !== el) open(el, host);
-    else close();
+    /* همان خانه را دوباره زدن، می‌بندد */
+    if(pop && !pop.hidden && target === el){ close(); return; }
+    /* یک تیک صبر تا فوکوس بنشیند، بعد پنجره باز شود */
+    setTimeout(function(){ open(el, host); }, 0);
   }, true);
 
   function scan(root){

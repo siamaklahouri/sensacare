@@ -237,8 +237,39 @@
     }
   }
 
+
+  /* ---------- نمونهٔ اکسل ----------
+     «سطرِ اول باید نامِ ستون‌ها باشد» گفتنش آسان است، نوشتنش نه. این
+     یک فایلِ آماده می‌دهد با همان سرستون‌ها و یکی دو ردیفِ نمونه: کاربر
+     پُرش می‌کند و همان را برمی‌گرداند. نامِ ستون‌ها فارسی انتخاب
+     می‌شود — خواننده هر دو زبان را می‌فهمد، ولی آدم فارسی را. */
+  function label(col){
+    for(var i = 0; i < col.as.length; i++)
+      if(/[\u0600-\u06FF]/.test(col.as[i])) return col.as[i];
+    return col.as[0];
+  }
+  function sample(sheet, schema, rows, fileName){
+    if(typeof XLSX === "undefined") return false;
+    var head = schema.map(label);
+    var aoa = [head];
+    (rows || []).forEach(function(r){
+      aoa.push(schema.map(function(c){ return r[c.k] == null ? "" : r[c.k]; }));
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    /* پهنای ستون از روی بلندترین چیزی که در آن ستون هست */
+    ws["!cols"] = head.map(function(h, i){
+      var w = String(h).length;
+      for(var r = 1; r < aoa.length; r++) w = Math.max(w, String(aoa[r][i] == null ? "" : aoa[r][i]).length);
+      return { wch: Math.min(34, Math.max(10, w + 3)) };
+    });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
+    XLSX.writeFile(wb, fileName || (sheet + ".xlsx"));
+    return true;
+  }
+
   window.XMap = {
     norm: norm, read: read, pickSheet: pickSheet, matrix: matrix,
-    extraNames: extraNames, paintExtras: paintExtras
+    extraNames: extraNames, paintExtras: paintExtras, sample: sample, label: label
   };
 })();

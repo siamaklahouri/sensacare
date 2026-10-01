@@ -1097,6 +1097,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshExcelBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleServersBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="backupSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -1160,6 +1161,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
         </p>
         <div class="toolbar" data-feat="xlsx" style="margin-bottom:12px;">
           <button class="btn btn-brass" id="refreshRemoteBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleRemoteBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
           <span class="save-hint" id="remoteSyncStatus" style="font-size:11.5px;"></span>
         </div>
         <div id="remoteChecklistWrap"></div>
@@ -1173,6 +1175,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshDateBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleCompaniesBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="dateSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -1186,6 +1189,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
       <div class="toolbar" data-feat="xlsx">
         <button class="btn btn-brass" id="refreshMvpnBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sampleMvpnBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
         <span class="save-hint" id="mvpnSyncStatus" style="font-size:11.5px;"></span>
       </div>
 
@@ -4587,6 +4591,57 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
 {{PART:xlsxmap}}
 {{PART:datepick}}
+
+/* ---------- نمونهٔ اکسل ----------
+   «سطرِ اول باید نامِ ستون‌ها باشد» گفتنش آسان است، نوشتنش نه. هر بخش
+   یک فایلِ آماده می‌دهد با همان سرستون‌ها و دو ردیفِ نمونه. کاربر پاکشان
+   می‌کند، ردیف‌های خودش را می‌نویسد و همان را برمی‌گرداند. */
+const XSAMPLE = {
+  sampleServersBtn: { sheet:"Servers", schema:()=>XS_SERVERS, file:"نمونه-سرورها.xlsx", rows:[
+    { location:"دیتاسنتر ۱", server:"SRV-APP-01", size:500, sizeUsed:220,
+      schedule:"روزانه", lastRestore:"۱۴۰۵/۰۶/۲۰", lastFullBackup:"۱۴۰۵/۰۷/۰۱",
+      time:"۰۲:۰۰", storage:"NAS" },
+    { location:"دیتاسنتر ۲", server:"SRV-DB-01", size:1000, sizeUsed:640,
+      schedule:"هفتگی", lastRestore:"۱۴۰۵/۰۵/۳۰", lastFullBackup:"۱۴۰۵/۰۶/۲۸",
+      time:"۰۳:۳۰", storage:"Tape" }
+  ]},
+  sampleMvpnBtn: { sheet:"MVPN", schema:()=>XS_MVPN, file:"نمونه-خطوط-MVPN.xlsx", rows:[
+    { phone:"09120000001", owner:"نام و نام خانوادگی", stage:"فعال شده",
+      ext:"۱۰۱", extFull:"", plan:"سازمانی ۲۰ گیگ" },
+    { phone:"09120000002", owner:"نام و نام خانوادگی", stage:"در حال حذف",
+      ext:"۱۰۲", extFull:"", plan:"سازمانی ۱۰ گیگ" }
+  ]},
+  sampleCompaniesBtn: { sheet:"Companies", schema:()=>XS_COMPANIES, file:"نمونه-بازدید-شرکت‌ها.xlsx", rows:[
+    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۰۲", time:"۲ ساعت", type:"Person" },
+    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۱۸", time:"۱ ساعت", type:"Remote" }
+  ]},
+  sampleRemoteBtn: { sheet:"RemoteChecklist", schema:()=>[{k:"server", as:["Server","نام سرور"]}],
+    file:"نمونه-چک‌لیست-ریموت.xlsx", rows:[{ server:"SRV-APP-01" }, { server:"SRV-DB-01" }],
+    note:"ستونِ اول نامِ سرور است. برای هر روزِ بررسی یک ستونِ تازه با تاریخش " +
+         "اضافه کنید و خانه‌های انجام‌شده را با * علامت بزنید." }
+};
+
+async function downloadSample(id){
+  const spec = XSAMPLE[id];
+  if(!spec) return;
+  updateDbStatus("در حال ساختنِ فایلِ نمونه...");
+  const ok = await ensureXlsxLib();
+  if(!ok){ updateDbStatus("⚠️ کتابخانه‌ی اکسل بارگذاری نشد (اینترنت را بررسی کنید)."); return; }
+  try{
+    XMap.sample(spec.sheet, spec.schema(), spec.rows, spec.file);
+    updateDbStatus("✓ «" + spec.file + "» دانلود شد. ردیف‌های نمونه را پاک کنید، " +
+      "دادهٔ خودتان را بنویسید و با «⬆ خواندن از فایل اکسل» برگردانید." +
+      (spec.note ? " — " + spec.note : ""));
+  }catch(e){
+    console.error(e);
+    updateDbStatus("⚠️ ساختنِ فایلِ نمونه نشد.");
+  }
+}
+Object.keys(XSAMPLE).forEach(id=>{
+  const b = document.getElementById(id);
+  if(b) b.addEventListener("click", ()=> downloadSample(id));
+});
+
 {{PART:cellpop}}
 {{PART:dellock}}
 
