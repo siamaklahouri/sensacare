@@ -195,6 +195,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .period select option{ color:var(--ink); }
 {{PART:tablecss}}
 {{PART:cellpopcss}}
+{{PART:datepickcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
 
 
@@ -4585,6 +4586,7 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
   "خطوط MVPN که هنوز فعال نشده‌اند کدام‌اند؟",
   "یک ایمیل رسمی فارسی برای پیگیری یک تیکت بنویس"];
 {{PART:xlsxmap}}
+{{PART:datepick}}
 {{PART:cellpop}}
 {{PART:dellock}}
 

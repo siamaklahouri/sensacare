@@ -134,6 +134,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .period input::placeholder{ color:var(--ink-faint); }
 {{PART:tablecss}}
 {{PART:cellpopcss}}
+{{PART:datepickcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
 
@@ -2225,6 +2226,9 @@ function renderParties(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  /* ستونی که از فایل اکسل آمده و نمی‌شناختیمش، این‌جا به جدول
+     می‌چسبد — به همان ترتیبی که ردیف‌ها کشیده شده‌اند. */
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitPartyCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -2378,6 +2382,7 @@ function renderInvoices(){
     <datalist id="partyCustomerOptions">${partiesData.filter(p=>p.type==="مشتری").map(p=>`<option value="${escapeHtml(p.name)}">`).join("")}</datalist>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="10" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitInvoiceCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -2510,6 +2515,7 @@ function renderPayables(){
     <datalist id="partySupplierOptions">${partiesData.filter(p=>p.type==="تامین‌کننده").map(p=>`<option value="${escapeHtml(p.name)}">`).join("")}</datalist>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitPayableCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -2630,6 +2636,7 @@ function renderPayableNotes(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitPayableNoteCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -2750,6 +2757,7 @@ function renderReceivableNotes(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitReceivableNoteCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -2910,6 +2918,7 @@ function renderExpenses(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitExpenseCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -3024,6 +3033,7 @@ function renderBank(){
     </tr>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? bankData : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitBankCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -3120,6 +3130,7 @@ function renderBudget(){
     <datalist id="expenseCategoryOptions">${EXPENSE_CATEGORIES.map(c=>`<option value="${c}">`).join("")}</datalist>`;
 
   body.innerHTML = (bodyRows || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی پیدا نشد</td></tr>`) + addRow;
+  XMap.paintExtras(body.closest("table"), bodyRows ? budgetData : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
     td.addEventListener("blur", ()=> commitBudgetCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
@@ -4144,6 +4155,7 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
 {{PART:xlsxmap}}
+{{PART:datepick}}
 {{PART:cellpop}}
 {{PART:dellock}}
 

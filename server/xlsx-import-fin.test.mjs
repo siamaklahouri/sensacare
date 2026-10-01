@@ -42,6 +42,8 @@ console.log('— فایلِ مردمی: Sheet1 و سرستونِ فارسیِ ج
   t(r.first && r.first.amount === 5000000, 'و مبلغ', r.first && r.first.amount);
   t(r.first && r.first._x && r.first._x['مرکز هزینه'] === 'تهران', 'ستونِ ناشناخته نگه داشته شد', JSON.stringify(r.first && r.first._x));
   t(/✓/.test(s) && /۲ ردیف/.test(s), 'پیام راست می‌گوید', s.slice(0,80));
+  t(r.heads.includes('مرکز هزینه'), 'و ستونِ ناشناخته ستونِ جدول شد', r.heads.join(' | '));
+  t(r.xtra > 0, 'و خانه‌هایش پر است', r.xtra + ' خانه');
   t(p.__errs.length === 0, 'بی‌خطا', p.__errs[0] || 'بی‌خطا');
   await p.close();
 }
