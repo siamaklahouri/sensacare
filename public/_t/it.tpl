@@ -3123,7 +3123,35 @@ async function writeDbNow(){
   }
 }
 
+/* کتابخانهٔ اکسل تنبل بار می‌شود: تا وقتی کسی سراغِ اکسل نرفته،
+   XLSX اصلاً وجود ندارد. هر نوشتنی روی کتابچه بی‌او یک
+   ReferenceError بود — و چون این توابع درست وسطِ «ردیف را اضافه کن»
+   صدا زده می‌شوند، کار همان‌جا می‌ایستاد و خطِ بعدی، که رسمِ دوبارهٔ
+   جدول بود، اجرا نمی‌شد. نتیجه این بود که ردیفِ تازه تا کاربر بینِ
+   بخش‌ها جابه‌جا نمی‌شد روی صفحه نمی‌آمد.
+
+   حالا نبودنِ کتابخانه فقط یعنی «فعلاً روی فایل ننویس». داده سرِ
+   جایش است — localStorage و سرور — و کتابخانه که آمد، برگه‌ها از روی
+   همان داده دوباره ساخته می‌شوند. */
+let xlsxWarming = false;
+function wbReady(){
+  if(xlsxReady()) return true;
+  if(!xlsxWarming){
+    xlsxWarming = true;
+    Promise.resolve(ensureXlsxLib()).then(ok=>{
+      xlsxWarming = false;
+      if(ok) rebuildAllSheets();
+    }).catch(()=>{ xlsxWarming = false; });
+  }
+  return false;
+}
+function rebuildAllSheets(){
+  [saveTasksSheet, saveDaysSheet, saveServersSheet, saveDailyLogSheet,
+   saveCompaniesSheet, saveMvpnSheet, saveRemoteChecklistSheet]
+    .forEach(f=>{ try{ f(); }catch(e){ console.error(e); } });
+}
 function ensureDbWorkbook(){
+  if(!wbReady()) return null;
   if(!dbWorkbook) dbWorkbook = buildEmptyDatabaseWorkbook();
   return dbWorkbook;
 }
@@ -3142,7 +3170,9 @@ function tasksToAOA(){
 }
 function saveTasksSheet(){
   if(!dirHandle) return;
-  ensureDbWorkbook().Sheets["Tasks"] = XLSX.utils.aoa_to_sheet(tasksToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["Tasks"] = XLSX.utils.aoa_to_sheet(tasksToAOA());
   scheduleDbWrite();
 }
 
@@ -3158,7 +3188,9 @@ function daysToAOA(){
 }
 function saveDaysSheet(){
   if(!dirHandle) return;
-  ensureDbWorkbook().Sheets["DailyPlan"] = XLSX.utils.aoa_to_sheet(daysToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["DailyPlan"] = XLSX.utils.aoa_to_sheet(daysToAOA());
   scheduleDbWrite();
 }
 
@@ -3223,7 +3255,9 @@ function serversToAOA(){
 }
 
 function saveServersSheet(){
-  ensureDbWorkbook().Sheets["Servers"] = XLSX.utils.aoa_to_sheet(serversToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["Servers"] = XLSX.utils.aoa_to_sheet(serversToAOA());
   scheduleDbWrite();
 }
 
@@ -3274,7 +3308,9 @@ function dailyLogToAOA(){
 }
 
 function saveDailyLogSheet(){
-  ensureDbWorkbook().Sheets["DailyBackupLog"] = XLSX.utils.aoa_to_sheet(dailyLogToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["DailyBackupLog"] = XLSX.utils.aoa_to_sheet(dailyLogToAOA());
   scheduleDbWrite();
 }
 
@@ -3374,7 +3410,9 @@ function companiesToAOA(){
 }
 
 function saveCompaniesSheet(){
-  ensureDbWorkbook().Sheets["Companies"] = XLSX.utils.aoa_to_sheet(companiesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["Companies"] = XLSX.utils.aoa_to_sheet(companiesToAOA());
   scheduleDbWrite();
 }
 
@@ -3447,7 +3485,9 @@ function mvpnToAOA(){
 }
 
 function saveMvpnSheet(){
-  ensureDbWorkbook().Sheets["MVPN"] = XLSX.utils.aoa_to_sheet(mvpnToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["MVPN"] = XLSX.utils.aoa_to_sheet(mvpnToAOA());
   scheduleDbWrite();
 }
 
@@ -3506,7 +3546,9 @@ function remoteChecklistToAOA(){
 }
 
 function saveRemoteChecklistSheet(){
-  ensureDbWorkbook().Sheets["RemoteChecklist"] = XLSX.utils.aoa_to_sheet(remoteChecklistToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["RemoteChecklist"] = XLSX.utils.aoa_to_sheet(remoteChecklistToAOA());
   scheduleDbWrite();
 }
 
