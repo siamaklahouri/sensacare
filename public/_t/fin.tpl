@@ -1700,7 +1700,30 @@ function buildEmptyDatabaseWorkbook(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["EncryptedBlob"]]), "PersonalVault");
   return wb;
 }
+/* کتابخانهٔ اکسل تنبل بار می‌شود؛ تا نیامده XLSX وجود ندارد. این
+   توابع درست وسطِ افزودن و ویرایشِ ردیف صدا زده می‌شوند، پس شکستنشان
+   یعنی خطِ بعدی — رسمِ دوبارهٔ جدول — اجرا نمی‌شود و ردیفِ تازه تا
+   جابه‌جا شدنِ کاربر بینِ بخش‌ها روی صفحه نمی‌آید. */
+let xlsxWarming = false;
+function wbReady(){
+  if(xlsxReady()) return true;
+  if(!xlsxWarming){
+    xlsxWarming = true;
+    Promise.resolve(ensureXlsxLib()).then(ok=>{
+      xlsxWarming = false;
+      if(ok) rebuildAllSheets();
+    }).catch(()=>{ xlsxWarming = false; });
+  }
+  return false;
+}
+function rebuildAllSheets(){
+  [savePartiesSheet, saveInvoicesSheet, savePayablesSheet, savePayableNotesSheet,
+   saveReceivableNotesSheet, saveExpensesSheet, saveBankSheet, saveBudgetSheet,
+   saveTasksSheet, saveDaysSheet]
+    .forEach(f=>{ try{ if(typeof f === "function") f(); }catch(e){ console.error(e); } });
+}
 function ensureDbWorkbook(){
+  if(!wbReady()) return null;
   if(!dbWorkbook) dbWorkbook = buildEmptyDatabaseWorkbook();
   return dbWorkbook;
 }
@@ -1743,20 +1766,43 @@ async function importDatabaseFromFile(){
   try{
     dbWorkbook = wb;
     dbFileName = file.name;
-    partiesData = parsePartiesSheet(wb);
-    invoicesData = parseInvoicesSheet(wb);
-    payablesData = parsePayablesSheet(wb);
-    payableNotesData = parsePayableNotesSheet(wb);
-    receivableNotesData = parseReceivableNotesSheet(wb);
-    expensesData = parseExpensesSheet(wb);
-    bankData = parseBankSheet(wb);
-    budgetData = parseBudgetSheet(wb);
+    /* برگه‌ای که در فایل نیست یعنی «دربارهٔ این بخش حرفی ندارم»، نه
+       «این بخش را خالی کن». پیش از این هر خواندنی همهٔ بخش‌ها را
+       جایگزین می‌کرد و فایلی که فقط یک برگه داشت، بقیه را صفر می‌کرد. */
+    for(const k in LAST_READ) delete LAST_READ[k];
+    const got = [], empty = [];
+    const take = (label, key, parse, set)=>{
+      const rows = parse(wb) || [];
+      const r = LAST_READ[key];
+      if(rows.length){
+        set(rows);
+        got.push(label + ": " + fa(rows.length) + " ردیف" +
+          (r && r.sheet ? " از برگهٔ «" + r.sheet + "»" : "") +
+          (r && r.extras && r.extras.length ? " + " + fa(r.extras.length) + " ستونِ اضافه" : ""));
+      } else empty.push(label);
+    };
+    take("طرف‌حساب‌ها", "parties", parsePartiesSheet, v=> partiesData = v);
+    take("اسناد دریافتنی از مشتری", "invoices", parseInvoicesSheet, v=> invoicesData = v);
+    take("بدهی و پرداخت", "payables", parsePayablesSheet, v=> payablesData = v);
+    take("اسناد پرداختنی", "payableNotes", parsePayableNotesSheet, v=> payableNotesData = v);
+    take("اسناد دریافتنی شرکت", "receivableNotes", parseReceivableNotesSheet, v=> receivableNotesData = v);
+    take("منابع و مصارف", "expenses", parseExpensesSheet, v=> expensesData = v);
+    take("حساب‌های بانکی", "bank", parseBankSheet, v=> bankData = v);
+    take("بودجه‌بندی", "budget", parseBudgetSheet, v=> budgetData = v);
     /* بخشِ رمزدار عمداً از فایل خوانده نمی‌شود: کلیدش دستِ خودِ کاربر
        است و اگر این‌جا جایگزین شود، آن‌چه باز کرده بود قفل می‌ماند. */
     persistCache();
     scheduleSave();
     renderEverything();
-    updateAllSyncStatus("✓ از «" + file.name + "» خوانده شد. فایل دیگر لازم نیست.");
+    if(!got.length){
+      const sheets = (wb.SheetNames||[]).join("، ") || "—";
+      updateAllSyncStatus("⚠️ از «" + file.name + "» هیچ ردیفی خوانده نشد. " +
+        "برگه‌های فایل: " + sheets + ". سطرِ اولِ هر برگه باید نامِ ستون‌ها باشد " +
+        "(مثلاً «مبلغ»، «سررسید»، «مشتری»).");
+    } else {
+      updateAllSyncStatus("✓ از «" + file.name + "» خوانده شد — " + got.join(" · ") +
+        (empty.length ? " · چیزی برای این بخش‌ها نبود و دست‌نخورده ماندند: " + empty.join("، ") : ""));
+    }
   }catch(e){
     console.error(e);
     updateAllSyncStatus("⚠️ فایل خوانده شد ولی ساختارش با کارتابل نمی‌خواند.");
@@ -2019,16 +2065,85 @@ function renderDayModalItem(d){
   </div>`;
 }
 /* ================= Parties ================= */
+/* گزارشِ آخرین خواندن، تا پیامِ پایان راست بگوید. */
+const LAST_READ = {};
+
+/* ---------- نامِ ستون‌ها در فایلِ اکسل ----------
+   هر ستون چند نام دارد: آنچه خودِ کارتابل می‌نویسد، و آنچه مردم در
+   فایل‌هایشان می‌گذارند. مقایسه بی‌فاصله و بی‌نیم‌فاصله است. */
+const XS_PARTIES = [
+  { k:'name',    as:['نام','نام طرف‌حساب','طرف حساب','شرکت','نام شرکت','Name','Party'] },
+  { k:'type',    as:['نوع','نوع طرف‌حساب','Type'] },
+  { k:'phone',   as:['تلفن','شماره تماس','موبایل','Phone'] },
+  { k:'contact', as:['رابط','نام رابط','تماس با','Contact'] },
+  { k:'note',    as:['یادداشت','توضیحات','شرح','Note'] },
+  { k:'enteredBy', as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_INVOICES = [
+  { k:'invoiceNo', as:['شماره فاکتور','شماره سند','شماره','Invoice','InvoiceNo'] },
+  { k:'customer',  as:['مشتری','نام مشتری','طرف حساب','خریدار','Customer'] },
+  { k:'date',      as:['تاریخ','تاریخ صدور','Date'] },
+  { k:'dueDate',   as:['سررسید','تاریخ سررسید','مهلت','DueDate'] },
+  { k:'amount',    as:['مبلغ','مبلغ کل','جمع','Amount'] },
+  { k:'paid',      as:['پرداخت‌شده','پرداختی','وصول‌شده','Paid'] },
+  { k:'status',    as:['وضعیت','Status'] },
+  { k:'enteredBy', as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_PAYABLES = [
+  { k:'beneficiary', as:['ذی‌نفع','دریافت‌کننده','طرف حساب','Beneficiary'] },
+  { k:'project',     as:['پروژه','موضوع پروژه','Project'] },
+  { k:'dueDate',     as:['سررسید','تاریخ','مهلت','DueDate'] },
+  { k:'subject',     as:['شرح','موضوع','بابت','Subject'] },
+  { k:'amount',      as:['مبلغ','Amount'] },
+  { k:'enteredBy',   as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_PNOTES = [
+  { k:'checkNo',     as:['شماره چک','شماره سند','شماره','CheckNo'] },
+  { k:'dueDate',     as:['سررسید','تاریخ سررسید','تاریخ','DueDate'] },
+  { k:'amount',      as:['مبلغ','Amount'] },
+  { k:'beneficiary', as:['ذی‌نفع','در وجه','دریافت‌کننده','Beneficiary'] },
+  { k:'subject',     as:['شرح','بابت','موضوع','Subject'] },
+  { k:'enteredBy',   as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_RNOTES = [
+  { k:'checkNo',   as:['شماره چک','شماره سند','شماره','CheckNo'] },
+  { k:'dueDate',   as:['سررسید','تاریخ سررسید','تاریخ','DueDate'] },
+  { k:'amount',    as:['مبلغ','Amount'] },
+  { k:'buyer',     as:['خریدار','پرداخت‌کننده','طرف حساب','Buyer'] },
+  { k:'subject',   as:['شرح','بابت','موضوع','Subject'] },
+  { k:'enteredBy', as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_EXPENSES = [
+  { k:'date',          as:['تاریخ','Date'] },
+  { k:'type',          as:['نوع','منبع یا مصرف','Type'] },
+  { k:'category',      as:['دسته','دسته‌بندی','Category'] },
+  { k:'description',   as:['شرح','توضیحات','موضوع','Description'] },
+  { k:'amount',        as:['مبلغ','Amount'] },
+  { k:'paymentMethod', as:['روش پرداخت','نحوه پرداخت','Method'] },
+  { k:'enteredBy',     as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_BANK = [
+  { k:'accountName',   as:['نام حساب','عنوان حساب','AccountName'] },
+  { k:'bank',          as:['بانک','نام بانک','Bank'] },
+  { k:'accountNumber', as:['شماره حساب','شبا','Account','AccountNumber'] },
+  { k:'balance',       as:['موجودی','مانده','Balance'] },
+  { k:'note',          as:['یادداشت','توضیحات','Note'] },
+  { k:'enteredBy',     as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+const XS_BUDGET = [
+  { k:'period',       as:['دوره','ماه','Period'] },
+  { k:'category',     as:['دسته','دسته‌بندی','سرفصل','Category'] },
+  { k:'budgetAmount', as:['بودجه','مبلغ بودجه','پیش‌بینی','Budget'] },
+  { k:'actualAmount', as:['عملکرد','واقعی','هزینه واقعی','Actual'] },
+  { k:'enteredBy',    as:['وارد کننده','ثبت‌کننده','EnteredBy'] }
+];
+
 function parsePartiesSheet(wb){
-  const rows = sheetToMatrix(wb, "طرف‌حساب‌ها");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0]) continue;
-    out.push({ name:row[0], type:row[1]||"", phone:row[2]||"", contact:row[3]||"", note:row[4]||"", enteredBy: row[5]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "طرف‌حساب‌ها", XS_PARTIES);
+  LAST_READ.parties = r;
+  return r.rows.filter(x=> String(x.name||"").trim()).map(x=>({
+    name:x.name, type:x.type||"", phone:x.phone||"", contact:x.contact||"",
+    note:x.note||"", enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function partiesToAOA(){
   const header = ["نام","نوع","تلفن","مسئول تماس","یادداشت","واردکننده"];
@@ -2036,7 +2151,9 @@ function partiesToAOA(){
   return [header, ...rows];
 }
 function savePartiesSheet(){
-  ensureDbWorkbook().Sheets["طرف‌حساب‌ها"] = XLSX.utils.aoa_to_sheet(partiesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["طرف‌حساب‌ها"] = XLSX.utils.aoa_to_sheet(partiesToAOA());
   scheduleDbWrite();
 }
 let partyFilters = {};
@@ -2148,19 +2265,12 @@ function setupParties(){
 }
 /* ================= Invoices (مطالبات از مشتری) ================= */
 function parseInvoicesSheet(wb){
-  const rows = sheetToMatrix(wb, "اسناد دریافتنی از مشتری");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0] && !row[1]) continue;
-    out.push({
-      invoiceNo: row[0]||"", customer: row[1]||"", date: row[2]||"", dueDate: row[3]||"",
-      amount: parseFloat(row[4])||0, paid: parseFloat(row[5])||0, status: row[6]||INVOICE_STATUS[2],
-      enteredBy: row[7]||""
-    });
-  }
-  return out;
+  const r = XMap.read(wb, "اسناد دریافتنی از مشتری", XS_INVOICES);
+  LAST_READ.invoices = r;
+  return r.rows.filter(x=> String(x.invoiceNo||"").trim() || String(x.customer||"").trim()).map(x=>({
+    invoiceNo:x.invoiceNo||"", customer:x.customer||"", date:x.date||"", dueDate:x.dueDate||"",
+    amount: parseFloat(x.amount)||0, paid: parseFloat(x.paid)||0,
+    status: x.status||INVOICE_STATUS[2], enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function invoicesToAOA(){
   const header = ["شماره فاکتور","مشتری","تاریخ","سررسید","مبلغ کل","پرداخت‌شده","وضعیت","واردکننده"];
@@ -2168,7 +2278,9 @@ function invoicesToAOA(){
   return [header, ...rows];
 }
 function saveInvoicesSheet(){
-  ensureDbWorkbook().Sheets["اسناد دریافتنی از مشتری"] = XLSX.utils.aoa_to_sheet(invoicesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["اسناد دریافتنی از مشتری"] = XLSX.utils.aoa_to_sheet(invoicesToAOA());
   scheduleDbWrite();
 }
 let invoiceFilters = {};
@@ -2310,18 +2422,11 @@ function setupInvoices(){
 }
 /* ================= Payables (بدهی به تامین‌کننده) ================= */
 function parsePayablesSheet(wb){
-  const rows = sheetToMatrix(wb, "بدهی و پرداخت");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0]) continue;
-    out.push({
-      beneficiary: row[0]||"", project: row[1]||"", dueDate: row[2]||"",
-      subject: row[3]||"", amount: parseFloat(row[4])||0, enteredBy: row[5]||""
-    });
-  }
-  return out;
+  const r = XMap.read(wb, "بدهی و پرداخت", XS_PAYABLES);
+  LAST_READ.payables = r;
+  return r.rows.filter(x=> String(x.beneficiary||"").trim()).map(x=>({
+    beneficiary:x.beneficiary||"", project:x.project||"", dueDate:x.dueDate||"",
+    subject:x.subject||"", amount: parseFloat(x.amount)||0, enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function payablesToAOA(){
   const header = ["ذینفع/تامین‌کننده","پروژه","تاریخ سررسید","موضوع","مبلغ","واردکننده"];
@@ -2329,7 +2434,9 @@ function payablesToAOA(){
   return [header, ...rows];
 }
 function savePayablesSheet(){
-  ensureDbWorkbook().Sheets["بدهی و پرداخت"] = XLSX.utils.aoa_to_sheet(payablesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["بدهی و پرداخت"] = XLSX.utils.aoa_to_sheet(payablesToAOA());
   scheduleDbWrite();
 }
 let payableFilters = {};
@@ -2443,15 +2550,11 @@ function setupPayables(){
 
 /* ================= Payable Notes (اسناد پرداختنی نزد دیگران) ================= */
 function parsePayableNotesSheet(wb){
-  const rows = sheetToMatrix(wb, "اسناد پرداختنی نزد دیگران");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0] && !row[3]) continue;
-    out.push({ checkNo: row[0]||"", dueDate: row[1]||"", amount: parseFloat(row[2])||0, beneficiary: row[3]||"", subject: row[4]||"", enteredBy: row[5]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "اسناد پرداختنی نزد دیگران", XS_PNOTES);
+  LAST_READ.payableNotes = r;
+  return r.rows.filter(x=> String(x.checkNo||"").trim() || String(x.beneficiary||"").trim()).map(x=>({
+    checkNo:x.checkNo||"", dueDate:x.dueDate||"", amount: parseFloat(x.amount)||0,
+    beneficiary:x.beneficiary||"", subject:x.subject||"", enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function payableNotesToAOA(){
   const header = ["شماره چک","تاریخ سررسید چک","مبلغ","ذینفع","موضوع","واردکننده"];
@@ -2459,7 +2562,9 @@ function payableNotesToAOA(){
   return [header, ...rows];
 }
 function savePayableNotesSheet(){
-  ensureDbWorkbook().Sheets["اسناد پرداختنی نزد دیگران"] = XLSX.utils.aoa_to_sheet(payableNotesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["اسناد پرداختنی نزد دیگران"] = XLSX.utils.aoa_to_sheet(payableNotesToAOA());
   scheduleDbWrite();
 }
 let payableNoteFilters = {};
@@ -2565,15 +2670,11 @@ function setupPayableNotes(){
 
 /* ================= Receivable Notes (اسناد دریافتنی به نفع شرکت) ================= */
 function parseReceivableNotesSheet(wb){
-  const rows = sheetToMatrix(wb, "اسناد دریافتنی شرکت");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0] && !row[3]) continue;
-    out.push({ checkNo: row[0]||"", dueDate: row[1]||"", amount: parseFloat(row[2])||0, buyer: row[3]||"", subject: row[4]||"", enteredBy: row[5]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "اسناد دریافتنی شرکت", XS_RNOTES);
+  LAST_READ.receivableNotes = r;
+  return r.rows.filter(x=> String(x.checkNo||"").trim() || String(x.buyer||"").trim()).map(x=>({
+    checkNo:x.checkNo||"", dueDate:x.dueDate||"", amount: parseFloat(x.amount)||0,
+    buyer:x.buyer||"", subject:x.subject||"", enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function receivableNotesToAOA(){
   const header = ["شماره چک","تاریخ سررسید چک","مبلغ","خریدار","موضوع","واردکننده"];
@@ -2581,7 +2682,9 @@ function receivableNotesToAOA(){
   return [header, ...rows];
 }
 function saveReceivableNotesSheet(){
-  ensureDbWorkbook().Sheets["اسناد دریافتنی شرکت"] = XLSX.utils.aoa_to_sheet(receivableNotesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["اسناد دریافتنی شرکت"] = XLSX.utils.aoa_to_sheet(receivableNotesToAOA());
   scheduleDbWrite();
 }
 let receivableNoteFilters = {};
@@ -2687,15 +2790,12 @@ function setupReceivableNotes(){
 
 /* ================= Sources & Uses (منابع و مصارف) ================= */
 function parseExpensesSheet(wb){
-  const rows = sheetToMatrix(wb, "منابع و مصارف");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0] && !row[3]) continue;
-    out.push({ date: row[0]||"", type: row[1]||SOURCE_USE_TYPES[1], category: row[2]||"", description: row[3]||"", amount: parseFloat(row[4])||0, paymentMethod: row[5]||"", enteredBy: row[6]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "منابع و مصارف", XS_EXPENSES);
+  LAST_READ.expenses = r;
+  return r.rows.filter(x=> String(x.date||"").trim() || String(x.description||"").trim()).map(x=>({
+    date:x.date||"", type:x.type||SOURCE_USE_TYPES[1], category:x.category||"",
+    description:x.description||"", amount: parseFloat(x.amount)||0,
+    paymentMethod:x.paymentMethod||"", enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function expensesToAOA(){
   const header = ["تاریخ","نوع","دسته‌بندی","شرح","مبلغ","روش پرداخت","واردکننده"];
@@ -2703,7 +2803,9 @@ function expensesToAOA(){
   return [header, ...rows];
 }
 function saveExpensesSheet(){
-  ensureDbWorkbook().Sheets["منابع و مصارف"] = XLSX.utils.aoa_to_sheet(expensesToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["منابع و مصارف"] = XLSX.utils.aoa_to_sheet(expensesToAOA());
   scheduleDbWrite();
 }
 let expenseFilters = {};
@@ -2858,15 +2960,11 @@ function setupExpenses(){
 
 /* ================= Bank Accounts ================= */
 function parseBankSheet(wb){
-  const rows = sheetToMatrix(wb, "حساب‌های بانکی");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[0]) continue;
-    out.push({ accountName: row[0]||"", bank: row[1]||"", accountNumber: row[2]||"", balance: parseFloat(row[3])||0, note: row[4]||"", enteredBy: row[5]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "حساب‌های بانکی", XS_BANK);
+  LAST_READ.bank = r;
+  return r.rows.filter(x=> String(x.accountName||"").trim()).map(x=>({
+    accountName:x.accountName||"", bank:x.bank||"", accountNumber:x.accountNumber||"",
+    balance: parseFloat(x.balance)||0, note:x.note||"", enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function bankToAOA(){
   const header = ["نام حساب","بانک","شماره حساب","موجودی","یادداشت","واردکننده"];
@@ -2874,7 +2972,9 @@ function bankToAOA(){
   return [header, ...rows];
 }
 function saveBankSheet(){
-  ensureDbWorkbook().Sheets["حساب‌های بانکی"] = XLSX.utils.aoa_to_sheet(bankToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["حساب‌های بانکی"] = XLSX.utils.aoa_to_sheet(bankToAOA());
   scheduleDbWrite();
 }
 function commitBankCell(idx, field, value){
@@ -2956,15 +3056,11 @@ function setupBank(){
 
 /* ================= Budget ================= */
 function parseBudgetSheet(wb){
-  const rows = sheetToMatrix(wb, "بودجه‌بندی");
-  if(!rows) return [];
-  const out = [];
-  for(let r=1;r<rows.length;r++){
-    const row = rows[r]||[];
-    if(!row[1]) continue;
-    out.push({ period: row[0]||"", category: row[1]||"", budgetAmount: parseFloat(row[2])||0, actualAmount: parseFloat(row[3])||0, enteredBy: row[4]||"" });
-  }
-  return out;
+  const r = XMap.read(wb, "بودجه‌بندی", XS_BUDGET);
+  LAST_READ.budget = r;
+  return r.rows.filter(x=> String(x.category||"").trim()).map(x=>({
+    period:x.period||"", category:x.category||"", budgetAmount: parseFloat(x.budgetAmount)||0,
+    actualAmount: parseFloat(x.actualAmount)||0, enteredBy:x.enteredBy||"", _x:x._x }));
 }
 function budgetToAOA(){
   const header = ["دوره","دسته‌بندی","بودجه","هزینه‌ی واقعی","واردکننده"];
@@ -2972,7 +3068,9 @@ function budgetToAOA(){
   return [header, ...rows];
 }
 function saveBudgetSheet(){
-  ensureDbWorkbook().Sheets["بودجه‌بندی"] = XLSX.utils.aoa_to_sheet(budgetToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["بودجه‌بندی"] = XLSX.utils.aoa_to_sheet(budgetToAOA());
   scheduleDbWrite();
 }
 function commitBudgetCell(idx, field, value){
@@ -3340,7 +3438,9 @@ function tasksToAOA(){
 }
 function saveTasksSheet(){
   if(!dirHandle) return;
-  ensureDbWorkbook().Sheets["چک‌لیست ماهانه"] = XLSX.utils.aoa_to_sheet(tasksToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["چک‌لیست ماهانه"] = XLSX.utils.aoa_to_sheet(tasksToAOA());
   scheduleDbWrite();
 }
 function daysToAOA(){
@@ -3355,7 +3455,9 @@ function daysToAOA(){
 }
 function saveDaysSheet(){
   if(!dirHandle) return;
-  ensureDbWorkbook().Sheets["برنامه روزانه"] = XLSX.utils.aoa_to_sheet(daysToAOA());
+  const wb = ensureDbWorkbook();
+  if(!wb) return;
+  wb.Sheets["برنامه روزانه"] = XLSX.utils.aoa_to_sheet(daysToAOA());
   scheduleDbWrite();
 }
 
@@ -4041,6 +4143,7 @@ const AI_TIPS = ["جمع بدهی‌های سررسیدگذشته چقدر اس�
   "خلاصه‌ی وضعیت مالی این ماه را بگو",
   "بودجه با هزینه‌ی واقعی چقدر اختلاف دارد؟",
   "یک نامه‌ی مودبانه برای پیگیری طلب بنویس"];
+{{PART:xlsxmap}}
 {{PART:cellpop}}
 {{PART:dellock}}
 
