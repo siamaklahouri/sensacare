@@ -805,7 +805,8 @@ table.inv-tab td.desc{ text-align:right; }
   <section id="tab-list">
     <div class="findbar">
       <input type="search" id="find" placeholder="جستجو در نام یا آدرس کارتابل…"
-        autocomplete="off" spellcheck="false" data-ascii>
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        data-lpignore="true" data-1p-ignore data-form-type="other" data-ascii>
       <span class="n" id="findCount"></span>
       <!-- پشتیبانِ همه با هم. فهرست همان لحظه از پایگاه‌داده خوانده
            می‌شود، پس کارتابلی که همین امروز ساخته شده هم داخلش هست. -->
@@ -1017,14 +1018,14 @@ table.inv-tab td.desc{ text-align:right; }
         برای برداشتنِ یک توکن، به‌جایش یک خط تیره <code>-</code> بنویسید.</p>
       <div class="row">
         <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
-          <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
+          <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی تلگرام</label>
           <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
         <div><button class="btn" id="stTgTest">پیام آزمایشی</button></div>
       </div>
       <div class="row" style="margin-top:8px;">
         <div class="fld"><label>توکن بله <span id="stBaleHas" class="hint2"></span></label>
-          <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد"></div>
+          <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی بله</label>
           <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
         <div><button class="btn" id="stBaleTest">پیام آزمایشی</button></div>
@@ -1068,9 +1069,9 @@ table.inv-tab td.desc{ text-align:right; }
       <h2>رمز ادمین</h2>
       <p class="sub">با عوض شدنش همهٔ نشست‌های باز — روی هر دستگاهی — بسته می‌شوند.</p>
       <div class="row">
-        <div class="fld"><label>رمز فعلی</label><input type="password" id="apCur"></div>
-        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input type="password" id="apNew"></div>
-        <div class="fld"><label>تکرار</label><input type="password" id="apNew2"></div>
+        <div class="fld"><label>رمز فعلی</label><input type="password" id="apCur" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input type="password" id="apNew" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>تکرار</label><input type="password" id="apNew2" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="apGo">عوض کن</button></div>
       </div>
     </div>
@@ -1085,7 +1086,7 @@ table.inv-tab td.desc{ text-align:right; }
       <div id="escrowState" class="hint"></div>
       <div class="row" style="margin-top:10px;">
         <div class="fld"><label>رمز ادمین</label>
-          <input type="password" id="ekPass" autocomplete="current-password"></div>
+          <input type="password" id="ekPass" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="ekGo">ساختن کلید</button></div>
       </div>
       <div class="hint">⚠️ از این به بعد رمزِ ادمین دو کار می‌کند: هم درِ این پنل را باز
@@ -1104,9 +1105,9 @@ table.inv-tab td.desc{ text-align:right; }
         کاربرهای فعلی از دست نمی‌رود — برعکسِ «ساختن کلید تازه».</p>
       <div class="row">
         <div class="fld"><label>رمز ادمین (همان رمزِ ورود)</label>
-          <input type="password" id="mgAdmin" autocomplete="current-password"></div>
+          <input type="password" id="mgAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>عبارت عبورِ قبلی</label>
-          <input type="password" id="mgOld" autocomplete="off"></div>
+          <input type="password" id="mgOld" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="mgGo">انتقال بده</button></div>
       </div>
       <div class="hint" id="mgNote"></div>
@@ -1295,8 +1296,21 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
 
 /* ---------- برنامه ---------- */
 function openApp(lastLogin){
-  document.getElementById("gate").hidden = true;
+  /* پنهان‌کردن کافی نیست، باید از صفحه برود.
+     دلیلش یک ایرادِ واقعی بود که کاربر دید: تا وقتی کادرِ رمزِ این فرم
+     در صفحه بماند، کروم یک «فرمِ ورود» می‌بیند و دنبالِ کادرِ نام
+     کاربری می‌گردد. فرم که پنهان است، نزدیک‌ترین کادرِ متنیِ دیده‌شده
+     را برمی‌دارد — یعنی کادرِ جستجو — و نامِ کاربریِ ذخیره‌شده را
+     داخلش می‌ریزد. بارِ اولِ ورود به پنل، «admin» توی جستجو می‌نشست.
+
+     همان کاری که صفحهٔ ورودِ کارتابل‌ها می‌کند: گره می‌ماند (جاهایی به
+     وجودش تکیه شده) ولی محتوایش می‌رود. خروج هم صفحه را reload می‌کند،
+     پس این فرم دیگر لازم نیست. */
+  const g = document.getElementById("gate");
+  g.hidden = true;
+  try{ g.innerHTML = ""; }catch(e){}
   document.getElementById("app").hidden = false;
+  scrubFind();
   /* ورودِ قبلی به زنگوله می‌رود، نه به نوارِ گذرا: آن نوار ۱۲ ثانیه
      بعد می‌رفت و اگر آدم سرش جای دیگری بود، هیچ‌وقت نمی‌دیدش. */
   BELL_LOGIN = lastLogin || 0;
@@ -1307,6 +1321,40 @@ function openApp(lastLogin){
   setupKeys();
   setupSite();
   loadPlanners();
+}
+
+/* کروم وقتی برای این دامنه رمزِ ذخیره‌شده دارد، autocomplete=off را
+   روی کادری که خودش «نام کاربری» تشخیص می‌دهد نادیده می‌گیرد. پس یک
+   نگهبانِ کوتاه هم هست — ولی هیچ‌وقت به کادری که زیرِ دستِ کاربر است
+   دست نمی‌زند، و همین که کاربر خودش تایپ کرد کنار می‌رود. */
+let findGuard = true;
+function scrubFind(){
+  const el = document.getElementById("find");
+  if(!el) return;
+  const wipe = ()=>{
+    if(!findGuard || el === document.activeElement) return;
+    if(el.value === "") return;
+    el.value = "";
+    /* فهرست هم باید از فیلترِ جعلی پاک شود، وگرنه کاربر یک فهرستِ
+       خالی می‌بیند و نمی‌فهمد چرا. */
+    findText = "";
+    if(typeof renderPlanners === "function" && DATA) renderPlanners();
+  };
+  /* نگهبان با زمان خاموش نمی‌شود، با خودِ کاربر خاموش می‌شود.
+     دلیلش این است که کادرهای رمزِ دیگری هم در پنل هست (تغییر رمز،
+     کلید اضطراری، توکن ربات‌ها) و کروم ممکن است دیرتر — مثلاً وقتی
+     کاربر سربرگِ تنظیمات را باز کرد — تازه سراغ پر کردن بیاید. */
+  const off = ()=>{ findGuard = false; };
+  el.addEventListener("input", e=>{ if(e.isTrusted) off(); });
+  el.addEventListener("keydown", e=>{ if(e.isTrusted) off(); });
+  el.addEventListener("focus", e=>{ if(e.isTrusted) off(); });
+  requestAnimationFrame(wipe);
+  setTimeout(wipe, 300);
+  setTimeout(wipe, 900);
+  setTimeout(wipe, 2000);
+  /* و هر بار که چیزی از بیرون داخلش ریخت */
+  el.addEventListener("input", e=>{ if(!e.isTrusted) wipe(); });
+  try{ new MutationObserver(wipe).observe(el, { attributes:true, attributeFilter:["value"] }); }catch(e){}
 }
 
 function setupTheme(){
@@ -1867,7 +1915,7 @@ function openVaultReset(slug){
       <b>محتوای صندوق دست نمی‌خورد</b> — فقط با رمزِ تازه دوباره قفل می‌شود.</p>
     <div class="row">
       <div class="fld"><label>رمز ادمین</label>
-        <input type="password" id="vAdmin" autocomplete="current-password"></div>
+        <input type="password" id="vAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="fld"><label>رمز تازهٔ کاربر (خالی = فقط رمز فعلی را نشانم بده)</label>

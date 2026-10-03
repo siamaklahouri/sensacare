@@ -1867,10 +1867,14 @@ async function loadDatabase(){
    کارش رساندن به سرور است. */
 function persistCacheLocal(){
   try{
-    localStorage.setItem(DB_CACHE_KEY, JSON.stringify({
-      parties:partiesData, invoices:invoicesData, payables:payablesData,
-      expenses:expensesData, bank:bankData, budget:budgetData, fileName:dbFileName
-    }));
+    /* یک جا برای فهرستِ جدول‌ها: پیش از این، این تابع فهرستِ خودش را
+       داشت و دو جدولِ «اسناد پرداختنی» و «اسناد دریافتنی» در آن نبود،
+       پس هر بار که صفحه بسته می‌شد ردیف‌هایشان از بین می‌رفت. حالا
+       همان dbSnapshot که برای همگام‌سازی با سرور به کار می‌رود اینجا
+       هم به کار می‌رود تا دیگر دو فهرست از هم جدا نشوند. */
+    const snap = dbSnapshot();
+    snap.fileName = dbFileName;
+    localStorage.setItem(DB_CACHE_KEY, JSON.stringify(snap));
   }catch(e){ /* non-fatal */ }
 }
 function persistCache(){
@@ -1889,12 +1893,7 @@ function loadCachedDatabase(){
     const raw = localStorage.getItem(DB_CACHE_KEY);
     if(!raw) return;
     const c = JSON.parse(raw);
-    partiesData = c.parties || [];
-    invoicesData = c.invoices || [];
-    payablesData = c.payables || [];
-    expensesData = c.expenses || [];
-    bankData = c.bank || [];
-    budgetData = c.budget || [];
+    applyDbSnapshot(c);
     dbFileName = c.fileName || null;
   }catch(e){ /* ignore corrupt cache */ }
 }

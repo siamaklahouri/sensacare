@@ -29,6 +29,15 @@
       (el.tagName === "INPUT" && /^(text|search)$/i.test(el.getAttribute("type") || "text")));
   }
 
+  /* خانه‌ای که خودِ <td> است: متن با textContent خوانده و نوشته می‌شود،
+     پس هیچ عنصری نباید داخلش گذاشته شود. */
+  function isCell(el){
+    return !!(el && el.tagName === "TD" && el.classList.contains("editable-cell"));
+  }
+  function editableCell(el){
+    return isCell(el) && el.getAttribute("contenteditable") === "true";
+  }
+
   /* متنِ خانه، هر شکلی که ذخیره شده باشد */
   function textOf(el){
     return isField(el) ? el.value : (el.textContent || "");
@@ -45,6 +54,12 @@
     if(!el) return false;
     if(!textOf(el).trim()) return false;
     if(el.scrollWidth > el.clientWidth + 2) return true;
+    /* خانهٔ <td> در یک خط بریده می‌شود، پس هرگز از ارتفاع بیرون نمی‌زند.
+       سنجشِ ارتفاع این‌جا فقط خطا می‌داد: قدِ خانه را پدِ بالا و پایین و
+       قدِ خودِ ردیف تعیین می‌کند، نه تعدادِ خط‌های متن — و با
+       line-height:normal تخمینِ «یک خط» از قدِ واقعیِ خانه کمتر درمی‌آمد،
+       پس هر خانه‌ای، حتی خالی‌اش، بلند اعلام می‌شد. */
+    if(isCell(el)) return false;
     /* ارتفاع را با «یک خط» می‌سنجیم، نه با clientHeight: کادرِ ۳۲
        پیکسلی از یک خطِ خودش کوتاه‌تر است، پس مقایسه با clientHeight
        همهٔ خانه‌ها را بلند اعلام می‌کرد. */
@@ -124,7 +139,8 @@
   function open(el){
     build();
     popTarget = el;
-    var ro = !isField(el) || el.readOnly || el.disabled;
+    var ro = isCell(el) ? !editableCell(el)
+                        : (!isField(el) || el.readOnly || el.disabled);
     pop.querySelector(".cp-t").textContent = label(el);
     popField.value = textOf(el);
     popField.readOnly = ro;
@@ -145,13 +161,19 @@
   }
 
   function commit(){
-    if(!popTarget || !isField(popTarget) || popTarget.readOnly) return close();
     var el = popTarget;
-    if(el.value !== popField.value){
+    if(!el) return close();
+    var isTd = isCell(el);
+    if(!isTd && (!isField(el) || el.readOnly)) return close();
+    if(isTd && !editableCell(el)) return close();
+    if(textOf(el) !== popField.value){
       setText(el, popField.value);
-      /* همان دو رویدادی که تایپِ دستی می‌فرستد؛ مسیرِ ذخیره یکی است */
+      /* همان رویدادهایی که دستِ کاربر می‌فرستد؛ مسیرِ ذخیره یکی است.
+         خانهٔ <td> با blur ذخیره می‌شود، نه با change — پس blur هم
+         فرستاده می‌شود، وگرنه متنِ تازه روی صفحه می‌نشست و در داده نه. */
       el.dispatchEvent(new Event("input", { bubbles:true }));
       el.dispatchEvent(new Event("change", { bubbles:true }));
+      if(isTd) el.dispatchEvent(new Event("blur"));
     }
     close();
     scan();
@@ -176,7 +198,9 @@
     if(on){
       td.classList.add(MARK);
       if(getComputedStyle(td).position === "static") td.style.position = "relative";
-      chip(td);
+      /* خانهٔ contenteditable نشانه‌اش را از ::after می‌گیرد، نه از یک
+         دکمهٔ واقعی: دکمه جزوِ textContent می‌شد و ذخیره می‌شد. */
+      if(!isCell(el)) chip(td);
     } else {
       td.classList.remove(MARK);
       var b = td.querySelector(":scope > .cp-more");
@@ -184,14 +208,24 @@
     }
   }
 
+  /* ردیفِ «افزودن» جای نوشتن است، نه جای خواندن: پیکانِ «متنِ کامل»
+     آن‌جا هم بی‌کار است و هم مزاحم — روی خانهٔ باریک می‌افتد و کلیکِ
+     کاربر را که می‌خواهد نشانگر را جایی از متن بگذارد می‌دزدد و پنجره
+     باز می‌کند. از آن گذشته، چون یک <button> است، اولین دکمهٔ ردیف
+     می‌شود و جای دکمهٔ «افزودن» را می‌گیرد. */
+  function skip(el){
+    return !!(el.closest && (el.closest("[data-nocp]") || el.closest("tr.add-row")));
+  }
+
   function scan(root){
     var host = root || document;
     var cells = host.querySelectorAll(
-      ".view.active td textarea, .view.active td input[type=text], .view.active td .ro");
+      ".view.active td textarea, .view.active td input[type=text], .view.active td .ro," +
+      ".view.active td.editable-cell");
     for(var i = 0; i < cells.length; i++){
       var el = cells[i];
-      if(el.closest("[data-nocp]")) continue;
-      mark(el, overflows(el));
+      /* اگر پیش از این پیکانی گرفته بود، همین‌جا برداشته می‌شود */
+      mark(el, !skip(el) && overflows(el));
     }
   }
   window.cellPopScan = scan;
@@ -208,7 +242,21 @@
     }
     /* خانهٔ فقط‌خواندنیِ بلند: خودِ متن هم کلیک‌پذیر است */
     var ro = e.target.closest ? e.target.closest("td.cp-long > .ro") : null;
-    if(ro) open(ro);
+    if(ro){ open(ro); return; }
+
+    /* خانهٔ <td>ی بلند. اگر قفل است، هر جایش پنجره را باز می‌کند؛ اگر
+       باز است، فقط نوارِ باریکِ نشانه — وگرنه کسی که می‌خواهد نشانگر
+       را وسطِ متنش بگذارد، به‌جای ویرایش پنجره می‌گرفت. */
+    var td = e.target.closest ? e.target.closest("td.editable-cell.cp-long") : null;
+    if(!td || td !== e.target) return;
+    if(editableCell(td)){
+      var r = td.getBoundingClientRect();
+      var rtl = getComputedStyle(td).direction === "rtl";
+      var inChip = rtl ? (e.clientX <= r.left + 26) : (e.clientX >= r.right - 26);
+      if(!inChip) return;
+      e.preventDefault(); e.stopPropagation();
+    }
+    open(td);
   });
 
   /* جدول‌ها پشتِ سر هم از نو ساخته می‌شوند؛ یک بار بعد از آرام شدنشان */
@@ -217,7 +265,8 @@
   new MutationObserver(later).observe(document.body, { childList:true, subtree:true });
   /* تایپ هم می‌تواند خانه را بلند یا کوتاه کند */
   document.addEventListener("input", function(e){
-    if(isField(e.target) && e.target.closest("td")) mark(e.target, overflows(e.target));
+    if(isField(e.target) && e.target.closest("td"))
+      mark(e.target, !skip(e.target) && overflows(e.target));
   });
   window.addEventListener("resize", later);
   if(document.readyState === "loading")

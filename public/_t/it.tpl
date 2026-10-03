@@ -3058,13 +3058,13 @@ function buildEmptyDatabaseWorkbook(){
 
 function persistDbCacheLocal(){
   try{
-    localStorage.setItem(DB_CACHE_KEY, JSON.stringify({
-      vm: backupData && backupData.vm || [],
-      dailyLog, companies: companiesData && companiesData.companies || {},
-      lines: mvpnData && mvpnData.lines || [],
-      roster: remoteBackupData && remoteBackupData.roster || [],
-      fileName: dbFileName, syncedAt: dbSyncedAt
-    }));
+    /* یک جا برای فهرستِ جدول‌ها: همان dbSnapshot که برای همگام‌سازی با
+       سرور به کار می‌رود اینجا هم به کار می‌رود، تا اگر فردا جدولی
+       اضافه شد از قلم نیفتد و با بستنِ صفحه از بین نرود. */
+    const snap = dbSnapshot();
+    snap.fileName = dbFileName;
+    snap.syncedAt = dbSyncedAt;
+    localStorage.setItem(DB_CACHE_KEY, JSON.stringify(snap));
   }catch(e){ /* storage full or unavailable — non-fatal */ }
 }
 
@@ -3087,11 +3087,7 @@ function loadCachedDatabase(){
     const raw = localStorage.getItem(DB_CACHE_KEY);
     if(!raw) return;
     const c = JSON.parse(raw);
-    backupData = { vm: c.vm || [] };
-    dailyLog = c.dailyLog || { "روزانه یک‌بار": [], "روزانه دوبار": [] };
-    companiesData = { companies: c.companies || {} };
-    mvpnData = { lines: c.lines || [] };
-    remoteBackupData = { roster: c.roster || [] };
+    applyDbSnapshot(c);
     dbFileName = c.fileName || null;
     dbSyncedAt = c.syncedAt || null;
   }catch(e){ /* ignore corrupt cache */ }
@@ -3697,8 +3693,15 @@ function updateEditableMode(section){
   });
 }
 
+/* حالتِ «تغییر» را از خودِ editMode می‌خوانَد، نه «false» ثابت.
+   پیش از این updateEditableMode فقط از دستِ همان کلید صدا زده می‌شد؛
+   پس هر بازسازیِ دیگرِ جدول — افزودنِ ردیف، حذفِ ردیف، خواندن از اکسل،
+   رسیدنِ داده از سرور — خانه‌ها را دوباره قفل می‌کرد، در حالی که کلید
+   هنوز روشن بود. کاربر کلید را می‌زد، یک ردیف می‌افزود، و دیگر هیچ
+   خانه‌ای را نمی‌توانست ویرایش کند. */
 function editableTd(value, idx, field, section){
-  return `<td class="editable-cell" contenteditable="false" data-idx="${idx}" data-field="${field}" data-section="${section}">${escapeHtml(value==null?"":value)}</td>`;
+  const on = !!editMode[section];
+  return `<td class="editable-cell" contenteditable="${on?'true':'false'}" data-idx="${idx}" data-field="${field}" data-section="${section}" style="opacity:${on?'1':'0.7'}; cursor:${on?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
 }
 
 function renderServers(){

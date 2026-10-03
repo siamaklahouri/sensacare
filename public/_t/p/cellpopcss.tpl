@@ -18,6 +18,30 @@
   .cp-more:hover{ border-color:var(--brass); color:var(--brass); background:var(--brass-bg); }
   td.cp-long > .ro{ cursor:zoom-in; }
 
+  /* ---------- خانه‌هایی که خودِ <td> ویرایش‌پذیرند ----------
+     در بیشترِ جدول‌ها متن توی یک <input> نیست؛ خودِ <td> با
+     contenteditable نوشته می‌شود و برنامه مقدارش را با textContent
+     می‌خواند. پس این‌جا هیچ دکمه‌ای داخلِ خانه گذاشته نمی‌شود — دکمه
+     هم جزوِ متن حساب می‌شد و با ذخیره، «⌄» ته هر مقدار می‌نشست.
+     نشانه یک ::after در شیوه‌نامه است که در textContent نمی‌آید. */
+  td.editable-cell{
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:1px;   /* به مرورگر اجازه می‌دهد ستون‌ها را خودش پخش کند */
+  }
+  td.editable-cell.cp-long{ padding-inline-end:24px; cursor:zoom-in; }
+  td.editable-cell.cp-long::after{
+    content:"⌄";
+    position:absolute; inset-block-start:50%; inset-inline-end:3px;
+    transform:translateY(-50%);
+    width:19px; height:19px; line-height:17px; text-align:center;
+    font-family:var(--font-body); font-size:12px;
+    border:1px solid var(--card-border); border-radius:6px;
+    background:var(--white); color:var(--ink-faint);
+    pointer-events:none;   /* کلیک به خودِ خانه می‌رسد، نه به نشانه */
+    z-index:2;
+  }
+  td.editable-cell.cp-long:hover::after{ border-color:var(--brass); color:var(--brass); }
+
   /* پنجره */
   .cp-back{
     position:fixed; inset:0; z-index:400;
