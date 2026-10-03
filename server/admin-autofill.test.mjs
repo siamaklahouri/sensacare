@@ -71,6 +71,62 @@ const anc = await p.evaluate(() => {
 t(anc.anchored === anc.pw, 'هر کادرِ رمزِ پنل لنگرِ نام کاربری دارد', anc.anchored + ' از ' + anc.pw);
 t(anc.hidden, 'و لنگرها دیده نمی‌شوند');
 
+/* صفحه را از نو باز می‌کنیم: بالاتر کاربر تایپ کرد و نگهبان — درست —
+   برای همیشه کنار رفت. حالتِ زیر باید روی صفحهٔ دست‌نخورده سنجیده شود. */
+await p.reload({ waitUntil: 'networkidle' });
+await p.waitForTimeout(1000);
+await p.evaluate(() => { const g = document.getElementById('gate'); if (g) { g.hidden = true; g.innerHTML = ''; }
+  document.getElementById('app').hidden = false;
+  if (typeof scrubFind === 'function') scrubFind(); });
+await p.waitForTimeout(300);
+
+/* --- حالتی که دو اصلاحِ قبلی را شکست داد ---
+   کروم مقداری را که خودش پر کرده تا پیش از دخالتِ کاربر به اسکریپت
+   نشان نمی‌دهد: روی صفحه دیده می‌شود، ولی el.value برای کد "" است.
+   اینجا همان را می‌سازیم — مقدار را طوری می‌گذاریم که getter اش "" بدهد
+   ولی کادر :-webkit-autofill به حساب بیاید. */
+await p.evaluate(() => {
+  const el = document.getElementById('find');
+  window.__shown = 'ادمین';
+  /* getter را موقتاً عوض می‌کنیم تا دقیقاً مثل کروم رفتار کند */
+  const proto = Object.getPrototypeOf(el);
+  const d = Object.getOwnPropertyDescriptor(proto, 'value');
+  let hidden = true;
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get(){ return hidden ? '' : d.get.call(this); },
+    set(v){ hidden = false; d.set.call(this, v); }
+  });
+  /* و کادر را «پرشده با مرورگر» اعلام می‌کنیم */
+  el.matches = (sel => function(q){
+    if(q === ':autofill' || q === ':-webkit-autofill') return hidden;
+    return sel.call(this, q);
+  })(el.matches);
+});
+await p.waitForTimeout(900);
+t(await p.evaluate(() => { const el = document.getElementById('find');
+  return el.value === '' && !el.matches(':-webkit-autofill'); }),
+  'مقداری که مرورگر پنهان نگه داشته هم پاک شد');
+
+/* کادر تا پیش از دستِ کاربر readonly است، پس کروم اصلاً پُرش نمی‌کند */
+await p.reload({ waitUntil: 'networkidle' });
+await p.waitForTimeout(1000);
+await p.evaluate(() => { const g = document.getElementById('gate'); if (g) { g.hidden = true; g.innerHTML = ''; }
+  document.getElementById('app').hidden = false;
+  if (typeof scrubFind === 'function') scrubFind(); });
+await p.waitForTimeout(400);
+t(await p.evaluate(() => document.getElementById('find').readOnly),
+  'تا پیش از دستِ کاربر کادر readonly است (کروم readonly را پر نمی‌کند)');
+const fh = await p.$('#find');
+await fh.click();
+await p.waitForTimeout(200);
+t(!await p.evaluate(() => document.getElementById('find').readOnly),
+  'و با اولین کلیکِ کاربر آزاد می‌شود');
+await fh.type('مهدی', { delay: 40 });
+await p.waitForTimeout(900);
+t(await p.evaluate(() => document.getElementById('find').value) === 'مهدی',
+  'و کاربر بی‌دردسر تایپ می‌کند', JSON.stringify(await p.evaluate(() => document.getElementById('find').value)));
+
 t(errs.length === 0, 'بی‌خطا', errs[0] || 'بی‌خطا');
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 await b.close();
