@@ -15,6 +15,12 @@
     cursor:pointer; z-index:2;
     transition:border-color .12s, color .12s, background .12s;
   }
+  /* همان پیکانِ SVG؛ نویسهٔ ⌄ روی ویندوز نبود و مربعِ خالی می‌افتاد */
+  .cp-more::before{
+    content:""; width:11px; height:11px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:center; background-size:11px 11px;
+  }
   .cp-more:hover{ border-color:var(--brass); color:var(--brass); background:var(--brass-bg); }
   td.cp-long > .ro{ cursor:zoom-in; }
 
@@ -30,13 +36,19 @@
   }
   td.editable-cell.cp-long{ padding-inline-end:24px; cursor:zoom-in; }
   td.editable-cell.cp-long::after{
-    content:"⌄";
+    /* پیکان را SVG می‌کشد، نه یک نویسهٔ یونیکد: ⌄ (U+2304) روی ویندوز
+       در بیشترِ قلم‌ها نیست و به‌جای پیکان یک مربعِ خالی می‌افتاد. */
+    content:"";
     position:absolute; inset-block-start:50%; inset-inline-end:3px;
     transform:translateY(-50%);
     width:19px; height:19px; line-height:17px; text-align:center;
     font-family:var(--font-body); font-size:12px;
     border:1px solid var(--card-border); border-radius:6px;
     background:var(--white); color:var(--ink-faint);
+    /* حتماً بعد از خلاصه‌نویسِ background: آن خلاصه‌نویس
+       background-image را به none برمی‌گرداند و پیکان ناپدید می‌شد. */
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:center; background-size:11px 11px;
     pointer-events:none;   /* کلیک به خودِ خانه می‌رسد، نه به نشانه */
     z-index:2;
   }

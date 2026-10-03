@@ -246,6 +246,8 @@ a{ color:var(--brass-ink); }
 .stat .si, .stat .sv{ position:relative; }
 .stat .si{ width:40px; height:40px; flex:none; border-radius:13px; font-size:17px;
   display:flex; align-items:center; justify-content:center;
+  /* نشانه SVG است و رنگش را از همین‌جا می‌گیرد */
+  color:var(--sc, var(--brass));
   background:var(--sbg, var(--brass-bg));
   box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sc, var(--brass)) 22%, transparent); }
 .stat .sv{ min-width:0; }
@@ -1312,6 +1314,43 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
 });
 
 /* ---------- برنامه ---------- */
+/* ---------------- نشانه‌های کاشی‌ها ----------------
+   این چهار کاشی پیش از این با نویسه‌های یونیکد کشیده می‌شدند:
+   🗂 (U+1F5C2) و ⏸ (U+23F8) و ✓ (U+2713). روی مک درست می‌آمدند و
+   روی ویندوز نه — چون آن دو تای اول بدونِ «گزینشگرِ نمایشِ ایموجی»
+   به شکلِ متنی خوانده می‌شوند و قلم‌های ویندوز شکلِ متنی‌شان را
+   ندارند، پس مربعِ خالی می‌افتاد.
+
+   گذاشتنِ U+FE0F هم درمانِ مطمئنی نبود: پوششِ ویندوز برای همین دو
+   نویسه بین نسخه‌ها فرق می‌کند. پس شکل را خودمان می‌کشیم — SVG به
+   هیچ قلمی وابسته نیست و همه‌جا یکسان می‌آید. رنگ را هم از خودِ
+   کاشی می‌گیرد (currentColor)، پس حالتِ شب هم درست است. */
+const svg = d =>
+  '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" ' +
+  'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+  'stroke-linejoin="round" aria-hidden="true" focusable="false">' + d + '</svg>';
+
+const ICON = {
+  folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  check:  svg('<path d="M20 6 9 17l-5-5"/>'),
+  pause:  svg('<rect x="7" y="5" width="3.4" height="14" rx="1"/>' +
+              '<rect x="13.6" y="5" width="3.4" height="14" rx="1"/>'),
+  key:    svg('<circle cx="8" cy="15" r="4"/><path d="m10.9 12.1 7.5-7.5"/>' +
+              '<path d="m16.5 6.5 2 2"/><path d="m19.5 3.5 2 2"/>'),
+  warn:   svg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>' +
+              '<path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  /* سه نشانهٔ دیگر که همین ایراد را داشتند. ⧉ (U+29C9) از همه بدتر بود:
+     تنها محتوای دکمه‌های «رونوشت» است، پس روی ویندوز آن دکمه‌ها یک
+     مربعِ خالی می‌شدند و معلوم نبود چه‌کاره‌اند. */
+  copy:   svg('<rect x="9" y="9" width="12" height="12" rx="2"/>' +
+              '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  trash:  svg('<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>' +
+              '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>' +
+              '<path d="M10 11v6"/><path d="M14 11v6"/>'),
+  archive: svg('<rect x="2" y="4" width="20" height="5" rx="1"/>' +
+               '<path d="M4 9v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>')
+};
+
 function openApp(lastLogin){
   /* پنهان‌کردن کافی نیست، باید از صفحه برود.
      دلیلش یک ایرادِ واقعی بود که کاربر دید: تا وقتی کادرِ رمزِ این فرم
@@ -1492,7 +1531,7 @@ function bellItems(){
   if(b && b.at){
     const when = faDateTime(b.at);
     if(b.ok){
-      add("ok", "🗄", "پشتیبان رفت",
+      add("ok", ICON.archive, "پشتیبان رفت",
         when + " — " + fa(b.count || 0) + " کارتابل، " +
         fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
         ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""));
@@ -1507,7 +1546,7 @@ function bellItems(){
         when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"));
     }
   } else {
-    add("warn", "🗄", "هنوز پشتیبانی ثبت نشده", "اولین نوبت که برود، همین‌جا نوشته می‌شود.");
+    add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده", "اولین نوبت که برود، همین‌جا نوشته می‌شود.");
   }
 
   /* مهلتِ کارتابل‌ها */
@@ -1616,7 +1655,7 @@ function fillSelect(id, items){
 }
 
 function kindLabel(k){ const f = DATA.kinds.find(x=>x.id===k); return f ? f.label : k; }
-function kindIcon(k){ const f = DATA.kinds.find(x=>x.id===k); return (f && f.icon) || "🗂"; }
+function kindIcon(k){ const f = DATA.kinds.find(x=>x.id===k); return (f && f.icon) || ICON.folder; }
 function featLabel(id){
   if(id.startsWith("view:")){
     const v = Object.values(DATA.views||{}).flat().find(x=>x.id===id.slice(5));
@@ -1648,12 +1687,12 @@ function renderStats(){
     `<div class="stat ${cls}"><div class="si">${ic}</div>
       <div class="sv"><div class="n">${v}</div><div class="l">${l}</div></div></div>`;
   document.getElementById("stats").innerHTML =
-    tile("s-all", "🗂", fa(n), "کارتابل") +
-    tile("s-on",  "✓",  fa(n-off), "فعال") +
-    tile("s-off", "⏸",  fa(off), "غیرفعال") +
+    tile("s-all", ICON.folder, fa(n), "کارتابل") +
+    tile("s-on",  ICON.check,  fa(n-off), "فعال") +
+    tile("s-off", ICON.pause,  fa(off), "غیرفعال") +
     /* این یکی هم عدد است مثل سه‌تای دیگر. قبلاً متن بود («ساخته شده»)
        و ریتمِ کاشی‌ها را می‌شکست. */
-    tile("s-key", DATA.escrowReady ? "🔑" : "⚠️",
+    tile("s-key", DATA.escrowReady ? ICON.key : ICON.warn,
       DATA.escrowReady ? fa(keys) : "—",
       DATA.escrowReady ? "رمز شخصی نزد شما" : "کلید اضطراری نیست");
 }
@@ -1690,13 +1729,13 @@ function renderPlanners(){
           <div class="urlrow">
             <a class="url" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(HOST)}${esc(p.url)}</a>
             <button class="copy" data-copy="${esc(ORIGIN)}${esc(p.url)}"
-              title="رونوشتِ آدرس">⧉</button>
+              title="رونوشتِ آدرس">${ICON.copy}</button>
           </div>
         </div>
       </div>
       <div class="meta">
         <div class="m"><span>نام کاربری</span><span dir="ltr">${esc(p.user || p.slug)}
-          <button class="copy" data-copy="${esc(p.user || p.slug)}" title="رونوشتِ نام کاربری">⧉</button></span></div>
+          <button class="copy" data-copy="${esc(p.user || p.slug)}" title="رونوشتِ نام کاربری">${ICON.copy}</button></span></div>
         <div class="m"><span>چک‌لیست آماده</span><span>${p.job ? esc(jobLabel(p.job)) : "—"}</span></div>
         <div class="m"><span>بخش‌های شخصی</span><span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">${
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
@@ -1720,7 +1759,7 @@ function renderPlanners(){
         <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
         ${p.builtin ? `` : `<button class="btn ${p.closed?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
           p.closed ? "فعال کن" : "غیرفعال"}</button>`}
-        ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">🗑</button>`}
+        ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">${ICON.trash}</button>`}
       </div>
     </div>`).join("") || `<div class="panel" style="text-align:center;color:var(--ink-faint);">
       ${q ? "چیزی با «" + esc(findText) + "» پیدا نشد."
@@ -1937,7 +1976,7 @@ async function resetLoginPassword(slug){
     { method:"POST", body: JSON.stringify({ password: typed.trim() }) });
   if(!r.ok){ say(r.data.error || "نشد.", true); return; }
   say("رمزِ ورودِ «" + esc(p.name) + "» عوض شد:<br><code>" + esc(r.data.password) + "</code>" +
-      ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
+      ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">${ICON.copy}</button><br>` +
       "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
   loadPlanners();
 }
@@ -2185,7 +2224,7 @@ function renderKindPicker(){
   const cur = document.getElementById("nKind").value;
   box.innerHTML = DATA.kinds.map(k=>`
     <button type="button" class="kind${k.id===cur?' on':''}" data-kind="${esc(k.id)}">
-      <div class="kt">${k.icon||"🗂"} ${esc(k.label)}</div>
+      <div class="kt">${k.icon||ICON.folder} ${esc(k.label)}</div>
       <div class="kn">${esc(k.note||"")}</div>
     </button>`).join("");
   box.querySelectorAll("[data-kind]").forEach(b=> b.onclick = ()=>{
@@ -2261,9 +2300,9 @@ function setupNew(){
     say("کارتابل ساخته شد: <b>" + esc(HOST) + esc(r.data.url) + "</b><br>" +
         "از صفحهٔ ورود (<b>" + esc(HOST) + "/login</b>) با این نام کاربری وارد می‌شود:<br>" +
         "<code>" + esc(r.data.user) + "</code>" +
-        ` <button class="copy" data-copy="${esc(r.data.user)}" title="رونوشت">⧉</button><br>` +
+        ` <button class="copy" data-copy="${esc(r.data.user)}" title="رونوشت">${ICON.copy}</button><br>` +
         "رمزِ ورودش:<br><code>" + esc(r.data.password) + "</code>" +
-        ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">⧉</button><br>` +
+        ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">${ICON.copy}</button><br>` +
         "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
     /* اگر این کارتابل از روی یک سفارش ساخته شده، همان‌جا بسته می‌شود —
        وگرنه فهرستِ سفارش‌ها پر می‌ماند از کارهای انجام‌شده. */
@@ -3248,7 +3287,7 @@ async function loadCoupons(){
       <td>${c.min_total ? fa(Number(c.min_total).toLocaleString("en-US")) : "—"}</td>
       <td>${uses}</td>
       <td>${esc(left)}</td>
-      <td><button class="btn btn-danger btn-ic" data-cpdel="${esc(c.code)}" title="بردار">🗑</button></td>
+      <td><button class="btn btn-danger btn-ic" data-cpdel="${esc(c.code)}" title="بردار">${ICON.trash}</button></td>
     </tr>`; }).join("") + "</tbody></table>";
 
   box.querySelectorAll("[data-cpdel]").forEach(b=>{

@@ -187,7 +187,9 @@
     b.type = "button";
     b.className = "cp-more";
     b.title = "دیدنِ متنِ کامل";
-    b.textContent = "⌄";
+    /* شکل از شیوه‌نامه می‌آید (background)، نه از یک نویسهٔ یونیکد که
+       روی ویندوز مربعِ خالی می‌شد. */
+    b.textContent = "";
     td.appendChild(b);
     return b;
   }
