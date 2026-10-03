@@ -736,6 +736,15 @@ table.inv-tab td.desc{ text-align:right; }
   .ov-box{ padding:18px; }
   .meta .m span:first-child{ min-width:96px; }
 }
+  /* لنگرِ نام کاربری: کروم وقتی کادرِ رمز می‌بیند دنبالِ کادرِ نام
+     کاربری می‌گردد و اگر پیدا نکند، نزدیک‌ترین کادرِ متنی را برمی‌دارد
+     — که کادرِ جستجو بود. این لنگر هدفِ درستی جلویش می‌گذارد.
+     عمداً readonly نیست: کروم کادرِ readonly را رد می‌کند و دوباره
+     سراغِ جستجو می‌رفت، یعنی لنگر بی‌فایده می‌شد. */
+  .u-anchor{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    border:0; clip-path:inset(50%); overflow:hidden; white-space:nowrap;
+  }
 </style>
 </head>
 <body>
@@ -1018,6 +1027,7 @@ table.inv-tab td.desc{ text-align:right; }
         برای برداشتنِ یک توکن، به‌جایش یک خط تیره <code>-</code> بنویسید.</p>
       <div class="row">
         <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
+          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی تلگرام</label>
           <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
@@ -1025,6 +1035,7 @@ table.inv-tab td.desc{ text-align:right; }
       </div>
       <div class="row" style="margin-top:8px;">
         <div class="fld"><label>توکن بله <span id="stBaleHas" class="hint2"></span></label>
+          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی بله</label>
           <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
@@ -1069,9 +1080,12 @@ table.inv-tab td.desc{ text-align:right; }
       <h2>رمز ادمین</h2>
       <p class="sub">با عوض شدنش همهٔ نشست‌های باز — روی هر دستگاهی — بسته می‌شوند.</p>
       <div class="row">
-        <div class="fld"><label>رمز فعلی</label><input type="password" id="apCur" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
-        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input type="password" id="apNew" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
-        <div class="fld"><label>تکرار</label><input type="password" id="apNew2" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>رمز فعلی</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
+          <input type="password" id="apCur" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
+          <input type="password" id="apNew" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>تکرار</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
+          <input type="password" id="apNew2" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="apGo">عوض کن</button></div>
       </div>
     </div>
@@ -1086,6 +1100,7 @@ table.inv-tab td.desc{ text-align:right; }
       <div id="escrowState" class="hint"></div>
       <div class="row" style="margin-top:10px;">
         <div class="fld"><label>رمز ادمین</label>
+          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="ekPass" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="ekGo">ساختن کلید</button></div>
       </div>
@@ -1105,8 +1120,10 @@ table.inv-tab td.desc{ text-align:right; }
         کاربرهای فعلی از دست نمی‌رود — برعکسِ «ساختن کلید تازه».</p>
       <div class="row">
         <div class="fld"><label>رمز ادمین (همان رمزِ ورود)</label>
+          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="mgAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>عبارت عبورِ قبلی</label>
+          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="mgOld" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="mgGo">انتقال بده</button></div>
       </div>
@@ -1323,37 +1340,70 @@ function openApp(lastLogin){
   loadPlanners();
 }
 
-/* کروم وقتی برای این دامنه رمزِ ذخیره‌شده دارد، autocomplete=off را
-   روی کادری که خودش «نام کاربری» تشخیص می‌دهد نادیده می‌گیرد. پس یک
-   نگهبانِ کوتاه هم هست — ولی هیچ‌وقت به کادری که زیرِ دستِ کاربر است
-   دست نمی‌زند، و همین که کاربر خودش تایپ کرد کنار می‌رود. */
-let findGuard = true;
+/* کادرِ جستجو را کروم پر می‌کرد، نه برنامه.
+
+   اصلاحِ قبلی کار نکرد و دلیلش آموزنده است: نگهبان با رویدادهای
+   «معتبر» (isTrusted) خودش را کنار می‌کشید، به این خیال که معتبر یعنی
+   دستِ کاربر. ولی پر کردنِ خودکارِ کروم هم focus و هم input معتبر
+   می‌فرستد و خودش هم کادر را فوکوس می‌کند. پس نگهبان دقیقاً با همان
+   چیزی که باید جلویش را می‌گرفت خاموش می‌شد.
+
+   نشانهٔ درست، :-webkit-autofill است — کروم این شبه‌کلاس را فقط روی
+   کادری می‌گذارد که خودش پُرش کرده. و نشانهٔ دوم: کاربر با کلید تایپ
+   می‌کند، پس تا وقتی هیچ کلیدی نخورده، هر متنی که داخل کادر پیدا شود
+   کارِ کاربر نبوده. */
+let findTyped = false;   /* آیا کاربر واقعاً در این کادر کلید زده؟ */
+
+function findWasAutofilled(el){
+  for(const sel of [":autofill", ":-webkit-autofill"]){
+    try{ if(el.matches(sel)) return true; }catch(e){ /* مرورگر این شبه‌کلاس را ندارد */ }
+  }
+  return false;
+}
+
 function scrubFind(){
   const el = document.getElementById("find");
   if(!el) return;
+
   const wipe = ()=>{
-    if(!findGuard || el === document.activeElement) return;
+    if(findTyped) return;
     if(el.value === "") return;
+    /* عمداً به activeElement کاری نداریم: کروم کادری را که پر می‌کند
+       فوکوس هم می‌کند، و اصلاحِ قبلی دقیقاً سرِ همین از کار افتاد. */
     el.value = "";
     /* فهرست هم باید از فیلترِ جعلی پاک شود، وگرنه کاربر یک فهرستِ
        خالی می‌بیند و نمی‌فهمد چرا. */
     findText = "";
     if(typeof renderPlanners === "function" && DATA) renderPlanners();
   };
-  /* نگهبان با زمان خاموش نمی‌شود، با خودِ کاربر خاموش می‌شود.
-     دلیلش این است که کادرهای رمزِ دیگری هم در پنل هست (تغییر رمز،
-     کلید اضطراری، توکن ربات‌ها) و کروم ممکن است دیرتر — مثلاً وقتی
-     کاربر سربرگِ تنظیمات را باز کرد — تازه سراغ پر کردن بیاید. */
-  const off = ()=>{ findGuard = false; };
-  el.addEventListener("input", e=>{ if(e.isTrusted) off(); });
-  el.addEventListener("keydown", e=>{ if(e.isTrusted) off(); });
-  el.addEventListener("focus", e=>{ if(e.isTrusted) off(); });
+
+  /* فقط کلیدِ واقعی نگهبان را کنار می‌زند — نه فوکوس، نه input.
+     کلیدهای جهت و Tab و Shift هم تایپ حساب نمی‌شوند. */
+  el.addEventListener("keydown", e=>{
+    if(e.isTrusted && e.key && e.key.length === 1) findTyped = true;
+  });
+  el.addEventListener("beforeinput", e=>{
+    if(e.isTrusted && e.inputType && e.inputType.indexOf("insert") === 0 && e.data) findTyped = true;
+  });
+  el.addEventListener("paste", e=>{ if(e.isTrusted) findTyped = true; });
+
+  /* هر بار که چیزی داخلش ریخت: اگر کارِ کروم بود یا کاربر هنوز کلیدی
+     نزده، برمی‌داریمش. */
+  el.addEventListener("input", ()=>{
+    if(findWasAutofilled(el) || !findTyped) wipe();
+  });
+
+  /* کروم گاهی دیرتر پر می‌کند — مثلاً وقتی سربرگِ «کلیدها و رمز ادمین»
+     باز شد و کادرهای رمزِ تازه‌ای به صفحه آمدند. پس چند ثانیه‌ای
+     می‌پاییم، و با اولین کلیدِ کاربر دست می‌کشیم. */
+  let ticks = 0;
+  const timer = setInterval(()=>{
+    if(findTyped || ++ticks > 60){ clearInterval(timer); return; }
+    wipe();
+  }, 250);
+
   requestAnimationFrame(wipe);
-  setTimeout(wipe, 300);
-  setTimeout(wipe, 900);
-  setTimeout(wipe, 2000);
-  /* و هر بار که چیزی از بیرون داخلش ریخت */
-  el.addEventListener("input", e=>{ if(!e.isTrusted) wipe(); });
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) wipe(); });
   try{ new MutationObserver(wipe).observe(el, { attributes:true, attributeFilter:["value"] }); }catch(e){}
 }
 
@@ -1915,7 +1965,8 @@ function openVaultReset(slug){
       <b>محتوای صندوق دست نمی‌خورد</b> — فقط با رمزِ تازه دوباره قفل می‌شود.</p>
     <div class="row">
       <div class="fld"><label>رمز ادمین</label>
-        <input type="password" id="vAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
+          <input type="password" id="vAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="fld"><label>رمز تازهٔ کاربر (خالی = فقط رمز فعلی را نشانم بده)</label>
