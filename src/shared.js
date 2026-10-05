@@ -67,6 +67,8 @@ export const SHARED_TYPES = [
     { k: 'who',  t: 'مسئول',     kind: 'text', w: 120 },
     { k: 'due',  t: 'مهلت',      kind: 'date', w: 120 },
     { k: 'stat', t: 'وضعیت',     kind: 'pick', w: 120, opts: ['انجام نشده', 'در حال انجام', 'انجام شد'] },
+    /* مثل «کارهای تیمی»: سرور می‌زندش، نه کاربر */
+    { k: 'done', t: 'تاریخ انجام', kind: 'date', w: 115, edit: 'never' },
     { k: 'pri',  t: 'اولویت',    kind: 'pick', w: 100, opts: ['بالا', 'متوسط', 'پایین'] },
     { k: 'note', t: 'یادداشت',   kind: 'long' }
   ]},
@@ -84,7 +86,9 @@ export const SHARED_TYPES = [
     { k: 'who',  t: 'مسئول',       kind: 'who',  w: 130, edit: 'any' },
     {            t: 'تاریخ ثبت',   kind: 'made', w: 110, edit: 'never' },
     { k: 'due',  t: 'مهلت',        kind: 'date', w: 115, edit: 'mgr' },
-    { k: 'done', t: 'تاریخ انجام', kind: 'date', w: 115, edit: 'doer' },
+    /* دستِ کسی نیست: وقتی وضعیت «انجام شد» می‌خورد، سرور همان روز
+       را می‌زند. پیش از این دستِ «مسئول» بود و هر تاریخی می‌شد داد. */
+    { k: 'done', t: 'تاریخ انجام', kind: 'date', w: 115, edit: 'never' },
     { k: 'stat', t: 'وضعیت',       kind: 'pick', w: 125, edit: 'doer',
       opts: ['انجام نشده', 'در حال انجام', 'انجام شد', 'متوقف'] },
     { k: 'pri',  t: 'اولویت',      kind: 'pick', w: 105, edit: 'mgr',
@@ -332,7 +336,12 @@ const applyPerms = (cols, raw) => {
   const off = Array.isArray(p.__off) ? p.__off : [];
   return cols
     .filter(c => !(c.k && off.includes(c.k)))
-    .map(c => (c.k && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
+    /* «تاریخ انجام» از این قاعده بیرون است: دیگر یک انتخابِ دسترسی
+       نیست، یک چیزی است که سرور خودش می‌نویسد. اگر ادمین پیش‌تر
+       رویش قاعده‌ای گذاشته بود (در «کارهای تیمی» پیش‌فرضش «مسئول»
+       بود)، همان قاعدهٔ کهنه در پایگاه‌داده مانده و بی این شرط
+       دوباره بازش می‌کرد. */
+    .map(c => (c.k && c.k !== 'done' && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
 };
 
 const shapeBox = r => {
@@ -528,6 +537,34 @@ export function cleanRow(cols, v) {
   return out;
 }
 
+/* تاریخِ شمسیِ امروز، به همان شکلی که خانه‌های تاریخ در صفحه نشان
+   می‌دهند: «۱۴۰۵/۰۷/۱۳».
+
+   عمداً با تقویمِ لاتین حساب می‌شود و بعد رقم‌ها فارسی می‌شوند، نه با
+   «fa-IR» مستقیم: شمارهٔ رقم‌های fa-IR به تنظیماتِ محیط بند است و روی
+   یک سرور می‌تواند لاتین دربیاید و روی سرورِ دیگر فارسی. آن‌وقت دو
+   ردیف با دو شکلِ متفاوت ذخیره می‌شدند و هیچ پالایه‌ای رویشان کار
+   نمی‌کرد. */
+export function todayShamsi(now) {
+  try {
+    const g = {};
+    new Intl.DateTimeFormat('en-u-ca-persian-nu-latn',
+      { year: 'numeric', month: '2-digit', day: '2-digit' })
+      .formatToParts(new Date(now || Date.now()))
+      .forEach(x => { g[x.type] = x.value; });
+    if (!g.year) return '';
+    const s2 = `${g.year}/${g.month}/${g.day}`;
+    return s2.replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  } catch { return ''; }
+}
+
+/* ستونی که «تاریخ انجام» است. از روی کلیدش شناخته می‌شود، نه از روی
+   عنوانش: ادمین می‌تواند عنوان را عوض کند و آن‌وقت این از کار
+   می‌افتاد. */
+function doneDateCol(box) {
+  return (box.cols || []).find(c => c.k === 'done' && c.kind === 'date') || null;
+}
+
 const RID_RE = /^[a-z0-9]{6,32}$/;
 
 /* ---------- چه کسی چه ستونی را می‌تواند عوض کند ----------
@@ -585,7 +622,9 @@ export function canEdit(box, col, by, row) {
    نمی‌دهیم و کلِ ذخیره را رد نمی‌کنیم — وگرنه یک خانهٔ قفل، نوشتنِ
    خانه‌های مجاز را هم می‌خوابانَد. اسمِ خانه‌های ردشده برمی‌گردد تا
    صفحه بتواند بگوید چه چیزی نوشته نشد. */
-function mergeRow(box, by, old, incoming) {
+/* بیرون داده می‌شود تا بشود قاعده‌هایش را جدا سنجید؛ هیچ‌جای دیگری
+   از آن استفاده نمی‌کند. */
+export function mergeRow(box, by, old, incoming) {
   const clean = cleanRow(box.cols, incoming);
   const out = {};
   const kept = [];
@@ -612,6 +651,35 @@ function mergeRow(box, by, old, incoming) {
     }
     out[c.k] = x;
   }
+
+  /* تاریخِ انجام دستِ کسی نیست — خودِ سرور می‌زندش.
+
+     کاربر گفت: «وقتی کاربر میزنه انجام شد و کار بسته میشه برام تاریخِ
+     همون روز بنداز، کاربر نتونه عوض بکنه دیگه.»
+
+     چرا این‌جا و نه در صفحه؟ چون خانهٔ خاکستریِ مرورگر ادب است، قفل
+     نیست؛ هر کسی می‌تواند مستقیم به API بزند. و چرا در همین ادغام؟
+     چون در همان درخواستی که وضعیت «انجام شد» می‌شود، ردیف هنوز از دیدِ
+     canEdit باز است — یعنی کاربر می‌توانست در همان یک حرکت هر تاریخی
+     که خواست بگذارد و از آن به بعد قفل شود.
+
+     و وقتی مدیر کار را دوباره باز می‌کند، تاریخ پاک می‌شود: ماندنش
+     یعنی کاری که هنوز تمام نشده یک تاریخِ انجام دارد، و چون بعدش قفل
+     است هیچ‌کس هم نمی‌تواند درستش کند. */
+  const dc = doneDateCol(box);
+  if (dc) {
+    /* این ستون قفل است، پس حلقهٔ بالا اسمش را در «نوشته نشد» گذاشته.
+       ولی نوشته می‌شود — فقط نه با مقداری که کاربر فرستاده. ماندنش در
+       آن فهرست یعنی صفحه بی‌خود هشدار می‌دهد. */
+    const ix = kept.indexOf(dc.t);
+    if (ix >= 0) kept.splice(ix, 1);
+    const wasDone = rowDone(box, old);
+    const nowDone = rowDone(box, { v: out });
+    if (nowDone && !wasDone) out[dc.k] = todayShamsi();
+    else if (!nowDone && wasDone) out[dc.k] = '';
+    else if (wasDone) out[dc.k] = (old && old.v ? old.v[dc.k] : '') || '';
+  }
+
   return { v: out, kept };
 }
 
