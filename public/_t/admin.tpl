@@ -490,15 +490,6 @@ a{ color:var(--brass-ink); }
 .kind .kn{ font-size:11.5px; color:var(--ink-faint); line-height:1.95; margin-top:5px; }
 
 /* ---------- بخش‌هایی که باز یا بسته‌اند ---------- */
-/* یک ردیفِ مهمان: تیکِ «باشد یا نه» و کشویی «ببیند یا تغییر بدهد» */
-.shguest .grow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:5px 0; border-bottom:1px solid var(--line-soft); }
-.shguest .grow:last-child{ border-bottom:0; }
-.shguest .grow > label{ flex:1; min-width:150px; display:flex; align-items:center; gap:7px; margin:0; }
-.shguest .grow select{ flex:none; font-family:var(--font); font-size:11.5px;
-  padding:4px 7px; border:1px solid var(--line); border-radius:6px;
-  background:var(--white); color:var(--ink); }
-.shguest .grow select:disabled{ opacity:.45; }
 .feats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:8px; }
 .feat{ display:flex; gap:9px; align-items:flex-start; padding:10px 11px;
   border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper-2);
@@ -2687,7 +2678,7 @@ function colSpecText(cols){
 
 function shForm(cur){
   const b = cur || { id:"", title:"", type:"notes", members:[], mgrs:[], rowlock:1, org:"",
-                     perms:{}, off:[], colspec:null, rows:0, guests:[] };
+                     perms:{}, off:[], colspec:null, rows:0 };
   const isNew = !cur;
   const planners = (DATA.items || []);
   openOverlay(`
@@ -2753,12 +2744,6 @@ function shForm(cur){
       <div class="shpick" id="shMgr"></div>
       <div class="hint">فقط از میانِ اعضا. مدیر قفلِ ردیف‌های بقیه را هم باز می‌کند،
         وگرنه اگر کسی برود ردیف‌هایش برای همیشه دست‌نخوردنی می‌مانند.</div></div>
-    <div class="fld"><label>با چه کسانی هم به اشتراک گذاشته شود</label>
-      <div class="shpick shguest" id="shGuest"></div>
-      <div class="hint">این‌ها عضو نمی‌شوند: بخش را می‌بینند، در فهرستِ «مسئول»
-        نمی‌آیند و هیچ‌وقت مدیرش نمی‌شوند. برای هر کدام جدا تعیین کنید که فقط
-        ببیند یا بتواند تغییر هم بدهد. در کارتابلِ خودشان زیرِ همین گروه و
-        پایین‌ترِ بخش‌های خودشان نشان داده می‌شود.</div></div>
     <div class="fld"><label>قفلِ مالکیت</label>
       <label class="shlock"><input type="checkbox" id="shLock"${b.rowlock ? " checked" : ""}>
         <span>هر کس فقط ردیفی را که خودش ساخته تغییر بدهد</span></label>
@@ -2808,7 +2793,6 @@ function shForm(cur){
         : (ORGS.length ? "" : "هنوز گروهی ساخته نشده — سربرگِ «سازمان».");
     }
     drawMgr();
-    drawGuest();
   };
   const drawMgr = ()=>{
     const box = document.getElementById("shMgr");
@@ -2819,50 +2803,11 @@ function shForm(cur){
       i.onchange = ()=> i.checked ? mgrSet.add(i.value) : mgrSet.delete(i.value);
     });
   };
-  /* ---------- مهمان‌ها ----------
-     کسی که عضو است مهمان نمی‌شود: دو قاعده روی یک نفر یعنی فردا معلوم
-     نیست کدام می‌چربد. پس فهرستِ مهمان‌ها هر بار از روی اعضای امروز از
-     نو ساخته می‌شود. */
-  const guestMap = new Map((b.guests || []).map(g=> [g.u, g.w ? 1 : 0]));
-  const drawGuest = ()=>{
-    const box = document.getElementById("shGuest");
-    const mem = effMembers();
-    const rest = planners.map(pp=> pp.slug).filter(sg=> !mem.includes(sg));
-    if(!rest.length){
-      box.innerHTML = '<div class="hint">کارتابلِ دیگری نمانده — همه عضوِ همین بخش‌اند.</div>';
-      return;
-    }
-    box.innerHTML = rest.map(sg=>{
-      const on = guestMap.has(sg);
-      return '<div class="grow" data-u="' + esc(sg) + '">' +
-        '<label><input type="checkbox"' + (on ? " checked" : "") + '>' +
-          '<span>' + esc(nameOf(sg)) + '</span>' +
-          '<span class="kk" dir="ltr">' + esc(sg) + '</span></label>' +
-        '<select' + (on ? "" : " disabled") + '>' +
-          '<option value="r"' + (on && guestMap.get(sg) === 0 ? " selected" : "") + '>فقط ببیند</option>' +
-          '<option value="w"' + (on && guestMap.get(sg) === 1 ? " selected" : "") + '>بتواند تغییر بدهد</option>' +
-        '</select></div>';
-    }).join("");
-    box.querySelectorAll(".grow").forEach(rw=>{
-      const cb = rw.querySelector("input"), sel = rw.querySelector("select");
-      cb.onchange = ()=>{
-        sel.disabled = !cb.checked;
-        if(cb.checked) guestMap.set(rw.getAttribute("data-u"), sel.value === "w" ? 1 : 0);
-        else guestMap.delete(rw.getAttribute("data-u"));
-      };
-      sel.onchange = ()=> guestMap.set(rw.getAttribute("data-u"), sel.value === "w" ? 1 : 0);
-    });
-  };
-
   document.querySelectorAll("#shMem input").forEach(i=> i.addEventListener("change", ()=>{
     /* کسی که از عضویت درآمد، مدیر هم نمی‌ماند */
     if(!i.checked) mgrSet.delete(i.value);
-    /* و کسی که عضو شد، دیگر مهمان نیست */
-    if(i.checked) guestMap.delete(i.value);
     drawMgr();
-    drawGuest();
   }));
-  drawGuest();
   document.getElementById("shSrc").value = b.org ? "org" : "list";
   document.getElementById("shSrc").addEventListener("change", syncSrc);
   document.getElementById("shOrg").addEventListener("change", syncSrc);
@@ -3077,10 +3022,6 @@ function shForm(cur){
              ? document.getElementById("shOrg").value : "",
       members: Array.from(document.querySelectorAll("#shMem input:checked")).map(i=> i.value),
       mgrs: Array.from(document.querySelectorAll("#shMgr input:checked")).map(i=> i.value),
-      guests: Array.from(document.querySelectorAll("#shGuest .grow"))
-        .filter(rw=> rw.querySelector("input[type=checkbox]").checked)
-        .map(rw=> ({ u: rw.getAttribute("data-u"),
-                     w: rw.querySelector("select").value === "w" ? 1 : 0 })),
       rowlock: document.getElementById("shLock").checked ? 1 : 0,
       cols: CUS.map(c=> ({ t: c.t, kind: c.kind,
                            opts: c.kind === "pick" ? String(c.opts || "").split("/") : [] })),
