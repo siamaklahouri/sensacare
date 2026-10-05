@@ -195,6 +195,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .period select option{ color:var(--ink); }
 {{PART:tablecss}}
 {{PART:cellpopcss}}
+{{PART:rowdragcss}}
 {{PART:datepickcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
 
@@ -4662,6 +4663,22 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:cellpop}}
 {{PART:dellock}}
 {{PART:dayexport}}
+{{PART:rowdrag}}
+
+/* ---------------- جابه‌جاییِ ردیف‌ها ----------------
+   هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید
+   صدا زد. خودِ کشیدن کارِ ROWDRAG است؛ این فهرست فقط نقشه است. */
+if(window.ROWDRAG) ROWDRAG.register({
+  checklistBody: { arr: ()=> state.tasks,
+                   done: ()=>{ scheduleSave(); renderChecklist(); } },
+  dailyBody:     { arr: ()=> state.days,
+                   done: ()=>{ scheduleSave(); renderDaily(); } },
+  serversBody:   { arr: ()=> (backupData && backupData.vm) || [],
+                   done: ()=>{ saveServersSheet(); renderServers(); } },
+  mvpnBody:      { arr: ()=> (mvpnData && mvpnData.lines) || [],
+                   done: ()=>{ saveMvpnSheet(); renderMvpn(); } }
+});
+
 
 {{PART:reportjs}}
 

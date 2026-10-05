@@ -134,6 +134,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .period input::placeholder{ color:var(--ink-faint); }
 {{PART:tablecss}}
 {{PART:cellpopcss}}
+{{PART:rowdragcss}}
 {{PART:datepickcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
@@ -2390,8 +2391,8 @@ function renderInvoices(){
       <td>＋</td>
       <td><input type="text" id="newInvoiceNo" placeholder="شماره" style="width:100%;"></td>
       <td><input type="text" id="newInvoiceCustomer" placeholder="مشتری" list="partyCustomerOptions" style="width:100%;"></td>
-      <td><input type="text" id="newInvoiceDate" placeholder="تاریخ" style="width:100%;"></td>
-      <td><input type="text" id="newInvoiceDueDate" placeholder="سررسید" style="width:100%;"></td>
+      <td><input type="text" id="newInvoiceDate" data-date placeholder="تاریخ" style="width:100%;"></td>
+      <td><input type="text" id="newInvoiceDueDate" data-date placeholder="سررسید" style="width:100%;"></td>
       <td><input type="number" id="newInvoiceAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td><input type="number" id="newInvoicePaid" placeholder="پرداخت‌شده" style="width:100%;"></td>
       <td>
@@ -2527,7 +2528,7 @@ function renderPayables(){
       <td>＋</td>
       <td><input type="text" id="newPayableBeneficiary" placeholder="ذینفع/تامین‌کننده" list="partySupplierOptions" style="width:100%;"></td>
       <td><input type="text" id="newPayableProject" placeholder="پروژه" style="width:100%;"></td>
-      <td><input type="text" id="newPayableDueDate" placeholder="سررسید" style="width:100%;"></td>
+      <td><input type="text" id="newPayableDueDate" data-date placeholder="سررسید" style="width:100%;"></td>
       <td><input type="text" id="newPayableSubject" placeholder="موضوع" style="width:100%;"></td>
       <td><input type="number" id="newPayableAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td><input type="text" id="newPayableEnteredBy" placeholder="نام وارد کننده" style="width:100%;"></td>
@@ -2648,7 +2649,7 @@ function renderPayableNotes(){
     <tr class="add-row">
       <td>＋</td>
       <td><input type="text" id="newPayableNoteCheckNo" placeholder="شماره چک" style="width:100%;"></td>
-      <td><input type="text" id="newPayableNoteDueDate" placeholder="تاریخ سررسید" style="width:100%;"></td>
+      <td><input type="text" id="newPayableNoteDueDate" data-date placeholder="تاریخ سررسید" style="width:100%;"></td>
       <td><input type="number" id="newPayableNoteAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td><input type="text" id="newPayableNoteBeneficiary" placeholder="ذینفع" list="partySupplierOptions" style="width:100%;"></td>
       <td><input type="text" id="newPayableNoteSubject" placeholder="موضوع" style="width:100%;"></td>
@@ -2769,7 +2770,7 @@ function renderReceivableNotes(){
     <tr class="add-row">
       <td>＋</td>
       <td><input type="text" id="newReceivableNoteCheckNo" placeholder="شماره چک" style="width:100%;"></td>
-      <td><input type="text" id="newReceivableNoteDueDate" placeholder="تاریخ سررسید" style="width:100%;"></td>
+      <td><input type="text" id="newReceivableNoteDueDate" data-date placeholder="تاریخ سررسید" style="width:100%;"></td>
       <td><input type="number" id="newReceivableNoteAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td><input type="text" id="newReceivableNoteBuyer" placeholder="خریدار" list="partyCustomerOptions" style="width:100%;"></td>
       <td><input type="text" id="newReceivableNoteSubject" placeholder="موضوع" style="width:100%;"></td>
@@ -2922,7 +2923,7 @@ function renderExpenses(){
   const addRow = `
     <tr class="add-row">
       <td>＋</td>
-      <td><input type="text" id="newExpenseDate" placeholder="تاریخ" style="width:100%;"></td>
+      <td><input type="text" id="newExpenseDate" data-date placeholder="تاریخ" style="width:100%;"></td>
       <td>
         <select id="newExpenseType" style="width:100%;">${SOURCE_USE_TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
       </td>
@@ -4242,6 +4243,34 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:cellpop}}
 {{PART:dellock}}
 {{PART:dayexport}}
+{{PART:rowdrag}}
+
+/* ---------------- جابه‌جاییِ ردیف‌ها ----------------
+   هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید
+   صدا زد. خودِ کشیدن کارِ ROWDRAG است؛ این فهرست فقط نقشه است. */
+if(window.ROWDRAG) ROWDRAG.register({
+  checklistBody:       { arr: ()=> state.tasks,
+                         done: ()=>{ scheduleSave(); renderChecklist(); } },
+  dailyBody:           { arr: ()=> state.days,
+                         done: ()=>{ scheduleSave(); renderDaily(); } },
+  partiesBody:         { arr: ()=> partiesData,
+                         done: ()=>{ savePartiesSheet(); renderParties(); } },
+  invoicesBody:        { arr: ()=> invoicesData,
+                         done: ()=>{ saveInvoicesSheet(); renderInvoices(); } },
+  payablesBody:        { arr: ()=> payablesData,
+                         done: ()=>{ savePayablesSheet(); renderPayables(); } },
+  payableNotesBody:    { arr: ()=> payableNotesData,
+                         done: ()=>{ savePayableNotesSheet(); renderPayableNotes(); } },
+  receivableNotesBody: { arr: ()=> receivableNotesData,
+                         done: ()=>{ saveReceivableNotesSheet(); renderReceivableNotes(); } },
+  expensesBody:        { arr: ()=> expensesData,
+                         done: ()=>{ saveExpensesSheet(); renderExpenses(); } },
+  bankBody:            { arr: ()=> bankData,
+                         done: ()=>{ saveBankSheet(); renderBank(); } },
+  budgetBody:          { arr: ()=> budgetData,
+                         done: ()=>{ saveBudgetSheet(); renderBudget(); } }
+});
+
 
 {{PART:reportjs}}
 

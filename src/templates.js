@@ -19,6 +19,8 @@ import p_colorcss from '../public/_t/p/colorcss.tpl';
 import p_convert from '../public/_t/p/convert.tpl';
 import p_dellock from '../public/_t/p/dellock.tpl';
 import p_dayexport from '../public/_t/p/dayexport.tpl';
+import p_rowdrag from '../public/_t/p/rowdrag.tpl';
+import p_rowdragcss from '../public/_t/p/rowdragcss.tpl';
 import p_convertcss from '../public/_t/p/convertcss.tpl';
 import p_cellpopcss from '../public/_t/p/cellpopcss.tpl';
 import p_chartlib from '../public/_t/p/chartlib.tpl';
@@ -58,6 +60,8 @@ export const PARTS = new Map([
   ['convert', p_convert],
   ['dellock', p_dellock],
   ['dayexport', p_dayexport],
+  ['rowdrag', p_rowdrag],
+  ['rowdragcss', p_rowdragcss],
   ['convertcss', p_convertcss],
   ['cellpopcss', p_cellpopcss],
   ['chartlib', p_chartlib],

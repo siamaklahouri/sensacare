@@ -38,11 +38,31 @@ function markNoAutofill(root){
 
 /* کروم معمولاً بعد از ساخته‌شدنِ ورودی پُرش می‌کند، پس یک بار پاک
    کردن کافی نیست. چند بار سر می‌زنیم — ولی هیچ‌وقت به کادری که همین
-   حالا زیرِ دستِ کاربر است دست نمی‌زنیم. */
+   حالا زیرِ دستِ کاربر است دست نمی‌زنیم.
+
+   نشانهٔ «این را مرورگر پر کرده» شبه‌کلاسِ ‎:-webkit-autofill‎ است، نه
+   «کاربر تایپ نکرده». این تفاوت یک باگِ واقعی بود: تقویم مقدار را
+   برنامه‌ای می‌گذارد (target.value = ...)، پس از دیدِ نگهبانِ قبلی
+   «تایپ‌نشده» حساب می‌شد و تاریخِ انتخاب‌شده ۴۰۰ میلی‌ثانیه بعد پاک
+   می‌شد — در پنج ردیفِ افزودنِ کارتابل مالی. کاربر تاریخ را می‌زد و
+   می‌دید جایش خالی است. */
+function browserFilled(el){
+  for(const sel of [":autofill", ":-webkit-autofill"]){
+    try{ if(el.matches(sel)) return true; }catch(e){ /* مرورگر این شبه‌کلاس را ندارد */ }
+  }
+  return false;
+}
+
 function scrubAutofilled(){
   document.querySelectorAll('[data-mt-empty="1"]').forEach(el=>{
     if(el === document.activeElement) return;
-    if(el.value !== "") el.value = "";
+    if(el.value === "") return;
+    if(!browserFilled(el)){
+      /* کارِ خودِ برنامه بود؛ از این به بعد این خانه نگهبانی نمی‌خواهد */
+      delete el.dataset.mtEmpty;
+      return;
+    }
+    el.value = "";
   });
 }
 function scrubSoon(){
