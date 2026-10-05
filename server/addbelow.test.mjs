@@ -61,6 +61,23 @@ for (const [tag, port] of [['IT', 8894], ['مالی', 8893]]) {
   t(errs.length === 0, 'هیچ خطای صفحه‌ای رخ نداد', errs[0] || '');
   await p.close();
 }
+/* ---- بخش‌های مشترک ----
+   این‌ها را خودِ shared.js می‌سازد، نه قالبِ کارتابل، و برای ساختنشان
+   یک نشستِ واقعی لازم است. پس همین‌جا از روی متنِ خودِ فایل سنجیده
+   می‌شود: دکمهٔ «ردیف تازه» باید بعد از بسته شدنِ جدول بیاید. */
+import { readFileSync } from 'node:fs';
+const sh = readFileSync(new URL('../public/shared.js', import.meta.url), 'utf8');
+const iTable = sh.indexOf('</table>');
+const iAdd   = sh.indexOf('data-shadd');
+console.log('\n===== بخش‌های مشترک =====');
+t(iTable > 0 && iAdd > 0, 'جدول و دکمهٔ افزودن هر دو در shared.js هستند');
+t(iAdd > iTable, 'دکمهٔ «＋ ردیف تازه» بعد از جدول می‌آید، نه پیش از آن',
+  'جدول در ' + iTable + '، دکمه در ' + iAdd);
+t(/\.sh-addbar\{/.test(sh), 'و نوارِ پایینیِ خودش را دارد');
+/* و در نوارِ بالا نمانده باشد */
+const bar = sh.slice(sh.indexOf("'<div class=\"sh-bar\">'"), sh.indexOf('tbl-wrap'));
+t(bar.indexOf('data-shadd') === -1, 'و دیگر در نوارِ بالا نیست');
+
 await b.close();
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

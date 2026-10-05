@@ -46,6 +46,7 @@
      توکن‌های رنگ از خودِ صفحه می‌آیند، پس در تم شب هم درست درمی‌آید. */
   var CSS = [
     ".sh-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}",
+    ".sh-addbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
     ".sh-live{font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px}",
     ".sh-live .dot{width:7px;height:7px;border-radius:50%;background:var(--green,#2F6B4F);",
     "  box-shadow:0 0 0 0 rgba(47,107,79,.5);animation:shPulse 2.4s infinite}",
@@ -319,8 +320,10 @@
         : "بخشِ مشترک — هر کسی که دسترسی دارد می‌تواند تغییر بدهد و تغییرِ بقیه را همین‌جا می‌بینید.") +
         (isMgr(box) ? " شما مدیرِ این بخش هستید." : "") + "</div>" +
       '<div class="panel">' +
+        /* نوارِ بالا فقط پالایه و خلاصه است. دکمهٔ «ردیف تازه» پایینِ
+           جدول نشسته، مثل بقیهٔ جدول‌های کارتابل: جای افزودن، آخرِ
+           فهرست است نه اولش. */
         '<div class="sh-bar">' +
-          '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>' +
           /* فیلتر فقط برای جدول‌هایی که «مسئول» دارند معنی می‌دهد؛
              در فهرستِ سرورها «کارِ من» چیزی نیست. */
           (hasWho(box)
@@ -371,6 +374,9 @@
         "</tr></thead><tbody data-shbody=\"" + esc(box.id) + "\"></tbody></table></div>" +
         '<div class="sh-empty" data-shempty="' + esc(box.id) + '" hidden>' +
           "هنوز ردیفی نیست.<br>با «＋ ردیف تازه» اولین ردیف را بسازید." +
+        "</div>" +
+        '<div class="sh-addbar">' +
+          '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>' +
         "</div>" +
         '<div class="sh-kept" data-shkept="' + esc(box.id) + '"></div>' +
         '<div class="sh-note">تغییرها همان لحظه ذخیره می‌شوند؛ دکمهٔ ذخیره ندارد. ' +
