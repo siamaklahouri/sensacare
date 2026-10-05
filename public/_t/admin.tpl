@@ -738,15 +738,6 @@ table.inv-tab td.desc{ text-align:right; }
   .ov-box{ padding:18px; }
   .meta .m span:first-child{ min-width:96px; }
 }
-  /* لنگرِ نام کاربری: کروم وقتی کادرِ رمز می‌بیند دنبالِ کادرِ نام
-     کاربری می‌گردد و اگر پیدا نکند، نزدیک‌ترین کادرِ متنی را برمی‌دارد
-     — که کادرِ جستجو بود. این لنگر هدفِ درستی جلویش می‌گذارد.
-     عمداً readonly نیست: کروم کادرِ readonly را رد می‌کند و دوباره
-     سراغِ جستجو می‌رفت، یعنی لنگر بی‌فایده می‌شد. */
-  .u-anchor{
-    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-    border:0; clip-path:inset(50%); overflow:hidden; white-space:nowrap;
-  }
 </style>
 </head>
 <body>
@@ -815,10 +806,10 @@ table.inv-tab td.desc{ text-align:right; }
 
   <section id="tab-list">
     <div class="findbar">
-      <input type="search" id="find" placeholder="جستجو در نام یا آدرس کارتابل…"
-        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        data-lpignore="true" data-1p-ignore data-form-type="other" data-ascii>
-      <span class="n" id="findCount"></span>
+      <!-- کادرِ جستجو برداشته شد: کروم رمزِ ذخیره‌شدهٔ این دامنه را
+           داخلش می‌ریخت و هیچ راهِ مطمئنی برای جلوگیری‌اش نماند. فهرستِ
+           کارتابل‌ها کوتاه است و با Ctrl+F مرورگر هم پیدا می‌شود. -->
+      <span class="n" id="plistCount"></span>
       <!-- پشتیبانِ همه با هم. فهرست همان لحظه از پایگاه‌داده خوانده
            می‌شود، پس کارتابلی که همین امروز ساخته شده هم داخلش هست. -->
       <button class="btn btn-sm" id="bkAll" title="یک زیپ با یک پوشه برای هر کارتابل">
@@ -1029,7 +1020,6 @@ table.inv-tab td.desc{ text-align:right; }
         برای برداشتنِ یک توکن، به‌جایش یک خط تیره <code>-</code> بنویسید.</p>
       <div class="row">
         <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
-          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی تلگرام</label>
           <input type="text" id="stTgChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
@@ -1037,7 +1027,6 @@ table.inv-tab td.desc{ text-align:right; }
       </div>
       <div class="row" style="margin-top:8px;">
         <div class="fld"><label>توکن بله <span id="stBaleHas" class="hint2"></span></label>
-          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="stBaleToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>شناسهٔ گفتگوی بله</label>
           <input type="text" id="stBaleChat" dir="ltr" autocomplete="off" placeholder="مثلاً ۱۲۳۴۵۶۷۸" data-ascii></div>
@@ -1082,12 +1071,9 @@ table.inv-tab td.desc{ text-align:right; }
       <h2>رمز ادمین</h2>
       <p class="sub">با عوض شدنش همهٔ نشست‌های باز — روی هر دستگاهی — بسته می‌شوند.</p>
       <div class="row">
-        <div class="fld"><label>رمز فعلی</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
-          <input type="password" id="apCur" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
-        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
-          <input type="password" id="apNew" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
-        <div class="fld"><label>تکرار</label><input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
-          <input type="password" id="apNew2" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>رمز فعلی</label><input type="password" id="apCur" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>رمز تازه (دست‌کم ۱۰ حرف)</label><input type="password" id="apNew" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <div class="fld"><label>تکرار</label><input type="password" id="apNew2" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="apGo">عوض کن</button></div>
       </div>
     </div>
@@ -1102,7 +1088,6 @@ table.inv-tab td.desc{ text-align:right; }
       <div id="escrowState" class="hint"></div>
       <div class="row" style="margin-top:10px;">
         <div class="fld"><label>رمز ادمین</label>
-          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="ekPass" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="ekGo">ساختن کلید</button></div>
       </div>
@@ -1122,10 +1107,8 @@ table.inv-tab td.desc{ text-align:right; }
         کاربرهای فعلی از دست نمی‌رود — برعکسِ «ساختن کلید تازه».</p>
       <div class="row">
         <div class="fld"><label>رمز ادمین (همان رمزِ ورود)</label>
-          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="mgAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div class="fld"><label>عبارت عبورِ قبلی</label>
-          <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
           <input type="password" id="mgOld" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
         <div><button class="btn btn-main" id="mgGo">انتقال بده</button></div>
       </div>
@@ -1366,7 +1349,6 @@ function openApp(lastLogin){
   g.hidden = true;
   try{ g.innerHTML = ""; }catch(e){}
   document.getElementById("app").hidden = false;
-  scrubFind();
   /* ورودِ قبلی به زنگوله می‌رود، نه به نوارِ گذرا: آن نوار ۱۲ ثانیه
      بعد می‌رفت و اگر آدم سرش جای دیگری بود، هیچ‌وقت نمی‌دیدش. */
   BELL_LOGIN = lastLogin || 0;
@@ -1377,90 +1359,6 @@ function openApp(lastLogin){
   setupKeys();
   setupSite();
   loadPlanners();
-}
-
-/* کادرِ جستجو را کروم پر می‌کرد، نه برنامه.
-
-   اصلاحِ قبلی کار نکرد و دلیلش آموزنده است: نگهبان با رویدادهای
-   «معتبر» (isTrusted) خودش را کنار می‌کشید، به این خیال که معتبر یعنی
-   دستِ کاربر. ولی پر کردنِ خودکارِ کروم هم focus و هم input معتبر
-   می‌فرستد و خودش هم کادر را فوکوس می‌کند. پس نگهبان دقیقاً با همان
-   چیزی که باید جلویش را می‌گرفت خاموش می‌شد.
-
-   نشانهٔ درست، :-webkit-autofill است — کروم این شبه‌کلاس را فقط روی
-   کادری می‌گذارد که خودش پُرش کرده. و نشانهٔ دوم: کاربر با کلید تایپ
-   می‌کند، پس تا وقتی هیچ کلیدی نخورده، هر متنی که داخل کادر پیدا شود
-   کارِ کاربر نبوده. */
-let findTyped = false;   /* آیا کاربر واقعاً در این کادر کلید زده؟ */
-
-function findWasAutofilled(el){
-  for(const sel of [":autofill", ":-webkit-autofill"]){
-    try{ if(el.matches(sel)) return true; }catch(e){ /* مرورگر این شبه‌کلاس را ندارد */ }
-  }
-  return false;
-}
-
-function scrubFind(){
-  const el = document.getElementById("find");
-  if(!el) return;
-
-  const wipe = ()=>{
-    if(findTyped) return;
-    /* اینجا نمی‌شود به el.value تکیه کرد. کروم مقداری را که خودش پر
-       کرده، تا پیش از اولین دخالتِ کاربر با صفحه، به جاوااسکریپت نشان
-       نمی‌دهد — یک محافظتِ امنیتی است. پس روی صفحه «ادمین» دیده
-       می‌شود در حالی که el.value برای کد "" است.
-
-       اصلاحِ پیشین دقیقاً سرِ همین شکست: یک «اگر خالی است برگرد» داشت
-       و همیشه همان‌جا برمی‌گشت. همین هم توضیح می‌دهد چرا فهرست فیلتر
-       نمی‌شد — کد اصلاً مقدار را نمی‌دید. */
-    if(el.value === "" && !findWasAutofilled(el)) return;
-    /* عمداً به activeElement کاری نداریم: کروم کادری را که پر می‌کند
-       فوکوس هم می‌کند، و اصلاحِ قبل‌ترش سرِ همین از کار افتاد. */
-    el.value = "";
-    /* فهرست هم باید از فیلترِ جعلی پاک شود، وگرنه کاربر یک فهرستِ
-       خالی می‌بیند و نمی‌فهمد چرا. */
-    findText = "";
-    if(typeof renderPlanners === "function" && DATA) renderPlanners();
-  };
-
-  /* فقط کلیدِ واقعی نگهبان را کنار می‌زند — نه فوکوس، نه input.
-     کلیدهای جهت و Tab و Shift هم تایپ حساب نمی‌شوند. */
-  el.addEventListener("keydown", e=>{
-    if(e.isTrusted && e.key && e.key.length === 1) findTyped = true;
-  });
-  el.addEventListener("beforeinput", e=>{
-    if(e.isTrusted && e.inputType && e.inputType.indexOf("insert") === 0 && e.data) findTyped = true;
-  });
-  el.addEventListener("paste", e=>{ if(e.isTrusted) findTyped = true; });
-
-  /* هر بار که چیزی داخلش ریخت: اگر کارِ کروم بود یا کاربر هنوز کلیدی
-     نزده، برمی‌داریمش. */
-  el.addEventListener("input", ()=>{
-    if(findWasAutofilled(el) || !findTyped) wipe();
-  });
-
-  /* کروم گاهی دیرتر پر می‌کند — مثلاً وقتی سربرگِ «کلیدها و رمز ادمین»
-     باز شد و کادرهای رمزِ تازه‌ای به صفحه آمدند. پس چند ثانیه‌ای
-     می‌پاییم، و با اولین کلیدِ کاربر دست می‌کشیم. */
-  /* و بهتر از پاک کردن، نگذاشتنِ خودِ پر کردن است: کروم کادرِ
-     readonly را پر نمی‌کند. تا وقتی کاربر دست به کادر نزده readonly
-     می‌ماند؛ به‌محضِ اینکه رویش کلیک کرد یا با Tab رسید، آزاد می‌شود.
-     پس برای کاربر هیچ فرقی ندارد، فقط کروم پشتِ در می‌ماند. */
-  el.readOnly = true;
-  const free = ()=>{ el.readOnly = false; };
-  ["mousedown","touchstart","focus","keydown"].forEach(ev=>
-    el.addEventListener(ev, free));
-
-  let ticks = 0;
-  const timer = setInterval(()=>{
-    if(findTyped || ++ticks > 60){ clearInterval(timer); return; }
-    wipe();
-  }, 250);
-
-  requestAnimationFrame(wipe);
-  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) wipe(); });
-  try{ new MutationObserver(wipe).observe(el, { attributes:true, attributeFilter:["value"] }); }catch(e){}
 }
 
 function setupTheme(){
@@ -1499,8 +1397,6 @@ function setupTabs(){
   if(shn) shn.addEventListener("click", ()=> shForm(null));
   const ogn = document.getElementById("orgNew");
   if(ogn) ogn.addEventListener("click", ()=> orgForm(null));
-  const fx = document.getElementById("find");
-  if(fx) fx.addEventListener("input", ()=>{ findText = fx.value; renderPlanners(); });
 
   /* ---- پشتیبانِ همهٔ کارتابل‌ها ----
      فهرست را سرور همان لحظه از پایگاه‌داده می‌خواند، پس کارتابلی که
@@ -1718,18 +1614,11 @@ function renderStats(){
 function fa(n){ return String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d]); }
 function jobLabel(j){ const f = DATA.jobs.find(x=>x.id===j); return f ? f.label : ""; }
 
-let findText = "";
-
 function renderPlanners(){
   const wrap = document.getElementById("plist");
-  const q = findText.trim().toLowerCase();
-  const items = q
-    ? DATA.items.filter(p => (p.name + " " + p.slug + " " + (p.user||"")).toLowerCase().includes(q))
-    : DATA.items;
-  const cnt = document.getElementById("findCount");
-  if(cnt) cnt.textContent = q
-    ? fa(items.length) + " از " + fa(DATA.items.length)
-    : fa(DATA.items.length) + " کارتابل";
+  const items = DATA.items;
+  const cnt = document.getElementById("plistCount");
+  if(cnt) cnt.textContent = fa(items.length) + " کارتابل";
   wrap.innerHTML = items.map(p=>`
     <div class="pcard k-${esc(p.kind)}${p.closed?' off':''}">
       <div class="pc-head">
@@ -1779,8 +1668,7 @@ function renderPlanners(){
         ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">${ICON.trash}</button>`}
       </div>
     </div>`).join("") || `<div class="panel" style="text-align:center;color:var(--ink-faint);">
-      ${q ? "چیزی با «" + esc(findText) + "» پیدا نشد."
-          : "هنوز کارتابلی نیست. از سربرگ «کارتابل تازه» شروع کنید."}</div>`;
+      هنوز کارتابلی نیست. از سربرگ «کارتابل تازه» شروع کنید.</div>`;
   renderStats();
   wrap.querySelectorAll("[data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
 
@@ -2021,8 +1909,7 @@ function openVaultReset(slug){
       <b>محتوای صندوق دست نمی‌خورد</b> — فقط با رمزِ تازه دوباره قفل می‌شود.</p>
     <div class="row">
       <div class="fld"><label>رمز ادمین</label>
-        <input class="u-anchor" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
-          <input type="password" id="vAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
+        <input type="password" id="vAdmin" autocomplete="current-password" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="fld"><label>رمز تازهٔ کاربر (خالی = فقط رمز فعلی را نشانم بده)</label>
