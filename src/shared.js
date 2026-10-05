@@ -213,6 +213,11 @@ export async function ensureShared(env) {
       [bx, "ALTER TABLE shared_boxes ADD COLUMN org TEXT NOT NULL DEFAULT ''", 'org'],
       [bx, "ALTER TABLE shared_boxes ADD COLUMN perms TEXT NOT NULL DEFAULT '{}'", 'perms'],
       [bx, "ALTER TABLE shared_boxes ADD COLUMN cols TEXT NOT NULL DEFAULT ''", 'cols'],
+      /* «مهمان‌ها»: کارتابل‌هایی که عضوِ این بخش نیستند ولی ادمین
+         بخش را با آن‌ها به اشتراک گذاشته. هر کدام یک کلیدِ نوشتن
+         دارند. پیش‌فرض خالی است، پس هیچ بخشِ قدیمی‌ای یک‌شبه برای
+         کسی باز نمی‌شود. */
+      [bx, "ALTER TABLE shared_boxes ADD COLUMN guests TEXT NOT NULL DEFAULT '[]'", 'guests'],
       [rw, "ALTER TABLE shared_rows ADD COLUMN owner TEXT NOT NULL DEFAULT ''", 'owner'],
       [rw, 'ALTER TABLE shared_rows ADD COLUMN created INTEGER NOT NULL DEFAULT 0', 'created']
     ]) {
@@ -344,6 +349,43 @@ const applyPerms = (cols, raw) => {
     .map(c => (c.k && c.k !== 'done' && RULE_IDS.includes(p[c.k])) ? { ...c, edit: p[c.k] } : c);
 };
 
+/* ---------- مهمان‌ها ----------
+   کاربر گفت: «کاربر ۱ یک بخشِ حساب‌ها دارد و می‌خواهم کاربر ۲ هم آن را
+   ببیند و خودم تعیین کنم دسترسیِ تغییرش را.»
+
+   مهمان عضو نیست. فرقش با عضو سه چیز است: در فهرستِ «مسئول» نمی‌آید،
+   هیچ‌وقت مدیر نمی‌شود، و اگر کلیدِ نوشتنش بسته باشد هیچ خانه‌ای را
+   نمی‌تواند عوض کند — حتی ستونی که قاعده‌اش «هر عضوی» است.
+
+   شکلِ ذخیره: [{"u":"reza","w":0}] — u کارتابل، w اجازهٔ نوشتن. */
+const parseGuests = raw => {
+  let v = raw;
+  if (typeof v === 'string') { try { v = JSON.parse(v || '[]'); } catch { v = []; } }
+  if (!Array.isArray(v)) return [];
+  const out = [], seen = new Set();
+  for (const g of v) {
+    const u = String((g && g.u) || '').slice(0, 40).trim();
+    if (!u || seen.has(u)) continue;
+    seen.add(u);
+    out.push({ u, w: (g && g.w) ? 1 : 0 });
+  }
+  return out.slice(0, 50);
+};
+
+/* مهمانیِ این آدم در این بخش — یا null اگر مهمان نیست */
+export const guestOf = (box, slug) =>
+  (box && Array.isArray(box.guests) ? box.guests : []).find(g => g.u === slug) || null;
+
+/* آیا این آدم اصلاً این بخش را می‌بیند؟ عضو باشد یا مهمان. */
+export const canSee = (box, slug) =>
+  !!box && (!!slug && ((box.members || []).includes(slug) || !!guestOf(box, slug)));
+
+/* مهمانِ بی‌اجازهٔ نوشتن: هیچ‌چیز را نمی‌تواند عوض کند. */
+export const readOnlyFor = (box, slug) => {
+  const g = guestOf(box, slug);
+  return !!g && !g.w;
+};
+
 const shapeBox = r => {
   const t = typeById(r.type);
   return { id: r.id, title: r.title, type: r.type,
@@ -352,6 +394,7 @@ const shapeBox = r => {
            /* متنی که ادمین نوشته، برای برگرداندن در فرمِ پنل */
            colspec: t && t.custom ? readCustom(r.cols) : null,
            members: parseMembers(r.members),
+           guests: parseGuests(r.guests),
            mgrs: parseMembers(r.mgrs), rowlock: Number(r.rowlock || 0),
            org: r.org || '', orgPath: '',
            /* خامش هم می‌رود تا پنل بداند ادمین کدام ستون را دست زده و
@@ -398,9 +441,21 @@ export async function boxesFor(env, slug) {
      گروهی وصل باشد، هر کاربری — حتی کسی که هیچ بخشِ گروهی ندارد —
      هزینهٔ خواندنِ درختِ سازمان را می‌داد. غربال کردن این‌جا امن است
      چون شاخهٔ گروه فقط b.org را می‌خواند، نه اعضا را. */
-  const mineBoxes = rows.map(shapeBox)
+  const all2 = rows.map(shapeBox);
+  const mineBoxes = all2
     .filter(b => b.org ? mine.includes(b.org) : b.members.includes(slug));
-  return withPeople(env, await withOrgs(env, mineBoxes));
+
+  /* بخش‌هایی که مالِ این آدم نیستند ولی ادمین با او به اشتراک گذاشته.
+     عمداً آخرِ فهرست: کاربر گفت «برایش پایین نمایش داده بشه». چیزی که
+     مالِ خودش است اول، مهمانی‌ها بعد. */
+  const guestBoxes = all2.filter(b => !mineBoxes.includes(b) && !!guestOf(b, slug));
+  for (const b of guestBoxes) {
+    const g = guestOf(b, slug);
+    b.guest = true;            /* صفحه از همین می‌فهمد که میهمان است */
+    b.ro = !g.w;               /* و اینکه فقط می‌بیند یا می‌تواند بنویسد */
+  }
+
+  return withPeople(env, await withOrgs(env, mineBoxes.concat(guestBoxes)));
 }
 
 /* ستونِ «مسئول» باید اسمِ آدم‌ها را نشان بدهد نه slug را. اسم‌ها یک بار
@@ -582,7 +637,9 @@ const RID_RE = /^[a-z0-9]{6,32}$/;
    ستونی که قاعده ندارد از کلیدِ «قفلِ مالکیت»ِ خودِ بخش پیروی می‌کند:
    روشن یعنی فقط صاحبِ ردیف، خاموش یعنی هر عضوی. جدولِ سرورها قفل
    نمی‌خواهد، یادداشتِ مشترک می‌خواهد. */
-const isMgr = (box, by) => !!by && (box.mgrs || []).includes(by);
+/* مهمان هیچ‌وقت مدیر نیست، حتی اگر اسمش در فهرستِ مدیرهای گروه
+   باشد: او این‌جا میهمان است، نه عضو. */
+const isMgr = (box, by) => !!by && !guestOf(box, by) && (box.mgrs || []).includes(by);
 
 /* کاری که «انجام شد» خورده، بسته است. واژه‌اش را از خودِ ستونِ وضعیت
    می‌خوانیم نه از فهرستی دستی، چون هر نوعِ جدول واژهٔ خودش را دارد.
@@ -598,6 +655,10 @@ export function rowDone(box, row) {
 }
 
 export function canEdit(box, col, by, row) {
+  /* مهمانِ بی‌اجازهٔ نوشتن پیش از هر قاعدهٔ دیگری رد می‌شود — حتی
+     ستونی که قاعده‌اش «هر عضوی» است، و حتی اگر مدیرِ گروهِ دیگری
+     باشد. دیدن یعنی دیدن، نه بیشتر. */
+  if (readOnlyFor(box, by)) return false;
   const rule = col.edit || (box.rowlock ? 'owner' : 'any');
   if (rule === 'never') return false;
   if (rowDone(box, row)) return isMgr(box, by) && col.k === 'stat';
@@ -690,6 +751,12 @@ export async function putRow(env, box, rid, v, by) {
   const id = String(rid || '');
   if (!RID_RE.test(id)) return { error: 'شناسهٔ ردیف درست نیست.' };
   const me = String(by || '').slice(0, 40);
+  /* مهمانِ بی‌اجازهٔ نوشتن: این‌جا هم رد می‌شود، نه فقط در canEdit.
+     آن یکی خانه‌به‌خانه می‌سنجد و این‌جا کلِ درخواست — چون ساختنِ
+     ردیفِ تازه و برداشتنِ ردیف اصلاً از مسیرِ ستون‌ها رد نمی‌شوند. */
+  if (readOnlyFor(box, me))
+    return { error: 'این بخش برای شما فقط خواندنی است.' };
+
   const now = Date.now();
 
   const prev = await one(env,
@@ -729,6 +796,12 @@ export async function killRow(env, box, rid, by) {
   const id = String(rid || '');
   if (!RID_RE.test(id)) return { error: 'شناسهٔ ردیف درست نیست.' };
   const me = String(by || '').slice(0, 40);
+  /* مهمانِ بی‌اجازهٔ نوشتن: این‌جا هم رد می‌شود، نه فقط در canEdit.
+     آن یکی خانه‌به‌خانه می‌سنجد و این‌جا کلِ درخواست — چون ساختنِ
+     ردیفِ تازه و برداشتنِ ردیف اصلاً از مسیرِ ستون‌ها رد نمی‌شوند. */
+  if (readOnlyFor(box, me))
+    return { error: 'این بخش برای شما فقط خواندنی است.' };
+
   /* کارِ تمام‌شده بسته است: نه ویرایش، نه برداشتن. فقط مدیرِ همان
      بخش. وگرنه قفلِ ویرایش دور زده می‌شد — کافی بود ردیف را پاک کنند
      و دوباره بنویسند. */
@@ -775,6 +848,22 @@ export async function saveBox(env, body, knownSlugs) {
   /* فقط کارتابل‌هایی که واقعاً هستند؛ وگرنه فردا یک اسمِ غلط در
      فهرستِ اعضا می‌ماند و کسی نمی‌فهمد چرا آن یکی بخش را نمی‌بیند. */
   const members = org ? [] : cleanSlugs(body.members, knownSlugs, 50);
+
+  /* مهمان‌ها: کارتابل‌هایی که بخش با آن‌ها به اشتراک گذاشته شده بی‌آنکه
+     عضو شوند. کسی که از قبل عضو است مهمان نمی‌شود — وگرنه دو قاعده
+     روی یک نفر می‌افتاد و معلوم نبود کدام می‌چربد. */
+  const guestIn = Array.isArray(body.guests) ? body.guests : [];
+  const guests = [];
+  const seenG = new Set();
+  for (const g of guestIn) {
+    const u = String((g && g.u) || '').trim();
+    if (!u || seenG.has(u)) continue;
+    if (!knownSlugs || !knownSlugs.includes(u)) continue;
+    if (members.includes(u)) continue;
+    seenG.add(u);
+    guests.push({ u, w: (g && g.w) ? 1 : 0 });
+    if (guests.length >= 50) break;
+  }
 
   /* مدیر باید خودش عضو باشد؛ مدیری که بخش را نمی‌بیند مدیرِ چیزی نیست
      و فقط یک اسمِ گمراه‌کننده در تنظیمات می‌ماند. */
@@ -837,14 +926,15 @@ export async function saveBox(env, body, knownSlugs) {
   }
 
   await run(env,
-    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org,perms,cols)
-     VALUES(?,?,?,?,?,?,?,?,?,?)
+    `INSERT INTO shared_boxes(id,title,type,members,created,mgrs,rowlock,org,perms,cols,guests)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET title=excluded.title, type=excluded.type,
                                    members=excluded.members, mgrs=excluded.mgrs,
                                    rowlock=excluded.rowlock, org=excluded.org,
-                                   perms=excluded.perms, cols=excluded.cols`,
+                                   perms=excluded.perms, cols=excluded.cols,
+                                   guests=excluded.guests`,
     id, title, type, JSON.stringify(members), Date.now(), JSON.stringify(mgrs), rowlock, org,
-    JSON.stringify(perms), cols);
+    JSON.stringify(perms), cols, JSON.stringify(guests));
   return { ok: true, id, created: !cur };
 }
 

@@ -47,6 +47,7 @@
   var CSS = [
     ".sh-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}",
     ".sh-addbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
+    ".sh-rotag{font-size:12px;color:var(--ink-faint);padding:6px 0}",
     ".sh-live{font-size:11.5px;color:var(--ink-faint);display:flex;align-items:center;gap:6px}",
     ".sh-live .dot{width:7px;height:7px;border-radius:50%;background:var(--green,#2F6B4F);",
     "  box-shadow:0 0 0 0 rgba(47,107,79,.5);animation:shPulse 2.4s infinite}",
@@ -315,7 +316,10 @@
     sec.className = "view"; sec.id = vid;
     sec.innerHTML =
       '<div class="section-title">' + esc(box.title) + "</div>" +
-      '<div class="section-sub">' + (box.rowlock
+      '<div class="section-sub">' + (box.guest
+        ? ("این بخش مالِ کارتابلِ دیگری است و با شما به اشتراک گذاشته شده" +
+           (box.ro ? " — فقط می‌توانید ببینید." : " و می‌توانید تغییرش بدهید."))
+        : "") + (box.guest ? "<br>" : "") + (box.rowlock
         ? "بخشِ مشترک — هر کس ردیفِ خودش را تغییر می‌دهد و ردیفِ بقیه را فقط می‌بیند."
         : "بخشِ مشترک — هر کسی که دسترسی دارد می‌تواند تغییر بدهد و تغییرِ بقیه را همین‌جا می‌بینید.") +
         (isMgr(box) ? " شما مدیرِ این بخش هستید." : "") + "</div>" +
@@ -376,7 +380,9 @@
           "هنوز ردیفی نیست.<br>با «＋ ردیف تازه» اولین ردیف را بسازید." +
         "</div>" +
         '<div class="sh-addbar">' +
-          '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>' +
+          (box.ro
+            ? '<span class="sh-rotag">این بخش برای شما فقط خواندنی است</span>'
+            : '<button class="btn btn-brass btn-sm" data-shadd="' + esc(box.id) + '">＋ ردیف تازه</button>') +
         "</div>" +
         '<div class="sh-kept" data-shkept="' + esc(box.id) + '"></div>' +
         '<div class="sh-note">تغییرها همان لحظه ذخیره می‌شوند؛ دکمهٔ ذخیره ندارد. ' +
@@ -401,7 +407,8 @@
       startPoll(box.id);
     });
 
-    sec.querySelector("[data-shadd]").addEventListener("click", function () { addRow(box.id); });
+    var addBtn = sec.querySelector("[data-shadd]");
+    if (addBtn) addBtn.addEventListener("click", function () { addRow(box.id); });
     var fil = sec.querySelector("[data-shfil]");
     if (fil) fil.addEventListener("change", function () {
       fstate(box.id).mode = fil.value;
@@ -431,7 +438,8 @@
      حرفِ آخر مالِ سرور است؛ اگر این‌جا چیزی از قلم افتاد، آن‌جا
      می‌گیردش. */
   function me() { return window.KARTABL_SLUG || ""; }
-  function isMgr(box) { return (box.mgrs || []).indexOf(me()) >= 0; }
+  function isMgr(box) {
+    if (box.guest) return false; return (box.mgrs || []).indexOf(me()) >= 0; }
 
   /* همان قاعدهٔ سرور: کارِ تمام‌شده بسته است و فقط مدیر می‌تواند
      وضعیتش را برگرداند. این‌جا فقط برای اینکه صفحه درست نشان دهد —
@@ -444,6 +452,10 @@
   }
 
   function canEdit(box, col, r) {
+    /* همان قاعدهٔ سرور: مهمانی که فقط اجازهٔ دیدن دارد، هیچ خانه‌ای را
+       عوض نمی‌کند — حتی ستونی که قاعده‌اش «هر عضوی» است. این‌جا فقط
+       برای اینکه صفحه درست نشان دهد؛ حرفِ آخر مالِ سرور است. */
+    if (box.ro) return false;
     var rule = col.edit || (box.rowlock ? "owner" : "any");
     if (rule === "never") return false;
     if (rowDone(box, r)) return isMgr(box) && col.k === "stat";
@@ -461,6 +473,7 @@
   }
 
   function canKill(box, r) {
+    if (box.ro) return false;
     /* ردیفِ بسته را هم نمی‌شود پاک کرد؛ وگرنه قفل بی‌معنی بود. */
     if (rowDone(box, r)) return isMgr(box);
     if (!box.rowlock) return true;

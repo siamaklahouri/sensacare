@@ -19,7 +19,7 @@ import { hashPassword, checkPassword, newPassword, b64, unb64, constantEqual } f
 import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
-import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum } from './shared.js';
+import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum, canSee, readOnlyFor } from './shared.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1478,13 +1478,16 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   const mShared = p.match(/^\/shared\/([a-z0-9][a-z0-9-]{1,30})(\/row|\/del)?$/);
   if (mShared) {
     const box = await getBox(env, mShared[1]);
-    if (!box || !box.members.includes(panel.id))
+    /* عضو باشد یا مهمان. مهمانِ بی‌اجازهٔ نوشتن از همین‌جا رد نمی‌شود:
+       او باید بتواند ببیند — جلویش را putRow و killRow می‌گیرند. */
+    if (!box || !canSee(box, panel.id))
       return bad('این بخش مالِ شما نیست.', 404);
 
     if (!mShared[2] && m === 'GET') {
       const since = Math.max(0, parseInt(new URL(req.url).searchParams.get('since'), 10) || 0);
       return json({ rows: await rowsSince(env, box.id, since), now: Date.now(),
-                    title: box.title, type: box.type, cols: box.cols });
+                    title: box.title, type: box.type, cols: box.cols,
+                    ro: readOnlyFor(box, panel.id) });
     }
     if (mShared[2] === '/row' && m === 'POST') {
       const r = await putRow(env, box, body.rid, body.v, panel.id);
