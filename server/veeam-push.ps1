@@ -132,7 +132,7 @@ function Get-HttpError {
 # Veeam's API version changes with every build, and sending the wrong one
 # gets a 400. Rather than pinning a number that breaks on the next update,
 # try newest to oldest and keep the first that answers.
-$ApiVersions = @('1.2-rev1', '1.2-rev0', '1.1-rev1', '1.1-rev0', '1.0-rev2')
+$ApiVersions = @('1.0-rev1', '1.2-rev1', '1.2-rev0', '1.1-rev1', '1.1-rev0', '1.0-rev0')
 
 # Answers that mean "your credentials are the problem", not "your version
 # is". Veeam phrases these differently across builds, so this matches on
@@ -141,19 +141,25 @@ $CredWords = 'invalid_grant|invalid_client|user name or password|username or pas
              'incorrect|unauthor|not authenticated|logon|log on|mfa|multi-factor|' +
              'two-factor|locked|expired'
 
+function Get-VbrToken {
+  param([string] $Base, [string] $User, [string] $Pass, [bool] $SkipCert, [string] $Version)
+  $form = 'grant_type=password&username=' + [uri]::EscapeDataString($User) +
+          '&password=' + [uri]::EscapeDataString($Pass)
+  return Invoke-Vbr -Url "$Base/api/oauth2/token" -Method POST `
+    -Headers @{ 'x-api-version' = $Version; 'accept' = 'application/json' } `
+    -ContentType 'application/x-www-form-urlencoded' `
+    -Body $form -SkipCert $SkipCert
+}
+
 function Connect-Vbr {
   param([string] $Base, [string] $User, [string] $Pass, [bool] $SkipCert)
   $last = 'no response'
+  $learned = @()
   foreach ($v in $ApiVersions) {
     try {
-      $form = 'grant_type=password&username=' + [uri]::EscapeDataString($User) +
-              '&password=' + [uri]::EscapeDataString($Pass)
-      $tok = Invoke-Vbr -Url "$Base/api/oauth2/token" -Method POST `
-        -Headers @{ 'x-api-version' = $v; 'accept' = 'application/json' } `
-        -ContentType 'application/x-www-form-urlencoded' `
-        -Body $form -SkipCert $SkipCert
+      $tok = Get-VbrToken -Base $Base -User $User -Pass $Pass -SkipCert $SkipCert -Version $v
       if ($tok.access_token) {
-        Write-Verbose "Veeam API version $v accepted."
+        Write-Verbose "api-version $v accepted."
         return @{ Token = $tok.access_token; Version = $v }
       }
     } catch {
@@ -166,6 +172,35 @@ function Connect-Vbr {
       if ($e.Body -match $CredWords) {
         throw "Veeam rejected the sign-in (not an API-version problem): $last"
       }
+      # When the version is wrong, VBR answers with the versions it DOES
+      # accept: "Unsupported RESTAPI version. The following versions are
+      # supported: v1.0-rev1." Take it at its word. A hard-coded list ages
+      # with every Veeam release; that sentence does not.
+      # This costs nothing extra: a rejected version never reached the
+      # sign-in, so it is not a failed login attempt.
+      if ($e.Body -match 'supported[^0-9]*v?([0-9]+\.[0-9]+-rev[0-9]+)') {
+        $told = $Matches[1]
+        if ($ApiVersions -notcontains $told -and $learned -notcontains $told) {
+          $learned += $told
+          Write-Verbose "server says it supports $told -- will try that"
+        }
+      }
+    }
+  }
+  foreach ($v in $learned) {
+    try {
+      $tok = Get-VbrToken -Base $Base -User $User -Pass $Pass -SkipCert $SkipCert -Version $v
+      if ($tok.access_token) {
+        Write-Verbose "api-version $v accepted (the server named it)."
+        return @{ Token = $tok.access_token; Version = $v }
+      }
+    } catch {
+      $e = Get-HttpError $_
+      $last = ("api-version $v -> HTTP $($e.Status) $($e.Body)").Trim()
+      Write-Verbose $last
+      if ($e.Body -match $CredWords) {
+        throw "Veeam rejected the sign-in (not an API-version problem): $last"
+      }
     }
   }
   throw "Veeam login failed for every API version tried. Last answer: $last"
@@ -174,7 +209,21 @@ function Connect-Vbr {
 function Get-VbrJobs {
   param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
   $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
-  $r = Invoke-Vbr -Url "$Base/api/v1/jobs/states?limit=500" -Headers $h -SkipCert $SkipCert
+  # /jobs/states carries each job's last result; /jobs carries only its
+  # configuration. Older API versions do not have the first. Falling back
+  # is worth it -- but the report says which one answered, because a table
+  # of job names with every result blank, and no word why, is worse than
+  # no table.
+  $r = $null
+  $script:JobsVia = 'jobs/states'
+  try {
+    $r = Invoke-Vbr -Url "$Base/api/v1/jobs/states?limit=500" -Headers $h -SkipCert $SkipCert
+  } catch {
+    $je = Get-HttpError $_
+    Write-Verbose "jobs/states -> HTTP $($je.Status) $($je.Body)"
+    $script:JobsVia = 'jobs'
+    $r = Invoke-Vbr -Url "$Base/api/v1/jobs?limit=500" -Headers $h -SkipCert $SkipCert
+  }
 
   # Windows PowerShell 5.1 runs a ForEach-Object block once for $null,
   # unlike pwsh 7. Without this, a VBR server with no jobs at all would
@@ -194,6 +243,8 @@ function Get-VbrJobs {
     [pscustomobject]@{
       name    = [string]$_.name
       type    = [string]$_.type
+      # /jobs/states calls them lastResult/status; /jobs has neither, and
+      # leaves them empty rather than inventing a result.
       result  = [string]$_.lastResult
       state   = [string]$_.status
       last    = & $when $_.lastRun
@@ -219,6 +270,7 @@ $base = $base.TrimEnd('/')
 
 $jobs = @()
 $err  = ''
+$script:JobsVia = ''
 try {
   $conn = Connect-Vbr -Base $base -User $cfg.VbrUser -Pass $cfg.VbrPass -SkipCert $skip
   $jobs = Get-VbrJobs -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
@@ -231,7 +283,11 @@ try {
 
 $payload = @{
   host  = [string]$cfg.VbrHost
-  agent = "veeam-push.ps1 / $($env:COMPUTERNAME)"
+  # The server keeps this short, so the note is short: the README says
+  # what "via /jobs" means (that API version has no job states, so the
+  # result column stays blank).
+  agent = "veeam-push.ps1 / $($env:COMPUTERNAME)" +
+          $(if ($script:JobsVia -eq 'jobs') { ' (via /jobs)' } else { '' })
   error = $err
   # @() matters: with a single job PowerShell unrolls the array and
   # ConvertTo-Json writes an object instead of a list -- which the server
