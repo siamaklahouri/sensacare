@@ -24,15 +24,33 @@
 
 [CmdletBinding()]
 param(
-  [string] $ConfigPath = (Join-Path $PSScriptRoot 'veeam-push.config.json')
+  [string] $ConfigPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Where the config file lives, when the caller did not say.
+#
+# This is NOT done as a param() default. In Windows PowerShell 5.1,
+# $PSScriptRoot is still empty while parameter defaults are being bound,
+# so the default blew up with "Cannot bind argument to parameter 'Path'"
+# before the script had run a single line. Here it is already set, and
+# the two fallbacks cover being dot-sourced or pasted into a console.
+if (-not $ConfigPath) {
+  $root = $PSScriptRoot
+  if (-not $root -and $MyInvocation.MyCommand.Path) {
+    $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+  }
+  if (-not $root) { $root = (Get-Location).Path }
+  $ConfigPath = Join-Path $root 'veeam-push.config.json'
+}
+
 function Read-Config {
   param([string] $Path)
-  if (-not (Test-Path $Path)) { throw "Config file not found: $Path" }
+  if (-not (Test-Path $Path)) {
+    throw "Config file not found: $Path`nPut veeam-push.config.json next to veeam-push.ps1, or pass -ConfigPath."
+  }
   $c = Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
   foreach ($k in 'VbrHost', 'VbrUser', 'VbrPass', 'PushUrl', 'PushKey') {
     if (-not $c.$k) { throw "Config value '$k' is empty." }
