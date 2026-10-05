@@ -21,12 +21,35 @@
   "use strict";
 
   var HANDLE = "rd-grip";
-  var reg = {};                       /* idِ tbody → { arr, done } */
+  var reg = {};                       /* نامِ جدول → { arr, done, rev } */
 
   /* هر جدول خودش را این‌جا معرفی می‌کند */
   function register(map){
     for(var k in map) if(Object.prototype.hasOwnProperty.call(map, k)) reg[k] = map[k];
     sweep();
+  }
+
+  /* جدول‌ها دو جورند. بیشترشان یکی‌اند و id دارند (serversBody،
+     bankBody…). ولی «شرکت‌ها» برای هر شرکت یک جدولِ جدا می‌سازد و
+     id یکتا ندارد — آن‌ها با data-rd علامت می‌خورند و همه زیرِ یک
+     تعریف می‌نشینند. */
+  function specOf(tb){
+    if(!tb) return null;
+    return reg[tb.id] || reg[tb.getAttribute("data-rd")] || null;
+  }
+
+  function tables(){
+    var out = [], id, el, i;
+    for(id in reg){
+      if(!Object.prototype.hasOwnProperty.call(reg, id)) continue;
+      el = document.getElementById(id);
+      if(el && out.indexOf(el) < 0) out.push(el);
+    }
+    var marked = document.querySelectorAll("tbody[data-rd]");
+    for(i = 0; i < marked.length; i++)
+      if(reg[marked[i].getAttribute("data-rd")] && out.indexOf(marked[i]) < 0)
+        out.push(marked[i]);
+    return out;
   }
 
   /* شمارهٔ ردیف در آرایهٔ داده. جدول‌ها آن را یک‌جور نمی‌نویسند، پس
@@ -91,10 +114,9 @@
   }
 
   function sweep(){
-    for(var id in reg){
-      if(!Object.prototype.hasOwnProperty.call(reg, id)) continue;
-      var tb = document.getElementById(id);
-      if(!tb) continue;
+    var tbs = tables(), k;
+    for(k = 0; k < tbs.length; k++){
+      var tb = tbs[k];
       var rows = dataRows(tb), i;
       /* با یک ردیف جابه‌جایی بی‌معنی است */
       var many = rows.length > 1;
@@ -118,7 +140,7 @@
     var tr = rowOf(e);
     if(!tr) return;
     var tb = tr.closest("tbody");
-    if(!tb || !reg[tb.id]) return;
+    if(!tb || !specOf(tb)) return;
     dragTr = tr; dragTb = tb;
     tr.classList.add("rd-moving");
     try{
@@ -169,10 +191,14 @@
 
   /* ---------- جابه‌جاییِ خودِ داده ---------- */
   function move(tb, from, to, after){
-    var spec = reg[tb.id];
+    var spec = specOf(tb);
     if(!spec || from < 0 || to < 0 || from === to) return;
+    /* جدولی که وارونه نشان داده می‌شود (تازه‌ترین بالا): «زیرِ این
+       ردیف» روی صفحه، در آرایه یعنی «رویش». بی این، هر کشیدن یک خانه
+       آن‌طرف‌تر از جایی می‌نشست که کاربر دید. */
+    if(spec.rev) after = !after;
     var arr;
-    try{ arr = spec.arr(); }catch(err){ arr = null; }
+    try{ arr = spec.arr(tb); }catch(err){ arr = null; }
     if(!arr || !arr.length) return;
     if(from >= arr.length || to >= arr.length) return;
 
@@ -183,7 +209,7 @@
     if(at < 0) at = 0;
     if(at > arr.length) at = arr.length;
     arr.splice(at, 0, item);
-    try{ spec.done(); }catch(err){ console.error(err); }
+    try{ spec.done(tb); }catch(err){ console.error(err); }
   }
 
   /* جدول‌ها پشتِ سر هم از نو ساخته می‌شوند؛ یک بار بعد از آرام شدنشان */

@@ -3985,7 +3985,7 @@ function renderCompanies(){
                 </label>
               </th>
             </tr></thead>
-            <tbody>${rows || '<tr><td colspan="4" style="color:var(--ink-faint);">داده‌ای نیست</td></tr>'}</tbody>
+            <tbody data-rd="companyVisits" data-company="${escapeHtml(name)}">${rows || '<tr><td colspan="4" style="color:var(--ink-faint);">داده‌ای نیست</td></tr>'}</tbody>
           </table>
         </div>
         <div class="visit-add-bar">
@@ -4238,7 +4238,7 @@ function renderRemoteChecklist(){
       const on = !!checks[d];
       return `<td><button type="button" class="day-toggle ${on?'checked':''}" data-server="${escapeHtml(m.server)}" data-day="${d}">${on?'✓':''}</button></td>`;
     }).join("");
-    return `<tr><td class="server-name editable-cell" contenteditable="${editMode.remote?'true':'false'}" data-section="remote" data-server="${escapeHtml(m.server)}" style="opacity:${editMode.remote?'1':'0.85'}; cursor:${editMode.remote?'text':'default'};">${escapeHtml(m.server)}</td>${cells}<td class="remote-count-cell">${fa(count)}/${fa(days)}</td><td><button class="btn-del" data-remove-remote="${escapeHtml(m.server)}" ${editMode.remote?'':'disabled'} title="حذف">✕</button></td></tr>`;
+    return `<tr data-idx="${roster.indexOf(m)}"><td class="server-name editable-cell" contenteditable="${editMode.remote?'true':'false'}" data-section="remote" data-server="${escapeHtml(m.server)}" style="opacity:${editMode.remote?'1':'0.85'}; cursor:${editMode.remote?'text':'default'};">${escapeHtml(m.server)}</td>${cells}<td class="remote-count-cell">${fa(count)}/${fa(days)}</td><td><button class="btn-del" data-remove-remote="${escapeHtml(m.server)}" ${editMode.remote?'':'disabled'} title="حذف">✕</button></td></tr>`;
   }).join("");
 
   wrap.innerHTML = `
@@ -4253,7 +4253,7 @@ function renderRemoteChecklist(){
             </label>
           </th>
         </tr></thead>
-        <tbody>${rows || `<tr><td colspan="${days+3}" style="color:var(--ink-faint);">فهرستی ثبت نشده — از فرم پایین سرور اضافه کنید.</td></tr>`}</tbody>
+        <tbody id="remoteBody">${rows || `<tr><td colspan="${days+3}" style="color:var(--ink-faint);">فهرستی ثبت نشده — از فرم پایین سرور اضافه کنید.</td></tr>`}</tbody>
       </table>
     </div>
     <div class="visit-add-bar" style="margin-top:12px;">
@@ -4682,7 +4682,16 @@ if(window.ROWDRAG) ROWDRAG.register({
   serversBody:   { arr: ()=> (backupData && backupData.vm) || [],
                    done: ()=>{ saveServersSheet(); renderServers(); } },
   mvpnBody:      { arr: ()=> (mvpnData && mvpnData.lines) || [],
-                   done: ()=>{ saveMvpnSheet(); renderMvpn(); } }
+                   done: ()=>{ saveMvpnSheet(); renderMvpn(); } },
+  /* چک‌لیست ریموت: ردیف‌هایش سرورند و ترتیبشان دستِ خودِ کاربر است */
+  remoteBody:    { arr: ()=> (remoteBackupData && remoteBackupData.roster) || [],
+                   done: ()=>{ saveRemoteChecklistSheet(); renderRemoteChecklist(); } },
+  /* شرکت‌ها: هر شرکت جدولِ خودش را دارد، پس آرایه از روی همان جدول
+     پیدا می‌شود. و چون تازه‌ترین بازدید بالا نشان داده می‌شود، rev. */
+  companyVisits: { rev: true,
+                   arr: tb => (companiesData && companiesData.companies &&
+                               companiesData.companies[tb.getAttribute("data-company")]) || [],
+                   done: ()=>{ saveCompaniesSheet(); renderCompanies(); } }
 });
 
 
