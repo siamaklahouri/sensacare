@@ -1708,6 +1708,8 @@ function renderPlanners(){
         <button class="btn" data-edit="${esc(p.slug)}">ویرایش</button>
         <button class="btn" data-pw="${esc(p.slug)}">رمز ورود</button>
         <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
+        ${((DATA.views||{})[p.kind]||[]).some(v=> v.id === "veeam")
+          ? `<button class="btn" data-vee="${esc(p.slug)}" title="کلیدِ اسکریپتِ گزارشِ Veeam">کلید Veeam</button>` : ``}
         ${p.builtin ? `` : `<button class="btn ${p.closed?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
           p.closed ? "فعال کن" : "غیرفعال"}</button>`}
         ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">${ICON.trash}</button>`}
@@ -1720,6 +1722,7 @@ function renderPlanners(){
   wrap.querySelectorAll("[data-edit]").forEach(b=> b.onclick = ()=> openEdit(b.dataset.edit));
   wrap.querySelectorAll("[data-pw]").forEach(b=> b.onclick = ()=> resetLoginPassword(b.dataset.pw));
   wrap.querySelectorAll("[data-vpw]").forEach(b=> b.onclick = ()=> openVaultReset(b.dataset.vpw));
+  wrap.querySelectorAll("[data-vee]").forEach(b=> b.onclick = ()=> openVeeamKey(b.dataset.vee));
   wrap.querySelectorAll("[data-off]").forEach(b=> b.onclick = ()=> toggleState(b.dataset.off));
   wrap.querySelectorAll("[data-del]").forEach(b=> b.onclick = ()=> openDelete(b.dataset.del));
 }
@@ -1932,6 +1935,82 @@ async function resetLoginPassword(slug){
 }
 
 /* ---------- رمز دیتای شخصی ---------- */
+/* ---------- کلیدِ گزارشِ Veeam ----------
+   سرورِ ما به شبکهٔ داخلیِ شرکت دسترسی ندارد، پس نمی‌تواند خودش سراغِ
+   Veeam برود. یک اسکریپتِ کوچک آن طرف می‌نشیند، از REST APIِ خودِ
+   Veeam می‌پرسد و نتیجه را با این کلید می‌فرستد.
+
+   کلید فقط همین یک کار را می‌کند: با آن نمی‌شود کارتابل را خواند یا
+   چیزی در آن نوشت. درهم‌شده ذخیره می‌شود، پس فقط همان یک بار که
+   ساخته می‌شود دیده می‌شود — مثل رمزِ ورود. */
+async function openVeeamKey(slug){
+  const p = find(slug);
+  if(!p) return;
+  const r = await api("/planners/" + slug + "/veeam-key");
+  if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+  const set = !!r.data.set, last = r.data.last;
+
+  const when = t=>{
+    if(!t) return "—";
+    try{ return new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(Number(t))); }
+    catch(e){ return new Date(Number(t)).toLocaleString(); }
+  };
+  const state = !set
+    ? `<div class="hint">هنوز کلیدی ساخته نشده، پس هیچ گزارشی پذیرفته نمی‌شود.</div>`
+    : last
+      ? `<div class="hint">آخرین گزارش: <b>${esc(when(last.at))}</b>` +
+        (last.host ? ` — از <span dir="ltr">${esc(last.host)}</span>` : ``) +
+        ` — ${fa(last.jobs)} جاب` +
+        (last.error ? `<br><span style="color:var(--red)">آخرین بار به Veeam نرسید: ${esc(last.error)}</span>` : ``) +
+        `</div>`
+      : `<div class="hint">کلید هست ولی هنوز هیچ گزارشی نرسیده. یعنی اسکریپت
+           یا نصب نشده یا به سرورِ ما نمی‌رسد.</div>`;
+
+  openOverlay(`
+    <h2>کلید گزارش Veeam — ${esc(p.name)}</h2>
+    <p class="sub">این کلید را به اسکریپتی می‌دهید که روی شبکهٔ شرکت نصب می‌شود.
+      با آن فقط می‌شود گزارشِ Veeam را <b>فرستاد</b> — نه کارتابل را خواند، نه
+      چیزی در آن نوشت.</p>
+    <p class="sub">کلید درهم‌شده ذخیره می‌شود، پس فقط همین یک‌بار که ساخته شود
+      دیده می‌شود. گم شد؟ یکی تازه بسازید — همان لحظه قبلی از کار می‌افتد و
+      باید اسکریپت را هم به‌روز کنید.</p>
+    ${state}
+    <div class="ov-acts">
+      <button class="btn btn-main" id="veeNew">${set ? "کلید تازه بساز" : "کلید بساز"}</button>
+      ${set ? `<button class="btn btn-off" id="veeDel">کلید را بردار</button>` : ``}
+      <button class="btn" id="veeClose">بستن</button>
+    </div>
+    <div class="gate-err" id="veeErr"></div>
+    <div id="veeOut"></div>`);
+
+  document.getElementById("veeClose").onclick = closeOverlay;
+  document.getElementById("veeNew").onclick = async ()=>{
+    if(set && !confirm("کلیدِ تازه یعنی کلیدِ فعلی همان لحظه از کار می‌افتد و تا " +
+                       "به‌روز کردنِ اسکریپت، هیچ گزارشی نمی‌رسد. ادامه؟")) return;
+    const g = await api("/planners/" + slug + "/veeam-key", { method:"POST", body:"{}" });
+    if(!g.ok){ document.getElementById("veeErr").textContent = g.data.error || "نشد."; return; }
+    const url = location.origin + "/api/" + (p.api || p.slug) + "/veeam/push";
+    document.getElementById("veeOut").innerHTML =
+      `<div class="hint2" style="margin-top:14px;">کلید — همین حالا جایی یادداشتش کنید:</div>` +
+      `<div class="kk" dir="ltr" style="margin-top:6px;word-break:break-all;">${esc(g.data.key)}` +
+      ` <button class="copy" data-copy="${esc(g.data.key)}" title="رونوشت">${ICON.copy}</button></div>` +
+      `<div class="hint2" style="margin-top:12px;">آدرسِ فرستادن:</div>` +
+      `<div class="kk" dir="ltr" style="margin-top:6px;word-break:break-all;">${esc(url)}` +
+      ` <button class="copy" data-copy="${esc(url)}" title="رونوشت">${ICON.copy}</button></div>` +
+      `<p class="sub" style="margin-top:12px;">اسکریپتِ ویندوزی و دستورِ نصبش در فایلِ
+         <span dir="ltr">server/veeam-push.ps1</span>ِ همین پروژه است.</p>`;
+    document.querySelectorAll("#veeOut [data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
+  };
+  const del = document.getElementById("veeDel");
+  if(del) del.onclick = async ()=>{
+    if(!confirm("کلید برداشته شود؟ از همان لحظه هیچ گزارشی پذیرفته نمی‌شود. " +
+                "گزارشی که تا حالا رسیده دست نمی‌خورد.")) return;
+    const d = await api("/planners/" + slug + "/veeam-key", { method:"DELETE" });
+    if(!d.ok){ document.getElementById("veeErr").textContent = d.data.error || "نشد."; return; }
+    closeOverlay(); say("کلید برداشته شد.");
+  };
+}
+
 function openVaultReset(slug){
   const p = find(slug);
   if(!p) return;

@@ -46,6 +46,9 @@ import p_theme from '../public/_t/p/theme.tpl';
 import p_vault from '../public/_t/p/vault.tpl';
 import p_xlsxmap from '../public/_t/p/xlsxmap.tpl';
 import p_vaultcss from '../public/_t/p/vaultcss.tpl';
+import p_veeam from '../public/_t/p/veeam.tpl';
+import p_veeamcss from '../public/_t/p/veeamcss.tpl';
+import p_veeamjs from '../public/_t/p/veeamjs.tpl';
 
 import t_it from '../public/_t/it.tpl';
 import t_fin from '../public/_t/fin.tpl';
@@ -87,6 +90,9 @@ export const PARTS = new Map([
   ['vault', p_vault],
   ['xlsxmap', p_xlsxmap],
   ['vaultcss', p_vaultcss],
+  ['veeam', p_veeam],
+  ['veeamcss', p_veeamcss],
+  ['veeamjs', p_veeamjs],
 ]);
 
 /* مسیرِ قالب → متنش، با همان مسیری که renderPanelPage می‌سازد. */

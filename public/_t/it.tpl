@@ -868,6 +868,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:mobilecss}}
 {{PART:navcss}}
 {{PART:colorcss}}
+{{PART:veeamcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
   .theme-btn:active{ transform:scale(.94); }
   /* نوار کناریِ این پلنر پردهٔ سفیدِ نیمه‌شفاف روی صفحه است، نه توکن؛
@@ -962,6 +963,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
+      <button class="navbtn" data-view="veeam" data-feat="view:veeam"><span class="ic">🛡️</span> VeeamBackup</button>
       <button class="navbtn" data-view="assistant" data-feat="ai"><span class="ic">🤖</span> دستیار هوشمند</button>
       <button class="navbtn" data-view="guide"><span class="ic">📘</span> راهنما</button>
       <button class="navbtn" data-view="settings"><span class="ic">⚙️</span> تنظیمات</button>
@@ -1305,6 +1307,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:settings}}
     <!-- ASSISTANT -->
 {{PART:report}}
+{{PART:veeam}}
 
     <section class="view" id="view-assistant" data-feat="ai">
       <div class="section-title">🤖 دستیار هوشمند</div>
@@ -4379,6 +4382,9 @@ function setupNav(){
       if(view==="companies") renderCompanies();
       if(view==="mvpn") renderMvpn();
       if(view==="personal") renderPersonalView();
+      /* هر بار که باز می‌شود از نو می‌پرسد: گزارش هر ساعت عوض می‌شود و
+         یک‌بار خواندن سرِ بارِ صفحه یعنی تا رفرشِ بعدی کهنه می‌ماند. */
+      if(view==="veeam") loadVeeam();
     });
   });
 }
@@ -4681,6 +4687,7 @@ if(window.ROWDRAG) ROWDRAG.register({
 
 
 {{PART:reportjs}}
+{{PART:veeamjs}}
 
 {{PART:aiassist}}
 async function init(){

@@ -436,6 +436,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
         url: '/' + r.slug + '/', created: r.created,
+        /* نامِ مسیرِ API — برای نشان دادنِ آدرسِ فرستندهٔ گزارشِ Veeam.
+           همیشه برابرِ slug نیست: کارتابلِ سیامک «kartabl» است. */
+        api: c.api || r.slug,
         hasPassword: !!(await getSetting(env, (c.keys || {}).pass || '', '')),
         lastLogin: await getSetting(env, 'login:' + r.slug, 0),
         hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
@@ -449,7 +452,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                      user: b.user || b.slug,
                      disabled: false, closed: false, core: true, off: [], until: 0,
                      views: (VIEWS[b.kind] || []).map(v => v.id),
-                     url: b.page, created: 0, builtin: true,
+                     url: b.page, created: 0, builtin: true, api: b.api || b.slug,
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
@@ -661,6 +664,43 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
       await log(env, 'password', slug, '');
       return json({ ok: true, password: pass });
+    }
+
+    /* --- کلیدِ فرستندهٔ گزارشِ Veeam ---
+       سرورِ sltech به شبکهٔ داخلیِ شرکت دسترسی ندارد، پس نمی‌تواند
+       خودش سراغِ Veeam برود؛ یک اسکریپتِ کوچک آن طرف می‌نشیند و
+       گزارش را می‌فرستد. این کلید فقط همان یک کار را می‌کند: با آن
+       نمی‌شود کارتابل را خواند یا چیزی در آن نوشت.
+
+       کلید درهم‌شده ذخیره می‌شود، نه خودش — همان قاعدهٔ رمزِ ورود.
+       پس فقط همان یک بار که ساخته می‌شود دیده می‌شود؛ اگر گم شد یکی
+       تازه بسازید و همان لحظه قبلی از کار می‌افتد. */
+    if (sub === '/veeam-key' && m === 'GET') {
+      const [has, rep] = await Promise.all([
+        getSetting(env, 'veeamKey:' + slug, ''),
+        getSetting(env, 'veeam:' + slug, null)
+      ]);
+      return json({ ok: true, set: !!has,
+                    last: rep ? { at: rep.at || 0, host: rep.host || '',
+                                  jobs: (rep.jobs || []).length,
+                                  error: rep.error || '' } : null });
+    }
+
+    if (sub === '/veeam-key' && m === 'POST') {
+      /* کلید را سرور می‌سازد، نه ادمین: کلیدی که آدم انتخاب کند،
+         کلیدی است که آدم حدس می‌زند. */
+      const ab = 'abcdefghijkmnpqrstuvwxyz23456789';
+      let key = '';
+      for (const x of crypto.getRandomValues(new Uint8Array(32))) key += ab[x % ab.length];
+      await setSetting(env, 'veeamKey:' + slug, await hashPassword(key));
+      await log(env, 'veeam-key', slug, '');
+      return json({ ok: true, key });
+    }
+
+    if (sub === '/veeam-key' && m === 'DELETE') {
+      await run(env, 'DELETE FROM settings WHERE k=?', 'veeamKey:' + slug);
+      await log(env, 'veeam-key-del', slug, '');
+      return json({ ok: true });
     }
 
     /* --- بستهٔ پیچیدهٔ رمزِ دیتای شخصی --- */

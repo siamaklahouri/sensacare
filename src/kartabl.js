@@ -120,7 +120,11 @@ export const VIEWS = {
     { id: 'companies', label: 'شرکت‌ها' },
     { id: 'mvpn',      label: 'سرویس MVPN' },
     { id: 'datetools', label: 'تبدیل' },
-    { id: 'report',    label: 'گزارش‌ساز' }
+    { id: 'report',    label: 'گزارش‌ساز' },
+    /* گزارشِ Veeam از اسکریپتی روی شبکهٔ شرکت می‌آید، نه از خودِ
+       کارتابل: سرورِ ما به شبکهٔ داخلی دسترسی ندارد. بخشش این‌جاست تا
+       ادمین بتواند بدهد یا پس بگیرد، مثل بقیهٔ بخش‌ها. */
+    { id: 'veeam',     label: 'VeeamBackup' }
   ],
   fin: [
     { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },
@@ -181,7 +185,10 @@ const FEATURE_ROUTES = [
   [/^\/ai(\/|$)/, 'ai'],
   [/^\/backup(\/|$)/, 'backup'],
   [/^\/(vault|escrow)(\/|$)/, 'vault'],
-  [/^\/escrow-pub$/, 'vault']
+  [/^\/escrow-pub$/, 'vault'],
+  /* فقط خودِ «/veeam». «/veeam/push» عمداً بیرون می‌ماند: آن یکی پیش
+     از نشست است و با کلیدِ خودش می‌آید، نه از مرورگرِ این کاربر. */
+  [/^\/veeam$/, 'view:veeam']
 ];
 
 /* نشانهٔ کلیدِ عمومیِ اضطراری: تکهٔ آخرِ modulus. نه رمز است نه
@@ -1394,14 +1401,6 @@ async function myShares(env, panel) {
     .filter(r => r.spec);
 }
 
-function sameSecret(a, b) {
-  const x = String(a || ''), y = String(b || '');
-  if (x.length !== y.length) return false;
-  let d = 0;
-  for (let i = 0; i < x.length; i++) d |= x.charCodeAt(i) ^ y.charCodeAt(i);
-  return d === 0;
-}
-
 export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   const { rateLimit, clientIp } = helpers;
 
@@ -1474,15 +1473,20 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      طرف می‌فرستد.
 
      کلیدش جداست و فقط همین یک کار را می‌کند: با آن نمی‌شود کارتابل را
-     خواند یا چیزی در آن نوشت. اگر لو رفت، ادمین در پنل عوضش می‌کند و
-     هیچ‌چیزِ دیگری دست نمی‌خورد. */
+     خواند یا چیزی در آن نوشت. اگر لو رفت، ادمین در پنل یکی تازه
+     می‌سازد و هیچ‌چیزِ دیگری دست نمی‌خورد.
+
+     کلید مثل رمزِ ورود درهم‌شده نگه داشته می‌شود، نه خودش: اگر روزی
+     کسی به جدولِ تنظیمات برسد، کلیدِ آماده‌ای برای فرستادنِ گزارشِ
+     جعلی پیدا نمی‌کند. */
   if (p === '/veeam/push' && m === 'POST') {
     const rl = await rateLimit(env, `${panel.id}-veeam:` + clientIp(req), 120, 3600);
     if (!rl.ok) return bad('تلاش زیاد بود.', 429);
     const want = String(await getSetting(env, 'veeamKey:' + panel.slug, '') || '');
     const got = String(req.headers.get('x-veeam-key') || body.key || '');
-    /* مقایسهٔ هم‌زمان: با مقایسهٔ معمولی می‌شود کلید را حرف‌به‌حرف حدس زد */
-    if (!want || !sameSecret(want, got)) return bad('کلید درست نیست.', 403);
+    if (!want || !got) return bad('کلید درست نیست.', 403);
+    const k = await checkPassword(got, want);
+    if (!k.ok) return bad('کلید درست نیست.', 403);
 
     const jobs = Array.isArray(body.jobs) ? body.jobs.slice(0, 200).map(j => ({
       name:   String(j && j.name || '').slice(0, 120),
@@ -1491,7 +1495,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       state:  String(j && j.state || '').slice(0, 40),
       last:   String(j && j.last || '').slice(0, 40),
       next:   String(j && j.next || '').slice(0, 40),
-      size:   String(j && j.size || '').slice(0, 40),
+      objects: String(j && j.objects || '').slice(0, 40),
       note:   String(j && j.note || '').slice(0, 200)
     })) : [];
     await setSetting(env, 'veeam:' + panel.slug, {
