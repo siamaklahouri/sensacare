@@ -51,7 +51,26 @@ function Read-Config {
   if (-not (Test-Path $Path)) {
     throw "Config file not found: $Path`nPut veeam-push.config.json next to veeam-push.ps1, or pass -ConfigPath."
   }
-  $c = Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+  $text = Get-Content -Path $Path -Raw -Encoding UTF8
+
+  # A Windows account is written BACKUP-SRV\user, and that lone backslash
+  # is the single most common way this file gets broken: JSON needs it
+  # doubled. ConvertFrom-Json answers with "Unrecognized escape sequence",
+  # which says nothing about which character or how to fix it.
+  #
+  # So: any backslash that is not already part of a valid JSON escape gets
+  # doubled here. The alternation matters -- it swallows a valid escape
+  # (\\ among them) whole, so the second backslash of an already-correct
+  # pair is never seen on its own and doubled a second time.
+  $fixed = [regex]::Replace($text, '\\(["\\/bfnrtu])|\\', {
+    param($m)
+    if ($m.Groups[1].Success) { return $m.Value }
+    return '\\'
+  })
+  if ($fixed -ne $text) { Write-Verbose 'Config: doubled a backslash that JSON needed escaped.' }
+
+  try { $c = $fixed | ConvertFrom-Json }
+  catch { throw "Config file is not valid JSON: $Path -- $($_.Exception.Message)" }
   foreach ($k in 'VbrHost', 'VbrUser', 'VbrPass', 'PushUrl', 'PushKey') {
     if (-not $c.$k) { throw "Config value '$k' is empty." }
   }
