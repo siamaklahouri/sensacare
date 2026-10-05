@@ -1,50 +1,25 @@
 <#
-  گزارشِ Veeam → کارتابل
+  Veeam Backup & Replication  ->  SLTech kartabl
   ===============================================================
-  این اسکریپت روی یک ویندوزِ داخلِ شبکهٔ شرکت اجرا می‌شود — همان‌جایی
-  که به سرورِ Veeam Backup & Replication دسترسی دارد. از REST APIِ خودِ
-  Veeam وضعیتِ جاب‌ها را می‌پرسد و خلاصه‌اش را به کارتابل می‌فرستد.
+  Runs on a Windows box INSIDE the company network -- the one that can
+  reach the VBR server. Asks Veeam's own REST API for job states and
+  pushes a summary to the kartabl.
 
-  چرا این‌طوری و نه برعکس: سرورِ sltech بیرونِ شبکهٔ شماست و به پورتِ
-  ۹۴۱۹ِ سرورِ Veeam نمی‌رسد. اگر قرار بود او بپرسد، باید آن پورت را به
-  اینترنت باز می‌کردید — که برای یک جدولِ وضعیت، بهای خیلی گزافی است.
-  این‌طوری هیچ درگاهی باز نمی‌شود: ارتباط همیشه از داخل به بیرون است.
+  Why this direction: the sltech server sits outside your network and
+  cannot reach port 9419 on the VBR server. Having it poll would mean
+  exposing that port to the internet -- far too high a price for a
+  status table. This way nothing is opened: the connection always goes
+  from the inside out.
 
-  چه چیزی می‌رود: نامِ جاب، نوعش، نتیجهٔ آخرین اجرا، وضعیت، زمانِ آخرین
-  و بعدیِ اجرا، و حجم. نه خودِ بکاپ، نه نامِ کاربری، نه رمز.
+  What is sent: job name, type, last result, state, last and next run,
+  object count. Not the backups, not usernames, not passwords.
 
-  ---------------------------------------------------------------
-  راه‌اندازی
+  Deliberately ASCII only. Windows PowerShell 5.1 reads a .ps1 with the
+  system ANSI codepage unless the file carries a UTF-8 BOM, and a BOM
+  is lost the first time somebody saves the file in Notepad. A script
+  that lives on a customer's server must not depend on that.
 
-  ۱) در پنل، روی کارتابل، دکمهٔ «کلید Veeam» → «کلید بساز». کلید و
-     آدرس را بردارید.
-
-  ۲) یک کاربرِ فقط‌خواندنی در Veeam بسازید (Users and Roles → نقشِ
-     «Veeam Backup Viewer»). کاربرِ ادمین لازم نیست و نباید داد.
-
-  ۳) فایلِ تنظیمات را کنارِ همین اسکریپت بسازید — veeam-push.config.json:
-
-       {
-         "VbrHost":  "veeam01.company.local",
-         "VbrUser":  "COMPANY\\veeam-viewer",
-         "VbrPass":  "...",
-         "PushUrl":  "https://sltech.ir/api/kartabl/veeam/push",
-         "PushKey":  "...",
-         "SkipCertCheck": true
-       }
-
-     این فایل رمز دارد: دسترسی‌اش را به همان کاربری بدهید که اسکریپت
-     با آن اجرا می‌شود و بس.
-
-  ۴) یک Scheduled Task بسازید که ساعتی یک بار اجرایش کند:
-
-       schtasks /create /tn "Veeam report to kartabl" /sc hourly ^
-         /ru SYSTEM /tr "powershell -NoProfile -ExecutionPolicy Bypass -File C:\veeam-push\veeam-push.ps1"
-
-  ---------------------------------------------------------------
-  اگر اسکریپت به Veeam نرسید، باز هم چیزی می‌فرستد — با توضیحِ خطا.
-  سکوت بدترین حالت است: کارتابل سبزِ هفتهٔ پیش را نشان می‌دهد و کسی
-  نمی‌فهمد که خبری نیست.
+  Setup instructions (Persian): veeam-push.README.md, next to this file.
 #>
 
 [CmdletBinding()]
@@ -57,31 +32,19 @@ $ErrorActionPreference = 'Stop'
 
 function Read-Config {
   param([string] $Path)
-  if (-not (Test-Path $Path)) { throw "فایلِ تنظیمات پیدا نشد: $Path" }
+  if (-not (Test-Path $Path)) { throw "Config file not found: $Path" }
   $c = Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
   foreach ($k in 'VbrHost', 'VbrUser', 'VbrPass', 'PushUrl', 'PushKey') {
-    if (-not $c.$k) { throw "در تنظیمات، «$k» خالی است." }
+    if (-not $c.$k) { throw "Config value '$k' is empty." }
   }
   return $c
 }
 
-# گواهیِ خودامضا روی سرورهای داخلی عادی است. این فقط وقتی خاموش
-# می‌شود که خودِ شما در تنظیمات گفته باشید، و فقط برای همین نشست.
+# Self-signed certificates are normal on internal servers. This is only
+# switched off when the config says so, and only for this session.
 function Disable-CertCheck {
-  if ($PSVersionTable.PSVersion.Major -ge 6) { return }   # pwsh پارامترِ خودش را دارد
-  if (-not ('VeeamNoCert' -as [type])) {
-    Add-Type -TypeDefinition @'
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-public class VeeamNoCert {
-  public static void Install() {
-    ServicePointManager.ServerCertificateValidationCallback =
-      delegate (object s, X509Certificate c, X509Chain ch, System.Net.Security.SslPolicyErrors e) { return true; };
-  }
-}
-'@
-  }
-  [VeeamNoCert]::Install()
+  if ($PSVersionTable.PSVersion.Major -ge 6) { return }   # pwsh has its own switch
+  [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 }
 
 function Invoke-Vbr {
@@ -89,19 +52,18 @@ function Invoke-Vbr {
     [string] $Url, [string] $Method = 'GET',
     [hashtable] $Headers, $Body, [string] $ContentType, [bool] $SkipCert
   )
-  # عمداً $args نیست: آن یکی متغیرِ خودکارِ پاورشل است و دست زدن به آن
-  # داخلِ یک تابع، جایی دیگر چیزی را می‌شکند.
+  # Deliberately not $args -- that is an automatic variable, and writing
+  # to it inside a function breaks something else somewhere else.
   $req = @{ Uri = $Url; Method = $Method; Headers = $Headers; UseBasicParsing = $true; TimeoutSec = 60 }
   if ($Body) { $req.Body = $Body }
   if ($ContentType) { $req.ContentType = $ContentType }
-  # pwsh 6+ پرچمِ خودش را دارد؛ در ویندوزپاورشلِ ۵ همان بالا خاموش شده
   if ($SkipCert -and $PSVersionTable.PSVersion.Major -ge 6) { $req.SkipCertificateCheck = $true }
   return Invoke-RestMethod @req
 }
 
-# نسخهٔ APIِ Veeam با هر بیلد عوض می‌شود و اگر اشتباه بفرستید، سرور
-# ۴۰۰ می‌دهد. به‌جای اینکه یک عدد را سفت کنیم و با آپدیتِ بعدی بشکند،
-# از تازه به قدیم امتحان می‌شود و اولی که جواب داد می‌ماند.
+# Veeam's API version changes with every build, and sending the wrong one
+# gets a 400. Rather than pinning a number that breaks on the next update,
+# try newest to oldest and keep the first that answers.
 $ApiVersions = @('1.2-rev1', '1.2-rev0', '1.1-rev0', '1.1-rev1', '1.0-rev2')
 
 function Connect-Vbr {
@@ -115,10 +77,14 @@ function Connect-Vbr {
         -Headers @{ 'x-api-version' = $v; 'accept' = 'application/json' } `
         -ContentType 'application/x-www-form-urlencoded' `
         -Body $form -SkipCert $SkipCert
-      if ($tok.access_token) { return @{ Token = $tok.access_token; Version = $v } }
+      if ($tok.access_token) {
+        Write-Verbose "Veeam API version $v accepted."
+        return @{ Token = $tok.access_token; Version = $v }
+      }
     } catch { $last = $_ }
   }
-  throw "ورود به Veeam نشد. آخرین خطا: $($last.Exception.Message)"
+  $msg = if ($last) { $last.Exception.Message } else { 'no response' }
+  throw "Veeam login failed. Last error: $msg"
 }
 
 function Get-VbrJobs {
@@ -135,14 +101,15 @@ function Get-VbrJobs {
 
   return @($rows | ForEach-Object {
     [pscustomobject]@{
-      name   = [string]$_.name
-      type   = [string]$_.type
-      result = [string]$_.lastResult
-      state  = [string]$_.status
-      last   = & $when $_.lastRun
-      next   = & $when $_.nextRun
-      # «/jobs/states» حجمِ بکاپ را نمی‌دهد، تعدادِ آبجکتِ جاب را می‌دهد.
-      # عددِ نزدیک را به‌جای عددِ خواسته‌شده گذاشتن، بدتر از نگذاشتن است.
+      name    = [string]$_.name
+      type    = [string]$_.type
+      result  = [string]$_.lastResult
+      state   = [string]$_.status
+      last    = & $when $_.lastRun
+      next    = & $when $_.nextRun
+      # /jobs/states gives the job's object count, not the backup size.
+      # Putting a near-enough number where the asked-for one belongs is
+      # worse than putting none.
       objects = [string]$_.objectsCount
       note    = [string]$_.description
     }
@@ -165,19 +132,19 @@ try {
   $conn = Connect-Vbr -Base $base -User $cfg.VbrUser -Pass $cfg.VbrPass -SkipCert $skip
   $jobs = Get-VbrJobs -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
 } catch {
-  # به Veeam نرسیدیم. باز هم می‌فرستیم — با خطا — تا کارتابل بداند
-  # عددهایش کهنه‌اند. نفرستادن یعنی سکوت، و سکوت شبیهِ «همه‌چیز خوب
-  # است» دیده می‌شود.
+  # Veeam was unreachable. Send anyway, with the error, so the kartabl
+  # knows its numbers are stale. Sending nothing is silence, and silence
+  # looks exactly like "everything is fine".
   $err = $_.Exception.Message
 }
 
 $payload = @{
-  host  = $cfg.VbrHost
+  host  = [string]$cfg.VbrHost
   agent = "veeam-push.ps1 / $($env:COMPUTERNAME)"
   error = $err
-  # @() لازم است: با یک جابِ تنها، پاورشل آرایه را باز می‌کند و
-  # ConvertTo-Json به‌جای فهرست، یک شیء می‌سازد — و سرور آن را
-  # «هیچ جابی نیامد» می‌خواند.
+  # @() matters: with a single job PowerShell unrolls the array and
+  # ConvertTo-Json writes an object instead of a list -- which the server
+  # reads as "no jobs came".
   jobs  = @($jobs)
 } | ConvertTo-Json -Depth 5 -Compress
 
@@ -186,12 +153,12 @@ try {
     -ContentType 'application/json; charset=utf-8' `
     -Headers @{ 'x-veeam-key' = $cfg.PushKey } `
     -Body ([Text.Encoding]::UTF8.GetBytes($payload))
-  if ($err) { Write-Output "رفت، ولی با خطای Veeam: $err" }
-  else { Write-Output "رفت: $($res.jobs) جاب" }
+  if ($err) { Write-Output "Sent, but Veeam errored: $err" }
+  else { Write-Output "Sent: $($res.jobs) job(s)" }
 } catch {
-  # Write-Error با ErrorActionPreference=Stop خودش پرتاب می‌کند و خطِ
-  # بعدی اصلاً اجرا نمی‌شود؛ آن وقت Scheduled Task کدِ خروجِ درست را
-  # نمی‌بیند و خرابی بی‌صدا می‌ماند.
-  Write-Warning "فرستادن به کارتابل نشد: $($_.Exception.Message)"
+  # Write-Error throws under ErrorActionPreference=Stop, so the next line
+  # never runs and the Scheduled Task never sees the exit code -- the
+  # failure would stay silent.
+  Write-Warning "Push to kartabl failed: $($_.Exception.Message)"
   exit 1
 }

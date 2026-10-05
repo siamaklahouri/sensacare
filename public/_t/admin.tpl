@@ -1997,8 +1997,9 @@ async function openVeeamKey(slug){
       `<div class="hint2" style="margin-top:12px;">آدرسِ فرستادن:</div>` +
       `<div class="kk" dir="ltr" style="margin-top:6px;word-break:break-all;">${esc(url)}` +
       ` <button class="copy" data-copy="${esc(url)}" title="رونوشت">${ICON.copy}</button></div>` +
-      `<p class="sub" style="margin-top:12px;">اسکریپتِ ویندوزی و دستورِ نصبش در فایلِ
-         <span dir="ltr">server/veeam-push.ps1</span>ِ همین پروژه است.</p>`;
+      `<p class="sub" style="margin-top:12px;">اسکریپتِ ویندوزی
+         (<span dir="ltr">server/veeam-push.ps1</span>) و راهنمای قدم‌به‌قدمش
+         (<span dir="ltr">server/veeam-push.README.md</span>) در همین پروژه‌اند.</p>`;
     document.querySelectorAll("#veeOut [data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
   };
   const del = document.getElementById("veeDel");

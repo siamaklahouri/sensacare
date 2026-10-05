@@ -1,0 +1,8 @@
+{
+  "VbrHost": "veeam01.company.local",
+  "VbrUser": "COMPANY\\veeam-viewer",
+  "VbrPass": "REPLACE-WITH-THE-VEEAM-VIEWER-PASSWORD",
+  "PushUrl": "https://sltech.ir/api/kartabl/veeam/push",
+  "PushKey": "REPLACE-WITH-THE-KEY-FROM-THE-ADMIN-PANEL",
+  "SkipCertCheck": true
+}
