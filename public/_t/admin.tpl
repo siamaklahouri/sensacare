@@ -897,18 +897,39 @@ table.inv-tab td.desc{ text-align:right; }
 
     <style>
   /* فرمِ اشتراکِ بخش: یک ردیف روی دسکتاپ، ستونی روی گوشی */
-  .vsf{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin:14px 0 8px}
-  .vsf label{display:flex; flex-direction:column; gap:5px; font-size:12.5px; color:var(--ink-soft)}
-  .vsf select{min-width:170px}
-  .vsrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    padding:10px 12px; border:1px solid var(--card-border); border-radius:10px;
-    background:var(--white); margin-bottom:8px}
-  .vsrow b{font-size:13.5px}
-  .vsrow .w{font-size:11.5px; padding:2px 8px; border-radius:999px;
-    border:1px solid var(--card-border); color:var(--ink-soft)}
-  .vsrow .w.on{border-color:var(--brass,#B08D57); color:var(--brass,#B08D57); font-weight:600}
-  .vsrow .gone{color:var(--red,#B3261E); font-size:11.5px}
-  .vsrow .sp{flex:1}
+  /* فرمِ اشتراک، با همان زبانِ بصریِ بقیهٔ پنل: یک کارتِ کم‌رنگ، و
+     چهار انتخاب که روی صفحهٔ باریک زیر هم می‌روند نه این‌که از کادر
+     بزنند بیرون. */
+  .vsf{ display:grid; gap:11px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    align-items:end; margin:16px 0 10px; padding:14px 16px;
+    border:1px solid var(--line); border-radius:var(--r); background:var(--paper-2); }
+  .vsf label{ display:flex; flex-direction:column; gap:6px; font-size:12px;
+    color:var(--ink-soft); font-weight:600; }
+  .vsf select{ width:100%; }
+  .vsf .go{ display:flex; align-items:flex-end; }
+  .vsf .go .btn{ width:100%; }
+
+  /* هر اشتراک یک ردیف: چپ، چه چیزی از کِه؛ راست، به کِه و با چه
+     دسترسی‌ای. همان شکلِ .orgrow تا دو فهرستِ کنار هم، دو جور به نظر
+     نرسند. */
+  .vsrow{ border:1px solid var(--line); border-radius:var(--r); padding:12px 15px;
+    margin-bottom:9px; background:var(--paper-2);
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .vsrow .ttl{ display:flex; align-items:center; gap:8px; min-width:180px; }
+  .vsrow .ttl .ic{ font-size:16px; }
+  .vsrow .ttl b{ font-size:14px; }
+  .vsrow .flow{ display:flex; align-items:center; gap:7px; font-size:12px;
+    color:var(--ink-soft); flex-wrap:wrap; }
+  .vsrow .flow .p{ background:var(--white); border:1px solid var(--line);
+    border-radius:999px; padding:3px 10px; }
+  .vsrow .flow .ar{ color:var(--ink-faint); }
+  .vsrow .w{ font-size:11.5px; padding:3px 11px; border-radius:999px;
+    border:1px solid var(--line); color:var(--ink-soft); background:var(--white); }
+  .vsrow .w.on{ border-color:var(--brass); color:var(--brass); font-weight:700; }
+  .vsrow .gone{ color:var(--amber-ink); background:var(--amber-bg);
+    border:1px solid var(--amber); border-radius:999px; padding:3px 10px; font-size:11.5px; }
+  .vsrow .sp{ flex:1 1 20px; }
+  .vsrow .acts{ display:flex; gap:8px; flex-wrap:wrap; }
   </style>
   <section id="tab-orgs" hidden>
     <div class="panel">
@@ -944,13 +965,11 @@ table.inv-tab td.desc{ text-align:right; }
 
     <div class="panel">
       <h2>اشتراکِ بخشِ یک کارتابل با یک گروه</h2>
-      <p class="sub">این با بالا فرق دارد. بالا جدولی است که همین‌جا از صفر ساخته می‌شود
-        و صاحبی ندارد. این‌جا بخشِ خودِ کارتابلِ یک نفر را با یک گروه به اشتراک
-        می‌گذارید — مثلاً «سرورها و بکاپ»ِ سیامک را با «احیا › فنی».</p>
-      <p class="sub">داده جابه‌جا نمی‌شود: همان ردیف‌هایی است که خودِ صاحبش می‌بیند.
-        هر تغییری که عضوِ گروه بدهد، در کارتابلِ صاحبِ بخش هم همان است — رونوشت نیست.
-        بخش برای اعضای گروه، زیرِ نامِ همان گروه و پایینِ بخش‌های خودشان می‌آید.</p>
-      <p class="sub">اجازهٔ تغییر فقط از همین‌جا داده می‌شود. کاربر نمی‌تواند بخشی را
+      <p class="sub">بالا جدولی است که همین‌جا از صفر ساخته می‌شود و صاحبی ندارد.
+        این‌جا بخشِ خودِ کارتابلِ یک نفر با یک گروه به اشتراک می‌رود — مثلاً
+        «سرورها و بکاپ»ِ سیامک با «احیا › فنی». داده رونوشت نمی‌شود: هر تغییری که
+        عضوِ گروه بدهد، در کارتابلِ صاحبِ بخش هم همان است.</p>
+      <p class="sub">اجازهٔ تغییر فقط از همین‌جا داده می‌شود؛ کاربر نمی‌تواند بخشی را
         خودش بدهد یا پس بگیرد.</p>
 
       <div class="vsf">
@@ -965,7 +984,7 @@ table.inv-tab td.desc{ text-align:right; }
             <option value="0">فقط دیدن</option>
             <option value="1">دیدن و تغییر</option>
           </select></label>
-        <button class="btn btn-main" id="vsAdd">به اشتراک بگذار</button>
+        <span class="go"><button class="btn btn-main" id="vsAdd">به اشتراک بگذار</button></span>
       </div>
       <div id="vsNote" class="hint2"></div>
       <div id="vsList" class="hint">…</div>
@@ -2598,18 +2617,22 @@ async function loadVShares(){
   }
   box.innerHTML = items.map(it=>
     '<div class="vsrow">' +
-      '<span>' + esc(it.icon) + '</span>' +
-      '<b>' + esc(it.label) + '</b>' +
-      '<span class="hint2">از کارتابلِ ' + esc(it.ownerName) + '</span>' +
-      '<span class="hint2">→ ' + esc(it.orgPath || "—") + '</span>' +
+      '<span class="ttl"><span class="ic">' + esc(it.icon) + '</span><b>' + esc(it.label) + '</b></span>' +
+      '<span class="flow">' +
+        '<span class="p">' + esc(it.ownerName) + '</span>' +
+        '<span class="ar">◀</span>' +
+        '<span class="p">' + esc(it.orgPath || "—") + '</span>' +
+      '</span>' +
       '<span class="w' + (it.w ? ' on' : '') + '">' +
         (it.w ? 'دیدن و تغییر' : 'فقط دیدن') + '</span>' +
       (it.orphan ? '<span class="gone">کارتابل یا گروهش دیگر نیست</span>' : '') +
       '<span class="sp"></span>' +
-      '<button class="btn" data-vsw="' + esc(it.id) + '" data-w="' + (it.w ? '0' : '1') +
-        '" data-o="' + esc(it.owner) + '" data-v="' + esc(it.view) + '" data-g="' + esc(it.org) + '">' +
-        (it.w ? 'فقط دیدن' : 'اجازهٔ تغییر') + '</button>' +
-      '<button class="btn btn-off" data-vsdel="' + esc(it.id) + '">حذف</button>' +
+      '<span class="acts">' +
+        '<button class="btn" data-vsw="' + esc(it.id) + '" data-w="' + (it.w ? '0' : '1') +
+          '" data-o="' + esc(it.owner) + '" data-v="' + esc(it.view) + '" data-g="' + esc(it.org) + '">' +
+          (it.w ? 'فقط دیدن' : 'اجازهٔ تغییر') + '</button>' +
+        '<button class="btn btn-off" data-vsdel="' + esc(it.id) + '">حذف</button>' +
+      '</span>' +
     '</div>').join("");
 
   /* عوض کردنِ دسترسی همان «ذخیرهٔ دوباره» است: کلیدِ یگانهٔ جدول

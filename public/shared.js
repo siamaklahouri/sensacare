@@ -271,6 +271,22 @@
   }
 
   /* ---------- ساختِ نما و دکمهٔ نوار کنار ---------- */
+
+  /* کجای نوار بنشیند. تا حالا «پیش از راهنما» بود، که یعنی زیرِ همهٔ
+     دکمه‌های ابزاری (دیتای شخصی، تبدیل، گزارش‌ساز، دستیار) — ته فهرست،
+     جایی که چشم آخر از همه می‌رسد. حالا بالاتر می‌نشیند: بلافاصله بعد
+     از بخش‌های دادهٔ خودِ کاربر و پیش از ابزارها.
+     فهرست مرتب است و اولینی که پیدا شود جوابِ درست است؛ اگر ادمین
+     بعضی‌شان را بسته باشد، همان بعدی. */
+  var TOOL_VIEWS = ["personal", "datetools", "report", "veeam", "assistant", "guide", "settings"];
+  function navAnchor(nav) {
+    for (var i = 0; i < TOOL_VIEWS.length; i++) {
+      var b = nav.querySelector('.navbtn[data-view="' + TOOL_VIEWS[i] + '"]');
+      if (b) return b;
+    }
+    return null;
+  }
+
   function mount(box) {
     var vid = "view-shared-" + box.id;
     if (document.getElementById(vid)) return;
@@ -284,8 +300,7 @@
     btn.setAttribute("data-view", "shared-" + box.id);
     btn.innerHTML = '<span class="ic">' + esc(box.icon) + "</span> " + esc(box.title);
     /* پیش از دکمه‌های عمومی (راهنما و تنظیمات) بنشیند تا قاطیِ آن‌ها نشود */
-    var before = nav.querySelector('.navbtn[data-view="guide"]')
-              || nav.querySelector('.navbtn[data-view="settings"]');
+    var before = navAnchor(nav);
     /* بخش‌هایی که به یک گروه وصل‌اند زیرِ نامِ همان گروه جمع می‌شوند.
        سرفصل فقط یک بار، پیش از اولین بخشِ آن گروه. بخش‌های بی‌گروه
        دقیقاً همان‌جا که بودند می‌مانند. */

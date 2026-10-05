@@ -12,6 +12,57 @@ const PASS = process.env.VS_PASS || 'siamaksiamak';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 
+/* گزارشِ نمونه را خودِ این آزمون می‌فرستد. تا دیروز به گزارشی تکیه
+   می‌کرد که آزمونِ دیگری جا گذاشته بود، و هر بار که آن یکی اول اجرا
+   می‌شد این یکی می‌افتاد — ایرادِ آزمون، نه ایرادِ کد. */
+const AUSER = process.env.VS_ADMIN || 'admin';
+const APASS = process.env.VS_ADMIN_PASS || 'adminadminadmin';
+const SLUG  = process.env.VS_SLUG || 'siamak';
+{
+  let ck = '';
+  const call = async (path, opt) => {
+    const o = Object.assign({ headers: {} }, opt || {});
+    o.headers = Object.assign({ 'Content-Type': 'application/json' }, o.headers, ck ? { cookie: ck } : {});
+    const r = await fetch(BASE + path, o);
+    const sc = r.headers.getSetCookie ? r.headers.getSetCookie() : [];
+    for (const c of sc) {
+      const kv = c.split(';')[0], k = kv.split('=')[0];
+      ck = ck.split('; ').filter(x => x && x.split('=')[0] !== k).concat([kv]).join('; ');
+    }
+    try { return await r.json(); } catch (e) { return {}; }
+  };
+  await call('/api/admin.planer/signin',
+    { method: 'POST', body: JSON.stringify({ user: AUSER, password: APASS }) });
+  const k = await call('/api/admin.planer/planners/' + SLUG + '/veeam-key', { method: 'POST', body: '{}' });
+  await fetch(BASE + '/api/' + API + '/veeam/push', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-veeam-key': k.key },
+    body: JSON.stringify({
+      host: 'veeam01.ehya.local', agent: 'veeam-push.ps1 / SRV-MGMT',
+      jobs: [
+        { name: 'Daily-VMs', type: 'Backup', result: 'Success', state: 'Stopped',
+          last: '2026-10-05 02:00', next: '2026-10-06 02:00', objects: '14' },
+        { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Working',
+          last: '2026-10-05 17:00', next: '2026-10-05 18:00', objects: '3' },
+        { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
+          last: '2026-10-04 23:00', next: '', objects: '58' }
+      ],
+      repos: [
+        { name: 'Main-NAS', type: 'WinLocal', capacity: '20480', free: '6150', used: '14330', pct: '70' },
+        { name: 'Archive-SAN', type: 'LinuxLocal', capacity: '51200', free: '2600', used: '48600', pct: '95' },
+        { name: 'Cloud-Tier', type: 'ObjectStorage', capacity: '10240', free: '8900', used: '1340', pct: '13' }
+      ],
+      sessions: [
+        { name: 'Daily-VMs', type: 'Backup', result: 'Success', state: 'Stopped',
+          start: '2026-10-05 02:00', end: '2026-10-05 02:47', mins: '47' },
+        { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Stopped',
+          start: '2026-10-05 17:00', end: '2026-10-05 17:06', mins: '6' },
+        { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
+          start: '2026-10-04 23:00', end: '2026-10-04 23:12', mins: '12' }
+      ]
+    })
+  });
+}
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
 const errs = [];

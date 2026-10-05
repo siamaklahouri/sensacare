@@ -74,12 +74,14 @@ const tbl = await p.evaluate(i => {
   const rows = [...sec.querySelectorAll('tbody tr')].map(tr =>
     [...tr.children].map(td => (td.querySelector('select') ? td.querySelector('select').value : td.textContent.trim())));
   return { active: sec.classList.contains('active'), ths, rows,
-           sub: (sec.querySelector('.vs-sub') || {}).textContent || '',
+           sub: (sec.querySelector('.section-sub') || {}).textContent || '',
            hasToggle: !!sec.querySelector('[data-vsedit]'),
            hasAdd: !!sec.querySelector('[data-vsadd]') };
 }, id);
 t(tbl.active, 'نما باز شد');
-t(tbl.ths && tbl.ths.length === 9, 'سرستون‌ها آمدند (# + ۷ ستون + حذف)', (tbl.ths || []).join(' | '));
+t(tbl.ths && tbl.ths.length === 9 && /حذف\/تغییر/.test(tbl.ths[8]),
+  'سرستون‌ها آمدند و کلیدِ حذف/تغییر در آخرین ستون نشست — مثل بقیهٔ جدول‌های کارتابل',
+  (tbl.ths || []).join(' | '));
 t(tbl.rows && tbl.rows.length === 3, 'هر سه ردیفِ سرورها آمدند', tbl.rows && tbl.rows.length);
 t(tbl.rows && tbl.rows[0].join(',').indexOf('srv-a') >= 0, 'و دادهٔ واقعی داخلشان است', tbl.rows && tbl.rows[0].join(' | '));
 t(/سیامک/.test(tbl.sub), 'زیرنویس می‌گوید بخشِ کِی است', tbl.sub.slice(0, 70).replace(/\s+/g, ' '));
@@ -138,12 +140,12 @@ const ro = await p.evaluate(i => {
            del: sec.querySelectorAll('[data-vsdel]').length,
            able: [...sec.querySelectorAll('td.vs-c')].filter(td => td.getAttribute('contenteditable') === 'true').length,
            rows: sec.querySelectorAll('tbody tr').length,
-           sub: (sec.querySelector('.vs-sub') || {}).textContent || '' };
+           sub: (sec.querySelector('.section-sub') || {}).textContent || '' };
 }, roId);
 t(!ro.toggle && !ro.add && ro.del === 0, 'نه کلیدِ تغییر، نه دکمهٔ افزودن، نه دکمهٔ حذف');
 t(ro.able === 0, 'و هیچ خانه‌ای نوشتنی نیست');
 t(ro.rows >= 1, 'ولی ردیف‌ها دیده می‌شوند', String(ro.rows));
-t(/فقط می‌توانید ببینید/.test(ro.sub), 'و زیرنویس همین را می‌گوید');
+t(/فقط می‌توانید ببینید/.test(ro.sub), 'و زیرنویس همین را می‌گوید', ro.sub.slice(0, 70));
 
 console.log('\n===== خطای صفحه =====');
 t(errs.length === 0, 'هیچ خطای جاوااسکریپتی نداد', errs.join(' // ') || '—');

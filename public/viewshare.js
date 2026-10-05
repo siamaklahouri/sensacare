@@ -44,12 +44,12 @@
   };
 
   var CSS = [
-    ".vs-sub{font-size:12.5px;color:var(--ink-soft,#5b6672);margin-bottom:10px;line-height:1.9}",
-    ".vs-own{font-weight:600;color:var(--ink,#22303c)}",
-    ".vs-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}",
-    ".vs-note{font-size:11.5px;color:var(--ink-faint,#8c97a3);min-height:16px}",
+    /* نامِ صاحبِ بخش روی دکمهٔ نوار: کم‌رنگ و در خطِ دوم، تا نامِ خودِ
+       بخش همان‌قدر خوانا بماند که بقیهٔ دکمه‌ها. */
+    ".navbtn .vs-who{display:block;font-size:10.5px;font-weight:400;opacity:.6;",
+    "  margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".vs-note{font-size:11.5px;color:var(--ink-faint,#8c97a3)}",
     ".vs-note.bad{color:var(--red,#B3261E)}",
-    ".vs-addbar{margin-top:10px;display:flex;justify-content:flex-start}",
     "td.vs-c[contenteditable=\"true\"]{cursor:text}",
     "tr.vs-ok>td{animation:vsOk .9s ease}",
     "@keyframes vsOk{0%{background:rgba(47,107,79,.18)}100%{background:transparent}}",
@@ -62,6 +62,30 @@
     var st = document.createElement("style");
     st.id = "vshareCss"; st.textContent = CSS;
     document.head.appendChild(st);
+  }
+
+
+  /* کجای نوار بنشیند. تا حالا «پیش از راهنما» بود، که یعنی زیرِ همهٔ
+     دکمه‌های ابزاری (دیتای شخصی، تبدیل، گزارش‌ساز، دستیار) — ته فهرست،
+     جایی که چشم آخر از همه می‌رسد. حالا بالاتر می‌نشیند: بلافاصله بعد
+     از بخش‌های دادهٔ خودِ کاربر و پیش از ابزارها.
+     فهرست مرتب است و اولینی که پیدا شود جوابِ درست است؛ اگر ادمین
+     بعضی‌شان را بسته باشد، همان بعدی. */
+  var TOOL_VIEWS = ["personal", "datetools", "report", "veeam", "assistant", "guide", "settings"];
+  /* دکمه‌ای که زیرِ سرفصلِ یک گروه نشسته — چه بخشِ مشترک باشد چه
+     بخشِ اشتراکیِ کارتابلِ دیگری. هر دو زیرِ یک سرفصل جمع می‌شوند. */
+  function inGroup(el) {
+    if (!el || !el.classList || !el.classList.contains("navbtn")) return false;
+    var v = String(el.getAttribute("data-view") || "");
+    return v.indexOf("vshare-") === 0 || v.indexOf("shared-") === 0;
+  }
+
+  function navAnchor(nav) {
+    for (var i = 0; i < TOOL_VIEWS.length; i++) {
+      var b = nav.querySelector('.navbtn[data-view="' + TOOL_VIEWS[i] + '"]');
+      if (b) return b;
+    }
+    return null;
   }
 
   function st(id) {
@@ -86,10 +110,10 @@
     btn.className = "navbtn";
     btn.setAttribute("data-view", "vshare-" + sh.id);
     btn.innerHTML = '<span class="ic">' + esc(sh.icon) + "</span> " + esc(sh.label) +
-                    ' <span style="opacity:.65">— ' + esc(sh.ownerName) + "</span>";
+                    '<span class="vs-who">' + esc(sh.ownerName) + "</span>";
+    btn.title = sh.label + " — کارتابلِ " + sh.ownerName;
 
-    var before = nav.querySelector('.navbtn[data-view="guide"]')
-              || nav.querySelector('.navbtn[data-view="settings"]');
+    var before = navAnchor(nav);
 
     var key = "org-" + sh.org;
     var head = nav.querySelector('[data-shorg="' + key + '"]');
@@ -101,39 +125,50 @@
       head.title = sh.orgPath || "";
       nav.insertBefore(head, before || null);
     }
-    /* تهِ همان گروه، بعد از هر چه الان زیرش هست */
+    /* تهِ همان گروه، بعد از هر چه الان زیرش هست — ولی فقط تا جایی که
+       دکمه‌ها مالِ همین گروه‌اند. بی این شرط، حلقه از کلِ نوار رد
+       می‌شد و بخش‌ها ته فهرست، زیرِ «تنظیمات» می‌نشستند. */
     btn.classList.add("sh-ingroup");
     var cur = head;
-    while (cur.nextElementSibling && cur.nextElementSibling.classList.contains("navbtn"))
+    while (cur.nextElementSibling && inGroup(cur.nextElementSibling))
       cur = cur.nextElementSibling;
     nav.insertBefore(btn, cur.nextSibling);
 
     var sec = document.createElement("section");
     sec.className = "view"; sec.id = vid;
+    /* همان شکلِ بقیهٔ بخش‌های کارتابل: سرخطِ پانل با یک h3 و یک
+       نشانهٔ کوچک، کلیدِ «حذف/تغییر» در آخرین ستونِ سرِ جدول (نه
+       شناور بالای آن)، و دکمهٔ ردیف تازه پایین. بخشی که شکلِ خودش را
+       داشته باشد، در فهرستِ بخش‌ها وصله به نظر می‌رسد. */
+    var sub = 'بخشِ کارتابلِ <b>' + esc(sh.ownerName) + '</b>' +
+      (sh.orgPath ? ' — از راهِ گروهِ «' + esc(sh.orgPath) + '»' : '') +
+      (sh.w
+        ? '. آن‌چه این‌جا بنویسید، در کارتابلِ خودِ او هم همان است؛ رونوشت نیست.'
+        : '. فقط می‌توانید ببینید.');
+
     sec.innerHTML =
       '<div class="section-title">' + esc(sh.icon) + " " + esc(sh.label) + "</div>" +
-      '<div class="vs-sub">این بخشِ کارتابلِ <span class="vs-own">' + esc(sh.ownerName) +
-        "</span> است و از راهِ گروهِ «" + esc(sh.orgPath || "") + "» با شما به اشتراک گذاشته شده" +
-        (sh.w ? " — می‌توانید تغییرش بدهید." : " — فقط می‌توانید ببینید.") +
-        "<br>هر تغییری که این‌جا بدهید، در کارتابلِ خودِ " + esc(sh.ownerName) +
-        " هم همان است؛ رونوشت نیست.</div>" +
+      '<div class="section-sub">' + sub + "</div>" +
       '<div class="panel">' +
-        '<div class="vs-bar">' +
-          (sh.w
-            ? '<label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">' +
-                '<span class="edit-switch"><input type="checkbox" data-vsedit="' + esc(sh.id) +
-                '"><span class="track"></span></span> حذف/تغییر</label>'
-            : "") +
-          '<span class="vs-note" data-vsnote="' + esc(sh.id) + '"></span>' +
+        '<div class="vm-head">' +
+          "<h3>" + esc(sh.icon) + " " + esc(sh.label) + "</h3>" +
+          '<span class="save-hint vs-note" data-vsnote="' + esc(sh.id) + '"></span>' +
         "</div>" +
         '<div class="tbl-wrap"><table><thead><tr>' +
           '<th style="width:26px;">#</th>' +
           sh.cols.map(function (c) { return "<th>" + esc(c.t) + "</th>"; }).join("") +
-          (sh.w ? '<th style="width:48px;"></th>' : "") +
+          (sh.w
+            ? '<th style="width:70px;">' +
+                '<label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">' +
+                  '<span class="edit-switch"><input type="checkbox" data-vsedit="' + esc(sh.id) +
+                  '"><span class="track"></span></span> حذف/تغییر</label>' +
+              "</th>"
+            : "") +
         "</tr></thead>" +
         '<tbody data-vsbody="' + esc(sh.id) + '"></tbody></table></div>' +
-        (sh.w ? '<div class="vs-addbar"><button class="btn btn-brass btn-sm" data-vsadd="' +
-                esc(sh.id) + '">＋ ردیف تازه</button></div>' : "") +
+        (sh.w ? '<div class="visit-add-bar" style="margin-top:10px;">' +
+                '<button class="btn btn-brass btn-sm" data-vsadd="' + esc(sh.id) +
+                '">＋ ردیف تازه</button></div>' : "") +
       "</div>";
     host.appendChild(sec);
 
