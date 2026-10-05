@@ -1498,14 +1498,34 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       objects: String(j && j.objects || '').slice(0, 40),
       note:   String(j && j.note || '').slice(0, 200)
     })) : [];
+    /* مخزن‌ها و اجراهای اخیر. هر دو اختیاری‌اند: بیلدی که این مسیرها
+       را ندارد، همان جاب‌هایش را می‌فرستد و بخش با همان کار می‌کند. */
+    const repos = Array.isArray(body.repos) ? body.repos.slice(0, 100).map(r => ({
+      name:     String(r && r.name || '').slice(0, 120),
+      type:     String(r && r.type || '').slice(0, 60),
+      capacity: String(r && r.capacity || '').slice(0, 20),
+      free:     String(r && r.free || '').slice(0, 20),
+      used:     String(r && r.used || '').slice(0, 20),
+      pct:      String(r && r.pct || '').slice(0, 5)
+    })) : [];
+    const sessions = Array.isArray(body.sessions) ? body.sessions.slice(0, 100).map(x => ({
+      name:   String(x && x.name || '').slice(0, 120),
+      type:   String(x && x.type || '').slice(0, 60),
+      result: String(x && x.result || '').slice(0, 40),
+      state:  String(x && x.state || '').slice(0, 40),
+      start:  String(x && x.start || '').slice(0, 40),
+      end:    String(x && x.end || '').slice(0, 40),
+      mins:   String(x && x.mins || '').slice(0, 10)
+    })) : [];
+
     await setSetting(env, 'veeam:' + panel.slug, {
       at: Date.now(),
       host: String(body.host || '').slice(0, 120),
       agent: String(body.agent || '').slice(0, 60),
       error: String(body.error || '').slice(0, 300),
-      jobs
+      jobs, repos, sessions
     });
-    return json({ ok: true, jobs: jobs.length });
+    return json({ ok: true, jobs: jobs.length, repos: repos.length, sessions: sessions.length });
   }
 
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */

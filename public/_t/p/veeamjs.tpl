@@ -70,6 +70,8 @@ function renderVeeam(){
         "کلیدش در پنل ساخته شده باشد.";
     }
     if(note) note.textContent = "";
+    renderVeeamRepos([]);
+    renderVeeamSessions([]);
     return;
   }
 
@@ -77,11 +79,33 @@ function renderVeeam(){
   var n = { ok:0, warn:0, bad:0, none:0 };
   jobs.forEach(function(j){ n[veeamTone(j.result)]++; });
 
+  /* فضای مخزن‌ها هم روی همان کارت‌ها می‌آید. «چند جاب موفق بود» بدونِ
+     «چقدر جا مانده» نصفِ جواب است: بکاپی که جا ندارد، فردا ناموفق
+     می‌شود و امروز هنوز سبز است. */
+  var repos = VEEAM.repos || [];
+  var cap = 0, free = 0, fullest = null;
+  repos.forEach(function(r){
+    var c = parseFloat(r.capacity) || 0, f = parseFloat(r.free) || 0;
+    cap += c; free += f;
+    var pct = parseFloat(r.pct);
+    if(!isNaN(pct) && (!fullest || pct > fullest.pct)) fullest = { name: r.name, pct: pct };
+  });
+
+  var gb = function(v){ return fa(Math.round(v).toLocaleString("en-US")); };
   if(cards) cards.innerHTML =
     '<div class="stat blue"><div class="lbl">🛡️ تعداد جاب</div><div class="val">' + fa(jobs.length) + '</div></div>' +
     '<div class="stat green"><div class="lbl">✅ موفق</div><div class="val">' + fa(n.ok) + '</div></div>' +
     '<div class="stat amber"><div class="lbl">⚠️ هشدار</div><div class="val">' + fa(n.warn) + '</div></div>' +
-    '<div class="stat red"><div class="lbl">⛔ ناموفق</div><div class="val">' + fa(n.bad) + '</div></div>';
+    '<div class="stat red"><div class="lbl">⛔ ناموفق</div><div class="val">' + fa(n.bad) + '</div></div>' +
+    (repos.length
+      ? '<div class="stat teal"><div class="lbl">💽 فضای کل (GB)</div><div class="val">' + gb(cap) + '</div></div>' +
+        '<div class="stat ' + (cap > 0 && free / cap < 0.1 ? 'red' : 'blue') +
+          '"><div class="lbl">🆓 فضای آزاد (GB)</div><div class="val">' + gb(free) + '</div></div>' +
+        (fullest
+          ? '<div class="stat ' + (fullest.pct >= 90 ? 'red' : fullest.pct >= 75 ? 'amber' : 'green') +
+            '"><div class="lbl">📈 پرترین مخزن</div><div class="val">' + fa(Math.round(fullest.pct)) + '٪</div></div>'
+          : '')
+      : '');
 
   if(when) when.textContent = VEEAM.at ? ("آخرین گزارش: " + veeamWhen(VEEAM.at)) : "";
 
@@ -115,8 +139,74 @@ function renderVeeam(){
   if(note) note.textContent = (VEEAM.host ? "سرورِ Veeam: " + VEEAM.host : "") +
     (VEEAM.agent ? "  •  فرستنده: " + VEEAM.agent : "");
 
+  renderVeeamRepos(repos);
+  renderVeeamSessions(VEEAM.sessions || []);
+
   if(window.tableSizeSweep) try{ window.tableSizeSweep(); }catch(e){}
   if(window.cellPopScan) try{ window.cellPopScan(); }catch(e){}
+}
+
+/* مخزن‌ها. پانل فقط وقتی دیده می‌شود که چیزی برای نشان دادن باشد —
+   یک جدولِ خالی با سرستون‌هایش، آدم را می‌فرستد دنبالِ داده‌ای که
+   اصلاً نیامده. */
+function renderVeeamRepos(repos){
+  var panel = document.getElementById("veeamRepoPanel");
+  var body  = document.getElementById("veeamRepoBody");
+  var hint  = document.getElementById("veeamRepoHint");
+  if(!panel || !body) return;
+  if(!repos || !repos.length){ panel.hidden = true; return; }
+  panel.hidden = false;
+
+  var low = repos.filter(function(r){ return (parseFloat(r.pct) || 0) >= 90; }).length;
+  if(hint) hint.textContent = low
+    ? fa(low) + " مخزن بالای ۹۰٪ پر شده"
+    : fa(repos.length) + " مخزن";
+
+  body.innerHTML = repos.map(function(r, i){
+    var pct = parseFloat(r.pct);
+    var has = !isNaN(pct);
+    var tone = !has ? "" : pct >= 90 ? " bad" : pct >= 75 ? " warn" : "";
+    var w = has ? Math.max(0, Math.min(100, pct)) : 0;
+    return '<tr>' +
+      '<td>' + fa(i + 1) + '</td>' +
+      '<td class="editable-cell">' + escapeHtml(r.name || "") + '</td>' +
+      '<td>' + escapeHtml(r.type || "") + '</td>' +
+      '<td>' + (r.capacity ? fa(r.capacity) : "—") + '</td>' +
+      '<td>' + (r.free ? fa(r.free) : "—") + '</td>' +
+      '<td>' + (has
+        ? '<div class="vee-bar' + tone + '"><span class="num">' + fa(Math.round(pct)) + '٪</span>' +
+          '<span class="trk"><span class="fil" style="width:' + w + '%"></span></span></div>'
+        : "—") + '</td>' +
+      '</tr>';
+  }).join("");
+}
+
+/* اجراهای اخیر — این همان چیزی است که وقتی یک جاب قرمز شد، آدم دنبالش
+   می‌گردد: کِی اجرا شد، چقدر طول کشید، و چه شد. */
+function renderVeeamSessions(sess){
+  var panel = document.getElementById("veeamSessPanel");
+  var body  = document.getElementById("veeamSessBody");
+  var hint  = document.getElementById("veeamSessHint");
+  if(!panel || !body) return;
+  if(!sess || !sess.length){ panel.hidden = true; return; }
+  panel.hidden = false;
+
+  var failed = sess.filter(function(x){ return veeamTone(x.result) === "bad"; }).length;
+  if(hint) hint.textContent = failed
+    ? fa(failed) + " اجرای ناموفق در این فهرست"
+    : fa(sess.length) + " اجرای اخیر";
+
+  body.innerHTML = sess.slice(0, 40).map(function(x, i){
+    return '<tr>' +
+      '<td>' + fa(i + 1) + '</td>' +
+      '<td class="editable-cell">' + escapeHtml(x.name || "") + '</td>' +
+      '<td>' + escapeHtml(x.type || "") + '</td>' +
+      '<td><span class="vee-b ' + veeamTone(x.result) + '">' + escapeHtml(veeamWord(x.result)) + '</span></td>' +
+      '<td>' + escapeHtml(x.start || "—") + '</td>' +
+      '<td>' + escapeHtml(x.end || "—") + '</td>' +
+      '<td>' + (x.mins ? fa(x.mins) + " دقیقه" : "—") + '</td>' +
+      '</tr>';
+  }).join("");
 }
 
 async function loadVeeam(){

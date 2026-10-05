@@ -258,6 +258,91 @@ function Get-VbrJobs {
   })
 }
 
+# Repositories and recent sessions. Both are extras: a build that does
+# not have them still sends its jobs. So each is wrapped on its own --
+# one missing endpoint must not cost us the whole report.
+function Get-VbrRepos {
+  param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
+  $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
+  $r = $null
+  try {
+    $r = Invoke-Vbr -Url "$Base/api/v1/backupInfrastructure/repositories/states" -Headers $h -SkipCert $SkipCert
+  } catch {
+    Write-Verbose "repositories/states -> $((Get-HttpError $_).Body)"
+    return @()
+  }
+  $rows = @()
+  if ($r -and $r.data) { $rows = @($r.data) } elseif ($r -is [array]) { $rows = $r }
+  if ($rows.Count -eq 0) { return @() }
+
+  return @($rows | ForEach-Object {
+    # Builds disagree on units: some answer in GB, some in bytes. Take
+    # whichever is there and normalise to GB, rather than printing a
+    # number whose unit nobody can be sure of.
+    $cap = 0.0; $free = 0.0
+    if ($null -ne $_.capacityGB) { $cap = [double]$_.capacityGB }
+    elseif ($null -ne $_.capacity) { $cap = [double]$_.capacity / 1GB }
+    if ($null -ne $_.freeGB) { $free = [double]$_.freeGB }
+    elseif ($null -ne $_.freeSpace) { $free = [double]$_.freeSpace / 1GB }
+    $used = $cap - $free
+    if ($used -lt 0) { $used = 0 }
+    [pscustomobject]@{
+      name  = [string]$_.name
+      type  = [string]$_.type
+      capacity = [string][math]::Round($cap, 1)
+      free     = [string][math]::Round($free, 1)
+      used     = [string][math]::Round($used, 1)
+      pct      = [string]$(if ($cap -gt 0) { [math]::Round(($used / $cap) * 100) } else { '' })
+    }
+  })
+}
+
+function Get-VbrSessions {
+  param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
+  $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
+  $r = $null
+  try {
+    $r = Invoke-Vbr -Url "$Base/api/v1/sessions?limit=40" -Headers $h -SkipCert $SkipCert
+  } catch {
+    Write-Verbose "sessions -> $((Get-HttpError $_).Body)"
+    return @()
+  }
+  $rows = @()
+  if ($r -and $r.data) { $rows = @($r.data) } elseif ($r -is [array]) { $rows = $r }
+  if ($rows.Count -eq 0) { return @() }
+
+  $when = {
+    param($t)
+    if (-not $t) { return '' }
+    try { return ([datetime]$t).ToString('yyyy-MM-dd HH:mm') } catch { return [string]$t }
+  }
+
+  return @($rows | ForEach-Object {
+    # Some builds answer with a plain string here, others with an object
+    # carrying the message alongside. Read both rather than guessing.
+    $rr = ''
+    if ($null -ne $_.result) {
+      if ($_.result -is [string]) { $rr = $_.result }
+      elseif ($_.result.result) { $rr = [string]$_.result.result }
+    }
+    $mins = ''
+    try {
+      if ($_.creationTime -and $_.endTime) {
+        $mins = [string][math]::Round((([datetime]$_.endTime) - ([datetime]$_.creationTime)).TotalMinutes)
+      }
+    } catch { }
+    [pscustomobject]@{
+      name   = [string]$_.name
+      type   = [string]$_.sessionType
+      result = $rr
+      state  = [string]$_.state
+      start  = & $when $_.creationTime
+      end    = & $when $_.endTime
+      mins   = $mins
+    }
+  })
+}
+
 # ---------------------------------------------------------------
 
 $cfg = Read-Config -Path $ConfigPath
@@ -268,12 +353,16 @@ $base = $cfg.VbrHost
 if ($base -notmatch '^https?://') { $base = "https://${base}:9419" }
 $base = $base.TrimEnd('/')
 
-$jobs = @()
-$err  = ''
+$jobs  = @()
+$repos = @()
+$sess  = @()
+$err   = ''
 $script:JobsVia = ''
 try {
   $conn = Connect-Vbr -Base $base -User $cfg.VbrUser -Pass $cfg.VbrPass -SkipCert $skip
-  $jobs = Get-VbrJobs -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+  $jobs  = Get-VbrJobs     -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+  $repos = Get-VbrRepos    -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+  $sess  = Get-VbrSessions -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
 } catch {
   # Veeam was unreachable. Send anyway, with the error, so the kartabl
   # knows its numbers are stale. Sending nothing is silence, and silence
@@ -293,6 +382,8 @@ $payload = @{
   # ConvertTo-Json writes an object instead of a list -- which the server
   # reads as "no jobs came".
   jobs  = @($jobs)
+  repos = @($repos)
+  sessions = @($sess)
 } | ConvertTo-Json -Depth 5 -Compress
 
 try {
@@ -301,7 +392,7 @@ try {
     -Headers @{ 'x-veeam-key' = $cfg.PushKey } `
     -Body ([Text.Encoding]::UTF8.GetBytes($payload))
   if ($err) { Write-Output "Sent, but Veeam errored: $err" }
-  else { Write-Output "Sent: $($res.jobs) job(s)" }
+  else { Write-Output "Sent: $($res.jobs) job(s), $(@($repos).Count) repo(s), $(@($sess).Count) session(s)" }
 } catch {
   # Write-Error throws under ErrorActionPreference=Stop, so the next line
   # never runs and the Scheduled Task never sees the exit code -- the

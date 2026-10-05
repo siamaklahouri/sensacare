@@ -38,4 +38,45 @@
     </div>
     <div class="hint2" id="veeamNote" style="margin-top:10px;"></div>
   </div>
+
+  <div class="panel" id="veeamRepoPanel" hidden>
+    <div class="vm-head">
+      <h3>💽 مخزن‌های بکاپ</h3>
+      <span class="save-hint" id="veeamRepoHint"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:26px;">#</th>
+          <th>نام مخزن</th>
+          <th style="width:130px;">نوع</th>
+          <th style="width:110px;">ظرفیت (GB)</th>
+          <th style="width:110px;">آزاد (GB)</th>
+          <th style="width:210px;">پر شده</th>
+        </tr></thead>
+        <tbody id="veeamRepoBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="veeamSessPanel" hidden>
+    <div class="vm-head">
+      <h3>🕒 اجراهای اخیر</h3>
+      <span class="save-hint" id="veeamSessHint"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:26px;">#</th>
+          <th>نام</th>
+          <th style="width:120px;">نوع</th>
+          <th style="width:110px;">نتیجه</th>
+          <th style="width:150px;">شروع</th>
+          <th style="width:150px;">پایان</th>
+          <th style="width:90px;">مدت</th>
+        </tr></thead>
+        <tbody id="veeamSessBody"></tbody>
+      </table>
+    </div>
+  </div>
 </section>

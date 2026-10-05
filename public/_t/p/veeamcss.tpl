@@ -16,3 +16,17 @@
   background:color-mix(in srgb,var(--amber,#9A6B1F) 10%,transparent); color:var(--ink)}
 .veeam-warn.bad{border-color:color-mix(in srgb,var(--red,#B3261E) 45%,transparent);
   background:color-mix(in srgb,var(--red,#B3261E) 10%,transparent)}
+
+/* نوارِ پُری مخزن. نمودار نیست: یک نوار در خودِ ردیف، کنارِ عددش، سریع‌تر
+   از هر نموداری می‌گوید کدام مخزن دارد پر می‌شود. */
+.vee-bar{display:flex; align-items:center; gap:9px}
+.vee-bar .trk{flex:1; height:8px; border-radius:999px; background:var(--card-border); overflow:hidden}
+/* display:block لازم است: span به‌طور پیش‌فرض inline است و عرض و
+   ارتفاع روی عنصرِ inline اثر ندارند — نوار رسم می‌شد ولی هیچ‌وقت
+   دیده نمی‌شد. */
+.vee-bar .fil{display:block; height:100%; border-radius:999px; background:var(--green,#2F6B4F)}
+.vee-bar.warn .fil{background:var(--amber,#9A6B1F)}
+.vee-bar.bad .fil{background:var(--red,#B3261E)}
+.vee-bar .num{font-size:12px; font-weight:600; min-width:42px; text-align:start}
+.vee-bar.warn .num{color:var(--amber,#9A6B1F)}
+.vee-bar.bad .num{color:var(--red,#B3261E)}

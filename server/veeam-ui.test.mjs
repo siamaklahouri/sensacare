@@ -60,7 +60,7 @@ const v = await p.evaluate(() => {
   };
 });
 t(v.active, 'نما باز شد');
-t(v.cards && v.cards.length === 4, 'چهار کارتِ خلاصه آمدند', (v.cards || []).join(' | '));
+t(v.cards && v.cards.length >= 4, 'کارت‌های خلاصه آمدند', (v.cards || []).join(' | '));
 /* تعداد را از خودِ سرور می‌پرسیم، نه از عددی که این‌جا سفت شده باشد:
    این آزمون روی هر دیتابیسی باید اجرا شود. */
 const srvJobs = await p.evaluate(async a => {
@@ -78,6 +78,56 @@ t(v.rows && v.rows[0] && v.rows[0].includes('متوقف'),
 t(v.editable === 0 && v.inputs === 0,
   'هیچ خانه‌ای نوشتنی نیست و هیچ دکمه‌ای ندارد — این بخش آینه است، نه دفتر',
   'editable=' + v.editable + ' inputs=' + v.inputs);
+
+console.log('\n===== مخزن‌ها و اجراهای اخیر =====');
+const extra = await p.evaluate(() => {
+  const sec = document.getElementById('view-veeam');
+  const repoRows = [...sec.querySelectorAll('#veeamRepoBody tr')].map(tr =>
+    [...tr.children].map(td => td.textContent.trim()));
+  return {
+    cards: [...sec.querySelectorAll('#veeamCards .stat')].map(c =>
+      c.querySelector('.lbl').textContent.trim() + '=' + c.querySelector('.val').textContent.trim()),
+    repoShown: !document.getElementById('veeamRepoPanel').hidden,
+    repoRows,
+    bars: [...sec.querySelectorAll('#veeamRepoBody .vee-bar')].map(x => x.className.replace('vee-bar', '').trim() || 'ok'),
+    widths: [...sec.querySelectorAll('#veeamRepoBody .fil')].map(x => x.style.width),
+    repoHint: (document.getElementById('veeamRepoHint') || {}).textContent || '',
+    sessShown: !document.getElementById('veeamSessPanel').hidden,
+    sessRows: document.querySelectorAll('#veeamSessBody tr').length,
+    sessHint: (document.getElementById('veeamSessHint') || {}).textContent || '',
+    sessTones: [...sec.querySelectorAll('#veeamSessBody .vee-b')].map(x => x.className.replace('vee-b ', ''))
+  };
+});
+t(extra.repoShown && extra.repoRows.length === 3, 'جدولِ مخزن‌ها آمد', String(extra.repoRows.length));
+t(extra.bars.join(',') === 'ok,bad,ok', 'مخزنِ ۹۵٪ قرمز شد و بقیه نه', extra.bars.join(','));
+t(extra.widths.join(',') === '70%,95%,13%', 'نوارِ پُری به اندازهٔ درصدِ واقعی است', extra.widths.join(','));
+t(/۹۰/.test(extra.repoHint), 'و بالای جدول هشدار می‌دهد', extra.repoHint);
+/* نوار باید واقعاً دیده شود. عرضِ درست در style کافی نیست: span به‌طور
+   پیش‌فرض inline است و روی inline نه عرض اثر دارد نه ارتفاع. */
+const bar = await p.evaluate(() => {
+  const f = document.querySelector('#veeamRepoBody .fil');
+  const r = f.getBoundingClientRect();
+  return { w: Math.round(r.width), h: Math.round(r.height), bg: getComputedStyle(f).backgroundColor };
+});
+t(bar.w > 10 && bar.h > 0, 'و روی صفحه هم واقعاً رسم شده، نه فقط در style',
+  bar.w + '×' + bar.h + ' ' + bar.bg);
+t(extra.cards.some(c => /فضای کل/.test(c)) && extra.cards.some(c => /پرترین مخزن/.test(c)),
+  'کارت‌های فضا هم آمدند', extra.cards.join(' | '));
+t(extra.sessShown && extra.sessRows === 3, 'جدولِ اجراهای اخیر آمد', String(extra.sessRows));
+t(extra.sessTones.join(',') === 'ok,warn,bad', 'نتیجهٔ هر اجرا نشانِ خودش را گرفت', extra.sessTones.join(','));
+t(/ناموفق/.test(extra.sessHint), 'و شمارِ اجراهای ناموفق بالای جدول است', extra.sessHint);
+
+/* گزارشی که مخزن ندارد (بیلدِ قدیمی‌تر) نباید جدولِ خالی نشان بدهد */
+const bare = await p.evaluate(() => {
+  const keepR = VEEAM.repos, keepS = VEEAM.sessions;
+  VEEAM.repos = []; VEEAM.sessions = [];
+  renderVeeam();
+  const out = { r: document.getElementById('veeamRepoPanel').hidden,
+                s: document.getElementById('veeamSessPanel').hidden };
+  VEEAM.repos = keepR; VEEAM.sessions = keepS; renderVeeam();
+  return out;
+});
+t(bare.r && bare.s, 'بی‌داده، پانل‌ها اصلاً نشان داده نمی‌شوند — نه خالی');
 
 console.log('\n===== گزارشِ کهنه =====');
 /* زمانِ گزارش را دو ساعت عقب می‌بریم و از نو می‌کشیم: باید هشدار بدهد،
