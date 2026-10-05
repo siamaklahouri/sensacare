@@ -26,6 +26,7 @@ import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
          DEFAULT_PLANS as SL_DEFAULT_PLANS } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
+import { viewShareRows, saveViewShare, dropViewShare, shareableFor, specOf } from './viewshare.js';
 import { SECTION_PRESETS } from './sections.js';
 
 export const ADMIN_PAGE = '/login';
@@ -859,6 +860,55 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   if (mBox && m === 'DELETE') {
     await dropBox(env, mBox[1]);
     await log(env, 'shared-box-del', mBox[1], '');
+    return json({ ok: true });
+  }
+
+  /* ---------- اشتراکِ بخشِ یک کارتابل با یک گروه ----------
+     فرقش با بخشِ مشترکِ بالا این است: آن یکی جدولی است که همین‌جا از
+     صفر ساخته می‌شود و صاحبی ندارد؛ این یکی بخشِ خودِ کارتابلِ یک
+     نفر است که با گروهی به اشتراک می‌رود. داده جابه‌جا نمی‌شود و
+     مالک همان‌جا می‌بیندش.
+
+     هر دو فهرست با هم می‌روند: پنل باید بداند هر کارتابل چه بخش‌هایی
+     دارد تا بازشویِ دوم را درست پر کند. */
+  if (p === '/view-shares' && m === 'GET') {
+    const [rows, list, panels] = await Promise.all([
+      viewShareRows(env), orgList(env), allPanels(env)
+    ]);
+    const nameOf = {}, kindOf = {};
+    for (const x of panels) { nameOf[x.slug] = x.name; kindOf[x.slug] = x.kind; }
+    return json({ ok: true,
+      items: rows.map(r => {
+        const sp = specOf(r.view);
+        return { id: r.id, owner: r.owner, ownerName: nameOf[r.owner] || r.owner,
+                 view: r.view, label: sp ? sp.label : r.view, icon: sp ? sp.icon : '',
+                 org: r.org, orgPath: pathOf(list, r.org), w: !!r.w, created: r.created,
+                 /* ردیفی که کارتابل یا گروهش پاک شده: در نوارِ کسی
+                    ظاهر نمی‌شود، ولی در پنل دیده می‌شود تا ادمین
+                    بتواند پاکش کند. */
+                 orphan: nameOf[r.owner] === undefined || !list.some(o => o.id === r.org) || !sp };
+      }),
+      owners: panels.map(x => ({ slug: x.slug, name: x.name, kind: x.kind,
+                                 views: shareableFor(x.kind) })),
+      orgs: list.map(o => ({ id: o.id, path: pathOf(list, o.id), members: o.members.length })) });
+  }
+
+  if (p === '/view-shares' && m === 'POST') {
+    const [list, panels] = await Promise.all([orgList(env), allPanels(env)]);
+    const kinds = {};
+    for (const x of panels) kinds[x.slug] = x.kind;
+    const r = await saveViewShare(env, body, kinds, list.map(o => o.id));
+    if (r.error) return bad(r.error);
+    await log(env, 'view-share', r.id,
+              String(body.owner || '') + '/' + String(body.view || '') + '→' + String(body.org || ''));
+    return json({ ok: true, id: r.id });
+  }
+
+  const mVs = p.match(/^\/view-shares\/([a-z0-9]{6,16})$/);
+  if (mVs && m === 'DELETE') {
+    const r = await dropViewShare(env, mVs[1]);
+    if (r.error) return bad(r.error);
+    await log(env, 'view-share-del', mVs[1], '');
     return json({ ok: true });
   }
 

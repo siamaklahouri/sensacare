@@ -20,6 +20,9 @@ import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum, canSee, readOnlyFor } from './shared.js';
+import { orgsOf, orgList, pathOf } from './orgs.js';
+import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
+         editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1364,6 +1367,41 @@ export async function nightlyKartablBackup(env, slot) {
 
 /* ---------- مسیرها ---------- */
 
+/* مقایسهٔ دو رشته در زمانِ ثابت. مقایسهٔ معمولی سرِ اولین حرفِ ناجور
+   برمی‌گردد، و همان تفاوتِ زمان کافی است تا کسی کلید را حرف‌به‌حرف
+   حدس بزند. */
+/* اشتراک‌هایی که این کارتابل باید ببیند، با هر چیزی که برای نشان
+   دادنشان لازم است: نامِ مسیرِ گروه و نامِ صاحبِ بخش.
+
+   یک تابع، چون هم فهرستِ نوار از این‌جا می‌آید و هم نگهبانِ هر
+   درخواستِ داده — دو جا نوشتنش یعنی یک روز یکی‌شان سخت‌گیرتر از آن
+   یکی می‌شود. */
+async function myShares(env, panel) {
+  const orgs = await orgsOf(env, panel.id);
+  if (!orgs.length) return [];
+  const rows = await sharesFor(env, panel.id, orgs);
+  if (!rows.length) return [];
+  const [list, panels] = await Promise.all([orgList(env), allPanels(env)]);
+  const nameOf = {};
+  for (const x of panels) nameOf[x.slug] = x.name;
+  return rows
+    /* کارتابلی که پاک شده، بخشش هم نیست. ردیفِ اشتراکش بی‌صاحب
+       می‌ماند ولی در نوارِ کسی ظاهر نمی‌شود. */
+    .filter(r => nameOf[r.owner] !== undefined)
+    .map(r => ({ id: r.id, owner: r.owner, ownerName: nameOf[r.owner] || r.owner,
+                 view: r.view, org: r.org, orgPath: pathOf(list, r.org), w: !!r.w,
+                 spec: specOf(r.view) }))
+    .filter(r => r.spec);
+}
+
+function sameSecret(a, b) {
+  const x = String(a || ''), y = String(b || '');
+  if (x.length !== y.length) return false;
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return d === 0;
+}
+
 export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   const { rateLimit, clientIp } = helpers;
 
@@ -1427,6 +1465,43 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
     await setSetting(env, panel.keys.reset, Date.now());
     return json({ ok: true });
+  }
+
+  /* ---------- گزارشِ Veeam ----------
+     این یکی عمداً پیش از نشست است: فرستنده‌اش یک اسکریپت روی شبکهٔ
+     شرکت است، نه مرورگرِ کسی. سرورِ sltech به شبکهٔ داخلیِ شرکت
+     دسترسی ندارد، پس نمی‌تواند خودش سراغِ Veeam برود؛ اسکریپت از آن
+     طرف می‌فرستد.
+
+     کلیدش جداست و فقط همین یک کار را می‌کند: با آن نمی‌شود کارتابل را
+     خواند یا چیزی در آن نوشت. اگر لو رفت، ادمین در پنل عوضش می‌کند و
+     هیچ‌چیزِ دیگری دست نمی‌خورد. */
+  if (p === '/veeam/push' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-veeam:` + clientIp(req), 120, 3600);
+    if (!rl.ok) return bad('تلاش زیاد بود.', 429);
+    const want = String(await getSetting(env, 'veeamKey:' + panel.slug, '') || '');
+    const got = String(req.headers.get('x-veeam-key') || body.key || '');
+    /* مقایسهٔ هم‌زمان: با مقایسهٔ معمولی می‌شود کلید را حرف‌به‌حرف حدس زد */
+    if (!want || !sameSecret(want, got)) return bad('کلید درست نیست.', 403);
+
+    const jobs = Array.isArray(body.jobs) ? body.jobs.slice(0, 200).map(j => ({
+      name:   String(j && j.name || '').slice(0, 120),
+      type:   String(j && j.type || '').slice(0, 60),
+      result: String(j && j.result || '').slice(0, 40),
+      state:  String(j && j.state || '').slice(0, 40),
+      last:   String(j && j.last || '').slice(0, 40),
+      next:   String(j && j.next || '').slice(0, 40),
+      size:   String(j && j.size || '').slice(0, 40),
+      note:   String(j && j.note || '').slice(0, 200)
+    })) : [];
+    await setSetting(env, 'veeam:' + panel.slug, {
+      at: Date.now(),
+      host: String(body.host || '').slice(0, 120),
+      agent: String(body.agent || '').slice(0, 60),
+      error: String(body.error || '').slice(0, 300),
+      jobs
+    });
+    return json({ ok: true, jobs: jobs.length });
   }
 
   /* از این‌جا به بعد بدون نشست معتبر هیچ‌چیز */
@@ -1498,6 +1573,73 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       return r.error ? bad(r.error) : json(r);
     }
   }
+
+  /* ---------- بخش‌های به‌اشتراک‌گذاشته‌شدهٔ کارتابل‌های دیگر ----------
+     این‌ها بخشِ مشترکِ ادمین‌ساخته نیستند؛ بخشِ خودِ کارتابلِ یک نفرِ
+     دیگرند که ادمین با گروهِ ما به اشتراک گذاشته. داده همان‌جا می‌ماند
+     و این مسیرها فقط یک پنجره به آن‌اند.
+
+     عضویت هر بار از سرور خوانده می‌شود، نه از چیزی که مرورگر ادعا
+     می‌کند: اگر ادمین همین حالا ما را از گروه بردارد، درخواستِ بعدی
+     رد می‌شود. زیرِ featureOff هم نمی‌افتد، چون این بخش در فهرستِ
+     بخش‌های کارتابلِ ما نیست که بشود خاموشش کرد.
+
+     «/vshare» عمداً نامِ جداست و زیرِ «/shared» نرفته، تا الگویِ
+     بخش‌های مشترک آن را به‌عنوان بخشی به نامِ vshare نگیرد. */
+  if (p === '/vshare' && m === 'GET') {
+    const mine = await myShares(env, panel);
+    return json({ shares: mine.map(s => ({
+      id: s.id, view: s.view, w: !!s.w, org: s.org, orgPath: s.orgPath,
+      owner: s.owner, ownerName: s.ownerName,
+      label: s.spec.label, icon: s.spec.icon, cols: s.spec.cols
+    })) });
+  }
+
+  const mV = p.match(/^\/vshare\/([a-z0-9]{6,16})(\/row|\/cell|\/del|\/move)?$/);
+  if (mV) {
+    const sh = (await myShares(env, panel)).find(x => x.id === mV[1]);
+    if (!sh) return bad('این بخش مالِ شما نیست.', 404);
+    const owner = await panelBySlug(env, sh.owner);
+    if (!owner) return bad('کارتابلِ صاحبِ این بخش دیگر نیست.', 404);
+
+    const d = await loadKartabl(env, owner);
+    if (d.broken) return bad('دادهٔ این کارتابل روی سرور خوانده نشد.', 409);
+    const rows = readViewRows(d, sh.spec);
+
+    if (!mV[2] && m === 'GET')
+      return json({ rows, rev: d.rev, updated: d.updated, w: !!sh.w,
+                    label: sh.spec.label, cols: sh.spec.cols,
+                    owner: sh.owner, ownerName: sh.ownerName, orgPath: sh.orgPath });
+
+    if (m !== 'POST') return bad('این درخواست را نمی‌شناسم.', 405);
+    /* اجازهٔ نوشتن را فقط ادمین می‌دهد و این‌جا از دیتابیس خوانده
+       می‌شود — نه از بدنهٔ درخواست. */
+    if (!sh.w) return bad('این بخش را فقط می‌توانید ببینید.', 403);
+    /* شمارهٔ ردیف شناسهٔ ثابتی نیست: اگر مالک بین خواندن و نوشتنِ ما
+       ردیفی کم یا زیاد کرده، نوشتن روی ردیفِ اشتباهی می‌نشست. */
+    const baseRev = Number(body.baseRev);
+    if (!Number.isFinite(baseRev) || baseRev !== d.rev)
+      return json({ conflict: true, rev: d.rev, updated: d.updated, rows }, REV_CONFLICT);
+
+    let r;
+    if (mV[2] === '/row')  r = addViewRow(rows, sh.spec, body.v);
+    if (mV[2] === '/cell') r = editViewCell(rows, sh.spec, body.ix, body.k, body.v);
+    if (mV[2] === '/del')  r = killViewRow(rows, body.ix);
+    if (mV[2] === '/move') r = moveViewRow(rows, body.from, body.to);
+    if (!r) return bad('این درخواست را نمی‌شناسم.', 405);
+    if (r.error) return bad(r.error);
+
+    const next = writeViewRows(d, sh.spec, r.rows);
+    const w = await saveKartabl(env, owner, { state: next.state, db: next.db, baseRev: d.rev });
+    if (w.conflict) return json({ conflict: true, rev: w.rev, updated: w.updated }, REV_CONFLICT);
+    if (w.broken)  return bad('دادهٔ این کارتابل روی سرور خوانده نشد.', 409);
+    return json({ ok: true, rows: r.rows, rev: w.rev, updated: w.updated });
+  }
+
+  /* گزارشِ Veeam برای خودِ صفحه. فقط خواندن — نوشتنش فقط از راهِ
+     اسکریپت و با کلیدِ جداست. */
+  if (p === '/veeam' && m === 'GET')
+    return json({ report: await getSetting(env, 'veeam:' + panel.slug, null) });
 
   if (p === '/state' && m === 'GET') {
     const d = await loadKartabl(env, panel);

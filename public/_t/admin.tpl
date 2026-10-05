@@ -904,6 +904,21 @@ table.inv-tab td.desc{ text-align:right; }
     </div>
   </section>
 
+    <style>
+  /* فرمِ اشتراکِ بخش: یک ردیف روی دسکتاپ، ستونی روی گوشی */
+  .vsf{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin:14px 0 8px}
+  .vsf label{display:flex; flex-direction:column; gap:5px; font-size:12.5px; color:var(--ink-soft)}
+  .vsf select{min-width:170px}
+  .vsrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px 12px; border:1px solid var(--card-border); border-radius:10px;
+    background:var(--white); margin-bottom:8px}
+  .vsrow b{font-size:13.5px}
+  .vsrow .w{font-size:11.5px; padding:2px 8px; border-radius:999px;
+    border:1px solid var(--card-border); color:var(--ink-soft)}
+  .vsrow .w.on{border-color:var(--brass,#B08D57); color:var(--brass,#B08D57); font-weight:600}
+  .vsrow .gone{color:var(--red,#B3261E); font-size:11.5px}
+  .vsrow .sp{flex:1}
+  </style>
   <section id="tab-orgs" hidden>
     <div class="panel">
       <h2>سازمان</h2>
@@ -934,6 +949,35 @@ table.inv-tab td.desc{ text-align:right; }
       <div class="ov-acts" style="position:static; border-top:0; padding-top:14px;">
         <button class="btn btn-main" id="shNew">＋ بخش مشترک تازه</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2>اشتراکِ بخشِ یک کارتابل با یک گروه</h2>
+      <p class="sub">این با بالا فرق دارد. بالا جدولی است که همین‌جا از صفر ساخته می‌شود
+        و صاحبی ندارد. این‌جا بخشِ خودِ کارتابلِ یک نفر را با یک گروه به اشتراک
+        می‌گذارید — مثلاً «سرورها و بکاپ»ِ سیامک را با «احیا › فنی».</p>
+      <p class="sub">داده جابه‌جا نمی‌شود: همان ردیف‌هایی است که خودِ صاحبش می‌بیند.
+        هر تغییری که عضوِ گروه بدهد، در کارتابلِ صاحبِ بخش هم همان است — رونوشت نیست.
+        بخش برای اعضای گروه، زیرِ نامِ همان گروه و پایینِ بخش‌های خودشان می‌آید.</p>
+      <p class="sub">اجازهٔ تغییر فقط از همین‌جا داده می‌شود. کاربر نمی‌تواند بخشی را
+        خودش بدهد یا پس بگیرد.</p>
+
+      <div class="vsf">
+        <label>کارتابلِ صاحبِ بخش
+          <select id="vsOwner"></select></label>
+        <label>بخش
+          <select id="vsView"></select></label>
+        <label>گروهِ گیرنده
+          <select id="vsOrg"></select></label>
+        <label class="vsf-w">دسترسی
+          <select id="vsW">
+            <option value="0">فقط دیدن</option>
+            <option value="1">دیدن و تغییر</option>
+          </select></label>
+        <button class="btn btn-main" id="vsAdd">به اشتراک بگذار</button>
+      </div>
+      <div id="vsNote" class="hint2"></div>
+      <div id="vsList" class="hint">…</div>
     </div>
   </section>
 
@@ -1398,7 +1442,7 @@ function setupTabs(){
       if(b.dataset.tab === "msgs") loadMessages();
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
-      if(b.dataset.tab === "shared") loadShared();
+      if(b.dataset.tab === "shared"){ loadShared(); loadVShares(); }
       if(b.dataset.tab === "orgs") loadOrgs();
     });
   });
@@ -1406,6 +1450,7 @@ function setupTabs(){
   if(shn) shn.addEventListener("click", ()=> shForm(null));
   const ogn = document.getElementById("orgNew");
   if(ogn) ogn.addEventListener("click", ()=> orgForm(null));
+  setupVsAdd();
 
   /* ---- پشتیبانِ همهٔ کارتابل‌ها ----
      فهرست را سرور همان لحظه از پایگاه‌داده می‌خواند، پس کارتابلی که
@@ -2457,6 +2502,119 @@ function orgForm(cur, parentId){
 }
 
 let SH_TYPES = [], SH_RULES = [], PRESETS = [];
+
+/* ---------- اشتراکِ بخشِ یک کارتابل با یک گروه ----------
+   سه بازشو و یک دکمه. بازشویِ «بخش» به بازشویِ «کارتابل» بند است،
+   چون قالبِ مالی بخش‌های دیگری دارد تا قالبِ فنی — فهرستِ ثابت یعنی
+   ادمین می‌توانست «حساب‌های بانکی» را برای کارتابلِ فنی انتخاب کند و
+   سرور رد کند، بی‌آنکه معلوم شود چرا. */
+let VS_OWNERS = [], VS_ORGS = [];
+
+async function loadVShares(){
+  const box = document.getElementById("vsList");
+  if(!box) return;
+  box.textContent = "…";
+  const r = await api("/view-shares");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  VS_OWNERS = r.data.owners || [];
+  VS_ORGS   = r.data.orgs || [];
+  fillVsForm();
+
+  const items = r.data.items || [];
+  if(!items.length){
+    box.innerHTML = '<div class="hint">هنوز بخشی به اشتراک گذاشته نشده.</div>';
+    return;
+  }
+  box.innerHTML = items.map(it=>
+    '<div class="vsrow">' +
+      '<span>' + esc(it.icon) + '</span>' +
+      '<b>' + esc(it.label) + '</b>' +
+      '<span class="hint2">از کارتابلِ ' + esc(it.ownerName) + '</span>' +
+      '<span class="hint2">→ ' + esc(it.orgPath || "—") + '</span>' +
+      '<span class="w' + (it.w ? ' on' : '') + '">' +
+        (it.w ? 'دیدن و تغییر' : 'فقط دیدن') + '</span>' +
+      (it.orphan ? '<span class="gone">کارتابل یا گروهش دیگر نیست</span>' : '') +
+      '<span class="sp"></span>' +
+      '<button class="btn" data-vsw="' + esc(it.id) + '" data-w="' + (it.w ? '0' : '1') +
+        '" data-o="' + esc(it.owner) + '" data-v="' + esc(it.view) + '" data-g="' + esc(it.org) + '">' +
+        (it.w ? 'فقط دیدن' : 'اجازهٔ تغییر') + '</button>' +
+      '<button class="btn btn-off" data-vsdel="' + esc(it.id) + '">حذف</button>' +
+    '</div>').join("");
+
+  /* عوض کردنِ دسترسی همان «ذخیرهٔ دوباره» است: کلیدِ یگانهٔ جدول
+     (صاحب+بخش+گروه) همان ردیف را پیدا می‌کند، پس ردیفِ دومی ساخته
+     نمی‌شود. */
+  box.querySelectorAll("[data-vsw]").forEach(b=>{
+    b.onclick = async ()=>{
+      b.disabled = true;
+      const r2 = await api("/view-shares", { method:"POST", body: JSON.stringify({
+        owner: b.dataset.o, view: b.dataset.v, org: b.dataset.g, w: b.dataset.w === "1"
+      })});
+      if(!r2.ok){ b.disabled = false; say(r2.data.error || "نشد.", true); return; }
+      say("دسترسی عوض شد."); loadVShares();
+    };
+  });
+  box.querySelectorAll("[data-vsdel]").forEach(b=>{
+    b.onclick = async ()=>{
+      if(!confirm("این اشتراک برداشته شود؟ دادهٔ کارتابل دست نمی‌خورد؛ فقط دسترسیِ گروه.")) return;
+      b.disabled = true;
+      const r2 = await api("/view-shares/" + b.dataset.vsdel, { method:"DELETE" });
+      if(!r2.ok){ b.disabled = false; say(r2.data.error || "نشد.", true); return; }
+      say("برداشته شد."); loadVShares();
+    };
+  });
+}
+
+function fillVsForm(){
+  const ow = document.getElementById("vsOwner");
+  const vw = document.getElementById("vsView");
+  const og = document.getElementById("vsOrg");
+  if(!ow || !vw || !og) return;
+
+  const keepOwner = ow.value;
+  ow.innerHTML = VS_OWNERS.map(o=>
+    '<option value="' + esc(o.slug) + '">' + esc(o.name) + '</option>').join("");
+  if(keepOwner && VS_OWNERS.some(o=> o.slug === keepOwner)) ow.value = keepOwner;
+
+  og.innerHTML = VS_ORGS.length
+    ? VS_ORGS.map(o=> '<option value="' + esc(o.id) + '">' + esc(o.path) +
+        ' (' + fa(o.members) + ' نفر)</option>').join("")
+    : '<option value="">— هنوز گروهی نساخته‌اید —</option>';
+
+  const views = ()=>{
+    const o = VS_OWNERS.find(x=> x.slug === ow.value);
+    const list = (o && o.views) || [];
+    vw.innerHTML = list.length
+      ? list.map(v=> '<option value="' + esc(v.id) + '">' + esc(v.icon) + ' ' + esc(v.label) + '</option>').join("")
+      : '<option value="">— بخشِ اشتراکی‌شدنی ندارد —</option>';
+  };
+  views();
+  ow.onchange = views;
+}
+
+function setupVsAdd(){
+  const btn = document.getElementById("vsAdd");
+  if(!btn) return;
+  btn.addEventListener("click", async ()=>{
+    const note = document.getElementById("vsNote");
+    const owner = (document.getElementById("vsOwner") || {}).value || "";
+    const view  = (document.getElementById("vsView") || {}).value || "";
+    const org   = (document.getElementById("vsOrg") || {}).value || "";
+    const w     = ((document.getElementById("vsW") || {}).value || "0") === "1";
+    if(note) note.textContent = "";
+    if(!owner || !view || !org){
+      if(note) note.textContent = "کارتابل، بخش و گروه را انتخاب کنید.";
+      return;
+    }
+    btn.disabled = true;
+    const r = await api("/view-shares", { method:"POST",
+      body: JSON.stringify({ owner, view, org, w }) });
+    btn.disabled = false;
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    say("به اشتراک گذاشته شد.");
+    loadVShares();
+  });
+}
 
 async function loadShared(){
   const box = document.getElementById("shList");

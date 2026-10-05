@@ -190,4 +190,20 @@ function setupShared(){
   el.onload = ()=>{ if(window.initSharedBoxes) window.initSharedBoxes(); };
   el.onerror = ()=>{ console.warn("بخش‌های مشترک بار نشد."); };
   document.head.appendChild(el);
+  setupViewShares();
+}
+
+/* ---------------- بخش‌هایی که کارتابل‌های دیگر با گروهِ ما به اشتراک
+   گذاشته‌اند ----------------
+   این‌ها جدولِ ادمین‌ساخته نیستند؛ بخشِ خودِ کارتابلِ یک نفرِ دیگرند.
+   فایلش هم جداست چون هر دو قالب همان را بار می‌کنند. */
+function setupViewShares(){
+  if(!signedIn) return;
+  if(document.getElementById("vshareJs")) { if(window.initViewShares) window.initViewShares(); return; }
+  const el = document.createElement("script");
+  el.id = "vshareJs";
+  el.src = "/viewshare.js";
+  el.onload = ()=>{ if(window.initViewShares) window.initViewShares(); };
+  el.onerror = ()=>{ console.warn("بخش‌های اشتراکی بار نشد."); };
+  document.head.appendChild(el);
 }
