@@ -566,6 +566,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .add-row input, .add-row select{ background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:inherit; }
   .add-row input:focus, .add-row select:focus{ outline:2px solid var(--brass); }
+  /* نوارِ خروجیِ برنامهٔ ماه — بالای جدول، چسبیده به سمتِ شروع */
+  .day-ex{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; }
+  @media (max-width:560px){ .day-ex .btn{ flex:1 1 auto; } }
+  @media print{ .day-ex{ display:none !important; } }
   .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:var(--paper); border:1px solid var(--line); border-radius:8px; flex-wrap:wrap; }
   .visit-add-bar input, .visit-add-bar select{ background:var(--white); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit; }
   .visit-add-bar input:focus, .visit-add-bar select:focus{ outline:none; border-color:var(--brass); }
@@ -810,6 +814,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-daily">
       <div class="section-title">برنامه روزانه ماه</div>
       <div class="section-sub">وظایف اصلی، طرف‌حساب مرتبط و وضعیت هر روز</div>
+      <!-- خروجیِ برنامهٔ ماه. ادمین می‌تواند این دو دکمه را بدهد یا
+           پس بگیرد؛ بی‌اجازه، همین‌جا از صفحه برداشته می‌شوند. -->
+      <div class="day-ex" data-feat="export">
+        <button type="button" class="btn btn-ghost btn-sm" id="dayXlsxBtn">⬇ خروجی اکسل</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="dayPdfBtn">⬇ خروجی PDF</button>
+      </div>
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
@@ -4227,6 +4237,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 
 {{PART:cellpop}}
 {{PART:dellock}}
+{{PART:dayexport}}
 
 {{PART:reportjs}}
 

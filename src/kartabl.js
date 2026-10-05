@@ -106,7 +106,7 @@ const TEMPLATES = { it: 'it', fin: 'fin', gen: 'it' };
 /* «xlsx» خواندنِ یک‌بارهٔ فایل اکسل است و «folder» آینهٔ همیشگی روی
    سیستم. دوتا چیزِ جدا: اولی فایل را می‌خواند و رها می‌کند، دومی به
    یک پوشه بند است. ادمین هر کدام را جدا می‌دهد و پس می‌گیرد. */
-export const FEATURES = ['pass', 'ai', 'aikey', 'backup', 'folder', 'xlsx', 'vault', 'files'];
+export const FEATURES = ['pass', 'ai', 'aikey', 'backup', 'folder', 'xlsx', 'vault', 'files', 'export'];
 
 /* بخش‌های خودِ کارتابل که می‌شود برای هر کاربر برداشت. داشبورد،
    چک‌لیست، برنامهٔ روزانه، راهنما و تنظیمات این‌جا نیستند: ستون‌فقراتِ

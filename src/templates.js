@@ -18,6 +18,7 @@ import p_cellpop from '../public/_t/p/cellpop.tpl';
 import p_colorcss from '../public/_t/p/colorcss.tpl';
 import p_convert from '../public/_t/p/convert.tpl';
 import p_dellock from '../public/_t/p/dellock.tpl';
+import p_dayexport from '../public/_t/p/dayexport.tpl';
 import p_convertcss from '../public/_t/p/convertcss.tpl';
 import p_cellpopcss from '../public/_t/p/cellpopcss.tpl';
 import p_chartlib from '../public/_t/p/chartlib.tpl';
@@ -56,6 +57,7 @@ export const PARTS = new Map([
   ['colorcss', p_colorcss],
   ['convert', p_convert],
   ['dellock', p_dellock],
+  ['dayexport', p_dayexport],
   ['convertcss', p_convertcss],
   ['cellpopcss', p_cellpopcss],
   ['chartlib', p_chartlib],
