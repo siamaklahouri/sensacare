@@ -100,7 +100,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\veeam-push\veeam-push.ps1
 | `Sent, but Veeam errored: ...` | به کارتابل رسید ولی به Veeam نرسید — کاربر، رمز یا پورت را ببینید |
 | `Push to kartabl failed: ...` | به sltech.ir نرسید — کلید یا دسترسیِ اینترنتِ آن ویندوز را ببینید |
 
-برای دیدنِ جزئیاتِ بیشتر (مثلاً اینکه کدام نسخهٔ APIِ Veeam قبول شد):
+وقتی خطایی از سمتِ Veeam آمد، `-Verbose` بزنید: برای هر نسخهٔ API، کدِ
+وضعیت و **متنِ خودِ Veeam** را چاپ می‌کند — همان چیزی که می‌گوید اشکال از
+رمز است یا از نسخه یا از MFA:
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File C:\veeam-push\veeam-push.ps1 -Verbose
@@ -134,7 +136,12 @@ schtasks /run /tn "Veeam report to kartabl"
 | دکمهٔ VeeamBackup در نوار نیست | قدم ۱ انجام نشده |
 | «هنوز هیچ گزارشی از Veeam نرسیده» | اسکریپت هنوز اجرا نشده یا به sltech.ir نمی‌رسد — قدم ۵ را دستی بزنید |
 | هشدارِ زرد «این گزارش N دقیقه پیش آمده» | اسکریپت ایستاده — تاریخچه‌اش را در Task Scheduler ببینید |
-| هشدارِ قرمز «اسکریپتِ فرستنده به Veeam نرسید» | متنِ خطا همان‌جا نوشته شده. `401` یعنی کاربر/رمزِ Veeam، `timeout` یعنی پورتِ ۹۴۱۹ |
+| هشدارِ قرمز «اسکریپتِ فرستنده به Veeam نرسید» | متنِ خطا همان‌جا نوشته شده — ادامهٔ جدول |
+| `HTTP 400` با `invalid_grant` یا «user name or password» | نام کاربری یا رمزِ Veeam. فرمِ درست: `DOMAIN\\user` در JSON (بک‌اسلشِ دوتایی) |
+| `HTTP 400` و حرفی از MFA | آن کاربرِ Veeam احراز هویتِ دومرحله‌ای دارد. اسکریپت نمی‌تواند آن را رد کند؛ یک کاربرِ سرویسِ بدونِ MFA بسازید |
+| `HTTP 400` برای هر پنج نسخهٔ API | نسخهٔ APIِ این بیلدِ Veeam در فهرست نیست. خروجیِ `-Verbose` را بفرستید |
+| `HTTP 401` | کاربر هست ولی نقشِ لازم را ندارد — `Veeam Backup Viewer` بدهید |
+| `timeout` یا `No connection could be made` | پورتِ ۹۴۱۹ یا نامِ سرور در `VbrHost` |
 
 در پنل، دکمهٔ **کلید Veeam** بالای دکمه‌ها می‌گوید آخرین گزارش کِی، از
 کدام سرور و با چند جاب رسیده.

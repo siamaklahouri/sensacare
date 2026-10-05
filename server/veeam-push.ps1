@@ -79,14 +79,52 @@ function Invoke-Vbr {
   return Invoke-RestMethod @req
 }
 
+# The HTTP status line alone is useless here: Veeam answers 400 for a bad
+# password, for an unsupported API version and for an MFA-enabled account
+# alike, and only the response BODY says which. Windows PowerShell throws
+# the body away, so it has to be read off the stream by hand.
+function Get-HttpError {
+  param($Err)
+  $status = ''
+  $body = ''
+  # pwsh 7 hands the body over here; Windows PowerShell 5.1 leaves it empty.
+  if ($Err.ErrorDetails -and $Err.ErrorDetails.Message) { $body = [string]$Err.ErrorDetails.Message }
+  $resp = $null
+  try { $resp = $Err.Exception.Response } catch { }
+  if ($resp) {
+    try { $status = [string][int]$resp.StatusCode } catch { }
+    if (-not $body) {
+      try {
+        $stream = $resp.GetResponseStream()
+        if ($stream) {
+          $sr = New-Object System.IO.StreamReader($stream)
+          $body = $sr.ReadToEnd()
+          $sr.Close()
+        }
+      } catch { }
+    }
+  }
+  if (-not $body) { $body = [string]$Err.Exception.Message }
+  $body = ($body -replace '\s+', ' ').Trim()
+  if ($body.Length -gt 400) { $body = $body.Substring(0, 400) }
+  return @{ Status = $status; Body = $body }
+}
+
 # Veeam's API version changes with every build, and sending the wrong one
 # gets a 400. Rather than pinning a number that breaks on the next update,
 # try newest to oldest and keep the first that answers.
-$ApiVersions = @('1.2-rev1', '1.2-rev0', '1.1-rev0', '1.1-rev1', '1.0-rev2')
+$ApiVersions = @('1.2-rev1', '1.2-rev0', '1.1-rev1', '1.1-rev0', '1.0-rev2')
+
+# Answers that mean "your credentials are the problem", not "your version
+# is". Veeam phrases these differently across builds, so this matches on
+# what the message says rather than on an error code.
+$CredWords = 'invalid_grant|invalid_client|user name or password|username or password|' +
+             'incorrect|unauthor|not authenticated|logon|log on|mfa|multi-factor|' +
+             'two-factor|locked|expired'
 
 function Connect-Vbr {
   param([string] $Base, [string] $User, [string] $Pass, [bool] $SkipCert)
-  $last = $null
+  $last = 'no response'
   foreach ($v in $ApiVersions) {
     try {
       $form = 'grant_type=password&username=' + [uri]::EscapeDataString($User) +
@@ -99,10 +137,19 @@ function Connect-Vbr {
         Write-Verbose "Veeam API version $v accepted."
         return @{ Token = $tok.access_token; Version = $v }
       }
-    } catch { $last = $_ }
+    } catch {
+      $e = Get-HttpError $_
+      $last = ("api-version $v -> HTTP $($e.Status) $($e.Body)").Trim()
+      Write-Verbose $last
+      # Stop at the first answer that blames the credentials. Walking the
+      # rest of the list would be four more failed logins every run, every
+      # hour -- which is how a domain account gets locked out.
+      if ($e.Body -match $CredWords) {
+        throw "Veeam rejected the sign-in (not an API-version problem): $last"
+      }
+    }
   }
-  $msg = if ($last) { $last.Exception.Message } else { 'no response' }
-  throw "Veeam login failed. Last error: $msg"
+  throw "Veeam login failed for every API version tried. Last answer: $last"
 }
 
 function Get-VbrJobs {
