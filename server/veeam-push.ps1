@@ -109,7 +109,14 @@ function Get-VbrJobs {
   param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
   $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
   $r = Invoke-Vbr -Url "$Base/api/v1/jobs/states?limit=500" -Headers $h -SkipCert $SkipCert
-  $rows = if ($r.data) { $r.data } else { $r }
+
+  # Windows PowerShell 5.1 runs a ForEach-Object block once for $null,
+  # unlike pwsh 7. Without this, a VBR server with no jobs at all would
+  # have produced one all-empty row that looks like a real job.
+  $rows = @()
+  if ($r -and $r.data) { $rows = @($r.data) }
+  elseif ($r -is [array]) { $rows = $r }
+  if ($rows.Count -eq 0) { return @() }
 
   $when = {
     param($t)
