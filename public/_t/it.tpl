@@ -1053,8 +1053,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-checklist">
       <div class="section-title">چک‌لیست وظایف ماهانه</div>
 <!--IT-->      <div class="section-sub">وظایف تکرارشونده‌ی مدیر IT — هر ردیف را ویرایش کنید یا وظیفه‌ی جدید اضافه کنید</div><!--/IT--><!--GEN-->      <div class="section-sub">وظایف تکرارشونده‌ی این ماه — هر ردیف را ویرایش کنید یا وظیفه‌ی جدید اضافه کنید</div><!--/GEN-->
+      <!-- «بازنشانی» بالا می‌ماند: کارِ همهٔ جدول است، نه افزودنِ یک
+           ردیف. دکمهٔ افزودن مثل بقیهٔ جدول‌ها پایین رفت. -->
       <div class="toolbar">
-        <button class="btn btn-brass" id="addTaskBtn">＋ افزودن وظیفه</button>
         <button class="btn btn-ghost" id="resetTasksBtn">بازنشانی چک‌لیست</button>
       </div>
       <div class="tbl-wrap">
@@ -1066,6 +1067,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
           </tr></thead>
           <tbody id="checklistBody"></tbody>
         </table>
+      </div>
+      <div class="visit-add-bar" style="margin-top:10px;">
+        <button class="btn btn-brass btn-sm" id="addTaskBtn">＋ افزودن وظیفه</button>
       </div>
     </section>
 
