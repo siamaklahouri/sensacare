@@ -890,6 +890,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
   [data-theme="dark"] .remote-grid tbody tr:hover td,
   [data-theme="dark"] .remote-grid tbody tr:hover td.server-name{ background:#1E2B39; }
   [data-theme="dark"] .remote-grid td.server-name{ background:var(--white); }
+
+/* آخرین چیزی که بار می‌شود، چون حرفِ آخر را می‌زند — پوستهٔ مشترکِ
+   هر دو قالب. */
+{{PART:themecss}}
 </style>
 </head>
 <body>

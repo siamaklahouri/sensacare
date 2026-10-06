@@ -46,6 +46,7 @@ import p_theme from '../public/_t/p/theme.tpl';
 import p_vault from '../public/_t/p/vault.tpl';
 import p_xlsxmap from '../public/_t/p/xlsxmap.tpl';
 import p_vaultcss from '../public/_t/p/vaultcss.tpl';
+import p_themecss from '../public/_t/p/themecss.tpl';
 import p_veeam from '../public/_t/p/veeam.tpl';
 import p_veeamcss from '../public/_t/p/veeamcss.tpl';
 import p_veeamjs from '../public/_t/p/veeamjs.tpl';
@@ -90,6 +91,7 @@ export const PARTS = new Map([
   ['vault', p_vault],
   ['xlsxmap', p_xlsxmap],
   ['vaultcss', p_vaultcss],
+  ['themecss', p_themecss],
   ['veeam', p_veeam],
   ['veeamcss', p_veeamcss],
   ['veeamjs', p_veeamjs],

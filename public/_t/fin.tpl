@@ -637,6 +637,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:colorcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
   .theme-btn:active{ transform:scale(.94); }
+
+/* آخرین چیزی که بار می‌شود، چون حرفِ آخر را می‌زند — پوستهٔ مشترکِ
+   هر دو قالب. */
+{{PART:themecss}}
 </style>
 </head>
 <body>
