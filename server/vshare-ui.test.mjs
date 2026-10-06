@@ -67,6 +67,11 @@ const id = vsBtns[0] ? String(vsBtns[0].view).replace('vshare-', '') : '';
 await p.evaluate(v => document.querySelector('[data-view="' + v + '"]').click(), 'vshare-' + id);
 await p.waitForTimeout(1500);
 
+await p.evaluate(async ({ i, u }) => {
+  const r = await fetch('/api/' + u + '/vshare/' + i, { credentials: 'same-origin' });
+  const d = await r.json();
+  window.__vsCols = (d.cols || []).length;
+}, { i: id, u: USER });
 const tbl = await p.evaluate(i => {
   const sec = document.getElementById('view-vshare-' + i);
   if (!sec) return { no: 'section' };
@@ -74,13 +79,19 @@ const tbl = await p.evaluate(i => {
   const rows = [...sec.querySelectorAll('tbody tr')].map(tr =>
     [...tr.children].map(td => (td.querySelector('select') ? td.querySelector('select').value : td.textContent.trim())));
   return { active: sec.classList.contains('active'), ths, rows,
+           cols: (window.__vsCols || 0),
            sub: (sec.querySelector('.section-sub') || {}).textContent || '',
            hasToggle: !!sec.querySelector('[data-vsedit]'),
            hasAdd: !!sec.querySelector('[data-vsadd]') };
 }, id);
 t(tbl.active, 'نما باز شد');
-t(tbl.ths && tbl.ths.length === 9 && /حذف\/تغییر/.test(tbl.ths[8]),
-  'سرستون‌ها آمدند و کلیدِ حذف/تغییر در آخرین ستون نشست — مثل بقیهٔ جدول‌های کارتابل',
+/* تعداد ستون‌ها عمداً سفت نشده: فهرستِ ستون‌های هر بخش در
+   src/viewshare.js است و ممکن است عوض شود. آن‌چه باید همیشه درست
+   بماند این است: شماره اول، کلیدِ حذف/تغییر آخر، و ستون‌ها همان‌هایی
+   که سرور اعلام کرده. */
+t(tbl.ths && tbl.ths.length === tbl.cols + 2 &&
+  tbl.ths[0] === '#' && /حذف\/تغییر/.test(tbl.ths[tbl.ths.length - 1]),
+  'سرستون‌ها همان ستون‌های سرورند، با شماره در اول و کلیدِ حذف/تغییر در آخر',
   (tbl.ths || []).join(' | '));
 t(tbl.rows && tbl.rows.length === 3, 'هر سه ردیفِ سرورها آمدند', tbl.rows && tbl.rows.length);
 t(tbl.rows && tbl.rows[0].join(',').indexOf('srv-a') >= 0, 'و دادهٔ واقعی داخلشان است', tbl.rows && tbl.rows[0].join(' | '));

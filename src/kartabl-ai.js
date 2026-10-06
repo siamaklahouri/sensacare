@@ -114,9 +114,10 @@ function itContext(state, db, today) {
 
   const vm = db.vm || [];
   s += section(`سرورها (${vm.length})`,
-    table(vm.map(m => [m.location, m.server, m.size, m.sizeUsed, m.schedule,
+    table(vm.map(m => [m.location, m.server, m.size, m.sizeUsed, m.sizeVib, m.schedule,
                        m.lastFullBackup, m.lastRestore, m.storage]),
-      ['محل', 'سرور', 'حجم', 'مصرف', 'زمان‌بندی بکاپ', 'آخرین بکاپ کامل', 'آخرین ری‌استور', 'استوریج']));
+      ['محل', 'سرور', 'حجم', 'حجم vbk', 'حجم vib', 'زمان‌بندی بکاپ',
+       'آخرین بکاپ کامل', 'آخرین ری‌استور', 'استوریج']));
 
   const lines = db.lines || [];
   s += section(`خطوط MVPN (${lines.length})`,

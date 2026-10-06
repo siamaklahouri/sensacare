@@ -114,11 +114,14 @@ export function daysToAOA(state) {
 }
 
 export function serversToAOA(db) {
+  /* «SizeUsed» حجمِ vbk است. نامش عمداً عوض نشد: فایل‌های پشتیبانِ
+     قبلی با همین سرستون نوشته شده‌اند و اگر کسی یکی‌شان را برگرداند،
+     باید ستونش سرِ جایش بنشیند. */
   const rows = (db.vm || []).map(m => [m.location || '', m.server || '', m.size || 0,
-    m.sizeUsed || 0, m.schedule || '', m.lastRestore || '', m.lastFullBackup || '',
-    m.time || '', m.storage || '']);
-  return [['Location', 'Server', 'Size', 'SizeUsed', 'ScheduleBackup', 'LastRestore',
-           'LastFullBackup', 'Time', 'Storage'], ...rows];
+    m.sizeUsed || 0, m.sizeVib || 0, m.schedule || '', m.lastRestore || '',
+    m.lastFullBackup || '', m.time || '', m.storage || '']);
+  return [['Location', 'Server', 'Size', 'SizeUsed', 'SizeVib', 'ScheduleBackup',
+           'LastRestore', 'LastFullBackup', 'Time', 'Storage'], ...rows];
 }
 
 export function dailyLogToAOA(db) {

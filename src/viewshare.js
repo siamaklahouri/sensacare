@@ -102,7 +102,8 @@ export const SHAREABLE = {
     cols: [
       { k: 'server',         t: 'نام سرور',          kind: 'text' },
       { k: 'location',       t: 'IP/محل',            kind: 'text' },
-      { k: 'sizeUsed',       t: 'حجم (GB)',          kind: 'num' },
+      { k: 'sizeUsed',       t: 'حجم vbk (GB)',      kind: 'num' },
+      { k: 'sizeVib',        t: 'حجم vib (GB)',      kind: 'num' },
       { k: 'schedule',       t: 'زمان‌بندی',         kind: 'text' },
       { k: 'lastRestore',    t: 'آخرین ری‌استور',    kind: 'date' },
       { k: 'lastFullBackup', t: 'آخرین بکاپ کامل',   kind: 'date' },

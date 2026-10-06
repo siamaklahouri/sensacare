@@ -1141,7 +1141,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
           <table>
             <thead>
             <tr>
-              <th style="width:26px;">#</th><th>سرور</th><th style="width:135px;">IP / محل</th><th style="width:90px;">حجم (GB)</th>
+              <th style="width:26px;">#</th><th>سرور</th><th style="width:135px;">IP / محل</th>
+              <th style="width:92px;">حجم vbk (GB)</th><th style="width:92px;">حجم vib (GB)</th>
               <th style="width:130px;">زمان‌بندی بکاپ</th><th style="width:110px;">آخرین ریستور</th><th style="width:110px;">آخرین فول بک‌آپ</th><th style="width:100px;">Storage</th>
               <th style="width:70px;">
                 <label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">
@@ -1154,7 +1155,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
               <th></th>
               <th><input type="text" class="col-filter" data-key="server" placeholder="جستجو..."></th>
               <th><input type="text" class="col-filter" data-key="location" placeholder="جستجو..."></th>
-              <th><input type="text" class="col-filter" data-key="size" placeholder="جستجو..."></th>
+              <th><input type="text" class="col-filter" data-key="sizeUsed" placeholder="جستجو..."></th>
+              <th><input type="text" class="col-filter" data-key="sizeVib" placeholder="جستجو..."></th>
               <th><div class="msf" id="msfSchedule" data-key="schedule"></div></th>
               <th><input type="text" class="col-filter" data-key="lastRestore" placeholder="جستجو..."></th>
               <th><input type="text" class="col-filter" data-key="lastFullBackup" placeholder="جستجو..."></th>
@@ -2877,7 +2879,7 @@ let dbWorkbook = null;      // SheetJS workbook currently loaded/edited in memor
 let dbFileName = null;      // actual file name found in the folder (defaults to DB_FILE_NAME)
 let dbSyncedAt = null;
 
-let backupData = null;      // { vm:[{location,server,size,sizeUsed,schedule,lastRestore,lastFullBackup,time,storage}] }
+let backupData = null;      // { vm:[{location,server,size,sizeUsed,sizeVib,schedule,lastRestore,lastFullBackup,time,storage}] }
 let dailyLog = { "روزانه یک‌بار": [], "روزانه دوبار": [] }; // group -> [{year,month,day,done}]
 let companiesData = null;   // { companies: { name: [{dateStr,time,type}] } }
 let mvpnData = null;        // { lines: [{phone,owner,stage,ext,extFull,plan}] }
@@ -3230,7 +3232,8 @@ const XS_SERVERS = [
   { k:'location',      as:['Location','محل','مکان','سایت','دیتاسنتر','IP','آدرس','آی‌پی'] },
   { k:'server',        as:['Server','سرور','نام سرور','هاست','ماشین'] },
   { k:'size',          as:['Size','حجم','حجم کل','اندازه'] },
-  { k:'sizeUsed',      as:['SizeUsed','حجم استفاده‌شده','مصرف','استفاده'] },
+  { k:'sizeUsed',      as:['SizeVbk','SizeUsed','حجم vbk','حجم استفاده‌شده','مصرف','استفاده'] },
+  { k:'sizeVib',       as:['SizeVib','حجم vib'] },
   { k:'schedule',      as:['ScheduleBackup','Schedule','زمان‌بندی','زمان‌بندی بکاپ','دوره'] },
   { k:'lastRestore',   as:['LastRestore','آخرین ریستور','آخرین بازیابی'] },
   { k:'lastFullBackup',as:['LastFullBackup','آخرین فول بکاپ','آخرین بکاپ کامل'] },
@@ -3263,16 +3266,21 @@ function parseServersSheet(wb){
   const r = XMap.read(wb, "Servers", XS_SERVERS);
   LAST_READ.servers = r;
   return r.rows.filter(x=> String(x.server||"").trim()).map(x=>({
-    location: x.location||"", server: String(x.server), size: x.size||0, sizeUsed: x.sizeUsed||0,
+    location: x.location||"", server: String(x.server), size: x.size||0,
+    sizeUsed: x.sizeUsed||0, sizeVib: x.sizeVib||0,
     schedule: x.schedule||"", lastRestore: x.lastRestore||"", lastFullBackup: x.lastFullBackup||"",
     time: x.time||"", storage: x.storage||"", _x: x._x
   }));
 }
 
 function serversToAOA(){
-  const header = ["Location","Server","Size","SizeUsed","ScheduleBackup","LastRestore","LastFullBackup","Time","Storage"];
+  /* «SizeUsed» عمداً همان نامِ قبلی ماند و «SizeVbk» نشد: فایل‌های
+     دیتابیسی که از قبل روی دستگاهِ کاربر هستند با همین نام نوشته
+     شده‌اند، و عوض کردنش یعنی ستونِ حجمِ همه‌شان خالی بیاید. */
+  const header = ["Location","Server","Size","SizeUsed","SizeVib","ScheduleBackup","LastRestore","LastFullBackup","Time","Storage"];
   const rows = (backupData && backupData.vm || []).map(m=>[
-    m.location||"", m.server||"", m.size||0, m.sizeUsed||0, m.schedule||"", m.lastRestore||"", m.lastFullBackup||"", m.time||"", m.storage||""
+    m.location||"", m.server||"", m.size||0, m.sizeUsed||0, m.sizeVib||0,
+    m.schedule||"", m.lastRestore||"", m.lastFullBackup||"", m.time||"", m.storage||""
   ]);
   return [header, ...rows];
 }
@@ -3293,7 +3301,8 @@ function commitServerCell(idx, field, value){
 function addServerRow(vals){
   if(!backupData) backupData = { vm: [] };
   backupData.vm.push({
-    location: vals.location||"", server: vals.server, size: parseFloat(vals.size)||0, sizeUsed: parseFloat(vals.sizeUsed)||0,
+    location: vals.location||"", server: vals.server, size: parseFloat(vals.size)||0,
+    sizeUsed: parseFloat(vals.sizeUsed)||0, sizeVib: parseFloat(vals.sizeVib)||0,
     schedule: vals.schedule||"", lastRestore: "", lastFullBackup: "", time: vals.time||"", storage: vals.storage||""
   });
   // با افزودن ردیف جدید، حالت «حذف/تغییر» به‌طور خودکار فعال می‌شود تا ردیف
@@ -3734,9 +3743,12 @@ function renderServers(){
   if(svToggle) svToggle.checked = !!editMode.servers;
 
   const vmAll = (backupData && backupData.vm) || [];
-  const totalSize = vmAll.reduce((s,m)=>s+(parseFloat(m.sizeUsed)||0),0);
+  /* حجمِ کل یعنی هر دو با هم. اگر فقط vbk شمرده شود، کارت عددی
+     می‌دهد که از آن‌چه روی استوریج نشسته کمتر است. */
+  const sizeOf = m => (parseFloat(m.sizeUsed)||0) + (parseFloat(m.sizeVib)||0);
+  const totalSize = vmAll.reduce((s,m)=>s+sizeOf(m),0);
   const byStorage = {};
-  vmAll.forEach(m=>{ const k=m.storage||"نامشخص"; byStorage[k]=(byStorage[k]||0)+(parseFloat(m.sizeUsed)||0); });
+  vmAll.forEach(m=>{ const k=m.storage||"نامشخص"; byStorage[k]=(byStorage[k]||0)+sizeOf(m); });
   const byScheduleCount = {};
   vmAll.forEach(m=>{ const k=m.schedule||"نامشخص"; byScheduleCount[k]=(byScheduleCount[k]||0)+1; });
 
@@ -3772,6 +3784,7 @@ function renderServers(){
       ${editableTd(m.server, idx, "server", "servers")}
       ${editableTd(m.location, idx, "location", "servers")}
       ${editableTd(m.sizeUsed, idx, "sizeUsed", "servers")}
+      ${editableTd(m.sizeVib, idx, "sizeVib", "servers")}
       ${editableTd(m.schedule, idx, "schedule", "servers")}
       ${editableTd(m.lastRestore, idx, "lastRestore", "servers")}
       ${editableTd(m.lastFullBackup, idx, "lastFullBackup", "servers")}
@@ -3785,7 +3798,8 @@ function renderServers(){
       <td>＋</td>
       <td><input type="text" id="newServerName" placeholder="نام سرور" style="width:100%;"></td>
       <td><input type="text" id="newServerLocation" placeholder="IP/محل" style="width:100%;"></td>
-      <td><input type="number" id="newServerSize" placeholder="GB" style="width:100%;"></td>
+      <td><input type="number" id="newServerSize" placeholder="vbk" style="width:100%;"></td>
+      <td><input type="number" id="newServerSizeVib" placeholder="vib" style="width:100%;"></td>
       <td><input type="text" id="newServerSchedule" placeholder="روزانه یک بار" list="scheduleOptions" style="width:100%;"></td>
       <td colspan="2"><input type="text" id="newServerTime" placeholder="زمان بکاپ" style="width:100%;"></td>
       <td><input type="text" id="newServerStorage" placeholder="Storage-01" style="width:100%;"></td>
@@ -3794,7 +3808,7 @@ function renderServers(){
     <datalist id="scheduleOptions">${SCHEDULE_OPTIONS.map(o=>`<option value="${o}">`).join("")}</datalist>
   `;
 
-  body.innerHTML = (bodyRows || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این فیلتر پیدا نشد</td></tr>`) + addRow;
+  body.innerHTML = (bodyRows || `<tr><td colspan="10" style="color:var(--ink-faint);">موردی با این فیلتر پیدا نشد</td></tr>`) + addRow;
   /* ستونی که در فایل بود و ما نمی‌شناختیم، این‌جا به جدول می‌چسبد —
      به همان ترتیبی که ردیف‌ها کشیده شده‌اند. */
   XMap.paintExtras(body.closest("table"), bodyRows ? vm : []);
@@ -3820,6 +3834,7 @@ function renderServers(){
       server, location: document.getElementById("newServerLocation").value.trim(),
       size: document.getElementById("newServerSize").value,
       sizeUsed: document.getElementById("newServerSize").value,
+      sizeVib: document.getElementById("newServerSizeVib").value,
       schedule: document.getElementById("newServerSchedule").value.trim(),
       time: document.getElementById("newServerTime").value.trim(),
       storage: document.getElementById("newServerStorage").value.trim()
@@ -4626,10 +4641,10 @@ const AI_TIPS = ["این ماه چه کارهایی عقب افتاده؟",
    می‌کند، ردیف‌های خودش را می‌نویسد و همان را برمی‌گرداند. */
 const XSAMPLE = {
   sampleServersBtn: { sheet:"Servers", schema:()=>XS_SERVERS, file:"نمونه-سرورها.xlsx", rows:[
-    { location:"دیتاسنتر ۱", server:"SRV-APP-01", size:500, sizeUsed:220,
+    { location:"دیتاسنتر ۱", server:"SRV-APP-01", size:500, sizeUsed:220, sizeVib:35,
       schedule:"روزانه", lastRestore:"۱۴۰۵/۰۶/۲۰", lastFullBackup:"۱۴۰۵/۰۷/۰۱",
       time:"۰۲:۰۰", storage:"NAS" },
-    { location:"دیتاسنتر ۲", server:"SRV-DB-01", size:1000, sizeUsed:640,
+    { location:"دیتاسنتر ۲", server:"SRV-DB-01", size:1000, sizeUsed:640, sizeVib:120,
       schedule:"هفتگی", lastRestore:"۱۴۰۵/۰۵/۳۰", lastFullBackup:"۱۴۰۵/۰۶/۲۸",
       time:"۰۳:۳۰", storage:"Tape" }
   ]},
