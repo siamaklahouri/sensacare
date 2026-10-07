@@ -30,3 +30,46 @@
 .vee-bar .num{font-size:12px; font-weight:600; min-width:42px; text-align:start}
 .vee-bar.warn .num{color:var(--amber,#9A6B1F)}
 .vee-bar.bad .num{color:var(--red,#B3261E)}
+
+/* ردیفی که حرفی برای گفتن دارد، باید نشان بدهد که زدنش کاری می‌کند.
+   ردیفی که ندارد، کلیک‌پذیر هم نیست: نشانگرِ دستِ باز روی ردیفی که
+   هیچ پنجره‌ای باز نمی‌کند، خودش یک دروغِ کوچک است. */
+tr.vee-click{cursor:pointer}
+tr.vee-click:hover > td{background:var(--paper-2,var(--paper,#EEF2F6))}
+.vee-i{margin-inline-start:6px; font-size:11px; color:var(--ink-faint)}
+tr.vee-click:hover .vee-i{color:var(--brass)}
+
+/* پنجرهٔ جزئیات. وسطِ صفحه — نه بالا مثل پنجرهٔ ماه‌ها: آن یکی فهرستِ
+   کوتاهی است زیرِ دکمهٔ خودش، این یکی متنی است که آدم می‌نشیند و
+   می‌خواندش. */
+.vpop{position:fixed; inset:0; z-index:95; display:flex; align-items:center; justify-content:center;
+  padding:24px 16px; background:rgba(11,37,69,.34); backdrop-filter:blur(2px)}
+.vpop[hidden]{display:none}
+.vpop-card{width:100%; max-width:580px; background:var(--white); border:1px solid var(--card-border);
+  border-radius:16px; box-shadow:0 18px 48px rgba(11,37,69,.22); padding:15px 18px 18px;
+  max-height:calc(100vh - 48px); overflow:auto}
+.vpop-h{display:flex; align-items:center; gap:10px; justify-content:space-between;
+  font-size:14px; font-weight:700; color:var(--ink); margin-bottom:9px}
+.vpop-h .nm{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.vpop-x{background:transparent; border:0; color:var(--ink-faint); font-size:14px; cursor:pointer;
+  padding:4px 7px; border-radius:7px; line-height:1; flex:none}
+.vpop-x:hover{background:var(--paper-2,var(--paper,#EEF2F6)); color:var(--ink)}
+.vpop-meta{display:flex; flex-wrap:wrap; gap:7px 10px; align-items:center;
+  font-size:12px; color:var(--ink-soft)}
+.vpop-meta > span + span::before{content:"\2022"; color:var(--ink-faint); margin-inline-end:10px}
+.vpop-sub{font-size:11.5px; font-weight:700; color:var(--ink-faint); margin:15px 0 7px}
+/* پیام را دست‌نخورده نشان می‌دهیم: شکستِ خطِ خودِ Veeam بخشی از
+   خواناییِ متن است، و با white-space:pre-wrap هم حفظ می‌شود هم از
+   کادر بیرون نمی‌زند. */
+.vpop-msg{margin:0; white-space:pre-wrap; overflow-wrap:anywhere;
+  font-family:var(--font-body); font-size:12.5px; line-height:1.95; color:var(--ink);
+  background:var(--paper-2,var(--paper,#EEF2F6)); border:1px solid var(--card-border);
+  border-radius:10px; padding:10px 12px}
+.vpop-msg.warn{border-color:color-mix(in srgb,var(--amber,#9A6B1F) 45%,transparent);
+  background:color-mix(in srgb,var(--amber,#9A6B1F) 10%,transparent)}
+.vpop-msg.bad{border-color:color-mix(in srgb,var(--red,#B3261E) 45%,transparent);
+  background:color-mix(in srgb,var(--red,#B3261E) 10%,transparent)}
+.vpop-vms{display:flex; flex-wrap:wrap; gap:6px}
+.vpop-vms span{font-size:12px; color:var(--ink); border:1px solid var(--card-border);
+  background:var(--paper-2,var(--paper,#EEF2F6)); border-radius:999px; padding:4px 11px}
+.vpop-empty{font-size:12.5px; color:var(--ink-faint); line-height:1.95}

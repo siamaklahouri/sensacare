@@ -12,7 +12,9 @@
   from the inside out.
 
   What is sent: job name, type, last result, state, last and next run,
-  object count. Not the backups, not usernames, not passwords.
+  object count, the message Veeam wrote about the last run, and the
+  names of the machines the job backs up. Not the backups themselves,
+  not usernames, not passwords.
 
   Deliberately ASCII only. Windows PowerShell 5.1 reads a .ps1 with the
   system ANSI codepage unless the file carries a UTF-8 BOM, and a BOM
@@ -206,6 +208,35 @@ function Connect-Vbr {
   throw "Veeam login failed for every API version tried. Last answer: $last"
 }
 
+# The machines a job backs up. Veeam keeps them in the job's own
+# configuration, and where exactly depends on the job type, so each
+# known shape is tried in turn and an unknown one costs an empty list
+# rather than an error. Names only: the kartabl shows them, it does not
+# act on them, and object ids would just be noise on the screen.
+function Get-JobVms {
+  param($Row)
+  $out = @()
+  if (-not $Row) { return @() }
+  $lists = @()
+  if ($Row.virtualMachines -and $Row.virtualMachines.includes) { $lists += ,@($Row.virtualMachines.includes) }
+  if ($Row.includes)       { $lists += ,@($Row.includes) }
+  if ($Row.backupObjects)  { $lists += ,@($Row.backupObjects) }
+  if ($Row.computers)      { $lists += ,@($Row.computers) }
+  foreach ($l in $lists) {
+    foreach ($it in $l) {
+      if ($null -eq $it) { continue }
+      $n = ''
+      if ($it -is [string]) { $n = $it }
+      elseif ($it.name) { $n = [string]$it.name }
+      elseif ($it.inventoryObject -and $it.inventoryObject.name) { $n = [string]$it.inventoryObject.name }
+      elseif ($it.hostName) { $n = [string]$it.hostName }
+      if ($n -and ($out -notcontains $n)) { $out += $n }
+    }
+    if ($out.Count -gt 0) { break }
+  }
+  return @($out)
+}
+
 function Get-VbrJobs {
   param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
   $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
@@ -233,6 +264,25 @@ function Get-VbrJobs {
   elseif ($r -is [array]) { $rows = $r }
   if ($rows.Count -eq 0) { return @() }
 
+  # /jobs/states says how each job ended; it does not say what is inside
+  # it. The machine names live in the configuration, so when the states
+  # route answered, ask for the configuration too. It is an extra: if it
+  # fails, the verdicts still arrive and only the machine list is missing.
+  $vmById = @{}
+  if ($script:JobsVia -eq 'jobs/states') {
+    try {
+      $c = Invoke-Vbr -Url "$Base/api/v1/jobs?limit=500" -Headers $h -SkipCert $SkipCert
+      $crows = @()
+      if ($c -and $c.data) { $crows = @($c.data) } elseif ($c -is [array]) { $crows = $c }
+      foreach ($cr in $crows) {
+        $cid = [string]$cr.id
+        if ($cid) { $vmById[$cid] = Get-JobVms $cr }
+      }
+    } catch {
+      Write-Verbose "jobs (machine list) -> $((Get-HttpError $_).Body)"
+    }
+  }
+
   $when = {
     param($t)
     if (-not $t) { return '' }
@@ -240,6 +290,14 @@ function Get-VbrJobs {
   }
 
   return @($rows | ForEach-Object {
+    $vl = Get-JobVms $_
+    $jid = [string]$_.id
+    if ($vl.Count -eq 0 -and $jid -and $vmById.ContainsKey($jid)) { $vl = @($vmById[$jid]) }
+    # /jobs/states counts the objects itself; /jobs does not, but the
+    # machine list is the same count -- so the column stops being blank
+    # without anything being invented.
+    $oc = [string]$_.objectsCount
+    if (-not $oc -and $vl.Count -gt 0) { $oc = [string]$vl.Count }
     [pscustomobject]@{
       # Only used to tie a job to its session. The server does not know
       # this key and drops it, so it never reaches the kartabl.
@@ -255,8 +313,13 @@ function Get-VbrJobs {
       # /jobs/states gives the job's object count, not the backup size.
       # Putting a near-enough number where the asked-for one belongs is
       # worse than putting none.
-      objects = [string]$_.objectsCount
+      objects = $oc
       note    = [string]$_.description
+      # Why it ended that way, and what it backed up. A red verdict with
+      # no word why sends the user to the Veeam console anyway -- which
+      # is exactly the trip this section exists to save.
+      message = ''
+      vms     = @($vl)
     }
   })
 }
@@ -324,10 +387,15 @@ function Get-VbrSessions {
     # Some builds answer with a plain string here, others with an object
     # carrying the message alongside. Read both rather than guessing.
     $rr = ''
+    $mm = ''
     if ($null -ne $_.result) {
       if ($_.result -is [string]) { $rr = $_.result }
-      elseif ($_.result.result) { $rr = [string]$_.result.result }
+      else {
+        if ($_.result.result)  { $rr = [string]$_.result.result }
+        if ($_.result.message) { $mm = [string]$_.result.message }
+      }
     }
+    if (-not $mm -and $_.message) { $mm = [string]$_.message }
     $mins = ''
     try {
       if ($_.creationTime -and $_.endTime) {
@@ -339,6 +407,10 @@ function Get-VbrSessions {
       name   = [string]$_.name
       type   = [string]$_.sessionType
       result = $rr
+      # The sentence Veeam itself writes about this run. This is the only
+      # place it exists in the API, which is why sessions are read even
+      # when /jobs/states answered.
+      message = $mm
       state  = [string]$_.state
       start  = & $when $_.creationTime
       end    = & $when $_.endTime
@@ -423,14 +495,18 @@ function Add-SessionResults {
     if (-not $j.result) { $j.result = $x.result }
     if (-not $j.state)  { $j.state  = $x.state }
     if (-not $j.last)   { $j.last   = $x.start }
+    if (-not $j.message) { $j.message = $x.message }
   }
   return $Jobs
 }
 
-if ($script:JobsVia -eq 'jobs') {
-  $jobs = Add-SessionResults -Jobs $jobs -Sessions $sess
-  if (@($sess).Count -gt 0) { $script:JobsVia = 'jobs+sessions' }
-}
+# This runs on both paths, not only on the fallback: even when
+# /jobs/states answered, the verdict's message is in the session and
+# nowhere else. Nothing already filled is overwritten, so on the healthy
+# path only the message is added.
+$wasFallback = ($script:JobsVia -eq 'jobs')
+$jobs = Add-SessionResults -Jobs $jobs -Sessions $sess
+if ($wasFallback -and @($sess).Count -gt 0) { $script:JobsVia = 'jobs+sessions' }
 
 $payload = @{
   host  = [string]$cfg.VbrHost

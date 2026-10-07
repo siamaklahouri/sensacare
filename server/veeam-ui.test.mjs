@@ -43,12 +43,21 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
     body: JSON.stringify({
       host: 'veeam01.ehya.local', agent: 'veeam-push.ps1 / SRV-MGMT',
       jobs: [
+        /* جابِ اول: ماشین دارد، پیام ندارد. جابِ دوم: پیام دارد، ماشین
+           ندارد (بیلدی که فهرست نمی‌دهد). جابِ سوم: هر دو. جابِ چهارم:
+           هیچ‌کدام — و باید کلیک‌پذیر هم نباشد. */
         { name: 'Daily-VMs', type: 'Backup', result: 'Success', state: 'Stopped',
-          last: '2026-10-05 02:00', next: '2026-10-06 02:00', objects: '14' },
+          last: '2026-10-05 02:00', next: '2026-10-06 02:00', objects: '14',
+          vms: ['SRV-DC01', 'SRV-FILE02', 'APP-ERP'] },
         { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Working',
-          last: '2026-10-05 17:00', next: '2026-10-05 18:00', objects: '3' },
+          last: '2026-10-05 17:00', next: '2026-10-05 18:00', objects: '3',
+          message: 'Unable to truncate transaction logs' },
         { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
-          last: '2026-10-04 23:00', next: '', objects: '58' }
+          last: '2026-10-04 23:00', next: '', objects: '58',
+          message: 'Error: Tape device is offline.\nRetry in 30 minutes.',
+          vms: ['SRV-DC01'] },
+        { name: 'Tape-Weekly', type: 'BackupCopy', result: 'Success', state: 'Stopped',
+          last: '2026-10-03 23:00', next: '', objects: '' }
       ],
       repos: [
         { name: 'Main-NAS', type: 'WinLocal', capacity: '20480', free: '6150', used: '14330', pct: '70' },
@@ -61,7 +70,8 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
         { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Stopped',
           start: '2026-10-05 17:00', end: '2026-10-05 17:06', mins: '6' },
         { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
-          start: '2026-10-04 23:00', end: '2026-10-04 23:12', mins: '12' }
+          start: '2026-10-04 23:00', end: '2026-10-04 23:12', mins: '12',
+          message: 'Error: Tape device is offline.' }
       ]
     })
   });
@@ -111,7 +121,11 @@ const v = await p.evaluate(() => {
     warn: { hidden: (sec.querySelector('#veeamWarn') || {}).hidden,
             text: (sec.querySelector('#veeamWarn') || {}).textContent || '' },
     editable: sec.querySelectorAll('[contenteditable="true"]').length,
-    inputs: sec.querySelectorAll('input, select, button').length
+    /* دکمهٔ بستنِ پنجرهٔ جزئیات حساب نمی‌شود: آن یکی چیزی نمی‌نویسد،
+       فقط پنجره‌ای را که خودِ کاربر باز کرده می‌بندد. مقصودِ این سنجه
+       این است که در این بخش هیچ راهی برای نوشتن یا افزودن نباشد. */
+    inputs: [...sec.querySelectorAll('input, select, button')]
+      .filter(el => !el.closest('.vpop')).length
   };
 });
 t(v.active, 'نما باز شد');
@@ -183,6 +197,125 @@ const bare = await p.evaluate(() => {
   return out;
 });
 t(bare.r && bare.s, 'بی‌داده، پانل‌ها اصلاً نشان داده نمی‌شوند — نه خالی');
+
+console.log('\n===== پنجرهٔ پیام و ماشین‌ها =====');
+/* آن‌چه سرور نگه داشته. اگر مسیرِ push این دو کلید را بیندازد، همه‌چیزِ
+   بعدی هم می‌افتد — پس اول خودِ داده. */
+const kept = await p.evaluate(async a => {
+  const r = await fetch('/api/' + a + '/veeam', { credentials: 'same-origin' });
+  const d = await r.json();
+  const j = (d.report || {}).jobs || [];
+  const s = (d.report || {}).sessions || [];
+  return { msg: (j[2] || {}).message || '', vms: (j[0] || {}).vms || [],
+           smsg: (s[2] || {}).message || '' };
+}, API);
+t(/Tape device is offline/.test(kept.msg), 'سرور پیامِ جاب را نگه داشت', kept.msg.slice(0, 40));
+t(kept.vms.length === 3 && kept.vms[0] === 'SRV-DC01', 'و فهرستِ ماشین‌ها را', kept.vms.join(','));
+t(/Tape device is offline/.test(kept.smsg), 'و پیامِ اجرا را هم', kept.smsg.slice(0, 40));
+
+const rows = await p.evaluate(() => [...document.querySelectorAll('#veeamBody tr')].map(tr => ({
+  cls: tr.className, vi: tr.getAttribute('data-vi'), vp: tr.getAttribute('data-vp'),
+  i: !!tr.querySelector('.vee-i'), cur: getComputedStyle(tr).cursor
+})));
+t(rows.length === 4 && rows.slice(0, 3).every(r => /vee-click/.test(r.cls)),
+  'سه ردیفِ اول کلیک‌پذیرند', rows.map(r => r.cls || '-').join(' | '));
+t(!/vee-click/.test(rows[3].cls) && !rows[3].i,
+  'ردیفی که نه پیام دارد نه ماشین، کلیک‌پذیر نیست و نشانه هم ندارد — نشانگرِ دست روی ردیفی که ' +
+  'هیچ پنجره‌ای باز نمی‌کند، خودش یک دروغِ کوچک است');
+t(rows[0].cur === 'pointer', 'و نشانگر روی ردیفِ کلیک‌پذیر دست است', rows[0].cur);
+
+/* زدنِ ردیفِ ناموفق: پنجره باید باز شود، وسطِ صفحه بنشیند، و متنِ
+   خودِ Veeam را دست‌نخورده نشان بدهد. */
+const popped = await p.evaluate(() => {
+  document.querySelectorAll('#veeamBody tr')[2].click();
+  const pop = document.getElementById('veeamPop');
+  const card = pop.querySelector('.vpop-card');
+  const cr = card.getBoundingClientRect();
+  const msg = pop.querySelector('.vpop-msg');
+  return {
+    shown: !pop.hidden,
+    name: document.getElementById('veeamPopName').textContent.trim(),
+    meta: document.getElementById('veeamPopMeta').textContent.trim(),
+    msg: msg ? msg.textContent : '',
+    msgCls: msg ? msg.className : '',
+    pre: msg ? getComputedStyle(msg).whiteSpace : '',
+    vms: [...pop.querySelectorAll('.vpop-vms span')].map(x => x.textContent.trim()),
+    subs: [...pop.querySelectorAll('.vpop-sub')].map(x => x.textContent.trim()),
+    dx: Math.round((cr.left + cr.width / 2) - innerWidth / 2),
+    dy: Math.round((cr.top + cr.height / 2) - innerHeight / 2),
+    w: Math.round(cr.width), h: Math.round(cr.height),
+    fixed: getComputedStyle(pop).position
+  };
+});
+t(popped.shown && popped.name === 'Archive-to-Tape', 'با زدنِ ردیف، پنجره باز شد', popped.name);
+/* وسطِ صفحه بودن، خواستهٔ خودش بود. با چشم نمی‌سنجیم: مرکزِ کارت باید
+   روی مرکزِ پنجرهٔ مرورگر بیفتد. */
+t(Math.abs(popped.dx) <= 2 && Math.abs(popped.dy) <= 2,
+  'و دقیقاً وسطِ صفحه نشسته', 'dx=' + popped.dx + ' dy=' + popped.dy + ' ' + popped.w + '×' + popped.h);
+t(popped.fixed === 'fixed' && popped.w > 300 && popped.h > 100, 'و کارتش واقعاً رسم شده',
+  popped.fixed + ' ' + popped.w + '×' + popped.h);
+t(/Tape device is offline/.test(popped.msg) && /Retry in 30 minutes/.test(popped.msg),
+  'هر دو خطِ پیامِ Veeam داخلش است', popped.msg.replace(/\n/g, ' / ').slice(0, 60));
+t(/pre-wrap/.test(popped.pre), 'و شکستِ خطِ خودِ Veeam حفظ شده، نه چسبیده به هم', popped.pre);
+t(/bad/.test(popped.msgCls), 'پیامِ جابِ ناموفق قرمز است', popped.msgCls);
+t(popped.vms.join(',') === 'SRV-DC01', 'ماشین‌های همان جاب را نشان می‌دهد', popped.vms.join(','));
+t(popped.subs.length === 2 && /ماشین/.test(popped.subs[1]), 'دو بخش دارد: پیام و ماشین‌ها',
+  popped.subs.join(' | '));
+
+/* ردیفِ اول پیام ندارد ولی سه ماشین دارد: باید همان را بگوید و
+   فهرست را نشان بدهد — نه پنجرهٔ خالی. */
+const first = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  document.querySelectorAll('#veeamBody tr')[0].click();
+  const pop = document.getElementById('veeamPop');
+  return { shown: !pop.hidden,
+           msg: !!pop.querySelector('.vpop-msg'),
+           empty: (pop.querySelector('.vpop-empty') || {}).textContent || '',
+           vms: [...pop.querySelectorAll('.vpop-vms span')].map(x => x.textContent.trim()) };
+});
+t(first.shown && !first.msg && /پیامی ننوشته/.test(first.empty),
+  'جابی که پیام ندارد، همین را می‌گوید', first.empty.slice(0, 40));
+t(first.vms.join(',') === 'SRV-DC01,SRV-FILE02,APP-ERP', 'و هر سه ماشینش را می‌شمارد', first.vms.join(','));
+
+/* بستن: هم با Escape، هم با زدنِ زمینهٔ تاریک — ولی زدنِ خودِ کارت
+   نباید ببندد، وگرنه کسی که می‌خواهد متن را انتخاب کند پنجره‌اش بسته
+   می‌شود. */
+await p.keyboard.press('Escape');
+await p.waitForTimeout(150);
+t(await p.evaluate(() => document.getElementById('veeamPop').hidden), 'Escape می‌بندد');
+const back = await p.evaluate(() => {
+  document.querySelectorAll('#veeamBody tr')[0].click();
+  const pop = document.getElementById('veeamPop');
+  pop.querySelector('.vpop-card').click();
+  const afterCard = !pop.hidden;
+  pop.click();
+  return { afterCard, afterBack: pop.hidden };
+});
+t(back.afterCard, 'زدن روی خودِ کارت نمی‌بندد');
+t(back.afterBack, 'زدن روی زمینهٔ تاریک می‌بندد');
+
+/* اجرای اخیر هم همین‌طور — ولی بی‌فهرستِ ماشین: اجرا، اجرایِ همان جاب
+   است و فهرستش همان فهرست؛ دو بار نشان دادنش تکرار بود. */
+const ss = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  const trs = [...document.querySelectorAll('#veeamSessBody tr')];
+  const clickable = trs.map(tr => /vee-click/.test(tr.className));
+  trs[2].click();
+  const pop = document.getElementById('veeamPop');
+  return { clickable, shown: !pop.hidden,
+           name: document.getElementById('veeamPopName').textContent.trim(),
+           msg: (pop.querySelector('.vpop-msg') || {}).textContent || '',
+           meta: document.getElementById('veeamPopMeta').textContent,
+           subs: [...pop.querySelectorAll('.vpop-sub')].map(x => x.textContent.trim()) };
+});
+t(ss.clickable.join(',') === 'false,false,true',
+  'در اجراهای اخیر فقط همان اجرایی که پیام دارد کلیک‌پذیر است', ss.clickable.join(','));
+t(ss.shown && /Tape device is offline/.test(ss.msg), 'و پیامش را نشان می‌دهد', ss.name);
+t(ss.subs.length === 1, 'برای اجرا بخشِ ماشین‌ها نمی‌آید', ss.subs.join(' | '));
+t(/مدت/.test(ss.meta) && /دقیقه/.test(ss.meta), 'و مدتِ اجرا بالای پیام نوشته شده',
+  ss.meta.replace(/\s+/g, ' ').slice(0, 70));
+
+await p.evaluate(() => { document.getElementById('veeamPop').hidden = true; });
 
 console.log('\n===== گزارشِ کهنه =====');
 /* زمانِ گزارش را دو ساعت عقب می‌بریم و از نو می‌کشیم: باید هشدار بدهد،

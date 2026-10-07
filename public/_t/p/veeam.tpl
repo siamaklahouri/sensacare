@@ -59,6 +59,22 @@
     </div>
   </div>
 
+  <!-- پنجرهٔ جزئیاتِ یک ردیف. چرا پنجره و نه یک ستونِ دیگر: پیامِ
+       Veeam چندخطی است و فهرستِ ماشین‌ها هم می‌تواند بیست‌تایی باشد —
+       هر کدام در یک خانهٔ جدول، یا ردیف را سه‌برابر می‌کند یا بریده
+       می‌شود و خوانده نمی‌شود. وسطِ صفحه باز می‌شود چون همان لحظه
+       تنها چیزی است که طرف دارد می‌خواند. -->
+  <div class="vpop" id="veeamPop" hidden>
+    <div class="vpop-card" role="dialog" aria-modal="true" aria-label="جزئیاتِ اجرا">
+      <div class="vpop-h">
+        <span class="nm" id="veeamPopName"></span>
+        <button type="button" class="vpop-x" id="veeamPopX" title="بستن">✕</button>
+      </div>
+      <div class="vpop-meta" id="veeamPopMeta"></div>
+      <div id="veeamPopBody"></div>
+    </div>
+  </div>
+
   <div class="panel" id="veeamSessPanel" hidden>
     <div class="vm-head">
       <h3>🕒 اجراهای اخیر</h3>

@@ -51,6 +51,25 @@ function veeamWhen(at){
   }catch(e){ return d.toLocaleString(); }
 }
 
+/* آیا این ردیف چیزی برای نشان دادن دارد؟ پیامی که Veeam نوشته، یا
+   فهرستِ ماشین‌هایی که از آن‌ها بکاپ گرفته شده. اگر هیچ‌کدام نبود،
+   ردیف کلیک‌پذیر هم نمی‌شود — پنجرهٔ خالی، بدتر از پنجرهٔ نبوده است. */
+function veeamMsg(x){ return String(x && x.message || "").trim(); }
+function veeamVms(x){ return (x && Array.isArray(x.vms)) ? x.vms.filter(Boolean) : []; }
+function veeamHasDetail(x){ return !!(veeamMsg(x) || veeamVms(x).length); }
+var VEEAM_TIP = "برای دیدنِ پیام و ماشین‌ها کلیک کنید";
+
+/* نشانهٔ کوچکِ «این‌جا بیشتر هست». در ستونِ نتیجه می‌نشیند و نه در
+   ستونِ نام: نامِ جاب خودش خانهٔ editable-cell است و پنجرهٔ متنِ بلند
+   با textContent می‌خواندش، پس هیچ عنصری نباید داخلش گذاشته شود. */
+function veeamMore(x){
+  return veeamHasDetail(x) ? '<span class="vee-i" title="' + VEEAM_TIP + '">ⓘ</span>' : "";
+}
+function veeamRowAttrs(x, kind, i){
+  if(!veeamHasDetail(x)) return "";
+  return ' class="vee-click" data-vp="' + kind + '" data-vi="' + i + '" title="' + VEEAM_TIP + '"';
+}
+
 function renderVeeam(){
   var body = document.getElementById("veeamBody");
   if(!body) return;
@@ -124,11 +143,12 @@ function renderVeeam(){
 
   body.innerHTML = jobs.map(function(j, i){
     var tone = veeamTone(j.result);
-    return '<tr>' +
+    return '<tr' + veeamRowAttrs(j, "job", i) + '>' +
       '<td>' + fa(i + 1) + '</td>' +
       '<td class="editable-cell">' + escapeHtml(j.name || "") + '</td>' +
       '<td>' + escapeHtml(j.type || "") + '</td>' +
-      '<td><span class="vee-b ' + tone + '">' + escapeHtml(veeamWord(j.result)) + '</span></td>' +
+      '<td><span class="vee-b ' + tone + '">' + escapeHtml(veeamWord(j.result)) + '</span>' +
+        veeamMore(j) + '</td>' +
       '<td>' + escapeHtml(veeamState(j.state)) + '</td>' +
       '<td>' + escapeHtml(j.last || "—") + '</td>' +
       '<td>' + escapeHtml(j.next || "—") + '</td>' +
@@ -142,8 +162,109 @@ function renderVeeam(){
   renderVeeamRepos(repos);
   renderVeeamSessions(VEEAM.sessions || []);
 
+  veeamPopInit();
   if(window.tableSizeSweep) try{ window.tableSizeSweep(); }catch(e){}
   if(window.cellPopScan) try{ window.cellPopScan(); }catch(e){}
+}
+
+/* ---------------- پنجرهٔ جزئیاتِ یک ردیف ----------------
+   خواسته‌اش ساده است و دلیلش ساده‌تر: جدول می‌گوید «ناموفق» و همین.
+   برای فهمیدنِ علت، آدم باید برود سرِ کنسولِ Veeam — و این بخش
+   دقیقاً برای نرفتن به آن کنسول ساخته شده. پس همان جمله‌ای که Veeam
+   نوشته، و همان ماشین‌هایی که جاب ازشان بکاپ می‌گیرد، همین‌جا دیده
+   می‌شوند. */
+function veeamPopFill(x, kind){
+  var nm   = document.getElementById("veeamPopName");
+  var meta = document.getElementById("veeamPopMeta");
+  var bd   = document.getElementById("veeamPopBody");
+  if(!nm || !meta || !bd) return;
+
+  nm.textContent = String(x.name || "—");
+  nm.title = String(x.name || "");
+
+  var tone = veeamTone(x.result);
+  /* هر تکه در spanِ خودش، چون فاصلهٔ flex وقتی فارسی و لاتین کنارِ هم
+     می‌نشینند به چشم نمی‌آید و «BackupCopyوضعیت: متوقف» خوانده می‌شود.
+     نقطهٔ جداکننده را CSS می‌گذارد. */
+  var bits = [];
+  var put = function(t){ bits.push("<span>" + t + "</span>"); };
+  put('<span class="vee-b ' + tone + '">' + escapeHtml(veeamWord(x.result)) + '</span>');
+  if(x.type)  put(escapeHtml(x.type));
+  if(x.state) put("وضعیت: " + escapeHtml(veeamState(x.state)));
+  if(kind === "sess"){
+    if(x.start) put("شروع: " + escapeHtml(x.start));
+    if(x.end)   put("پایان: " + escapeHtml(x.end));
+    if(x.mins)  put("مدت: " + fa(x.mins) + " دقیقه");
+  } else {
+    if(x.last) put("آخرین اجرا: " + escapeHtml(x.last));
+    if(x.next) put("اجرای بعدی: " + escapeHtml(x.next));
+  }
+  meta.innerHTML = bits.join("");
+
+  var html = "";
+  var msg = veeamMsg(x);
+  html += '<div class="vpop-sub">پیامِ Veeam</div>';
+  html += msg
+    ? '<div class="vpop-msg ' + (tone === "ok" ? "" : tone) + '">' + escapeHtml(msg) + '</div>'
+    : '<div class="vpop-empty">Veeam برای این اجرا پیامی ننوشته — یعنی چیزی برای گفتن نبوده.</div>';
+
+  /* فهرستِ ماشین‌ها فقط برای جاب معنا دارد: اجرا، اجرایِ همان جاب است
+     و فهرستش همان فهرست. تکرارش دو بار یک چیز را نشان می‌داد. */
+  if(kind === "job"){
+    var vms = veeamVms(x);
+    html += '<div class="vpop-sub">ماشین‌های داخلِ این جاب' +
+      (vms.length ? " (" + fa(vms.length) + ")" : "") + '</div>';
+    html += vms.length
+      ? '<div class="vpop-vms">' + vms.map(function(v){
+          return '<span>' + escapeHtml(v) + '</span>';
+        }).join("") + '</div>'
+      : '<div class="vpop-empty">فهرستِ ماشین‌ها نرسیده. اسکریپتِ فرستنده را به نسخهٔ تازه ' +
+        'به‌روز کنید؛ نسخه‌های پیشین این فهرست را نمی‌فرستادند.</div>';
+  }
+  bd.innerHTML = html;
+}
+
+function veeamPopOpen(kind, i){
+  var pop = document.getElementById("veeamPop");
+  if(!pop || !VEEAM) return;
+  var list = kind === "sess" ? (VEEAM.sessions || []) : (VEEAM.jobs || []);
+  var x = list[i];
+  if(!x) return;
+  veeamPopFill(x, kind);
+  pop.hidden = false;
+}
+
+/* یک بار بسته می‌شود، نه هر بار که جدول از نو کشیده می‌شود: شنونده‌ها
+   روی خودِ tbody می‌نشینند و ردیف‌ها با واسطه خوانده می‌شوند، پس
+   رندرِ دوباره هیچ شنونده‌ای را خراب یا تکراری نمی‌کند. */
+function veeamPopInit(){
+  var pop = document.getElementById("veeamPop");
+  if(!pop || pop.getAttribute("data-wired") === "1") return;
+  pop.setAttribute("data-wired", "1");
+
+  var close = function(){ pop.hidden = true; };
+  var xBtn = document.getElementById("veeamPopX");
+  if(xBtn) xBtn.addEventListener("click", close);
+  /* زدن روی زمینهٔ تاریک یعنی بستن — ولی فقط خودِ زمینه، نه کارت */
+  pop.addEventListener("click", function(e){ if(e.target === pop) close(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && !pop.hidden){ e.preventDefault(); close(); }
+  });
+
+  ["veeamBody", "veeamSessBody"].forEach(function(id){
+    var tb = document.getElementById(id);
+    if(!tb) return;
+    tb.addEventListener("click", function(e){
+      var t = e.target;
+      if(!t || !t.closest) return;
+      /* خانهٔ متنِ بلند، پنجرهٔ خودش را دارد. دو پنجره روی یک کلیک،
+         یکی‌شان را پشتِ آن یکی پنهان می‌کند. */
+      if(t.closest("td.cp-long")) return;
+      var tr = t.closest("tr");
+      if(!tr || tr.className.indexOf("vee-click") < 0) return;
+      veeamPopOpen(tr.getAttribute("data-vp"), Number(tr.getAttribute("data-vi")));
+    });
+  });
 }
 
 /* مخزن‌ها. پانل فقط وقتی دیده می‌شود که چیزی برای نشان دادن باشد —
@@ -197,11 +318,12 @@ function renderVeeamSessions(sess){
     : fa(sess.length) + " اجرای اخیر";
 
   body.innerHTML = sess.slice(0, 40).map(function(x, i){
-    return '<tr>' +
+    return '<tr' + veeamRowAttrs(x, "sess", i) + '>' +
       '<td>' + fa(i + 1) + '</td>' +
       '<td class="editable-cell">' + escapeHtml(x.name || "") + '</td>' +
       '<td>' + escapeHtml(x.type || "") + '</td>' +
-      '<td><span class="vee-b ' + veeamTone(x.result) + '">' + escapeHtml(veeamWord(x.result)) + '</span></td>' +
+      '<td><span class="vee-b ' + veeamTone(x.result) + '">' + escapeHtml(veeamWord(x.result)) + '</span>' +
+        veeamMore(x) + '</td>' +
       '<td>' + escapeHtml(x.start || "—") + '</td>' +
       '<td>' + escapeHtml(x.end || "—") + '</td>' +
       '<td>' + (x.mins ? fa(x.mins) + " دقیقه" : "—") + '</td>' +

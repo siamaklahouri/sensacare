@@ -1488,6 +1488,11 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const k = await checkPassword(got, want);
     if (!k.ok) return bad('کلید درست نیست.', 403);
 
+    /* فهرستِ ماشین‌های یک جاب. PowerShell آرایهٔ تک‌عضوی را گاهی باز
+       می‌کند و همان یک رشته را می‌فرستد، پس هر دو شکل پذیرفته می‌شود —
+       وگرنه جابی که فقط یک ماشین دارد، بی‌ماشین دیده می‌شد. */
+    const vmList = v => (Array.isArray(v) ? v : (v ? [v] : []))
+      .slice(0, 80).map(x => String(x || '').slice(0, 120)).filter(Boolean);
     const jobs = Array.isArray(body.jobs) ? body.jobs.slice(0, 200).map(j => ({
       name:   String(j && j.name || '').slice(0, 120),
       type:   String(j && j.type || '').slice(0, 60),
@@ -1496,7 +1501,13 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       last:   String(j && j.last || '').slice(0, 40),
       next:   String(j && j.next || '').slice(0, 40),
       objects: String(j && j.objects || '').slice(0, 40),
-      note:   String(j && j.note || '').slice(0, 200)
+      note:   String(j && j.note || '').slice(0, 200),
+      /* پیامِ خودِ Veeam دربارهٔ آخرین اجرا. بریده می‌شود چون این
+         گزارش تمامش در یک خانهٔ تنظیمات می‌نشیند و یک جابِ پرخطا
+         می‌تواند چند صفحه متن بفرستد — ۶۰۰ نویسه برای فهمیدنِ علت
+         بس است و برای خفه‌کردنِ جدول کم. */
+      message: String(j && j.message || '').slice(0, 600),
+      vms:    vmList(j && j.vms)
     })) : [];
     /* مخزن‌ها و اجراهای اخیر. هر دو اختیاری‌اند: بیلدی که این مسیرها
        را ندارد، همان جاب‌هایش را می‌فرستد و بخش با همان کار می‌کند. */
@@ -1515,7 +1526,8 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       state:  String(x && x.state || '').slice(0, 40),
       start:  String(x && x.start || '').slice(0, 40),
       end:    String(x && x.end || '').slice(0, 40),
-      mins:   String(x && x.mins || '').slice(0, 10)
+      mins:   String(x && x.mins || '').slice(0, 10),
+      message: String(x && x.message || '').slice(0, 600)
     })) : [];
 
     await setSetting(env, 'veeam:' + panel.slug, {
