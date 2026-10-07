@@ -21,6 +21,28 @@ p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
 await p.goto(BASE + '/' + USER + '/', { waitUntil: 'networkidle' });
 await p.waitForTimeout(800);
 
+/* رمزِ این کارتابل را خودِ آزمون می‌گذارد، وگرنه به ترتیبِ اجرا بند
+   می‌شود: آزمونِ پوسته رمزِ همهٔ کارتابل‌ها را عوض می‌کند و این یکی
+   پشتِ در می‌ماند. هر آزمون باید بتواند تنها هم اجرا شود. */
+{
+  let ck = '';
+  const call = async (path, opt) => {
+    const o = Object.assign({ headers: {} }, opt || {});
+    o.headers = Object.assign({ 'Content-Type': 'application/json' }, o.headers, ck ? { cookie: ck } : {});
+    const r = await fetch(BASE + path, o);
+    for (const c of (r.headers.getSetCookie ? r.headers.getSetCookie() : [])) {
+      const kv = c.split(';')[0], k = kv.split('=')[0];
+      ck = ck.split('; ').filter(x => x && x.split('=')[0] !== k).concat([kv]).join('; ');
+    }
+    try { return await r.json(); } catch (e) { return {}; }
+  };
+  await call('/api/admin.planer/signin', { method: 'POST', body: JSON.stringify({
+    user: process.env.VS_ADMIN || 'admin',
+    password: process.env.VS_ADMIN_PASS || 'adminadminadmin' }) });
+  await call('/api/admin.planer/planners/' + USER + '/password',
+    { method: 'POST', body: JSON.stringify({ password: PASS }) });
+}
+
 /* ورود: همان مسیرِ /login که فرمِ صفحه هم صدا می‌زند. از خودِ فرم
    نرفتیم چون این فایل قفلِ ورود را نمی‌آزماید — آن جای دیگری آزموده
    می‌شود — و یک ناخنکِ مرورگر به کادرِ رمز، این آزمون را بی‌دلیل

@@ -13,9 +13,20 @@
    جدول، ستونِ کنار. چیزهایی که مالِ یک بخشِ خاص‌اند (تقویمِ روز،
    جدولِ بازدیدِ شرکت‌ها، صندوقِ شخصی) در قالبِ خودشان می‌مانند. */
 
+/* اندازه‌ها به حالتِ رنگ کاری ندارند. */
 :root{
   --radius:14px;
   --radius-sm:10px;
+}
+
+/* ولی رنگ‌ها دارند — و این‌جا یک تله هست که یک بار افتادم تویش.
+   پالتِ تاریک در navcss زیرِ «[data-theme="dark"]» نوشته شده، که
+   هم‌وزنِ «:root» است. چون این فایل آخر بار می‌شود، یک «:root»ِ ساده
+   در حالتِ تاریک هم می‌بُرد و رنگِ روشن را روی صفحهٔ تاریک می‌نشاند.
+
+   «:not([data-theme="dark"])» دو کار می‌کند: در حالتِ روشن از «:root»ِ
+   خودِ قالب‌ها سنگین‌تر است، و در حالتِ تاریک اصلاً نمی‌گیرد. */
+:root:not([data-theme="dark"]){
   --card-border:#E1E7EC;
   --line:#DCE3E9;
   --paper:#EEF2F6;
@@ -112,8 +123,24 @@ body{
 }
 .content{ padding:26px 30px 60px; }
 
+/* دکمه‌های ستونِ کنار. قالبِ مالی گوشهٔ ۹ و قلمِ ۱۳ داشت در برابرِ ۱۱
+   و ۱۳٫۶ — کوچک به نظر می‌رسد، ولی این‌ها تمامِ چیزی‌اند که کاربر در
+   هر صفحه می‌بیند. */
+.navbtn{
+  gap:11px; font-size:13.6px; font-weight:600;
+  padding:10px 12px; border-radius:11px; margin-bottom:3px;
+}
+.navbtn .ic{ font-size:16px; width:22px; height:22px; flex:0 0 22px; }
+
 /* شش کارت باید در یک ردیف جا شوند، نه چهار تا و دو تا زیرش. */
 .cards{ grid-template-columns:repeat(auto-fit, minmax(148px,1fr)); }
 
-.tbl-wrap{ border-radius:var(--radius); box-shadow:var(--shadow); }
+/* قابِ جدول: قالبِ مالی نه قاب داشت نه سایه نه زمینه، پس جدول‌هایش
+   روی کاغذ شناور بودند به‌جای اینکه داخلِ یک کارت بنشینند. */
+.tbl-wrap{
+  border-radius:var(--radius);
+  border:1px solid var(--card-border);
+  box-shadow:var(--shadow);
+  background:var(--white);
+}
 thead th{ padding:10px 6px; letter-spacing:.2px; }

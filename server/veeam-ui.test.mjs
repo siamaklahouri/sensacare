@@ -33,6 +33,10 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
   };
   await call('/api/admin.planer/signin',
     { method: 'POST', body: JSON.stringify({ user: AUSER, password: APASS }) });
+  /* رمز را خودمان می‌گذاریم، وگرنه این آزمون به ترتیبِ اجرا بند می‌شود:
+     آزمونِ پوسته رمزِ همهٔ کارتابل‌ها را عوض می‌کند. */
+  await call('/api/admin.planer/planners/' + SLUG + '/password',
+    { method: 'POST', body: JSON.stringify({ password: PASS }) });
   const k = await call('/api/admin.planer/planners/' + SLUG + '/veeam-key', { method: 'POST', body: '{}' });
   await fetch(BASE + '/api/' + API + '/veeam/push', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-veeam-key': k.key },
