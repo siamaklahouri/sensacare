@@ -370,13 +370,55 @@ try {
   $err = $_.Exception.Message
 }
 
+# When /jobs/states is unavailable, each job comes back without its last
+# result -- a table of names and blank verdicts, which is worse than no
+# table. But the sessions endpoint answered, and a session carries the
+# verdict. So: for each job, find its newest session by name and take the
+# result, state and run time from there.
+#
+# This is why it matters: on this customer's build /jobs/states returns
+# HTTP 500 ("The value of enum EJobStatus is not supported ... Actual
+# value was Stopped") -- a bug inside Veeam's own serializer, nothing we
+# can fix from outside. The sessions route is unaffected.
+function Add-SessionResults {
+  param($Jobs, $Sessions)
+  if (-not $Jobs -or -not $Sessions) { return $Jobs }
+
+  # newest session per job name
+  $newest = @{}
+  foreach ($x in $Sessions) {
+    $n = [string]$x.name
+    if (-not $n) { continue }
+    $cur = $newest[$n]
+    if (-not $cur -or ([string]$x.start) -gt ([string]$cur.start)) { $newest[$n] = $x }
+  }
+
+  foreach ($j in $Jobs) {
+    $x = $newest[[string]$j.name]
+    if (-not $x) { continue }
+    if (-not $j.result) { $j.result = $x.result }
+    if (-not $j.state)  { $j.state  = $x.state }
+    if (-not $j.last)   { $j.last   = $x.start }
+  }
+  return $Jobs
+}
+
+if ($script:JobsVia -eq 'jobs') {
+  $jobs = Add-SessionResults -Jobs $jobs -Sessions $sess
+  if (@($sess).Count -gt 0) { $script:JobsVia = 'jobs+sessions' }
+}
+
 $payload = @{
   host  = [string]$cfg.VbrHost
   # The server keeps this short, so the note is short: the README says
   # what "via /jobs" means (that API version has no job states, so the
   # result column stays blank).
   agent = "veeam-push.ps1 / $($env:COMPUTERNAME)" +
-          $(if ($script:JobsVia -eq 'jobs') { ' (via /jobs)' } else { '' })
+          $(switch ($script:JobsVia) {
+              'jobs'          { ' (via /jobs)' }
+              'jobs+sessions' { ' (via /jobs + sessions)' }
+              default         { '' }
+            })
   error = $err
   # @() matters: with a single job PowerShell unrolls the array and
   # ConvertTo-Json writes an object instead of a list -- which the server
@@ -392,7 +434,10 @@ try {
     -Headers @{ 'x-veeam-key' = $cfg.PushKey } `
     -Body ([Text.Encoding]::UTF8.GetBytes($payload))
   if ($err) { Write-Output "Sent, but Veeam errored: $err" }
-  else { Write-Output "Sent: $($res.jobs) job(s), $(@($repos).Count) repo(s), $(@($sess).Count) session(s)" }
+  else {
+    $via = if ($script:JobsVia -and $script:JobsVia -ne 'jobs/states') { " [$($script:JobsVia)]" } else { '' }
+    Write-Output "Sent: $($res.jobs) job(s), $(@($repos).Count) repo(s), $(@($sess).Count) session(s)$via"
+  }
 } catch {
   # Write-Error throws under ErrorActionPreference=Stop, so the next line
   # never runs and the Scheduled Task never sees the exit code -- the
