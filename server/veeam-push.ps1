@@ -241,6 +241,9 @@ function Get-VbrJobs {
 
   return @($rows | ForEach-Object {
     [pscustomobject]@{
+      # Only used to tie a job to its session. The server does not know
+      # this key and drops it, so it never reaches the kartabl.
+      id      = [string]$_.id
       name    = [string]$_.name
       type    = [string]$_.type
       # /jobs/states calls them lastResult/status; /jobs has neither, and
@@ -332,6 +335,7 @@ function Get-VbrSessions {
       }
     } catch { }
     [pscustomobject]@{
+      jobId  = [string]$_.jobId
       name   = [string]$_.name
       type   = [string]$_.sessionType
       result = $rr
@@ -384,17 +388,37 @@ function Add-SessionResults {
   param($Jobs, $Sessions)
   if (-not $Jobs -or -not $Sessions) { return $Jobs }
 
-  # newest session per job name
-  $newest = @{}
+  # Newest session per key, indexed two ways. Matching on the name alone
+  # was not enough: Veeam names a session after its job and then adds the
+  # backup type -- job "Once a Day" runs as session "Once a Day (Full)".
+  # An exact match misses every time, which is how five jobs came back
+  # with an empty verdict column.
+  $newer = { param($a, $b) return (-not $a -or ([string]$b.start) -gt ([string]$a.start)) }
+  $byJob = @{}
+  $byName = @{}
   foreach ($x in $Sessions) {
+    $k = [string]$x.jobId
+    if ($k -and (& $newer $byJob[$k] $x)) { $byJob[$k] = $x }
     $n = [string]$x.name
-    if (-not $n) { continue }
-    $cur = $newest[$n]
-    if (-not $cur -or ([string]$x.start) -gt ([string]$cur.start)) { $newest[$n] = $x }
+    if ($n -and (& $newer $byName[$n] $x)) { $byName[$n] = $x }
   }
 
   foreach ($j in $Jobs) {
-    $x = $newest[[string]$j.name]
+    $x = $null
+    # 1) the job's own id, when the session carries it -- exact, no guessing
+    $jid = [string]$j.id
+    if ($jid -and $byJob.ContainsKey($jid)) { $x = $byJob[$jid] }
+    # 2) the same name
+    $jn = [string]$j.name
+    if (-not $x -and $jn -and $byName.ContainsKey($jn)) { $x = $byName[$jn] }
+    # 3) a session whose name starts with the job name -- the "(Full)" case
+    if (-not $x -and $jn) {
+      foreach ($k in $byName.Keys) {
+        if ($k.Length -gt $jn.Length -and
+            $k.StartsWith($jn, [StringComparison]::OrdinalIgnoreCase) -and
+            (& $newer $x $byName[$k])) { $x = $byName[$k] }
+      }
+    }
     if (-not $x) { continue }
     if (-not $j.result) { $j.result = $x.result }
     if (-not $j.state)  { $j.state  = $x.state }

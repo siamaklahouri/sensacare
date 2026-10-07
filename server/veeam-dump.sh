@@ -36,4 +36,18 @@ if (n(r.jobs)) {
   console.log("⚠ فهرستِ جاب‌ها خالی است — پس صفحه هم خالی نشان می‌دهد.");
   console.log("  یعنی آخرین باری که اسکریپت فرستاد، هیچ جابی داخلش نبود.");
 }
+if (n(r.sessions)) {
+  /* نامِ اجراها لازم است: وقتی ستونِ نتیجه خالی می‌ماند، معمولاً به این
+     دلیل است که Veeam نامِ اجرا را با پسوندِ نوعِ بکاپ می‌سازد و به نامِ
+     جاب نمی‌خورد. این‌جا هر دو کنار هم دیده می‌شوند. */
+  console.log("\nسه اجرای اول:");
+  for (const x of r.sessions.slice(0, 3)) console.log("  " + JSON.stringify(x));
+  const names = [...new Set(r.sessions.map(x => x.name).filter(Boolean))];
+  const jnames = new Set((r.jobs || []).map(j => j.name));
+  const orphan = names.filter(x => !jnames.has(x));
+  if (orphan.length) {
+    console.log("\n  نامِ اجراهایی که عیناً با هیچ جابی یکی نیستند:");
+    for (const x of orphan.slice(0, 5)) console.log("    " + x);
+  }
+}
 ' "$DB" "$SLUG"
