@@ -1,21 +1,55 @@
-/* گزارشِ Veeam: نتیجهٔ هر جاب یک نشانِ رنگی است، نه یک کلمهٔ خالی —
-   در فهرستی از سی جاب، چشم باید قرمزها را بی‌خواندن پیدا کند. */
-.vee-b{display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px;
-  font-weight:600; border:1px solid transparent; white-space:nowrap}
-.vee-b.ok{color:var(--green,#2F6B4F); border-color:color-mix(in srgb,var(--green,#2F6B4F) 40%,transparent);
-  background:color-mix(in srgb,var(--green,#2F6B4F) 10%,transparent)}
-.vee-b.warn{color:var(--amber,#9A6B1F); border-color:color-mix(in srgb,var(--amber,#9A6B1F) 40%,transparent);
-  background:color-mix(in srgb,var(--amber,#9A6B1F) 10%,transparent)}
-.vee-b.bad{color:var(--red,#B3261E); border-color:color-mix(in srgb,var(--red,#B3261E) 40%,transparent);
-  background:color-mix(in srgb,var(--red,#B3261E) 10%,transparent)}
-.vee-b.none{color:var(--ink-faint,#8c97a3); border-color:var(--card-border)}
+/* نتیجهٔ هر جاب یک نشان است، نه یک کلمهٔ خالی — در فهرستی از سی جاب،
+   چشم باید قرمزها را بی‌خواندن پیدا کند.
+
+   سه تصمیم:
+
+   یک) رنگ از «جوهرِ» هر رنگ می‌آید (`--green-ink`)، نه از خودِ رنگ
+   (`--green`). خودِ رنگ‌ها برای زمینهٔ روشن انتخاب شده‌اند و در تم شب
+   عوض نمی‌شوند: سبزِ تیره روی کارتِ تیره خوانده نمی‌شد. جوهرها تمی‌اند
+   و روی تینتِ خودشان بالای ۵:۱ کنتراست دارند.
+
+   دو) نشانهٔ هر نتیجه با `::before` کشیده می‌شود، نه با عنصری تازه.
+   متنِ خانه باید همان یک کلمه بماند: آزمون، رونوشت و خروجیِ اکسل همه
+   `textContent` را می‌خوانند و «✓موفق» در فایلِ اکسل غلط است.
+
+   سه) جوهرِ خودِ نشانه، رنگِ پس‌زمینهٔ نشان است. در روز یعنی علامتِ
+   روشن روی دایرهٔ پررنگ و در شب برعکس — بی‌آنکه جایی رنگِ سومی
+   تعریف شود. */
+.vee-b{
+  display:inline-flex; align-items:center; gap:6px; vertical-align:middle;
+  padding:3px 11px; padding-inline-start:4px;
+  border-radius:999px; font-size:11.5px; font-weight:700; line-height:1.75;
+  color:var(--t); background:var(--tbg);
+  border:1px solid color-mix(in srgb,var(--t) 28%,transparent);
+  white-space:nowrap;
+}
+.vee-b::before{
+  content:""; flex:none; width:16px; height:16px; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--t); color:var(--tbg);
+  font-size:10px; font-weight:700; line-height:1;
+}
+.vee-b.ok  {--t:var(--green-ink,#2F6B4F); --tbg:var(--green-bg,#E3EFE7)}
+/* کهربایِ تم روز (#C98A2C) روی تینتِ خودش فقط ۲٫۶:۱ کنتراست دارد —
+   نشانی که دیده می‌شود ولی خوانده نمی‌شود. برای همین «هشدار» در روز
+   کهربایِ تیره‌تری می‌گیرد (۵٫۲:۱) و در شب همان جوهرِ روشنِ خودش را،
+   که آن‌جا بالای ۵:۱ است. */
+.vee-b.warn{--t:#8A5B10; --tbg:var(--amber-bg,#FBF1DF)}
+[data-theme="dark"] .vee-b.warn{--t:var(--amber-ink,#E0A63A)}
+.vee-b.bad {--t:var(--red-ink,#A6222B);   --tbg:var(--red-bg,#F6E1E2)}
+.vee-b.none{--t:var(--ink-faint,#8592A0); --tbg:var(--paper,#EEF2F6)}
+.vee-b.ok::before  {content:"\2713"}
+.vee-b.warn::before{content:"!"}
+.vee-b.bad::before {content:"\2715"}
+.vee-b.none::before{content:"\2013"}
+
 /* گزارشی که کهنه شده بدتر از گزارشِ نداشته است: آدم نگاه می‌کند، سبز
    می‌بیند و خیالش راحت می‌شود — در حالی که آن سبز مالِ سه روز پیش است. */
 .veeam-warn{margin:0 0 12px; padding:10px 13px; border-radius:10px; font-size:12.5px; line-height:1.9;
-  border:1px solid color-mix(in srgb,var(--amber,#9A6B1F) 45%,transparent);
-  background:color-mix(in srgb,var(--amber,#9A6B1F) 10%,transparent); color:var(--ink)}
-.veeam-warn.bad{border-color:color-mix(in srgb,var(--red,#B3261E) 45%,transparent);
-  background:color-mix(in srgb,var(--red,#B3261E) 10%,transparent)}
+  border:1px solid color-mix(in srgb,var(--amber-ink,#C98A2C) 40%,transparent);
+  background:var(--amber-bg,#FBF1DF); color:var(--ink)}
+.veeam-warn.bad{border-color:color-mix(in srgb,var(--red-ink,#A6222B) 40%,transparent);
+  background:var(--red-bg,#F6E1E2)}
 
 /* نوارِ پُری مخزن. نمودار نیست: یک نوار در خودِ ردیف، کنارِ عددش، سریع‌تر
    از هر نموداری می‌گوید کدام مخزن دارد پر می‌شود. */
@@ -24,20 +58,33 @@
 /* display:block لازم است: span به‌طور پیش‌فرض inline است و عرض و
    ارتفاع روی عنصرِ inline اثر ندارند — نوار رسم می‌شد ولی هیچ‌وقت
    دیده نمی‌شد. */
-.vee-bar .fil{display:block; height:100%; border-radius:999px; background:var(--green,#2F6B4F)}
-.vee-bar.warn .fil{background:var(--amber,#9A6B1F)}
-.vee-bar.bad .fil{background:var(--red,#B3261E)}
+.vee-bar .fil{display:block; height:100%; border-radius:999px; background:var(--green-ink,#2F6B4F)}
+.vee-bar.warn .fil{background:var(--amber-ink,#C98A2C)}
+.vee-bar.bad .fil{background:var(--red-ink,#A6222B)}
 .vee-bar .num{font-size:12px; font-weight:600; min-width:42px; text-align:start}
-.vee-bar.warn .num{color:var(--amber,#9A6B1F)}
-.vee-bar.bad .num{color:var(--red,#B3261E)}
+.vee-bar.warn .num{color:var(--amber-ink,#C98A2C)}
+.vee-bar.bad .num{color:var(--red-ink,#A6222B)}
 
 /* ردیفی که حرفی برای گفتن دارد، باید نشان بدهد که زدنش کاری می‌کند.
    ردیفی که ندارد، کلیک‌پذیر هم نیست: نشانگرِ دستِ باز روی ردیفی که
    هیچ پنجره‌ای باز نمی‌کند، خودش یک دروغِ کوچک است. */
 tr.vee-click{cursor:pointer}
-tr.vee-click:hover > td{background:var(--paper-2,var(--paper,#EEF2F6))}
-.vee-i{margin-inline-start:6px; font-size:11px; color:var(--ink-faint)}
-tr.vee-click:hover .vee-i{color:var(--brass)}
+/* روشن شدنِ ردیف زیرِ نشانگر را خودِ جدول دارد؛ دوباره نوشتنش این‌جا
+   فقط آن یکی را در تم شب خراب می‌کرد. */
+.vee-i{
+  display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;
+  flex:none; width:17px; height:17px; margin-inline-start:7px; border-radius:50%;
+  border:1px solid var(--card-border); background:var(--white);
+  color:var(--ink-faint); font-size:10px; font-weight:700; line-height:1;
+  transition:color .15s, border-color .15s, background-color .15s;
+}
+/* حرف هم از CSS می‌آید: «ⓘ» در هر قلم یک شکل دارد و در Vazirmatn
+   کنارِ نشانِ نتیجه وصله به نظر می‌رسید. */
+.vee-i::before{content:"i"}
+tr.vee-click:hover .vee-i{
+  color:var(--brass-ink,#1A4FA3); border-color:var(--brass-ink,#1A4FA3);
+  background:var(--brass-bg,#E4EAF7);
+}
 
 /* پنجرهٔ جزئیات. وسطِ صفحه — نه بالا مثل پنجرهٔ ماه‌ها: آن یکی فهرستِ
    کوتاهی است زیرِ دکمهٔ خودش، این یکی متنی است که آدم می‌نشیند و
@@ -65,10 +112,10 @@ tr.vee-click:hover .vee-i{color:var(--brass)}
   font-family:var(--font-body); font-size:12.5px; line-height:1.95; color:var(--ink);
   background:var(--paper-2,var(--paper,#EEF2F6)); border:1px solid var(--card-border);
   border-radius:10px; padding:10px 12px}
-.vpop-msg.warn{border-color:color-mix(in srgb,var(--amber,#9A6B1F) 45%,transparent);
-  background:color-mix(in srgb,var(--amber,#9A6B1F) 10%,transparent)}
-.vpop-msg.bad{border-color:color-mix(in srgb,var(--red,#B3261E) 45%,transparent);
-  background:color-mix(in srgb,var(--red,#B3261E) 10%,transparent)}
+.vpop-msg.warn{border-color:color-mix(in srgb,var(--amber-ink,#C98A2C) 40%,transparent);
+  background:var(--amber-bg,#FBF1DF)}
+.vpop-msg.bad{border-color:color-mix(in srgb,var(--red-ink,#A6222B) 40%,transparent);
+  background:var(--red-bg,#F6E1E2)}
 .vpop-vms{display:flex; flex-wrap:wrap; gap:6px}
 .vpop-vms span{font-size:12px; color:var(--ink); border:1px solid var(--card-border);
   background:var(--paper-2,var(--paper,#EEF2F6)); border-radius:999px; padding:4px 11px}

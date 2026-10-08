@@ -63,7 +63,9 @@ var VEEAM_TIP = "برای دیدنِ پیام و ماشین‌ها کلیک کن
    ستونِ نام: نامِ جاب خودش خانهٔ editable-cell است و پنجرهٔ متنِ بلند
    با textContent می‌خواندش، پس هیچ عنصری نباید داخلش گذاشته شود. */
 function veeamMore(x){
-  return veeamHasDetail(x) ? '<span class="vee-i" title="' + VEEAM_TIP + '">ⓘ</span>' : "";
+  /* خالی می‌ماند: حرفش را CSS می‌گذارد، تا متنِ خانه همان یک کلمهٔ
+     نتیجه بماند و در رونوشت و خروجیِ اکسل چیزی اضافه نشود. */
+  return veeamHasDetail(x) ? '<span class="vee-i" title="' + VEEAM_TIP + '"></span>' : "";
 }
 function veeamRowAttrs(x, kind, i){
   if(!veeamHasDetail(x)) return "";

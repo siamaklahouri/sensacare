@@ -317,6 +317,58 @@ t(/مدت/.test(ss.meta) && /دقیقه/.test(ss.meta), 'و مدتِ اجرا ب
 
 await p.evaluate(() => { document.getElementById('veeamPop').hidden = true; });
 
+console.log('\n===== نشانِ نتیجه =====');
+/* نشان باید در هر دو تم خوانده شود. رنگ‌های پایه (`--green`) برای
+   زمینهٔ روشن انتخاب شده‌اند و در تم شب عوض نمی‌شوند، پس سبزِ تیره روی
+   کارتِ تیره محو می‌شد. این را با چشم نمی‌شود دید و با اسکرین‌شات هم
+   نه — کنتراست را می‌سنجیم. */
+const contrast = async () => p.evaluate(() => {
+  const lum = c => {
+    const m = c.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => {
+      v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2];
+  };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b);
+    return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10; };
+  return [...document.querySelectorAll('#veeamBody .vee-b')].map(el => {
+    const cs = getComputedStyle(el), bf = getComputedStyle(el, '::before');
+    return { cls: el.className.replace('vee-b ', ''), text: el.textContent,
+             glyph: bf.content, gw: Math.round(parseFloat(bf.width)),
+             word: ratio(cs.color, cs.backgroundColor),
+             mark: ratio(bf.color, bf.backgroundColor) };
+  });
+});
+
+for (const theme of ['light', 'dark']) {
+  await p.evaluate(t => document.documentElement.setAttribute('data-theme', t), theme);
+  await p.waitForTimeout(120);
+  const c = await contrast();
+  const low = c.filter(x => x.word < 4.5 || x.mark < 4.5);
+  t(low.length === 0, 'تم ' + theme + ': نشانِ هر نتیجه خوانا است (کلمه و علامت، هر دو ۴٫۵:۱ به بالا)',
+    c.map(x => x.cls + ' ' + x.word + '/' + x.mark).join('  '));
+}
+await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+await p.waitForTimeout(120);
+
+const marks = await contrast();
+t(marks.map(x => x.glyph).join(',') === '"✓","!","✕","✓"',
+  'هر نتیجه علامتِ خودش را دارد', marks.map(x => x.glyph).join(','));
+t(marks.every(x => x.gw === 16), 'و دایرهٔ علامت واقعاً رسم شده', marks.map(x => x.gw).join(','));
+/* علامت از CSS می‌آید، نه از DOM: متنِ خانه باید همان یک کلمه بماند،
+   وگرنه در رونوشت و خروجیِ اکسل «✓موفق» می‌نشیند. */
+t(marks.map(x => x.text).join(',') === 'موفق,هشدار,ناموفق,موفق',
+  'ولی متنِ خانه همان یک کلمه مانده', marks.map(x => x.text).join(','));
+const icon = await p.evaluate(() => {
+  const i = document.querySelector('#veeamBody .vee-i');
+  const r = i.getBoundingClientRect();
+  return { w: Math.round(r.width), h: Math.round(r.height),
+           g: getComputedStyle(i, '::before').content, txt: i.textContent };
+});
+t(icon.w > 12 && icon.h > 12 && icon.g === '"i"' && icon.txt === '',
+  'نشانهٔ «جزئیات» هم دایره‌ای است که CSS می‌کشد، نه یک نویسهٔ وصله',
+  icon.w + '×' + icon.h + ' ' + icon.g);
+
 console.log('\n===== گزارشِ کهنه =====');
 /* زمانِ گزارش را دو ساعت عقب می‌بریم و از نو می‌کشیم: باید هشدار بدهد،
    چون سبزِ دو ساعت پیش، سبزِ الان نیست. */
