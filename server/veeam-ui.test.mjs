@@ -48,14 +48,16 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
            هیچ‌کدام — و باید کلیک‌پذیر هم نباشد. */
         { name: 'Daily-VMs', type: 'Backup', result: 'Success', state: 'Stopped',
           last: '2026-10-05 02:00', next: '2026-10-06 02:00', objects: '14',
-          vms: ['SRV-DC01', 'SRV-FILE02', 'APP-ERP'] },
+          vms: ['SRV-DC01', 'SRV-FILE02', 'APP-ERP'], scope: ['esxi-01.ehya.local'] },
+        /* جابی که به کلِ یک هاست اشاره می‌کند و فهرستِ ماشین‌هایش از
+           این بیلد در نیامده: نباید نامِ هاست را جای ماشین جا بزند. */
         { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Working',
           last: '2026-10-05 17:00', next: '2026-10-05 18:00', objects: '3',
-          message: 'Unable to truncate transaction logs' },
+          message: 'Unable to truncate transaction logs', scope: ['esxi-02.ehya.local'] },
         { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
           last: '2026-10-04 23:00', next: '', objects: '58',
           message: 'Error: Tape device is offline.\nRetry in 30 minutes.',
-          vms: ['SRV-DC01'] },
+          via: 'Archive-to-Tape (Full)', vms: ['SRV-DC01'] },
         { name: 'Tape-Weekly', type: 'BackupCopy', result: 'Success', state: 'Stopped',
           last: '2026-10-03 23:00', next: '', objects: '' }
       ],
@@ -207,11 +209,14 @@ const kept = await p.evaluate(async a => {
   const j = (d.report || {}).jobs || [];
   const s = (d.report || {}).sessions || [];
   return { msg: (j[2] || {}).message || '', vms: (j[0] || {}).vms || [],
+           scope: (j[1] || {}).scope || [], via: (j[2] || {}).via || '',
            smsg: (s[2] || {}).message || '' };
 }, API);
 t(/Tape device is offline/.test(kept.msg), 'سرور پیامِ جاب را نگه داشت', kept.msg.slice(0, 40));
 t(kept.vms.length === 3 && kept.vms[0] === 'SRV-DC01', 'و فهرستِ ماشین‌ها را', kept.vms.join(','));
 t(/Tape device is offline/.test(kept.smsg), 'و پیامِ اجرا را هم', kept.smsg.slice(0, 40));
+t(kept.scope.join(',') === 'esxi-02.ehya.local', 'و دامنهٔ جاب را جدا از ماشین‌ها', kept.scope.join(','));
+t(kept.via === 'Archive-to-Tape (Full)', 'و نامِ اجرایی که نتیجه از آن درآمده', kept.via);
 
 const rows = await p.evaluate(() => [...document.querySelectorAll('#veeamBody tr')].map(tr => ({
   cls: tr.className, vi: tr.getAttribute('data-vi'), vp: tr.getAttribute('data-vp'),
@@ -239,7 +244,8 @@ const popped = await p.evaluate(() => {
     msg: msg ? msg.textContent : '',
     msgCls: msg ? msg.className : '',
     pre: msg ? getComputedStyle(msg).whiteSpace : '',
-    vms: [...pop.querySelectorAll('.vpop-vms span')].map(x => x.textContent.trim()),
+    vms: [...pop.querySelectorAll('.vpop-vms:not(.scope) span')].map(x => x.textContent.trim()),
+    scope: [...pop.querySelectorAll('.vpop-vms.scope span')].map(x => x.textContent.trim()),
     subs: [...pop.querySelectorAll('.vpop-sub')].map(x => x.textContent.trim()),
     dx: Math.round((cr.left + cr.width / 2) - innerWidth / 2),
     dy: Math.round((cr.top + cr.height / 2) - innerHeight / 2),
@@ -261,6 +267,9 @@ t(/bad/.test(popped.msgCls), 'پیامِ جابِ ناموفق قرمز است',
 t(popped.vms.join(',') === 'SRV-DC01', 'ماشین‌های همان جاب را نشان می‌دهد', popped.vms.join(','));
 t(popped.subs.length === 2 && /ماشین/.test(popped.subs[1]), 'دو بخش دارد: پیام و ماشین‌ها',
   popped.subs.join(' | '));
+t(/از اجرای: Archive-to-Tape \(Full\)/.test(popped.meta),
+  'و می‌گوید نتیجه از کدام اجرا درآمده — اولین پرسش وقتی کنسولِ Veeam چیزِ دیگری می‌گوید',
+  popped.meta.replace(/\s+/g, ' ').slice(0, 90));
 
 /* ردیفِ اول پیام ندارد ولی سه ماشین دارد: باید همان را بگوید و
    فهرست را نشان بدهد — نه پنجرهٔ خالی. */
@@ -271,11 +280,30 @@ const first = await p.evaluate(() => {
   return { shown: !pop.hidden,
            msg: !!pop.querySelector('.vpop-msg'),
            empty: (pop.querySelector('.vpop-empty') || {}).textContent || '',
-           vms: [...pop.querySelectorAll('.vpop-vms span')].map(x => x.textContent.trim()) };
+           vms: [...pop.querySelectorAll('.vpop-vms:not(.scope) span')].map(x => x.textContent.trim()),
+           scope: [...pop.querySelectorAll('.vpop-vms.scope span')].map(x => x.textContent.trim()),
+           subs: [...pop.querySelectorAll('.vpop-sub')].map(x => x.textContent.trim()) };
 });
 t(first.shown && !first.msg && /پیامی ننوشته/.test(first.empty),
   'جابی که پیام ندارد، همین را می‌گوید', first.empty.slice(0, 40));
 t(first.vms.join(',') === 'SRV-DC01,SRV-FILE02,APP-ERP', 'و هر سه ماشینش را می‌شمارد', first.vms.join(','));
+t(first.scope.join(',') === 'esxi-01.ehya.local' && first.subs.length === 3,
+  'و دامنهٔ جاب را جدا، زیرِ ماشین‌ها', first.subs.join(' | '));
+
+/* جابی که کلِ یک هاست را می‌گیرد و فهرستِ ماشین‌هایش نیامده: باید
+   همین را بگوید. نامِ هاست به‌جای نامِ ماشین، یک جوابِ غلط است که
+   درست به نظر می‌رسد. */
+const host = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  document.querySelectorAll('#veeamBody tr')[1].click();
+  const pop = document.getElementById('veeamPop');
+  return { vms: pop.querySelectorAll('.vpop-vms:not(.scope) span').length,
+           empty: (pop.querySelectorAll('.vpop-empty')[0] || {}).textContent || '',
+           subs: [...pop.querySelectorAll('.vpop-sub')].map(x => x.textContent.trim()) };
+});
+t(host.vms === 0 && /کلِ esxi-02\.ehya\.local/.test(host.empty),
+  'جابِ کل‌هاست، نامِ هاست را جای ماشین جا نمی‌زند', host.empty.slice(0, 70));
+t(host.subs.length === 2, 'و وقتی ماشینی ندارد، بخشِ «دامنه» هم جدا نمی‌آید', host.subs.join(' | '));
 
 /* بستن: هم با Escape، هم با زدنِ زمینهٔ تاریک — ولی زدنِ خودِ کارت
    نباید ببندد، وگرنه کسی که می‌خواهد متن را انتخاب کند پنجره‌اش بسته
@@ -359,6 +387,22 @@ t(marks.every(x => x.gw === 16), 'و دایرهٔ علامت واقعاً رسم
    وگرنه در رونوشت و خروجیِ اکسل «✓موفق» می‌نشیند. */
 t(marks.map(x => x.text).join(',') === 'موفق,هشدار,ناموفق,موفق',
   'ولی متنِ خانه همان یک کلمه مانده', marks.map(x => x.text).join(','));
+/* یک کلمهٔ ناشناخته «ناموفق» نیست. تا دیروز هر چیزی که success یا
+   warning نبود قرمز می‌شد — از جمله «None» که Veeam تا پایانِ اجرا
+   می‌نویسد. قرمزِ بی‌جا آدم را نصفِ شب می‌دواند. */
+const tones = await p.evaluate(() => ({
+  ok: veeamTone('Success'), warn: veeamTone('Warning'), bad: veeamTone('Failed'),
+  none: veeamTone('None'), blank: veeamTone(''), unknown: veeamTone('InProgress'),
+  word: veeamWord('InProgress'), noneWord: veeamWord('None')
+}));
+t(tones.ok === 'ok' && tones.warn === 'warn' && tones.bad === 'bad', 'سه نتیجهٔ شناخته‌شده سرِ جایشان‌اند',
+  [tones.ok, tones.warn, tones.bad].join(','));
+t(tones.none === 'none' && tones.blank === 'none' && tones.unknown === 'none',
+  'و «None» یا هر کلمهٔ ناشناخته، خاکستری است نه قرمز',
+  'None=' + tones.none + ' خالی=' + tones.blank + ' ناشناخته=' + tones.unknown);
+t(tones.word === 'InProgress' && tones.noneWord === '—',
+  'ولی خودِ کلمهٔ Veeam پاک نمی‌شود', tones.word + ' / ' + tones.noneWord);
+
 const icon = await p.evaluate(() => {
   const i = document.querySelector('#veeamBody .vee-i');
   const r = i.getBoundingClientRect();
@@ -368,6 +412,41 @@ const icon = await p.evaluate(() => {
 t(icon.w > 12 && icon.h > 12 && icon.g === '"i"' && icon.txt === '',
   'نشانهٔ «جزئیات» هم دایره‌ای است که CSS می‌کشد، نه یک نویسهٔ وصله',
   icon.w + '×' + icon.h + ' ' + icon.g);
+
+console.log('\n===== فاصلهٔ ارسال =====');
+/* عددِ «کهنه» دیگر ثابت نیست: از فاصلهٔ دو گزارشِ آخر درمی‌آید. کسی که
+   ارسال را از ساعتی به نیم‌ساعتی می‌برد، نباید جای دیگری هم چیزی عوض
+   کند. */
+const cad = await p.evaluate(() => {
+  const keep = { at: VEEAM.at, prev: VEEAM.prev };
+  const out = {};
+  VEEAM.at = Date.now(); VEEAM.prev = VEEAM.at - 30 * 60000;
+  out.half = veeamStaleLimit();
+  VEEAM.prev = VEEAM.at - 60 * 60000;
+  out.hour = veeamStaleLimit();
+  VEEAM.prev = 0;
+  out.none = veeamStaleLimit();
+  /* یک اجرای جاافتاده نباید تحمل را دو برابر کند */
+  VEEAM.prev = VEEAM.at - 5 * 3600 * 1000;
+  out.gapped = veeamStaleLimit();
+  VEEAM.at = keep.at; VEEAM.prev = keep.prev;
+  return out;
+});
+t(cad.half === 58 && cad.hour === 90 && cad.none === 90 && cad.gapped === 90,
+  'تحملِ کهنگی خودش را با فاصلهٔ ارسال تنظیم می‌کند و از ۹۰ دقیقه بالاتر نمی‌رود',
+  'نیم‌ساعته=' + cad.half + ' ساعتی=' + cad.hour + ' بی‌سابقه=' + cad.none + ' جاافتاده=' + cad.gapped);
+
+const halfStale = await p.evaluate(() => {
+  const keep = { at: VEEAM.at, prev: VEEAM.prev };
+  VEEAM.at = Date.now() - 70 * 60000; VEEAM.prev = VEEAM.at - 30 * 60000;
+  renderVeeam();
+  const w = document.getElementById('veeamWarn');
+  const out = { hidden: w.hidden, text: w.textContent.trim() };
+  VEEAM.at = keep.at; VEEAM.prev = keep.prev; renderVeeam();
+  return out;
+});
+t(!halfStale.hidden && /هر ۳۰ دقیقه/.test(halfStale.text),
+  'و در هشدار هم همان فاصلهٔ واقعی را می‌گوید', halfStale.text.slice(0, 80));
 
 console.log('\n===== گزارشِ کهنه =====');
 /* زمانِ گزارش را دو ساعت عقب می‌بریم و از نو می‌کشیم: باید هشدار بدهد،

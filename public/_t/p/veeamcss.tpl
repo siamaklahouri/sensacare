@@ -119,4 +119,7 @@ tr.vee-click:hover .vee-i{
 .vpop-vms{display:flex; flex-wrap:wrap; gap:6px}
 .vpop-vms span{font-size:12px; color:var(--ink); border:1px solid var(--card-border);
   background:var(--paper-2,var(--paper,#EEF2F6)); border-radius:999px; padding:4px 11px}
+/* دامنهٔ جاب ماشین نیست، پس شبیهِ ماشین‌ها هم دیده نمی‌شود: کم‌رنگ‌تر
+   و بی‌پس‌زمینه، تا در یک نگاه از فهرستِ بالایی جدا باشد. */
+.vpop-vms.scope span{background:transparent; color:var(--ink-soft); border-style:dashed}
 .vpop-empty{font-size:12.5px; color:var(--ink-faint); line-height:1.95}

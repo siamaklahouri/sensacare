@@ -1507,7 +1507,16 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
          می‌تواند چند صفحه متن بفرستد — ۶۰۰ نویسه برای فهمیدنِ علت
          بس است و برای خفه‌کردنِ جدول کم. */
       message: String(j && j.message || '').slice(0, 600),
-      vms:    vmList(j && j.vms)
+      /* نامِ اجرایی که نتیجه از آن درآمده. وقتی کنسولِ Veeam چیزی
+         می‌گوید و این ستون چیزِ دیگری، اولین پرسش همیشه «کدام اجرا را
+         خوانده‌ای؟» است — پس جواب همراهِ جواب می‌آید. */
+      via:    String(j && j.via || '').slice(0, 120),
+      vms:    vmList(j && j.vms),
+      /* چیزی که جاب به آن اشاره می‌کند وقتی ماشین نیست: یک هاستِ ESXi،
+         یک کلاستر، یک پوشه. جدا از ماشین‌ها نگه داشته می‌شود چون «این
+         جاب کلِ هاست X را می‌گیرد» و «این دوازده ماشین داخلش هستند»
+         دو جوابِ متفاوت‌اند. */
+      scope:  vmList(j && j.scope)
     })) : [];
     /* مخزن‌ها و اجراهای اخیر. هر دو اختیاری‌اند: بیلدی که این مسیرها
        را ندارد، همان جاب‌هایش را می‌فرستد و بخش با همان کار می‌کند. */
@@ -1530,8 +1539,13 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       message: String(x && x.message || '').slice(0, 600)
     })) : [];
 
+    /* زمانِ گزارشِ قبلی نگه داشته می‌شود تا صفحه بفهمد اسکریپت هر چند
+       وقت یک بار می‌فرستد. بدونِ این، «کهنه» یک عددِ ثابت بود و هر بار
+       که فاصلهٔ ارسال عوض می‌شد باید دستی تنظیم می‌شد. */
+    const before = await getSetting(env, 'veeam:' + panel.slug, null);
     await setSetting(env, 'veeam:' + panel.slug, {
       at: Date.now(),
+      prev: Number(before && before.at) || 0,
       host: String(body.host || '').slice(0, 120),
       agent: String(body.agent || '').slice(0, 60),
       error: String(body.error || '').slice(0, 300),

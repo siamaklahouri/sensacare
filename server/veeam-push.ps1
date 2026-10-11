@@ -208,15 +208,21 @@ function Connect-Vbr {
   throw "Veeam login failed for every API version tried. Last answer: $last"
 }
 
-# The machines a job backs up. Veeam keeps them in the job's own
-# configuration, and where exactly depends on the job type, so each
-# known shape is tried in turn and an unknown one costs an empty list
-# rather than an error. Names only: the kartabl shows them, it does not
-# act on them, and object ids would just be noise on the screen.
+# What a job covers. Veeam keeps it in the job's own configuration, and
+# an entry there is not always a machine: a job can point at a whole ESXi
+# host, a cluster or a folder, and then Veeam backs up whatever is inside
+# it at run time. Listing those as "the machines" was wrong -- they are
+# the SCOPE, and the machines are what ended up in the backup.
+#
+# So two lists come back: the entries that really are machines, and the
+# containers. The real machine list is filled later from the backups
+# themselves (Add-BackupObjects); this is the fallback for a job that
+# names its machines one by one.
 function Get-JobVms {
   param($Row)
-  $out = @()
-  if (-not $Row) { return @() }
+  $vms = @()
+  $scope = @()
+  if (-not $Row) { return [pscustomobject]@{ vms = @(); scope = @() } }
   $lists = @()
   if ($Row.virtualMachines -and $Row.virtualMachines.includes) { $lists += ,@($Row.virtualMachines.includes) }
   if ($Row.includes)       { $lists += ,@($Row.includes) }
@@ -226,15 +232,29 @@ function Get-JobVms {
     foreach ($it in $l) {
       if ($null -eq $it) { continue }
       $n = ''
+      $ty = ''
       if ($it -is [string]) { $n = $it }
-      elseif ($it.name) { $n = [string]$it.name }
-      elseif ($it.inventoryObject -and $it.inventoryObject.name) { $n = [string]$it.inventoryObject.name }
-      elseif ($it.hostName) { $n = [string]$it.hostName }
-      if ($n -and ($out -notcontains $n)) { $out += $n }
+      else {
+        $o = $it
+        if ($it.inventoryObject) { $o = $it.inventoryObject }
+        if ($o.name) { $n = [string]$o.name }
+        elseif ($o.hostName) { $n = [string]$o.hostName }
+        $ty = [string]$o.type
+        if (-not $ty) { $ty = [string]$it.type }
+      }
+      if (-not $n) { continue }
+      # An empty type is treated as a machine: a job that lists its VMs
+      # one by one is the common case, and calling those "scope" would
+      # empty the list people actually came to see.
+      if (-not $ty -or $ty -match '^(VirtualMachine|VM|Computer|PhysicalMachine|Server)$') {
+        if ($vms -notcontains $n) { $vms += $n }
+      } elseif ($scope -notcontains $n) {
+        $scope += $n
+      }
     }
-    if ($out.Count -gt 0) { break }
+    if ($vms.Count -gt 0 -or $scope.Count -gt 0) { break }
   }
-  return @($out)
+  return [pscustomobject]@{ vms = @($vms); scope = @($scope) }
 }
 
 function Get-VbrJobs {
@@ -278,6 +298,7 @@ function Get-VbrJobs {
         $cid = [string]$cr.id
         if ($cid) { $vmById[$cid] = Get-JobVms $cr }
       }
+
     } catch {
       Write-Verbose "jobs (machine list) -> $((Get-HttpError $_).Body)"
     }
@@ -290,9 +311,12 @@ function Get-VbrJobs {
   }
 
   return @($rows | ForEach-Object {
-    $vl = Get-JobVms $_
+    $cov = Get-JobVms $_
     $jid = [string]$_.id
-    if ($vl.Count -eq 0 -and $jid -and $vmById.ContainsKey($jid)) { $vl = @($vmById[$jid]) }
+    if ($cov.vms.Count -eq 0 -and $cov.scope.Count -eq 0 -and $jid -and $vmById.ContainsKey($jid)) {
+      $cov = $vmById[$jid]
+    }
+    $vl = @($cov.vms)
     # /jobs/states counts the objects itself; /jobs does not, but the
     # machine list is the same count -- so the column stops being blank
     # without anything being invented.
@@ -319,7 +343,15 @@ function Get-VbrJobs {
       # no word why sends the user to the Veeam console anyway -- which
       # is exactly the trip this section exists to save.
       message = ''
+      # Filled only when the verdict was taken from a session: the name of
+      # that run. Empty means the verdict is the job's own.
+      via     = ''
       vms     = @($vl)
+      # What the job points at when that is not a machine: an ESXi host,
+      # a cluster, a folder. Kept apart from the machines on purpose --
+      # "this job backs up host X" and "these twelve machines are in it"
+      # are two different answers.
+      scope   = @($cov.scope)
     }
   })
 }
@@ -366,13 +398,22 @@ function Get-VbrRepos {
 function Get-VbrSessions {
   param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert)
   $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
+  # Newest first, explicitly. Without an order the server returns them in
+  # its own order, and "the first 40" can then be the OLDEST forty -- so a
+  # job's verdict would come from a run that happened days ago while the
+  # console shows today's. Not every build takes the ordering parameters,
+  # so the plain URL stays as a fallback.
   $r = $null
-  try {
-    $r = Invoke-Vbr -Url "$Base/api/v1/sessions?limit=40" -Headers $h -SkipCert $SkipCert
-  } catch {
-    Write-Verbose "sessions -> $((Get-HttpError $_).Body)"
-    return @()
+  $urls = @(
+    "$Base/api/v1/sessions?limit=200&orderColumn=CreationTime&orderAsc=false",
+    "$Base/api/v1/sessions?limit=200",
+    "$Base/api/v1/sessions?limit=40"
+  )
+  foreach ($u in $urls) {
+    try { $r = Invoke-Vbr -Url $u -Headers $h -SkipCert $SkipCert; break }
+    catch { Write-Verbose "sessions ($u) -> $((Get-HttpError $_).Body)"; $r = $null }
   }
+  if ($null -eq $r) { return @() }
   $rows = @()
   if ($r -and $r.data) { $rows = @($r.data) } elseif ($r -is [array]) { $rows = $r }
   if ($rows.Count -eq 0) { return @() }
@@ -395,6 +436,10 @@ function Get-VbrSessions {
         if ($_.result.message) { $mm = [string]$_.result.message }
       }
     }
+    # Veeam writes "None" while a run is still going. It is the absence of
+    # a verdict, not a verdict -- sending it as one makes the page colour
+    # a running job as though something were wrong with it.
+    if ($rr -eq 'None') { $rr = '' }
     if (-not $mm -and $_.message) { $mm = [string]$_.message }
     $mins = ''
     try {
@@ -417,6 +462,82 @@ function Get-VbrSessions {
       mins   = $mins
     }
   })
+}
+
+# The machines that really ended up in the backups. A job that points at
+# an ESXi host names no single machine in its configuration, yet the
+# backup it produced lists every one of them. This is the only place the
+# answer to "what did you actually back up?" exists -- the job's own
+# settings only say where to look.
+#
+# An extra, like the repositories: one missing endpoint must not cost the
+# report. A build without it keeps the machine names the job itself
+# listed, and shows the scope for the rest.
+function Add-BackupObjects {
+  param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert, $Jobs)
+  if (-not $Jobs) { return $Jobs }
+  $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
+
+  $r = $null
+  try { $r = Invoke-Vbr -Url "$Base/api/v1/backups?limit=200" -Headers $h -SkipCert $SkipCert }
+  catch { Write-Verbose "backups -> $((Get-HttpError $_).Body)"; return $Jobs }
+  $rows = @()
+  if ($r -and $r.data) { $rows = @($r.data) } elseif ($r -is [array]) { $rows = $r }
+  if ($rows.Count -eq 0) { return $Jobs }
+
+  # Two keys, because not every build puts the job id on a backup.
+  $byJob = @{}
+  $byName = @{}
+  $put = {
+    param($map, $key, $names)
+    if (-not $key) { return }
+    if (-not $map.ContainsKey($key)) { $map[$key] = @() }
+    foreach ($nm in $names) { if ($map[$key] -notcontains $nm) { $map[$key] += $nm } }
+  }
+
+  $seen = 0
+  foreach ($bk in $rows) {
+    # A cap: a server with hundreds of backups must not turn one report
+    # into hundreds of requests.
+    if ($seen -ge 40) { break }
+    $seen++
+    $bid = [string]$bk.id
+    if (-not $bid) { continue }
+    $o = $null
+    try { $o = Invoke-Vbr -Url "$Base/api/v1/backups/$bid/objects?limit=500" -Headers $h -SkipCert $SkipCert }
+    catch { Write-Verbose "backup objects ($bid) -> $((Get-HttpError $_).Body)"; continue }
+    $orows = @()
+    if ($o -and $o.data) { $orows = @($o.data) } elseif ($o -is [array]) { $orows = $o }
+    if ($orows.Count -eq 0) { continue }
+
+    $names = @()
+    foreach ($ob in $orows) {
+      $nm = [string]$ob.name
+      if (-not $nm -and $ob.inventoryObject) { $nm = [string]$ob.inventoryObject.name }
+      if ($nm -and ($names -notcontains $nm)) { $names += $nm }
+    }
+    if ($names.Count -eq 0) { continue }
+
+    & $put $byJob ([string]$bk.jobId) $names
+    $jn = [string]$bk.jobName
+    if (-not $jn) { $jn = [string]$bk.name }
+    & $put $byName $jn $names
+  }
+
+  foreach ($j in $Jobs) {
+    $names = $null
+    $jid = [string]$j.id
+    if ($jid -and $byJob.ContainsKey($jid)) { $names = $byJob[$jid] }
+    $jn = [string]$j.name
+    if (-not $names -and $jn -and $byName.ContainsKey($jn)) { $names = $byName[$jn] }
+    if (-not $names -or @($names).Count -eq 0) { continue }
+    $j.vms = @($names)
+    # The count now means the same thing as the list underneath it. The
+    # number from /jobs/states counts what the job points at -- which for
+    # a whole-host job is 1, next to a list of twelve machines.
+    $j.objects = [string]@($names).Count
+  }
+  return $Jobs
 }
 
 # ---------------------------------------------------------------
@@ -460,12 +581,31 @@ function Add-SessionResults {
   param($Jobs, $Sessions)
   if (-not $Jobs -or -not $Sessions) { return $Jobs }
 
-  # Newest session per key, indexed two ways. Matching on the name alone
-  # was not enough: Veeam names a session after its job and then adds the
-  # backup type -- job "Once a Day" runs as session "Once a Day (Full)".
-  # An exact match misses every time, which is how five jobs came back
-  # with an empty verdict column.
-  $newer = { param($a, $b) return (-not $a -or ([string]$b.start) -gt ([string]$a.start)) }
+  # Which run's verdict does the console show? The one that FINISHED
+  # last. A run still in progress has no verdict yet, so letting it win
+  # on "it started later" empties a column that was right a second ago --
+  # and the job looks like it has no result while it is working.
+  #
+  # So a finished run always beats an unfinished one, and between two
+  # finished ones the later end time wins. An unfinished run is kept only
+  # when there is nothing else: better "still running" than nothing.
+  $stamp = {
+    param($x)
+    if (-not $x) { return '' }
+    $e = [string]$x.end
+    if ($e) { return $e }
+    return [string]$x.start
+  }
+  $done = { param($x) return [bool]($x -and [string]$x.end -and [string]$x.result) }
+  $newer = {
+    param($a, $b)
+    if (-not $a) { return $true }
+    $da = & $done $a
+    $db = & $done $b
+    if ($da -ne $db) { return $db }
+    return ((& $stamp $b) -gt (& $stamp $a))
+  }
+
   $byJob = @{}
   $byName = @{}
   foreach ($x in $Sessions) {
@@ -483,12 +623,18 @@ function Add-SessionResults {
     # 2) the same name
     $jn = [string]$j.name
     if (-not $x -and $jn -and $byName.ContainsKey($jn)) { $x = $byName[$jn] }
-    # 3) a session whose name starts with the job name -- the "(Full)" case
+    # 3) the job name plus Veeam's own suffix -- the "Once a Day (Full)"
+    #    case. What follows the job name must be a parenthesis and
+    #    nothing else: job "Backup" matching session "Backup Copy (Full)"
+    #    would make it wear another job's verdict, and a wrong verdict
+    #    that looks right is worse than an empty column. Among the
+    #    candidates the one that ended last wins.
     if (-not $x -and $jn) {
       foreach ($k in $byName.Keys) {
-        if ($k.Length -gt $jn.Length -and
-            $k.StartsWith($jn, [StringComparison]::OrdinalIgnoreCase) -and
-            (& $newer $x $byName[$k])) { $x = $byName[$k] }
+        if ($k.Length -le $jn.Length) { continue }
+        if (-not $k.StartsWith($jn, [StringComparison]::OrdinalIgnoreCase)) { continue }
+        if ($k.Substring($jn.Length) -notmatch '^\s*\(.+\)\s*$') { continue }
+        if (& $newer $x $byName[$k]) { $x = $byName[$k] }
       }
     }
     if (-not $x) { continue }
@@ -496,8 +642,23 @@ function Add-SessionResults {
     if (-not $j.state)  { $j.state  = $x.state }
     if (-not $j.last)   { $j.last   = $x.start }
     if (-not $j.message) { $j.message = $x.message }
+    # Where the verdict came from. When the console says Success and this
+    # column says otherwise, the first question is always "which run did
+    # you read?" -- so the answer travels with the answer.
+    if (-not $j.via) { $j.via = [string]$x.name }
   }
   return $Jobs
+}
+
+# The real machine list, from the backups themselves. Wrapped on its own:
+# it is the one part that costs a request per backup, and losing it must
+# not lose the report.
+if ($conn) {
+  try {
+    $jobs = Add-BackupObjects -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip -Jobs $jobs
+  } catch {
+    Write-Verbose "backup objects -> $($_.Exception.Message)"
+  }
 }
 
 # This runs on both paths, not only on the fallback: even when

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # چه چیزی از Veeam روی سرور ذخیره شده — بی‌واسطه، از خودِ دیتابیس.
 #
-# وقتی جدولِ کارتابل خالی است، دو حالت دارد: یا اسکریپت چیزی نفرستاده،
-# یا فرستاده و صفحه نشانش نمی‌دهد. این‌جا معلوم می‌شود کدام — بی‌آنکه
-# لازم باشد کسی حدس بزند.
+# وقتی جدولِ کارتابل چیزی می‌گوید که با کنسولِ Veeam نمی‌خواند، حدس زدن
+# بی‌فایده است: این‌جا هر جاب و هر اجرا همان‌طور که ذخیره شده چاپ
+# می‌شود، و زیرش نشان داده می‌شود که نتیجهٔ هر جاب از کدام اجرا درآمده.
 set -u
 DB=${DB_FILE:-/var/lib/sltech/sltech.db}
 SLUG=${SLUG:-siamak}
@@ -17,37 +17,51 @@ if (!row) { console.log("هیچ گزارشی ذخیره نشده (کلیدِ vee
 let r; try { r = JSON.parse(row.v); } catch (e) { console.log("ذخیره شده ولی خوانده نشد:", String(e)); process.exit(0); }
 
 const age = r.at ? Math.round((Date.now() - r.at) / 60000) : null;
+const gap = (r.at && r.prev) ? Math.round((r.at - r.prev) / 60000) : null;
 console.log("زمانِ گزارش : " + (r.at ? new Date(r.at).toLocaleString("fa-IR") + "  (" + age + " دقیقه پیش)" : "—"));
+console.log("فاصلهٔ ارسال: " + (gap ? gap + " دقیقه" : "— (هنوز فقط یک گزارش رسیده)"));
 console.log("سرورِ Veeam : " + (r.host || "—"));
 console.log("فرستنده     : " + (r.agent || "—"));
 console.log("خطا         : " + (r.error || "—"));
-console.log("");
+
 const n = a => Array.isArray(a) ? a.length : 0;
-console.log("جاب‌ها   : " + n(r.jobs));
-console.log("مخزن‌ها  : " + n(r.repos));
-console.log("اجراها   : " + n(r.sessions));
-console.log("");
+console.log("\nجاب‌ها " + n(r.jobs) + "  •  مخزن‌ها " + n(r.repos) + "  •  اجراها " + n(r.sessions));
+
+const pad = (s, w) => { s = String(s === undefined || s === null ? "" : s); 
+  return s.length >= w ? s.slice(0, w) : s + " ".repeat(w - s.length); };
+
 if (n(r.jobs)) {
-  console.log("سه جابِ اول، همان‌طور که ذخیره شده‌اند:");
-  for (const j of r.jobs.slice(0, 3)) console.log("  " + JSON.stringify(j));
-  const blank = r.jobs.filter(j => !j.result).length;
-  if (blank) console.log("\n  ⚠ " + blank + " جاب ستونِ «نتیجه» خالی دارد.");
+  console.log("\n— جاب‌ها —");
+  console.log("  " + pad("نام", 28) + pad("نتیجه", 10) + pad("وضعیت", 10) +
+              pad("آخرین اجرا", 18) + pad("ماشین", 7) + pad("دامنه", 7) + "از اجرای");
+  for (const j of r.jobs) {
+    console.log("  " + pad(j.name, 28) + pad(j.result || "—", 10) + pad(j.state || "—", 10) +
+      pad(j.last || "—", 18) + pad(n(j.vms), 7) + pad(n(j.scope), 7) + (j.via || "—"));
+  }
+  for (const j of r.jobs) {
+    if (n(j.vms)) console.log("    ماشین‌های «" + j.name + "»: " + j.vms.join(", "));
+    if (n(j.scope)) console.log("    دامنهٔ «" + j.name + "»: " + j.scope.join(", "));
+    if (j.message) console.log("    پیامِ «" + j.name + "»: " + String(j.message).replace(/\s+/g, " ").slice(0, 160));
+  }
 } else {
-  console.log("⚠ فهرستِ جاب‌ها خالی است — پس صفحه هم خالی نشان می‌دهد.");
-  console.log("  یعنی آخرین باری که اسکریپت فرستاد، هیچ جابی داخلش نبود.");
+  console.log("\n⚠ فهرستِ جاب‌ها خالی است — پس صفحه هم خالی نشان می‌دهد.");
 }
+
 if (n(r.sessions)) {
-  /* نامِ اجراها لازم است: وقتی ستونِ نتیجه خالی می‌ماند، معمولاً به این
-     دلیل است که Veeam نامِ اجرا را با پسوندِ نوعِ بکاپ می‌سازد و به نامِ
-     جاب نمی‌خورد. این‌جا هر دو کنار هم دیده می‌شوند. */
-  console.log("\nسه اجرای اول:");
-  for (const x of r.sessions.slice(0, 3)) console.log("  " + JSON.stringify(x));
-  const names = [...new Set(r.sessions.map(x => x.name).filter(Boolean))];
-  const jnames = new Set((r.jobs || []).map(j => j.name));
-  const orphan = names.filter(x => !jnames.has(x));
+  console.log("\n— اجراها (به همان ترتیبی که رسیده‌اند) —");
+  console.log("  " + pad("نام", 34) + pad("نتیجه", 10) + pad("وضعیت", 10) +
+              pad("شروع", 18) + "پایان");
+  for (const x of r.sessions) {
+    console.log("  " + pad(x.name, 34) + pad(x.result || "—", 10) + pad(x.state || "—", 10) +
+      pad(x.start || "—", 18) + (x.end || "—"));
+  }
+  /* همین‌جا معلوم می‌شود که نتیجهٔ هر جاب از کجا آمده: اگر جابی نتیجهٔ
+     اجرای جابِ دیگری را پوشیده باشد، در همین دو ستون دیده می‌شود. */
+  const jn = new Set((r.jobs || []).map(j => j.name));
+  const orphan = [...new Set(r.sessions.map(x => x.name).filter(x => x && !jn.has(x)))];
   if (orphan.length) {
     console.log("\n  نامِ اجراهایی که عیناً با هیچ جابی یکی نیستند:");
-    for (const x of orphan.slice(0, 5)) console.log("    " + x);
+    for (const x of orphan) console.log("    " + x);
   }
 }
 ' "$DB" "$SLUG"

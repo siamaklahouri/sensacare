@@ -10,12 +10,32 @@
 var VEEAM = null;
 var VEEAM_STALE_MIN = 90;
 
+/* هر چند دقیقه یک بار گزارش می‌آید؟ از خودِ گزارش‌ها درمی‌آید، نه از
+   عددی که این‌جا سفت شده باشد: سرور زمانِ گزارشِ قبلی را هم نگه
+   می‌دارد. کسی که فاصلهٔ ارسال را از یک ساعت به نیم ساعت می‌برد، دیگر
+   لازم نیست جای دیگری هم چیزی عوض کند — و هشدارِ کهنگی همان‌قدر
+   سخت‌گیر می‌ماند که بود. */
+function veeamStaleLimit(){
+  if(!VEEAM || !VEEAM.prev || !VEEAM.at) return VEEAM_STALE_MIN;
+  var gap = Math.round((Number(VEEAM.at) - Number(VEEAM.prev)) / 60000);
+  if(!(gap > 0)) return VEEAM_STALE_MIN;
+  /* یک اجرای جاافتاده نباید تحمل را دو برابر کند، و فاصلهٔ خیلی کوتاه
+     هم نباید آن را به چند دقیقه برساند. */
+  return Math.max(25, Math.min(VEEAM_STALE_MIN, Math.round(gap * 1.6) + 10));
+}
+
 function veeamTone(result){
   var r = String(result || "").trim().toLowerCase();
-  if(!r) return "none";
+  /* «None» نتیجه نیست، نبودنِ نتیجه است: Veeam تا وقتی اجرا تمام نشده
+     همین را می‌نویسد. */
+  if(!r || r === "none") return "none";
   if(r === "success" || r === "موفق") return "ok";
   if(r === "warning" || r === "هشدار") return "warn";
-  return "bad";
+  if(r === "failed" || r === "error" || r === "ناموفق") return "bad";
+  /* کلمه‌ای که نمی‌شناسیم «ناموفق» نیست. قرمزِ بی‌جا بدتر از خاکستری
+     است: یکی آدم را نصفِ شب می‌دواند، آن یکی فقط می‌گوید نمی‌دانم —
+     و خودِ کلمهٔ Veeam هم کنارش نوشته می‌ماند. */
+  return "none";
 }
 function veeamWord(result){
   var m = { success:"موفق", warning:"هشدار", failed:"ناموفق", none:"—" };
@@ -56,7 +76,10 @@ function veeamWhen(at){
    ردیف کلیک‌پذیر هم نمی‌شود — پنجرهٔ خالی، بدتر از پنجرهٔ نبوده است. */
 function veeamMsg(x){ return String(x && x.message || "").trim(); }
 function veeamVms(x){ return (x && Array.isArray(x.vms)) ? x.vms.filter(Boolean) : []; }
-function veeamHasDetail(x){ return !!(veeamMsg(x) || veeamVms(x).length); }
+function veeamScope(x){ return (x && Array.isArray(x.scope)) ? x.scope.filter(Boolean) : []; }
+function veeamHasDetail(x){
+  return !!(veeamMsg(x) || veeamVms(x).length || veeamScope(x).length);
+}
 var VEEAM_TIP = "برای دیدنِ پیام و ماشین‌ها کلیک کنید";
 
 /* نشانهٔ کوچکِ «این‌جا بیشتر هست». در ستونِ نتیجه می‌نشیند و نه در
@@ -136,10 +159,15 @@ function renderVeeam(){
       warn.hidden = false; warn.className = "veeam-warn bad";
       warn.innerHTML = "اسکریپتِ فرستنده به Veeam نرسید: " + escapeHtml(VEEAM.error) +
         "<br>عددهای زیر مالِ آخرین گزارشِ سالم‌اند و ممکن است کهنه باشند.";
-    } else if(mins > VEEAM_STALE_MIN){
+    } else if(mins > veeamStaleLimit()){
+      var gap = (VEEAM.prev && VEEAM.at)
+        ? Math.round((Number(VEEAM.at) - Number(VEEAM.prev)) / 60000) : 0;
       warn.hidden = false; warn.className = "veeam-warn";
-      warn.innerHTML = "این گزارش " + fa(mins) + " دقیقه پیش آمده. اسکریپت ساعتی یک بار می‌فرستد، " +
-        "پس یعنی یک چیزی آن طرف ایستاده — به عددهای زیر به‌عنوانِ «وضعیتِ الان» تکیه نکنید.";
+      /* فاصله را فقط وقتی می‌گوییم که معنا داشته باشد: اگر گزارشِ قبلی
+         مالِ هفتهٔ پیش باشد، «هر ۳۹۸۳ دقیقه» جمله را مسخره می‌کند. */
+      warn.innerHTML = "این گزارش " + fa(mins) + " دقیقه پیش آمده" +
+        (gap > 0 && gap <= 180 ? "، در حالی که اسکریپت هر " + fa(gap) + " دقیقه یک بار می‌فرستد" : "") +
+        ". یعنی یک چیزی آن طرف ایستاده — به عددهای زیر به‌عنوانِ «وضعیتِ الان» تکیه نکنید.";
     } else warn.hidden = true;
   }
 
@@ -200,6 +228,9 @@ function veeamPopFill(x, kind){
   } else {
     if(x.last) put("آخرین اجرا: " + escapeHtml(x.last));
     if(x.next) put("اجرای بعدی: " + escapeHtml(x.next));
+    /* وقتی کنسولِ Veeam چیزی می‌گوید و این‌جا چیزِ دیگری، اولین پرسش
+       همیشه «کدام اجرا را خوانده‌ای؟» است. */
+    if(x.via && x.via !== x.name) put("از اجرای: " + escapeHtml(x.via));
   }
   meta.innerHTML = bits.join("");
 
@@ -213,15 +244,32 @@ function veeamPopFill(x, kind){
   /* فهرستِ ماشین‌ها فقط برای جاب معنا دارد: اجرا، اجرایِ همان جاب است
      و فهرستش همان فهرست. تکرارش دو بار یک چیز را نشان می‌داد. */
   if(kind === "job"){
-    var vms = veeamVms(x);
-    html += '<div class="vpop-sub">ماشین‌های داخلِ این جاب' +
+    var vms = veeamVms(x), scope = veeamScope(x);
+    var chips = function(list, cls){
+      return '<div class="vpop-vms' + (cls ? " " + cls : "") + '">' + list.map(function(v){
+        return '<span>' + escapeHtml(v) + '</span>';
+      }).join("") + '</div>';
+    };
+    html += '<div class="vpop-sub">ماشین‌های بکاپ‌شده' +
       (vms.length ? " (" + fa(vms.length) + ")" : "") + '</div>';
-    html += vms.length
-      ? '<div class="vpop-vms">' + vms.map(function(v){
-          return '<span>' + escapeHtml(v) + '</span>';
-        }).join("") + '</div>'
-      : '<div class="vpop-empty">فهرستِ ماشین‌ها نرسیده. اسکریپتِ فرستنده را به نسخهٔ تازه ' +
-        'به‌روز کنید؛ نسخه‌های پیشین این فهرست را نمی‌فرستادند.</div>';
+    if(vms.length) html += chips(vms);
+    else if(scope.length)
+      /* جابی که به یک هاست یا کلاستر اشاره می‌کند، در تنظیماتش نامِ
+         هیچ ماشینی ندارد؛ نامِ ماشین‌ها فقط داخلِ خودِ بکاپ هست. اگر
+         این بیلد آن را ندهد، همین را می‌گوییم — نه اینکه نامِ هاست را
+         جای ماشین جا بزنیم. */
+      html += '<div class="vpop-empty">این جاب به‌جای تک‌تکِ ماشین‌ها، کلِ ' +
+        escapeHtml(scope.join("، ")) + ' را می‌گیرد و فهرستِ ماشین‌هایش از این بیلدِ Veeam ' +
+        'در نیامد. اسکریپتِ فرستنده را به نسخهٔ تازه به‌روز کنید؛ اگر باز هم نیامد، یعنی ' +
+        'این نسخهٔ Veeam فهرستِ محتویاتِ بکاپ را از API نمی‌دهد.</div>';
+    else
+      html += '<div class="vpop-empty">فهرستِ ماشین‌ها نرسیده. اسکریپتِ فرستنده را به نسخهٔ ' +
+        'تازه به‌روز کنید؛ نسخه‌های پیشین این فهرست را نمی‌فرستادند.</div>';
+
+    if(scope.length && vms.length){
+      html += '<div class="vpop-sub">دامنهٔ جاب</div>';
+      html += chips(scope, "scope");
+    }
   }
   bd.innerHTML = html;
 }
