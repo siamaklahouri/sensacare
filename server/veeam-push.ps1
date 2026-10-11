@@ -441,6 +441,9 @@ function Get-VbrSessions {
     # a running job as though something were wrong with it.
     if ($rr -eq 'None') { $rr = '' }
     if (-not $mm -and $_.message) { $mm = [string]$_.message }
+    # Veeam sometimes writes the verdict itself as the message ("Success").
+    # Showing it under a badge that already says the same word is noise.
+    if ($mm -and $rr -and $mm.Trim() -eq $rr.Trim()) { $mm = '' }
     $mins = ''
     try {
       if ($_.creationTime -and $_.endTime) {
@@ -462,6 +465,198 @@ function Get-VbrSessions {
       mins   = $mins
     }
   })
+}
+
+# The machines that really ended up in the backups. A job that points at
+# an ESXi host names no single machine in its configuration, yet the
+# backup it produced lists every one of them. This is the only place the
+# answer to "what did you actually back up?" exists -- the job's own
+# settings only say where to look.
+#
+# An extra, like the repositories: one missing endpoint must not cost the
+# report. A build without it keeps the machine names the job itself
+# listed, and shows the scope for the rest.
+function Add-BackupObjects {
+  param([string] $Base, [string] $Token, [string] $Version, [bool] $SkipCert, $Jobs)
+  if (-not $Jobs) { return $Jobs }
+  $h = @{ Authorization = "Bearer $Token"; 'x-api-version' = $Version; accept = 'application/json' }
+
+  $r = $null
+  try { $r = Invoke-Vbr -Url "$Base/api/v1/backups?limit=200" -Headers $h -SkipCert $SkipCert }
+  catch { Write-Verbose "backups -> $((Get-HttpError $_).Body)"; return $Jobs }
+  $rows = @()
+  if ($r -and $r.data) { $rows = @($r.data) } elseif ($r -is [array]) { $rows = $r }
+  if ($rows.Count -eq 0) { return $Jobs }
+
+  # Two keys, because not every build puts the job id on a backup.
+  $byJob = @{}
+  $byName = @{}
+  $put = {
+    param($map, $key, $names)
+    if (-not $key) { return }
+    if (-not $map.ContainsKey($key)) { $map[$key] = @() }
+    foreach ($nm in $names) { if ($map[$key] -notcontains $nm) { $map[$key] += $nm } }
+  }
+
+  $seen = 0
+  foreach ($bk in $rows) {
+    # A cap: a server with hundreds of backups must not turn one report
+    # into hundreds of requests.
+    if ($seen -ge 40) { break }
+    $seen++
+    $bid = [string]$bk.id
+    if (-not $bid) { continue }
+    $o = $null
+    try { $o = Invoke-Vbr -Url "$Base/api/v1/backups/$bid/objects?limit=500" -Headers $h -SkipCert $SkipCert }
+    catch { Write-Verbose "backup objects ($bid) -> $((Get-HttpError $_).Body)"; continue }
+    $orows = @()
+    if ($o -and $o.data) { $orows = @($o.data) } elseif ($o -is [array]) { $orows = $o }
+    if ($orows.Count -eq 0) { continue }
+
+    $names = @()
+    foreach ($ob in $orows) {
+      $nm = [string]$ob.name
+      if (-not $nm -and $ob.inventoryObject) { $nm = [string]$ob.inventoryObject.name }
+      if ($nm -and ($names -notcontains $nm)) { $names += $nm }
+    }
+    if ($names.Count -eq 0) { continue }
+
+    & $put $byJob ([string]$bk.jobId) $names
+    $jn = [string]$bk.jobName
+    if (-not $jn) { $jn = [string]$bk.name }
+    & $put $byName $jn $names
+  }
+
+  foreach ($j in $Jobs) {
+    $names = $null
+    $jid = [string]$j.id
+    if ($jid -and $byJob.ContainsKey($jid)) { $names = $byJob[$jid] }
+    $jn = [string]$j.name
+    if (-not $names -and $jn -and $byName.ContainsKey($jn)) { $names = $byName[$jn] }
+    if (-not $names -or @($names).Count -eq 0) { continue }
+    $j.vms = @($names)
+    # The count now means the same thing as the list underneath it. The
+    # number from /jobs/states counts what the job points at -- which for
+    # a whole-host job is 1, next to a list of twelve machines.
+    $j.objects = [string]@($names).Count
+  }
+  return $Jobs
+}
+
+# ---------------------------------------------------------------
+
+$cfg = Read-Config -Path $ConfigPath
+$skip = [bool]$cfg.SkipCertCheck
+if ($skip) { Disable-CertCheck }
+
+$base = $cfg.VbrHost
+if ($base -notmatch '^https?://') { $base = "https://${base}:9419" }
+$base = $base.TrimEnd('/')
+
+$jobs  = @()
+$repos = @()
+$sess  = @()
+$err   = ''
+$script:JobsVia = ''
+try {
+  $conn = Connect-Vbr -Base $base -User $cfg.VbrUser -Pass $cfg.VbrPass -SkipCert $skip
+  $jobs  = Get-VbrJobs     -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+  $repos = Get-VbrRepos    -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+  $sess  = Get-VbrSessions -Base $base -Token $conn.Token -Version $conn.Version -SkipCert $skip
+} catch {
+  # Veeam was unreachable. Send anyway, with the error, so the kartabl
+  # knows its numbers are stale. Sending nothing is silence, and silence
+  # looks exactly like "everything is fine".
+  $err = $_.Exception.Message
+}
+
+# When /jobs/states is unavailable, each job comes back without its last
+# result -- a table of names and blank verdicts, which is worse than no
+# table. But the sessions endpoint answered, and a session carries the
+# verdict. So: for each job, find its newest session by name and take the
+# result, state and run time from there.
+#
+# This is why it matters: on this customer's build /jobs/states returns
+# HTTP 500 ("The value of enum EJobStatus is not supported ... Actual
+# value was Stopped") -- a bug inside Veeam's own serializer, nothing we
+# can fix from outside. The sessions route is unaffected.
+function Add-SessionResults {
+  param($Jobs, $Sessions)
+  if (-not $Jobs -or -not $Sessions) { return $Jobs }
+
+  # Which run's verdict does the console show? The one that FINISHED
+  # last -- among ALL of that job's runs, whatever Veeam named them.
+  #
+  # This is where it went wrong on a real server. Veeam names a job's
+  # runs after the backup type: "Once a Day (Incremental)". But a RETRY
+  # is named after the job alone: "Once a Day". Trying the exact name
+  # first and stopping there meant the retry of two days ago beat last
+  # night's successful incremental -- the console said Success and the
+  # table said Failed, from the same data.
+  #
+  # So there is no "first try this, then that": every run of the job is a
+  # candidate, and the newest finished one wins.
+  $stamp = {
+    param($x)
+    if (-not $x) { return '' }
+    $e = [string]$x.end
+    if ($e) { return $e }
+    return [string]$x.start
+  }
+  # A run still going has no verdict yet, so it never beats a finished
+  # one -- otherwise a job loses its result the moment it starts working.
+  # It is kept only when there is nothing else.
+  $done = { param($x) return [bool]($x -and [string]$x.end -and [string]$x.result) }
+  $newer = {
+    param($a, $b)
+    if (-not $a) { return $true }
+    $da = & $done $a
+    $db = & $done $b
+    if ($da -ne $db) { return $db }
+    return ((& $stamp $b) -gt (& $stamp $a))
+  }
+
+  # Is this run a run of this job?
+  $mine = {
+    param($s, $jn)
+    $sn = [string]$s.name
+    if (-not $sn -or -not $jn) { return $false }
+    if ($sn -eq $jn) { return $true }
+    if ($sn.Length -le $jn.Length) { return $false }
+    if (-not $sn.StartsWith($jn, [StringComparison]::OrdinalIgnoreCase)) { return $false }
+    # Only Veeam's own suffix, in parentheses. Without this, job "Backup"
+    # would claim the runs of job "Backup Copy" and wear its verdict --
+    # and a wrong verdict that looks right is worse than an empty column.
+    return ($sn.Substring($jn.Length) -match '^\s*\(.+\)\s*$')
+  }
+
+  foreach ($j in $Jobs) {
+    $jid = [string]$j.id
+    $jn  = [string]$j.name
+    $x = $null
+    # The job's own id first, when the sessions carry one: it is exact,
+    # and no name can be confused with another.
+    if ($jid) {
+      foreach ($s in $Sessions) {
+        if (([string]$s.jobId -eq $jid) -and (& $newer $x $s)) { $x = $s }
+      }
+    }
+    if (-not $x -and $jn) {
+      foreach ($s in $Sessions) {
+        if ((& $mine $s $jn) -and (& $newer $x $s)) { $x = $s }
+      }
+    }
+    if (-not $x) { continue }
+    if (-not $j.result) { $j.result = $x.result }
+    if (-not $j.state)  { $j.state  = $x.state }
+    if (-not $j.last)   { $j.last   = $x.start }
+    if (-not $j.message) { $j.message = $x.message }
+    # Where the verdict came from. When the console says Success and this
+    # column says otherwise, the first question is always "which run did
+    # you read?" -- so the answer travels with the answer.
+    if (-not $j.via) { $j.via = [string]$x.name }
+  }
+  return $Jobs
 }
 
 # The machines that really ended up in the backups. A job that points at

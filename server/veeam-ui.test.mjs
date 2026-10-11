@@ -360,11 +360,19 @@ const contrast = async () => p.evaluate(() => {
   const ratio = (a, b) => { const x = lum(a), y = lum(b);
     return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10; };
   return [...document.querySelectorAll('#veeamBody .vee-b')].map(el => {
-    const cs = getComputedStyle(el), bf = getComputedStyle(el, '::before');
+    const cs = getComputedStyle(el);
+    const g = el.querySelector('svg.g');
+    const path = g && g.querySelector('path');
+    const disc = g && g.querySelector('circle');
+    const r = g ? g.getBoundingClientRect() : { width: NaN, height: NaN };
+    /* رنگِ علامت از stroke خوانده می‌شود، نه از color: کشیده شده است،
+       تایپ نشده. */
     return { cls: el.className.replace('vee-b ', ''), text: el.textContent,
-             glyph: bf.content, gw: Math.round(parseFloat(bf.width)),
+             glyph: path ? path.getAttribute('d').slice(0, 7) : '',
+             gw: Math.round(r.width), gh: Math.round(r.height),
              word: ratio(cs.color, cs.backgroundColor),
-             mark: ratio(bf.color, bf.backgroundColor) };
+             mark: ratio(path ? getComputedStyle(path).stroke : 'rgb(0,0,0)',
+                         disc ? getComputedStyle(disc).fill : 'rgb(0,0,0)') };
   });
 });
 
@@ -380,11 +388,15 @@ await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'ligh
 await p.waitForTimeout(120);
 
 const marks = await contrast();
-t(marks.map(x => x.glyph).join(',') === '"✓","!","✕","✓"',
-  'هر نتیجه علامتِ خودش را دارد', marks.map(x => x.glyph).join(','));
-t(marks.every(x => x.gw === 16), 'و دایرهٔ علامت واقعاً رسم شده', marks.map(x => x.gw).join(','));
-/* علامت از CSS می‌آید، نه از DOM: متنِ خانه باید همان یک کلمه بماند،
-   وگرنه در رونوشت و خروجیِ اکسل «✓موفق» می‌نشیند. */
+/* علامت کشیده می‌شود، نه تایپ: «✓» و «✕» را هر قلمی یک جور می‌کشد و
+   در ویندوز از قلمِ نمادها می‌آیند — بدقواره و از مرکز خارج. */
+t(marks.map(x => x.glyph).join(',') === 'M4.4 8.,M8 4.2 ,M5.4 5.,M4.4 8.',
+  'هر نتیجه علامتِ کشیده‌شدهٔ خودش را دارد', marks.map(x => x.glyph).join(','));
+t(marks.every(x => x.gw === 16 && x.gh === 16),
+  'و مربعِ علامت واقعاً رسم شده — نه کشیده، نه له',
+  marks.map(x => x.gw + '×' + x.gh).join(' '));
+/* علامت گرهِ متنی ندارد: متنِ خانه باید همان یک کلمه بماند، وگرنه در
+   رونوشت و خروجیِ اکسل «✓موفق» می‌نشیند. */
 t(marks.map(x => x.text).join(',') === 'موفق,هشدار,ناموفق,موفق',
   'ولی متنِ خانه همان یک کلمه مانده', marks.map(x => x.text).join(','));
 /* یک کلمهٔ ناشناخته «ناموفق» نیست. تا دیروز هر چیزی که success یا
@@ -407,11 +419,84 @@ const icon = await p.evaluate(() => {
   const i = document.querySelector('#veeamBody .vee-i');
   const r = i.getBoundingClientRect();
   return { w: Math.round(r.width), h: Math.round(r.height),
-           g: getComputedStyle(i, '::before').content, txt: i.textContent };
+           svg: !!i.querySelector('svg'), txt: i.textContent,
+           cell: i.closest('td').textContent };
 });
-t(icon.w > 12 && icon.h > 12 && icon.g === '"i"' && icon.txt === '',
-  'نشانهٔ «جزئیات» هم دایره‌ای است که CSS می‌کشد، نه یک نویسهٔ وصله',
-  icon.w + '×' + icon.h + ' ' + icon.g);
+t(icon.w > 12 && icon.h > 12 && icon.svg && icon.txt === '',
+  'نشانهٔ «جزئیات» هم کشیده می‌شود، نه یک نویسهٔ وصله', icon.w + '×' + icon.h);
+/* راهنمای این نشانه روی spanِ بیرونی است و نه در <title>: <title> یک
+   گرهِ متنی است و متنِ خانه را آلوده می‌کند. */
+t(icon.cell === 'موفق', 'و راهنمایش متنِ خانه را آلوده نمی‌کند', JSON.stringify(icon.cell));
+
+console.log('\n===== کارت‌ها =====');
+/* عددِ «۱ ناموفق» تا وقتی نگوید کدام یکی، نصفِ خبر است. */
+const cardSet = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  return [...document.querySelectorAll('#veeamCards .stat')].map(c => ({
+    lbl: c.querySelector('.lbl').textContent.trim(),
+    val: c.querySelector('.val').textContent.trim(),
+    on: c.classList.contains('vee-card'), vc: c.getAttribute('data-vc'),
+    cur: getComputedStyle(c).cursor
+  }));
+});
+t(cardSet.length === 7, 'هفت کارت', String(cardSet.length));
+t(cardSet.every(c => c.on && c.cur === 'pointer'),
+  'و هر هفت‌تا کلیک‌پذیرند', cardSet.map(c => c.vc).join(','));
+
+const byCard = async kind => p.evaluate(k => {
+  document.getElementById('veeamPop').hidden = true;
+  document.querySelector('#veeamCards .stat[data-vc="' + k + '"]').click();
+  const pop = document.getElementById('veeamPop');
+  return { shown: !pop.hidden,
+    name: document.getElementById('veeamPopName').textContent.trim(),
+    meta: document.getElementById('veeamPopMeta').textContent.trim(),
+    rows: [...pop.querySelectorAll('.vpop-row')].map(r =>
+      r.querySelector('.nm').textContent.trim()),
+    clickable: pop.querySelectorAll('.vpop-row.on').length,
+    back: !!pop.querySelector('.vpop-back') };
+}, kind);
+
+const all = await byCard('jobs');
+t(all.shown && all.rows.length === 4 && /همهٔ جاب‌ها/.test(all.name),
+  'کارتِ «تعداد جاب» همهٔ جاب‌ها را می‌آورد', all.name + ' — ' + all.rows.join(', '));
+t(/۴ از ۴/.test(all.meta), 'و شمارش بالایش درست است', all.meta);
+const failed = await byCard('bad');
+t(failed.rows.join(',') === 'Archive-to-Tape' && /۱ از ۴/.test(failed.meta),
+  'کارتِ «ناموفق» فقط همان یکی را', failed.rows.join(',') + ' — ' + failed.meta);
+const okc = await byCard('ok');
+t(okc.rows.join(',') === 'Daily-VMs,Tape-Weekly', 'کارتِ «موفق» هر دو موفق را', okc.rows.join(','));
+t(okc.clickable === 1,
+  'و ردیفی که جزئیات ندارد، در فهرست هم کلیک‌پذیر نیست', String(okc.clickable));
+const rep = await byCard('repo');
+t(rep.rows.join(',') === 'Main-NAS,Archive-SAN,Cloud-Tier' && /مخزن/.test(rep.meta),
+  'سه کارتِ فضا، فهرستِ مخزن‌ها را می‌آورند', rep.rows.join(','));
+t(await p.evaluate(() => document.querySelectorAll('#veeamPop .vpop-row .fil').length) === 3,
+  'با همان نوارِ پُری که در جدول هست');
+
+/* از فهرست به جزئیات، و برگشت. */
+const drill = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  document.querySelector('#veeamCards .stat[data-vc="bad"]').click();
+  const pop = document.getElementById('veeamPop');
+  pop.querySelector('.vpop-row.on').click();
+  const deep = { name: document.getElementById('veeamPopName').textContent.trim(),
+                 msg: !!pop.querySelector('.vpop-msg'), back: !!pop.querySelector('.vpop-back') };
+  pop.querySelector('.vpop-back').click();
+  return { deep, backName: document.getElementById('veeamPopName').textContent.trim(),
+           backRows: pop.querySelectorAll('.vpop-row').length };
+});
+t(drill.deep.name === 'Archive-to-Tape' && drill.deep.msg,
+  'زدنِ یک ردیفِ فهرست، جزئیاتِ همان جاب را باز می‌کند', drill.deep.name);
+t(drill.deep.back && /ناموفق/.test(drill.backName) && drill.backRows === 1,
+  'و دکمهٔ بازگشت به همان فهرست برمی‌گرداند', drill.backName);
+/* ولی وقتی مستقیم از جدول آمده‌ایم، «بازگشت» معنا ندارد */
+const noBack = await p.evaluate(() => {
+  document.getElementById('veeamPop').hidden = true;
+  document.querySelectorAll('#veeamBody tr')[2].click();
+  return !!document.querySelector('#veeamPop .vpop-back');
+});
+t(!noBack, 'و وقتی از خودِ جدول آمده‌ایم، دکمهٔ بازگشت نمی‌آید');
+await p.evaluate(() => { document.getElementById('veeamPop').hidden = true; });
 
 console.log('\n===== فاصلهٔ ارسال =====');
 /* عددِ «کهنه» دیگر ثابت نیست: از فاصلهٔ دو گزارشِ آخر درمی‌آید. کسی که

@@ -23,12 +23,11 @@
   border:1px solid color-mix(in srgb,var(--t) 28%,transparent);
   white-space:nowrap;
 }
-.vee-b::before{
-  content:""; flex:none; width:16px; height:16px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:var(--t); color:var(--tbg);
-  font-size:10px; font-weight:700; line-height:1;
-}
+/* علامت کشیده می‌شود، نه تایپ: «✓» و «✕» را هر قلمی یک جور می‌کشد و
+   در ویندوز از قلمِ نمادها می‌آیند — بدقواره و از مرکز خارج. SVG در هر
+   مرورگر و هر قلمی یک شکل است، و چون گرهِ متنی ندارد، متنِ خانه هم
+   همان یک کلمه می‌ماند. */
+.vee-b .g{flex:none; width:16px; height:16px; display:block; color:var(--t)}
 .vee-b.ok  {--t:var(--green-ink,#2F6B4F); --tbg:var(--green-bg,#E3EFE7)}
 /* کهربایِ تم روز (#C98A2C) روی تینتِ خودش فقط ۲٫۶:۱ کنتراست دارد —
    نشانی که دیده می‌شود ولی خوانده نمی‌شود. برای همین «هشدار» در روز
@@ -38,10 +37,7 @@
 [data-theme="dark"] .vee-b.warn{--t:var(--amber-ink,#E0A63A)}
 .vee-b.bad {--t:var(--red-ink,#A6222B);   --tbg:var(--red-bg,#F6E1E2)}
 .vee-b.none{--t:var(--ink-faint,#8592A0); --tbg:var(--paper,#EEF2F6)}
-.vee-b.ok::before  {content:"\2713"}
-.vee-b.warn::before{content:"!"}
-.vee-b.bad::before {content:"\2715"}
-.vee-b.none::before{content:"\2013"}
+
 
 /* گزارشی که کهنه شده بدتر از گزارشِ نداشته است: آدم نگاه می‌کند، سبز
    می‌بیند و خیالش راحت می‌شود — در حالی که آن سبز مالِ سه روز پیش است. */
@@ -71,20 +67,15 @@
 tr.vee-click{cursor:pointer}
 /* روشن شدنِ ردیف زیرِ نشانگر را خودِ جدول دارد؛ دوباره نوشتنش این‌جا
    فقط آن یکی را در تم شب خراب می‌کرد. */
+/* نشانهٔ «جزئیات» هم کشیده می‌شود، به همان دلیل: «ⓘ» در هر قلم یک شکل
+   دارد و کنارِ نشانِ نتیجه وصله به نظر می‌رسید. */
 .vee-i{
-  display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;
-  flex:none; width:17px; height:17px; margin-inline-start:7px; border-radius:50%;
-  border:1px solid var(--card-border); background:var(--white);
-  color:var(--ink-faint); font-size:10px; font-weight:700; line-height:1;
-  transition:color .15s, border-color .15s, background-color .15s;
+  display:inline-flex; width:17px; height:17px; flex:none; vertical-align:middle;
+  margin-inline-start:7px; color:var(--ink-faint);
+  transition:color .15s;
 }
-/* حرف هم از CSS می‌آید: «ⓘ» در هر قلم یک شکل دارد و در Vazirmatn
-   کنارِ نشانِ نتیجه وصله به نظر می‌رسید. */
-.vee-i::before{content:"i"}
-tr.vee-click:hover .vee-i{
-  color:var(--brass-ink,#1A4FA3); border-color:var(--brass-ink,#1A4FA3);
-  background:var(--brass-bg,#E4EAF7);
-}
+.vee-i svg{width:100%; height:100%; display:block}
+tr.vee-click:hover .vee-i{ color:var(--brass-ink,#1A4FA3) }
 
 /* پنجرهٔ جزئیات. وسطِ صفحه — نه بالا مثل پنجرهٔ ماه‌ها: آن یکی فهرستِ
    کوتاهی است زیرِ دکمهٔ خودش، این یکی متنی است که آدم می‌نشیند و
@@ -123,3 +114,31 @@ tr.vee-click:hover .vee-i{
    و بی‌پس‌زمینه، تا در یک نگاه از فهرستِ بالایی جدا باشد. */
 .vpop-vms.scope span{background:transparent; color:var(--ink-soft); border-style:dashed}
 .vpop-empty{font-size:12.5px; color:var(--ink-faint); line-height:1.95}
+
+/* کارت‌های بالا هم کلیک‌پذیرند: عددِ «۳ ناموفق» تا وقتی نگوید کدام سه
+   تا، نصفِ خبر است. کارتی که چیزی برای نشان دادن ندارد (صفرِ ناموفق)
+   کلیک‌پذیر هم نیست. */
+.stat.vee-card{cursor:pointer; transition:box-shadow .15s, transform .12s}
+.stat.vee-card:hover{box-shadow:var(--shadow-lg); transform:translateY(-1px)}
+.stat.vee-card:focus-visible{outline:2px solid var(--brass-ink,#1A4FA3); outline-offset:2px}
+
+.vpop-list{display:flex; flex-direction:column; gap:5px}
+.vpop-row{
+  display:flex; align-items:center; gap:10px; width:100%; text-align:start;
+  font-family:var(--font-body); font-size:12.5px; color:var(--ink);
+  background:transparent; border:1px solid transparent; border-radius:10px;
+  padding:7px 9px; cursor:default;
+}
+.vpop-row.on{cursor:pointer}
+.vpop-row.on:hover{background:var(--paper-2,var(--paper,#EEF2F6)); border-color:var(--card-border)}
+.vpop-row .nm{flex:1; min-width:0; font-weight:600; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.vpop-row .dt{font-size:11.5px; color:var(--ink-faint); white-space:nowrap}
+.vpop-row .vee-b{flex:none}
+/* بازگشت از جزئیاتِ یک ردیف به فهرستی که از آن آمده‌ایم. فقط وقتی
+   می‌آید که راهی برای بازگشت باشد. */
+.vpop-back{
+  background:transparent; border:0; cursor:pointer; padding:4px 7px; border-radius:7px;
+  font-family:var(--font-body); font-size:12px; color:var(--ink-faint); line-height:1;
+}
+.vpop-back:hover{background:var(--paper-2,var(--paper,#EEF2F6)); color:var(--brass-ink,#1A4FA3)}

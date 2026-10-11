@@ -81,14 +81,50 @@ function veeamHasDetail(x){
   return !!(veeamMsg(x) || veeamVms(x).length || veeamScope(x).length);
 }
 var VEEAM_TIP = "برای دیدنِ پیام و ماشین‌ها کلیک کنید";
+var VEEAM_CARD_TIP = "برای دیدنِ فهرست کلیک کنید";
+
+/* نشانِ نتیجه. علامتش کشیده می‌شود، نه تایپ: «✓» و «✕» را هر قلمی یک
+   جور می‌کشد — در ویندوز از قلمِ نمادها می‌آیند و بدقواره و از مرکز
+   خارج می‌نشینند. SVG در هر مرورگر و هر قلمی یک شکل است.
+
+   و چون <svg> هیچ گرهِ متنی ندارد، textContentِ خانه همان یک کلمه
+   می‌ماند — همان چیزی که رونوشت و خروجیِ اکسل می‌خوانند. */
+var VEEAM_MARK = {
+  ok:   'M4.4 8.3 L6.9 10.8 L11.6 5.4',
+  warn: 'M8 4.2 L8 9.1',
+  bad:  'M5.4 5.4 L10.6 10.6 M10.6 5.4 L5.4 10.6',
+  none: 'M5 8 L11 8'
+};
+function veeamMarkSvg(tone){
+  return '<svg class="g" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+    '<circle cx="8" cy="8" r="8" fill="currentColor"></circle>' +
+    '<path d="' + VEEAM_MARK[tone] + '" fill="none" stroke="var(--tbg)" stroke-width="1.9" ' +
+      'stroke-linecap="round" stroke-linejoin="round"></path>' +
+    (tone === "warn"
+      ? '<circle cx="8" cy="11.7" r="1" fill="var(--tbg)"></circle>' : '') +
+    '</svg>';
+}
+/* یک جا ساخته می‌شود و سه جا به کار می‌رود — جدول، اجراها، و پنجره. */
+function veeamBadge(result){
+  var tone = veeamTone(result);
+  return '<span class="vee-b ' + tone + '">' + veeamMarkSvg(tone) +
+    escapeHtml(veeamWord(result)) + '</span>';
+}
 
 /* نشانهٔ کوچکِ «این‌جا بیشتر هست». در ستونِ نتیجه می‌نشیند و نه در
    ستونِ نام: نامِ جاب خودش خانهٔ editable-cell است و پنجرهٔ متنِ بلند
    با textContent می‌خواندش، پس هیچ عنصری نباید داخلش گذاشته شود. */
 function veeamMore(x){
-  /* خالی می‌ماند: حرفش را CSS می‌گذارد، تا متنِ خانه همان یک کلمهٔ
-     نتیجه بماند و در رونوشت و خروجیِ اکسل چیزی اضافه نشود. */
-  return veeamHasDetail(x) ? '<span class="vee-i" title="' + VEEAM_TIP + '"></span>' : "";
+  if(!veeamHasDetail(x)) return "";
+  /* راهنما روی spanِ بیرونی می‌نشیند، نه داخلِ <title>: <title> یک گرهِ
+     متنی است و متنِ خانه را آلوده می‌کند — همان چیزی که رونوشت و
+     خروجیِ اکسل می‌خوانند. */
+  return '<span class="vee-i" title="' + VEEAM_TIP + '">' +
+    '<svg viewBox="0 0 18 18" aria-hidden="true" focusable="false">' +
+    '<circle cx="9" cy="9" r="8" fill="none" stroke="currentColor" stroke-width="1.2"></circle>' +
+    '<path d="M9 8 L9 12.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>' +
+    '<circle cx="9" cy="5.4" r="1" fill="currentColor"></circle>' +
+    '</svg></span>';
 }
 function veeamRowAttrs(x, kind, i){
   if(!veeamHasDetail(x)) return "";
@@ -136,18 +172,25 @@ function renderVeeam(){
   });
 
   var gb = function(v){ return fa(Math.round(v).toLocaleString("en-US")); };
+  /* کارت هم کلیک‌پذیر می‌شود: عددِ «۳ ناموفق» تا وقتی نگوید کدام سه تا،
+     نصفِ خبر است. کارتی که فهرستش خالی است کلیک‌پذیر نمی‌شود — پنجرهٔ
+     خالی بدتر از پنجرهٔ نبوده است. */
+  var card = function(tone, lbl, val, kind, has){
+    return '<div class="stat ' + tone + (has ? ' vee-card' : '') + '"' +
+      (has ? ' data-vc="' + kind + '" tabindex="0" role="button" title="' + VEEAM_CARD_TIP + '"' : '') +
+      '><div class="lbl">' + lbl + '</div><div class="val">' + val + '</div></div>';
+  };
   if(cards) cards.innerHTML =
-    '<div class="stat blue"><div class="lbl">🛡️ تعداد جاب</div><div class="val">' + fa(jobs.length) + '</div></div>' +
-    '<div class="stat green"><div class="lbl">✅ موفق</div><div class="val">' + fa(n.ok) + '</div></div>' +
-    '<div class="stat amber"><div class="lbl">⚠️ هشدار</div><div class="val">' + fa(n.warn) + '</div></div>' +
-    '<div class="stat red"><div class="lbl">⛔ ناموفق</div><div class="val">' + fa(n.bad) + '</div></div>' +
+    card('blue',  '🛡️ تعداد جاب', fa(jobs.length), 'jobs', jobs.length > 0) +
+    card('green', '✅ موفق',      fa(n.ok),        'ok',   n.ok > 0) +
+    card('amber', '⚠️ هشدار',     fa(n.warn),      'warn', n.warn > 0) +
+    card('red',   '⛔ ناموفق',    fa(n.bad),       'bad',  n.bad > 0) +
     (repos.length
-      ? '<div class="stat teal"><div class="lbl">💽 فضای کل (GB)</div><div class="val">' + gb(cap) + '</div></div>' +
-        '<div class="stat ' + (cap > 0 && free / cap < 0.1 ? 'red' : 'blue') +
-          '"><div class="lbl">🆓 فضای آزاد (GB)</div><div class="val">' + gb(free) + '</div></div>' +
+      ? card('teal', '💽 فضای کل (GB)', gb(cap), 'repo', true) +
+        card((cap > 0 && free / cap < 0.1 ? 'red' : 'blue'), '🆓 فضای آزاد (GB)', gb(free), 'repo', true) +
         (fullest
-          ? '<div class="stat ' + (fullest.pct >= 90 ? 'red' : fullest.pct >= 75 ? 'amber' : 'green') +
-            '"><div class="lbl">📈 پرترین مخزن</div><div class="val">' + fa(Math.round(fullest.pct)) + '٪</div></div>'
+          ? card((fullest.pct >= 90 ? 'red' : fullest.pct >= 75 ? 'amber' : 'green'),
+                 '📈 پرترین مخزن', fa(Math.round(fullest.pct)) + '٪', 'repo', true)
           : '')
       : '');
 
@@ -177,8 +220,7 @@ function renderVeeam(){
       '<td>' + fa(i + 1) + '</td>' +
       '<td class="editable-cell">' + escapeHtml(j.name || "") + '</td>' +
       '<td>' + escapeHtml(j.type || "") + '</td>' +
-      '<td><span class="vee-b ' + tone + '">' + escapeHtml(veeamWord(j.result)) + '</span>' +
-        veeamMore(j) + '</td>' +
+      '<td>' + veeamBadge(j.result) + veeamMore(j) + '</td>' +
       '<td>' + escapeHtml(veeamState(j.state)) + '</td>' +
       '<td>' + escapeHtml(j.last || "—") + '</td>' +
       '<td>' + escapeHtml(j.next || "—") + '</td>' +
@@ -218,7 +260,7 @@ function veeamPopFill(x, kind){
      نقطهٔ جداکننده را CSS می‌گذارد. */
   var bits = [];
   var put = function(t){ bits.push("<span>" + t + "</span>"); };
-  put('<span class="vee-b ' + tone + '">' + escapeHtml(veeamWord(x.result)) + '</span>');
+  put(veeamBadge(x.result));
   if(x.type)  put(escapeHtml(x.type));
   if(x.state) put("وضعیت: " + escapeHtml(veeamState(x.state)));
   if(kind === "sess"){
@@ -274,6 +316,94 @@ function veeamPopFill(x, kind){
   bd.innerHTML = html;
 }
 
+/* ---- فهرستِ پشتِ یک کارت ----
+   کارت یک عدد است و عدد تنها، کار را تمام نمی‌کند: «۳ ناموفق» یعنی
+   باید رفت و در جدول دنبالِ آن سه تا گشت. این‌جا همان سه تا، با نتیجه
+   و زمانشان، و هر کدام را که بزنی جزئیاتش باز می‌شود. */
+var VEEAM_BACK = "";
+
+var VEEAM_CARDS = {
+  jobs: { t: "همهٔ جاب‌ها",   pick: function(){ return true; } },
+  ok:   { t: "جاب‌های موفق",  pick: function(j){ return veeamTone(j.result) === "ok"; } },
+  warn: { t: "جاب‌هایی که هشدار داده‌اند", pick: function(j){ return veeamTone(j.result) === "warn"; } },
+  bad:  { t: "جاب‌های ناموفق", pick: function(j){ return veeamTone(j.result) === "bad"; } },
+  repo: { t: "مخزن‌های بکاپ" }
+};
+
+function veeamJobRow(j, i){
+  var det = veeamHasDetail(j);
+  return '<button type="button" class="vpop-row' + (det ? " on" : "") + '"' +
+    (det ? ' data-vp="job" data-vi="' + i + '" title="' + VEEAM_TIP + '"' : ' disabled') + '>' +
+    veeamBadge(j.result) +
+    '<span class="nm">' + escapeHtml(j.name || "—") + '</span>' +
+    '<span class="dt">' + escapeHtml(j.last || "—") + '</span>' +
+    '</button>';
+}
+
+function veeamRepoRow(r){
+  var pct = parseFloat(r.pct);
+  var has = !isNaN(pct);
+  var tone = !has ? "" : pct >= 90 ? " bad" : pct >= 75 ? " warn" : "";
+  return '<div class="vpop-row">' +
+    '<span class="nm">' + escapeHtml(r.name || "—") + '</span>' +
+    (has
+      ? '<span class="vee-bar' + tone + '" style="flex:1.2">' +
+          '<span class="num">' + fa(Math.round(pct)) + '٪</span>' +
+          '<span class="trk"><span class="fil" style="width:' + Math.max(0, Math.min(100, pct)) + '%"></span></span>' +
+        '</span>'
+      : '') +
+    '<span class="dt">' + (r.free ? fa(r.free) + " از " + fa(r.capacity || "—") + " GB آزاد" : "—") + '</span>' +
+    '</div>';
+}
+
+function veeamPopCard(kind){
+  var pop = document.getElementById("veeamPop");
+  var spec = VEEAM_CARDS[kind];
+  if(!pop || !VEEAM || !spec) return;
+  var nm = document.getElementById("veeamPopName");
+  var meta = document.getElementById("veeamPopMeta");
+  var bd = document.getElementById("veeamPopBody");
+  if(!nm || !meta || !bd) return;
+
+  VEEAM_BACK = kind;
+  nm.textContent = spec.t; nm.title = spec.t;
+  veeamPopBack(false);
+
+  if(kind === "repo"){
+    var repos = VEEAM.repos || [];
+    meta.innerHTML = '<span>' + fa(repos.length) + ' مخزن</span>';
+    bd.innerHTML = repos.length
+      ? '<div class="vpop-list">' + repos.map(veeamRepoRow).join("") + '</div>'
+      : '<div class="vpop-empty">هیچ مخزنی در گزارش نیست.</div>';
+  } else {
+    var jobs = VEEAM.jobs || [];
+    /* شمارهٔ ردیف در فهرستِ اصلی نگه داشته می‌شود، نه در این فهرستِ
+       فیلترشده: زدنِ ردیف باید همان جاب را باز کند. */
+    var rows = [];
+    jobs.forEach(function(j, i){ if(spec.pick(j)) rows.push(veeamJobRow(j, i)); });
+    meta.innerHTML = '<span>' + fa(rows.length) + ' از ' + fa(jobs.length) + ' جاب</span>';
+    bd.innerHTML = rows.length
+      ? '<div class="vpop-list">' + rows.join("") + '</div>'
+      : '<div class="vpop-empty">هیچ جابی در این دسته نیست.</div>';
+  }
+  pop.hidden = false;
+}
+
+/* دکمهٔ بازگشت فقط وقتی می‌آید که راهی برای بازگشت باشد */
+function veeamPopBack(show){
+  var h = document.querySelector("#veeamPop .vpop-h");
+  if(!h) return;
+  var b = h.querySelector(".vpop-back");
+  if(!show){ if(b) b.remove(); return; }
+  if(b) return;
+  b = document.createElement("button");
+  b.type = "button";
+  b.className = "vpop-back";
+  b.textContent = "› بازگشت به فهرست";
+  b.addEventListener("click", function(){ veeamPopCard(VEEAM_BACK); });
+  h.insertBefore(b, h.querySelector(".vpop-x"));
+}
+
 function veeamPopOpen(kind, i){
   var pop = document.getElementById("veeamPop");
   if(!pop || !VEEAM) return;
@@ -281,6 +411,7 @@ function veeamPopOpen(kind, i){
   var x = list[i];
   if(!x) return;
   veeamPopFill(x, kind);
+  veeamPopBack(!!(VEEAM_BACK && kind === "job"));
   pop.hidden = false;
 }
 
@@ -301,6 +432,27 @@ function veeamPopInit(){
     if(e.key === "Escape" && !pop.hidden){ e.preventDefault(); close(); }
   });
 
+  /* کارت‌ها. کلیک و کیبورد هر دو، چون کارت دکمهٔ واقعی نیست. */
+  var cards = document.getElementById("veeamCards");
+  if(cards){
+    var fire = function(e){
+      var c = e.target && e.target.closest ? e.target.closest(".stat.vee-card") : null;
+      if(!c) return;
+      veeamPopCard(c.getAttribute("data-vc"));
+    };
+    cards.addEventListener("click", fire);
+    cards.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); fire(e); }
+    });
+  }
+
+  /* ردیف‌های داخلِ خودِ پنجره: از فهرست به جزئیات */
+  pop.addEventListener("click", function(e){
+    var r = e.target && e.target.closest ? e.target.closest(".vpop-row.on") : null;
+    if(!r) return;
+    veeamPopOpen(r.getAttribute("data-vp"), Number(r.getAttribute("data-vi")));
+  });
+
   ["veeamBody", "veeamSessBody"].forEach(function(id){
     var tb = document.getElementById(id);
     if(!tb) return;
@@ -312,6 +464,7 @@ function veeamPopInit(){
       if(t.closest("td.cp-long")) return;
       var tr = t.closest("tr");
       if(!tr || tr.className.indexOf("vee-click") < 0) return;
+      VEEAM_BACK = "";
       veeamPopOpen(tr.getAttribute("data-vp"), Number(tr.getAttribute("data-vi")));
     });
   });
@@ -372,8 +525,7 @@ function renderVeeamSessions(sess){
       '<td>' + fa(i + 1) + '</td>' +
       '<td class="editable-cell">' + escapeHtml(x.name || "") + '</td>' +
       '<td>' + escapeHtml(x.type || "") + '</td>' +
-      '<td><span class="vee-b ' + veeamTone(x.result) + '">' + escapeHtml(veeamWord(x.result)) + '</span>' +
-        veeamMore(x) + '</td>' +
+      '<td>' + veeamBadge(x.result) + veeamMore(x) + '</td>' +
       '<td>' + escapeHtml(x.start || "—") + '</td>' +
       '<td>' + escapeHtml(x.end || "—") + '</td>' +
       '<td>' + (x.mins ? fa(x.mins) + " دقیقه" : "—") + '</td>' +
