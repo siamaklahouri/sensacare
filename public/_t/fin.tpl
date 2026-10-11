@@ -625,7 +625,6 @@ window.KARTABL_UNTIL = {{UNTIL}};
 
   .appfoot{ text-align:center; color:var(--ink-faint); font-size:11.5px; padding:20px 0 10px; }
 
-{{PART:mobilecss}}
 
   /* شش کارتِ داشبورد با auto-fit به ۵+۱ می‌شکست و یک ردیفِ تک‌کارته با
      جای خالی کنارش می‌ماند. تعداد ستون را صریح می‌گذاریم تا همیشه
@@ -641,6 +640,13 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* آخرین چیزی که بار می‌شود، چون حرفِ آخر را می‌زند — پوستهٔ مشترکِ
    هر دو قالب. */
 {{PART:themecss}}
+  /* چیدمانِ صفحهٔ باریک عمداً آخر از همه می‌آید. themecss یک‌بار
+     دیگر .sidebar و .content و .topbar را می‌نویسد؛ با وزنِ برابر و
+     جایگاهِ دیرتر، هرچه این فایل گفته بود را پس می‌زد — از جمله
+     «flex:0 0 216px» که در چیدمانِ ستونیِ گوشی به‌جای عرض، قدِ نوار
+     را ۲۱۶ پیکسل قفل می‌کرد و منو را به آن شکل درمی‌آورد.
+     مدیا-کوئری باید حرفِ آخر را بزند. */
+{{PART:mobilecss}}
 </style>
 </head>
 <body>
@@ -4247,6 +4253,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:cellpop}}
 {{PART:dellock}}
 {{PART:dayexport}}
+{{PART:navmobile}}
 {{PART:rowdrag}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------

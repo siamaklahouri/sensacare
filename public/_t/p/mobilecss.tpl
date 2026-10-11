@@ -1,3 +1,6 @@
+  /* دکمهٔ منو فقط روی صفحهٔ باریک معنا دارد. */
+  .nav-toggle{ display:none; }
+
   /* ---------- گوشی و تبلت ----------
      تا حالا هیچ چیدمانی برای صفحهٔ باریک نبود: ستون کناریِ ۲۱۶ پیکسلی
      سر جایش می‌ماند و برای خودِ کارتابل چیزی حدود ۱۷۰ پیکسل باقی
@@ -51,43 +54,61 @@
     /* «.sidebar .nav-list» و نه «.nav-list»: navcss بعد از این فایل
        می‌آید و overflow-x:hidden دارد. با انتخابگرِ مشخص‌تر، بی‌آنکه
        ترتیبِ فایل‌ها عوض شود، این یکی می‌چربد. */
-    .sidebar .nav-list{
-      flex:none; min-height:0;
-      flex-direction:row; flex-wrap:nowrap;
-      gap:6px; padding:0 12px 8px;
-      overflow-x:auto; overflow-y:hidden;
-      scroll-snap-type:x proximity;
-      -webkit-overflow-scrolling:touch;
-      scrollbar-width:none;
-      /* لبه‌ها محو می‌شوند تا پیدا باشد که ادامه دارد. */
-      -webkit-mask-image:linear-gradient(to left, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
-              mask-image:linear-gradient(to left, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    /* دکمهٔ منو: نامِ بخشی که در آن هستی. تنها چیزی که در حالتِ بسته
+       از نوارِ بخش‌ها دیده می‌شود. */
+    .nav-toggle{
+      display:flex; align-items:center; gap:9px;
+      margin:0 12px 8px; padding:10px 13px;
+      font-family:var(--font-body); font-size:13px; font-weight:600;
+      color:var(--ink); background:var(--white);
+      border:1px solid var(--card-border); border-radius:11px;
+      cursor:pointer; text-align:start; width:calc(100% - 24px);
     }
-    .sidebar .nav-list::-webkit-scrollbar{ display:none; width:0; height:0; }
+    .nav-toggle .ic{ font-size:15px; line-height:1; flex:none }
+    .nav-toggle .t{ flex:1; min-width:0; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap }
+    .nav-toggle .caret{ flex:none; font-size:11px; color:var(--ink-faint);
+      transition:transform .15s }
+    .sidebar.nav-open .nav-toggle{ border-color:var(--brass); }
+    .sidebar.nav-open .nav-toggle .caret{ transform:rotate(180deg) }
+
+    /* فهرستِ بسته ارتفاع نمی‌گیرد — ایرادِ قدیمی («منو یک‌ششمِ صفحه را
+       می‌خورد») این‌طور برنمی‌گردد. باز که شد، دو ستون: هفده بخش در
+       نُه ردیف، همه با هم دیده می‌شوند.
+
+       «.sidebar .nav-list» و نه «.nav-list»: navcss بعد از این فایل
+       می‌آید و overflow-x:hidden دارد. با انتخابگرِ مشخص‌تر، بی‌آنکه
+       ترتیبِ فایل‌ها عوض شود، این یکی می‌چربد. */
+    .sidebar.nav-js .nav-list{ display:none; }
+    .sidebar.nav-js.nav-open .nav-list{
+      display:grid; grid-template-columns:1fr 1fr;
+      align-content:start; gap:6px; padding:0 12px 10px;
+      max-height:56vh; overflow-y:auto; overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
+    }
 
     .nav-label{ display:none; }
     .navbtn{
-      flex:0 0 auto; scroll-snap-align:center;
-      width:auto; margin-bottom:0; padding:8px 12px;
+      width:auto; min-width:0; margin-bottom:0; padding:9px 11px;
       font-size:12.5px; gap:7px; border-radius:9px;
       background:var(--white); border:1px solid var(--line);
-      white-space:nowrap;
+      /* در دو ستونِ باریک، نامِ بلند باید بشکند نه اینکه بیرون بزند. */
+      white-space:normal; line-height:1.5; text-align:start;
     }
     .navbtn.active{ border-color:transparent; }
-    /* در چیدمانِ افقی، نوارِ لبه جای درستی ندارد. */
+    /* در این چیدمان، نوارِ لبه جای درستی ندارد. */
     .navbtn.active::before{ display:none; }
-    .navbtn .ic{ font-size:13px; }
+    .navbtn .ic{ font-size:13px; flex:none; }
 
     /* بخش‌های مشترک در ستونِ عمودی تمامِ عرض را می‌گرفتند و تورفتگی
-       داشتند. در یک ردیفِ افقی هر دو بی‌معنی‌اند. */
+       داشتند؛ در خانه‌های یک گرید هر دو بی‌معنی‌اند. */
     .navbtn.sh-ingroup{
-      width:auto; margin-inline-start:0; padding-inline-start:12px;
+      width:auto; margin-inline-start:0; padding-inline-start:11px;
     }
-    /* نامِ گروه هم داخلِ همان ردیف می‌نشیند، به‌شکلِ جداکننده‌ای کوچک. */
+    /* نامِ گروه، سرخطِ همان دو ستون می‌شود. */
     .sh-org{
-      flex:0 0 auto; align-self:center;
-      margin:0 2px; padding:0 4px 0 0;
-      border:none; white-space:nowrap; font-size:10px;
+      grid-column:1 / -1; margin:4px 2px 0; padding:0;
+      border:none; font-size:10.5px;
     }
 
     .sidebar-foot{

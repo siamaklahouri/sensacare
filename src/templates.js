@@ -35,6 +35,7 @@ import p_gatejs from '../public/_t/p/gatejs.tpl';
 import p_idb from '../public/_t/p/idb.tpl';
 import p_jalali from '../public/_t/p/jalali.tpl';
 import p_mobilecss from '../public/_t/p/mobilecss.tpl';
+import p_navmobile from '../public/_t/p/navmobile.tpl';
 import p_monthpop from '../public/_t/p/monthpop.tpl';
 import p_navcss from '../public/_t/p/navcss.tpl';
 import p_noautofill from '../public/_t/p/noautofill.tpl';
@@ -80,6 +81,7 @@ export const PARTS = new Map([
   ['idb', p_idb],
   ['jalali', p_jalali],
   ['mobilecss', p_mobilecss],
+  ['navmobile', p_navmobile],
   ['monthpop', p_monthpop],
   ['navcss', p_navcss],
   ['noautofill', p_noautofill],

@@ -250,11 +250,24 @@
     "tr.sh-row.sh-spot>td:first-child{box-shadow:inset 3px 0 0 var(--brass,#B08D57)}",
     "@keyframes shSpot{0%,100%{background:transparent}18%,62%{background:var(--brass-bg,rgba(176,141,87,.3))}}",
     "@media (prefers-reduced-motion:reduce){tr.sh-row.sh-spot>td{animation:none}}",
-    /* کارِ تمام‌شده: خاموش‌تر، با یک نوارِ سبزِ باریک — تا معلوم باشد
-       چرا خانه‌هایش دست نمی‌خورند. */
-    "tr.sh-row.sh-shut>td{opacity:.62}",
-    "tr.sh-row.sh-shut>td:first-child{box-shadow:inset 3px 0 0 var(--green,#2F6B4F)}",
-    "tr.sh-row.sh-shut .ro{text-decoration:line-through;text-decoration-thickness:1px}",
+    /* کارِ تمام‌شده: کلِ ردیف رنگ عوض می‌کند.
+       پیش از این یک خطِ روی متن بود با ردیفی کم‌رنگ‌تر. دو ایراد
+       داشت: خطِ روی نوشته آن را سخت‌خوان می‌کند — همان متنی که هنوز
+       باید خوانده شود — و در فهرستی با بیست ردیف، «کم‌رنگ‌تر» از دو
+       وجب فاصله اصلاً دیده نمی‌شود.
+
+       حالا خودِ خانه‌ها رنگ می‌گیرند. رنگ از «جوهر»ها می‌آید که تمی
+       هستند، پس در شب هم خوانا می‌ماند؛ و روی کلِ ردیف می‌نشیند، نه
+       روی یک گوشه‌اش. */
+    "tr.sh-row.sh-shut>td{background:var(--red-bg,#F6E1E2);color:var(--red-ink,#A6222B)}",
+    "tr.sh-row.sh-shut>td:first-child{box-shadow:inset 4px 0 0 var(--red-ink,#A6222B)}",
+    /* هرچه داخلِ خانه است هم‌رنگِ خانه می‌شود: متنِ فقط‌خواندنی، کادرِ
+       وضعیت، و تاریخِ ثبت. وگرنه ردیف دو رنگ می‌شد و همان بهم‌ریختگیِ
+       قبلی را داشت. */
+    "tr.sh-row.sh-shut .ro,tr.sh-row.sh-shut .sh-stamp{color:inherit}",
+    "tr.sh-row.sh-shut input,tr.sh-row.sh-shut select,tr.sh-row.sh-shut textarea{",
+    "  color:inherit;background:transparent;",
+    "  border-color:color-mix(in srgb,var(--red-ink,#A6222B) 35%,transparent)}",
     /* فیلترهای ستونی: کوچک‌تر از فیلترِ اصلی، و آن‌که خورده پررنگ. */
     ".sh-fcol{max-width:170px}",
     ".sh-filter{font-family:var(--font-body);font-size:11.5px;padding:6px 8px;",
