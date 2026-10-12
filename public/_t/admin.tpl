@@ -964,6 +964,22 @@ table.inv-tab td.desc{ text-align:right; }
     </div>
 
     <div class="panel">
+      <h2>گفت‌وگوها</h2>
+      <p class="sub">مثل بخشِ مشترک ساخته می‌شود — یا به یک گروهِ سازمانی وصل، یا با
+        فهرستِ دستیِ کارتابل‌ها — ولی محتوایش جدول نیست، پیام است. اعضای همان گروه
+        داخلِ کارتابلِ خودشان با هم حرف می‌زنند؛ هیچ‌چیز بیرون نمی‌رود و به تلگرام و
+        بله هم نمی‌رسد.</p>
+      <p class="sub">صدای خبرِ پیام عمداً با صدای خبرِ کارها فرق دارد، تا بی‌نگاه کردن
+        معلوم باشد کدام آمده. پیام‌ها می‌مانند و فقط نویسندهٔ هر پیام می‌تواند مالِ
+        خودش را بردارد — نه مدیر، نه ادمین: گفت‌وگویی که نوشته‌اش دستِ دیگری باشد،
+        کسی در آن حرف نمی‌زند.</p>
+      <div id="chList" class="hint">…</div>
+      <div class="ov-acts" style="position:static; border-top:0; padding-top:14px;">
+        <button class="btn btn-main" id="chNew">＋ گفت‌وگوی تازه</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>اشتراکِ بخشِ یک کارتابل با یک گروه</h2>
       <p class="sub">بالا جدولی است که همین‌جا از صفر ساخته می‌شود و صاحبی ندارد.
         این‌جا بخشِ خودِ کارتابلِ یک نفر با یک گروه به اشتراک می‌رود — مثلاً
@@ -1452,12 +1468,14 @@ function setupTabs(){
       if(b.dataset.tab === "msgs") loadMessages();
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
-      if(b.dataset.tab === "shared"){ loadShared(); loadVShares(); }
+      if(b.dataset.tab === "shared"){ loadShared(); loadChat(); loadVShares(); }
       if(b.dataset.tab === "orgs") loadOrgs();
     });
   });
   const shn = document.getElementById("shNew");
   if(shn) shn.addEventListener("click", ()=> shForm(null));
+  const chn = document.getElementById("chNew");
+  if(chn) chn.addEventListener("click", ()=> chForm(null));
   const ogn = document.getElementById("orgNew");
   if(ogn) ogn.addEventListener("click", ()=> orgForm(null));
   setupVsAdd();
@@ -2708,6 +2726,141 @@ function setupVsAdd(){
     say("به اشتراک گذاشته شد.");
     loadVShares();
   });
+}
+
+/* ---------- گفت‌وگوها ----------
+   همان ساختارِ بخش‌های مشترک، بی‌ستون و بی‌قاعدهٔ دسترسی: در یک
+   گفت‌وگو همه می‌نویسند و همه می‌خوانند. تنها چیزی که این‌جا تعیین
+   می‌شود، این است که چه کسانی داخلش‌اند. */
+async function loadChat(){
+  const box = document.getElementById("chList");
+  if(!box) return;
+  box.textContent = "…";
+  const r = await api("/chat-rooms");
+  if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
+  const items = r.data.items || [];
+  if(!items.length){
+    box.innerHTML = '<div class="hint">هنوز گفت‌وگویی ساخته نشده. ' +
+      'با دکمهٔ پایین اولی را بسازید.</div>';
+    return;
+  }
+  box.innerHTML = items.map(c=>{
+    const mem = c.members.length
+      ? c.members.map(m=> '<span class="p">' + esc(m) + '</span>').join("")
+      : '<span class="p none">هیچ کارتابلی عضو نیست — کسی این گفت‌وگو را نمی‌بیند</span>';
+    return `<div class="shbox">
+      <div class="h">
+        <span class="ic">💬</span>
+        <b>${esc(c.title)}</b>
+        <span class="hint2">${fa(c.msgs)} پیام</span>
+        <span class="hint2" dir="ltr">${esc(c.id)}</span>
+      </div>
+      <div class="mem">${c.org
+        ? '<span class="hint2">گروه:</span><span class="p">' + esc(c.orgPath || c.org) + '</span>'
+        : mem}</div>
+      <div class="acts">
+        <button class="btn" data-chedit="${esc(c.id)}">ویرایش</button>
+        <button class="btn btn-off" data-chdel="${esc(c.id)}">حذف</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-chedit]").forEach(btn=>{
+    btn.onclick = ()=> chForm(items.find(x=> x.id === btn.dataset.chedit));
+  });
+  box.querySelectorAll("[data-chdel]").forEach(btn=>{
+    btn.onclick = async ()=>{
+      const c = items.find(x=> x.id === btn.dataset.chdel);
+      if(!confirm("«" + c.title + "» و همهٔ " + c.msgs + " پیامش برای همیشه پاک شود؟ " +
+                  "این کار برگشت ندارد.")) return;
+      btn.disabled = true;
+      const rr = await api("/chat-rooms/" + c.id, { method:"DELETE" });
+      if(!rr.ok){ btn.disabled = false; say(rr.data.error || "نشد.", true); return; }
+      say("برداشته شد."); loadChat();
+    };
+  });
+}
+
+function chForm(c){
+  const isNew = !c;
+  c = c || { id:"", title:"", org:"", members:[] };
+  const planners = (DATA.items || []);
+  openOverlay(`
+    <h2>${isNew ? "گفت‌وگوی تازه" : "ویرایش «" + esc(c.title) + "»"}</h2>
+    <p class="sub">اعضا داخلِ کارتابلِ خودشان با هم حرف می‌زنند. پیام‌ها همان‌جا
+      می‌مانند و جای دیگری نمی‌روند.</p>
+    <div class="fld"><label>عنوان — همین در نوار کنارِ کارتابل‌ها دیده می‌شود</label>
+      <input type="text" id="chTitle" maxlength="60" value="${esc(c.title)}"
+             placeholder="مثلاً: گفت‌وگوی تیمِ فنی"></div>
+    <div class="fld"><label>شناسه (انگلیسی، بعداً عوض نمی‌شود)</label>
+      <input type="text" id="chId" dir="ltr" maxlength="31" value="${esc(c.id)}"
+             placeholder="chat-fani" ${isNew ? "" : "disabled"} data-ascii></div>
+    <div class="fld"><label>اعضا از کجا بیایند</label>
+      <select id="chSrc">
+        <option value="list">فهرستِ دستیِ کارتابل‌ها</option>
+        <option value="org">یک گروهِ سازمانی</option>
+      </select>
+      <div class="hint">با گروه، هر کس را به گروه اضافه کنید خودش داخلِ گفت‌وگو
+        می‌آید و هر کس را بردارید بیرون می‌رود — دیگر لازم نیست این‌جا بیایید.</div></div>
+    <div class="fld" id="chOrgWrap" hidden><label>کدام گروه</label>
+      <select id="chOrg"><option value="">— انتخاب کنید —</option></select>
+      <div class="hint" id="chOrgWho"></div></div>
+    <div class="fld" id="chMemWrap"><label>کدام کارتابل‌ها عضو باشند</label>
+      <div class="shpick" id="chMem">
+        ${pickList(planners.map(pp=> pp.slug), sg=> c.members.includes(sg))}
+      </div></div>
+    <div class="ov-acts">
+      <button class="btn btn-main" id="chSave">ذخیره</button>
+      <button class="btn" onclick="closeOverlay()">انصراف</button>
+    </div>`);
+
+  const srcEl = document.getElementById("chSrc");
+  srcEl.value = c.org ? "org" : "list";
+
+  const fillOrgs = async ()=>{
+    if(!ORGS.length){
+      const r = await api("/orgs");
+      if(r.ok) ORGS = r.data.items || [];
+    }
+    const sel = document.getElementById("chOrg");
+    sel.innerHTML = '<option value="">— انتخاب کنید —</option>' +
+      ORGS.map(x=> '<option value="' + esc(x.id) + '"' + (x.id === c.org ? " selected" : "") +
+        ">" + esc(x.path) + " (" + fa(x.members.length) + " نفر)</option>").join("");
+    syncSrc();
+  };
+  const syncSrc = ()=>{
+    const byOrg = srcEl.value === "org";
+    document.getElementById("chOrgWrap").hidden = !byOrg;
+    document.getElementById("chMemWrap").hidden = byOrg;
+    const who = document.getElementById("chOrgWho");
+    if(byOrg){
+      const id = document.getElementById("chOrg").value;
+      const o = ORGS.find(x=> x.id === id);
+      who.textContent = o
+        ? (o.members.length ? "اعضای این گروه: " + o.members.join("، ")
+                            : "این گروه هنوز عضوی ندارد — کسی گفت‌وگو را نمی‌بیند.")
+        : "یک گروه انتخاب کنید.";
+    }
+  };
+  srcEl.onchange = syncSrc;
+  fillOrgs();
+  document.getElementById("chOrg").onchange = syncSrc;
+
+  document.getElementById("chSave").onclick = async ()=>{
+    const byOrg = srcEl.value === "org";
+    const body = {
+      id: (document.getElementById("chId").value || "").trim().toLowerCase(),
+      title: document.getElementById("chTitle").value,
+      org: byOrg ? document.getElementById("chOrg").value : "",
+      members: byOrg ? [] : [...document.querySelectorAll("#chMem input:checked")]
+        .map(x=> x.value)
+    };
+    const r = await api("/chat-rooms", { method:"POST", body: JSON.stringify(body) });
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    closeOverlay();
+    say(r.data.created ? "ساخته شد." : "ذخیره شد.");
+    loadChat();
+  };
 }
 
 async function loadShared(){

@@ -191,6 +191,20 @@ function setupShared(){
   el.onerror = ()=>{ console.warn("بخش‌های مشترک بار نشد."); };
   document.head.appendChild(el);
   setupViewShares();
+  setupChat();
+}
+
+/* ---------------- گفت‌وگو ----------------
+   اتاق‌هایی که ادمین ساخته. فایلش هم جداست، به همان دلیلِ بالا: هر دو
+   قالب همان را بار می‌کنند. */
+function setupChat(){
+  if(!signedIn) return;
+  if(document.getElementById("chatJs")) { if(window.initChat) window.initChat(); return; }
+  const el = document.createElement("script");
+  el.id = "chatJs";
+  el.src = "/chat.js";
+  el.onerror = ()=>{ console.warn("گفت‌وگو بار نشد."); };
+  document.head.appendChild(el);
 }
 
 /* ---------------- بخش‌هایی که کارتابل‌های دیگر با گروهِ ما به اشتراک

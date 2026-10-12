@@ -80,17 +80,23 @@ else
   hm "ترتیبِ شیوه‌نامه‌ها را پیدا نکردم"
 fi
 
+A=$(get /login)
 for f in /viewshare.js /shared.js; do
   J=$(get "$f")
   echo "$J" | grep -q 'navAnchor' && say 1 "$f: جای تازهٔ بخش‌ها در نوار" || say 0 "$f: هنوز نسخهٔ قدیمی است"
 done
+J=$(get /chat.js)
+echo "$J" | grep -q 'initChat' && say 1 "فایلِ گفت‌وگو سرو می‌شود" || say 0 "/chat.js نیامد"
+echo "$J" | grep -q 'triangle' && say 1 "و صدایش با صدای خبرِ کارها فرق دارد" \
+                              || say 0 "صدای گفت‌وگو همان صدای قبلی است"
+has 'گفت‌وگوها' "$A" && say 1 "ساختِ گفت‌وگو در پنل" || say 0 "بخشِ گفت‌وگو در پنل نیامده"
+
 J=$(get /shared.js)
 echo "$J" | grep -q 'sh-shut>td{background' && say 1 "ردیفِ کارِ تمام‌شده کلاً رنگ عوض می‌کند" \
                                             || say 0 "ردیفِ تمام‌شده هنوز فقط خط‌خورده است"
 
 echo
 echo "— پنل —"
-A=$(get /login)
 has 'اشتراکِ بخشِ یک کارتابل با یک گروه' "$A" && say 1 "فرمِ اشتراکِ بخش در پنل" || say 0 "فرمِ اشتراکِ بخش نیامده"
 has 'کلید Veeam' "$A" && say 1 "دکمهٔ کلید Veeam در پنل" || say 0 "دکمهٔ کلید Veeam نیامده"
 

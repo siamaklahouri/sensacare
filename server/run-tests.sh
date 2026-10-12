@@ -17,7 +17,7 @@ cd "$(dirname "$0")"
 fail=0
 for f in theme.test.mjs serversize.test.mjs vshare.test.mjs vshare-ui.test.mjs \
          veeam.test.mjs veeam-ui.test.mjs rowdrag-all.test.mjs donedate.test.mjs \
-         mobile-shared.test.mjs; do
+         mobile-shared.test.mjs chat.test.mjs; do
   [ -f "$f" ] || continue
   printf '%-24s ' "$f"
   out=$(VS_BASE="$BASE" node "$f" 2>&1)

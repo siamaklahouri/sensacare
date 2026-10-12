@@ -20,6 +20,7 @@ import { jobSeed, JOBS } from './kartabl-jobs.js';
 import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum } from './shared.js';
+import { roomsFor, getRoom, lastMsgs, msgsSince, postMsg, killMsg, chatNews, chatTop } from './chat.js';
 import { orgsOf, orgList, pathOf } from './orgs.js';
 import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
          editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
@@ -1617,6 +1618,50 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     }
     if (mShared[2] === '/del' && m === 'POST') {
       const r = await killRow(env, box, body.rid, panel.id);
+      return r.error ? bad(r.error) : json(r);
+    }
+  }
+
+  /* ---------- گفت‌وگو ----------
+     اتاق‌ها را ادمین می‌سازد، مثل بخش‌های مشترک. عضویت هر بار از سرور
+     خوانده می‌شود، نه از چیزی که مرورگر ادعا می‌کند: اگر ادمین همین
+     حالا کسی را از گروه بردارد، درخواستِ بعدی‌اش رد می‌شود. */
+  if (p === '/chat' && m === 'GET')
+    return json({ rooms: await roomsFor(env, panel.id), top: await chatTop(env) });
+
+  if (p === '/chat-news' && m === 'GET') {
+    const since = Math.max(0, parseInt(new URL(req.url).searchParams.get('since'), 10) || 0);
+    const r = await chatNews(env, panel.id, since);
+    /* فهرستِ اعضا در این مسیر به کار نمی‌آید و هر چند ثانیه تکرار
+       می‌شود؛ فقط آن‌چه صفحه لازم دارد. */
+    return json({ msgs: r.msgs, top: r.top,
+                  rooms: r.rooms.map(x => ({ id: x.id, title: x.title })) });
+  }
+
+  const mChat = p.match(/^\/chat\/([a-z0-9][a-z0-9-]{1,30})(\/send|\/del)?$/);
+  if (mChat) {
+    const room = await getRoom(env, mChat[1]);
+    if (!room || !room.members.includes(panel.id))
+      return bad('این گفت‌وگو مالِ شما نیست.', 404);
+
+    if (!mChat[2] && m === 'GET') {
+      const u = new URL(req.url).searchParams;
+      const since = parseInt(u.get('since'), 10);
+      /* «since» که داده شده یعنی «بعد از این چه آمده؟»؛ نبودش یعنی
+         اولین باز کردن، پس آخرین صفحهٔ گفت‌وگو. */
+      const msgs = Number.isFinite(since) && since >= 0
+        ? await msgsSince(env, room.id, since, 200)
+        : await lastMsgs(env, room.id, 80);
+      return json({ msgs, title: room.title });
+    }
+    if (mChat[2] === '/send' && m === 'POST') {
+      const rl = await rateLimit(env, `${panel.id}-chat:` + panel.id, 60, 60);
+      if (!rl.ok) return bad('کمی آرام‌تر — یک دقیقه صبر کنید.', 429);
+      const r = await postMsg(env, room.id, panel.id, body.body);
+      return r.error ? bad(r.error) : json(r);
+    }
+    if (mChat[2] === '/del' && m === 'POST') {
+      const r = await killMsg(env, room.id, body.id, panel.id);
       return r.error ? bad(r.error) : json(r);
     }
   }

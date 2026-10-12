@@ -25,6 +25,7 @@ import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
          DEFAULT_VIEW_PRICE as SL_DEFAULT_VIEW_PRICE,
          DEFAULT_PLANS as SL_DEFAULT_PLANS } from './sltech-shop.js';
 import { SHARED_TYPES, EDIT_RULES, allBoxes, saveBox, dropBox, boxCounts, orgBoxCounts } from './shared.js';
+import { allRooms, saveRoom, dropRoom } from './chat.js';
 import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 import { viewShareRows, saveViewShare, dropViewShare, shareableFor, specOf } from './viewshare.js';
 import { SECTION_PRESETS } from './sections.js';
@@ -886,6 +887,27 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const r = await dropOrg(env, mOrg[1]);
     if (r.error) return bad(r.error);
     await log(env, 'org-del', mOrg[1], '');
+    return json({ ok: true });
+  }
+
+  /* ---------- اتاق‌های گفت‌وگو ----------
+     همان ساختارِ بخش‌های مشترک، بی‌ستون و بی‌قاعدهٔ دسترسی: در یک
+     گفت‌وگو همه می‌نویسند و همه می‌خوانند، و تنها چیزی که ادمین تعیین
+     می‌کند این است که چه کسانی داخلش‌اند. */
+  if (p === '/chat-rooms' && m === 'GET')
+    return json({ items: await allRooms(env) });
+
+  if (p === '/chat-rooms' && m === 'POST') {
+    const r = await saveRoom(env, body, await plannerSlugs(env));
+    if (r.error) return bad(r.error);
+    await log(env, 'chat-room', r.id, body.org || (body.members || []).join(','));
+    return json({ ok: true, id: r.id, created: r.created });
+  }
+
+  const mRoom = p.match(/^\/chat-rooms\/([a-z0-9][a-z0-9-]{1,30})$/);
+  if (mRoom && m === 'DELETE') {
+    await dropRoom(env, mRoom[1]);
+    await log(env, 'chat-room-del', mRoom[1], '');
     return json({ ok: true });
   }
 
