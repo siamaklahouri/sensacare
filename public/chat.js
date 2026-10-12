@@ -104,14 +104,14 @@
        دکمه از هر جای کارتابل یک کلیک تا گفت‌وگو فاصله دارد و شمارِ
        نخوانده‌ها را همان‌جا نشان می‌دهد.
 
-       راستِ پایین. ستونِ خبرها با inset-inline-end چیده شده و در
-       صفحهٔ راست‌به‌چپ یعنی چپ — پس این دو هیچ‌وقت روی هم نمی‌افتند
-       و دیگر لازم نیست ستونِ خبر را بالا ببریم.
+       چپِ پایین. ستونِ خبرها هم همان‌جاست (inset-inline-end در صفحهٔ
+       راست‌به‌چپ یعنی چپ)، پس ستونِ خبر بالاتر می‌نشیند تا روی دکمه
+       نیفتد — قاعده‌اش پایینِ همین فایل است.
 
-       right/bottom عمداً فیزیکی‌اند نه منطقی: با inset-inline-end
-       همین‌جا هم چپ می‌افتاد. */
-    ".ch-fab-wrap{position:fixed;bottom:20px;right:20px;z-index:81;",
-    "  display:flex;flex-direction:column;align-items:flex-end;gap:12px}",
+       left/bottom عمداً فیزیکی‌اند نه منطقی: با inset-inline-start
+       در صفحهٔ راست‌به‌چپ راست می‌افتاد. */
+    ".ch-fab-wrap{position:fixed;bottom:20px;left:20px;z-index:81;",
+    "  display:flex;flex-direction:column;align-items:flex-start;gap:12px}",
     ".ch-fab{position:relative;width:56px;height:56px;border-radius:50%;flex:none;",
     "  display:flex;align-items:center;justify-content:center;cursor:pointer;border:0;padding:0;",
     "  background:linear-gradient(145deg,var(--brass),var(--brass-deep,var(--brass)));",
@@ -159,9 +159,15 @@
     ".ch-pop-row .n{min-width:19px;height:19px;padding:0 5px;border-radius:10px;flex:none;",
     "  background:var(--red-ink,#A6222B);color:#fff;font-size:10.5px;font-weight:700;",
     "  display:flex;align-items:center;justify-content:center}",
-    "@media (max-width:760px){.ch-fab-wrap{bottom:16px;right:16px}",
+    "@media (max-width:760px){.ch-fab-wrap{bottom:16px;left:16px}",
     "  .ch-fab{width:50px;height:50px}.ch-fab svg{width:23px;height:23px}}",
-    "@media print{.ch-fab-wrap{display:none}}"
+    "@media print{.ch-fab-wrap{display:none}}",
+    /* خبرها هم همین گوشه می‌نشینند: inset-inline-end در صفحهٔ
+       راست‌به‌چپ یعنی چپ. پس وقتی دکمهٔ شناور هست، ستونِ خبر بالاتر
+       می‌رود تا رویش نیفتد — هم خبرهای گفت‌وگو، هم خبرهای کارها. */
+    "body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{bottom:92px;inset-block-end:92px}",
+    "@media (max-width:760px){body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{",
+    "  bottom:80px;inset-block-end:80px}}"
   ].join("\n");
 
   function addCss() {
@@ -510,6 +516,7 @@
         '</svg>' +
       "</button>";
     document.body.appendChild(w);
+    document.body.classList.add("chat-fab");
 
     var pop = w.querySelector(".ch-pop");
     var btn = w.querySelector(".ch-fab");
