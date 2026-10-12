@@ -70,5 +70,37 @@ t(r2.status === 200 && back.views.includes('mvpn'),
   'و باز کردنش همان یک کلیک است', back.views.join(','));
 t(back.views.join(',') === keep.views.join(','), 'فهرست دقیقاً همان شد که بود');
 
+console.log('\n===== قفلِ دوم =====');
+/* دو قفلِ جدا هستند و هر کدام به‌تنهایی بخش را پنهان می‌کند: نبودن در
+   فهرستِ «views»، و بودن در فهرستِ «off» به شکلِ «view:<نام>».
+   دفعهٔ پیش فقط اولی را باز کردم و بخش همچنان پیدا نشد. */
+const page = async () => (await fetch(BASE + '/siamak/', { headers: { Host: 'sltech.ir' } })).text();
+const offList = h => {
+  const m = h.match(/KARTABL_OFF = (\[[^\]]*\])/);
+  try { return m ? JSON.parse(m[1]) : null; } catch (e) { return null; }
+};
+t(!(offList(await page()) || []).includes('view:mvpn'), 'الان بسته نیست');
+
+/* یک بخشِ کارتابل فقط از راهِ فهرستِ «views» بسته می‌شود. فهرستِ
+   «بسته‌ها» مالِ قابلیت‌های عمومی است (پشتیبان، هوش مصنوعی، …) و
+   مسیر، «view:*» را داخلش نمی‌پذیرد — پس دو راهِ موازی برای یک کار
+   وجود ندارد. */
+const r3 = await put({ off: keep.off.concat(['view:mvpn']) });
+t(r3.status === 400 && /ناشناخته/.test(r3.d.error || ''),
+  'بستنِ یک بخش از راهِ فهرستِ «بسته‌ها» پذیرفته نمی‌شود — یک کار، یک راه',
+  r3.d.error || String(r3.status));
+t(!(offList(await page()) || []).includes('view:mvpn'),
+  'و صفحه هم دست‌نخورده ماند');
+
+/* ولی صفحه، «view:*»ی را که در دادهٔ قدیمی مانده باشد محترم می‌شمارد.
+   برای همین server/views.sh هر دو جا را پاک می‌کند، نه فقط فهرستِ
+   بخش‌ها — همان چیزی که بارِ اول از قلم افتاد و بخش باز نشد. */
+const r4 = await put({ views: keep.views.filter(v => v !== 'mvpn') });
+t(r4.status === 200 && (offList(await page()) || []).includes('view:mvpn'),
+  'بستن از راهِ درست، در خودِ صفحه هم دیده می‌شود',
+  JSON.stringify(offList(await page())));
+await put({ views: keep.views });
+t(!(offList(await page()) || []).includes('view:mvpn'), 'و باز کردنش همان‌جا برمی‌گردد');
+
 console.log('\n' + (bad ? 'BAD ' + bad : 'همه درست') + '  (' + ok + ' تا درست)');
 process.exit(bad ? 1 : 0);

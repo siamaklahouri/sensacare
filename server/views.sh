@@ -53,6 +53,12 @@ for (const r of rows) {
   const all = VIEWS[kind] || [];
   const explicit = Array.isArray(cfg.views);
   const on = new Set(explicit ? cfg.views : all.map(v => v[0]));
+  /* دو قفلِ جدا، و هر کدام به‌تنهایی بخش را پنهان می‌کند:
+       ۱) نبودن در فهرستِ «views»
+       ۲) بودن در فهرستِ «off» به شکلِ «view:<نام>»
+     دفعهٔ پیش فقط اولی را باز می‌کردم و بخش همچنان پیدا نمی‌شد. */
+  const off = new Set((Array.isArray(cfg.off) ? cfg.off : [])
+    .filter(f => String(f).startsWith("view:")).map(f => String(f).slice(5)));
 
   /* دادهٔ خودِ کارتابل در جدولِ kartabl نشسته، با کلیدِ «<slug>:db» —
      مگر کارتابلِ سیامک که از روزِ اول «db» خالی بوده و همان مانده. */
@@ -70,17 +76,27 @@ for (const r of rows) {
     : "تعیین نشده — یعنی همه باز است"));
   for (const [id, label] of all) {
     const n = COUNT[id] ? COUNT[id](data) : null;
-    console.log("   " + (on.has(id) ? "✅" : "⛔") + " " + label.padEnd(22) +
-      (n === null ? "" : "  (" + n + " ردیف داده" + (on.has(id) ? "" : " — سرِ جایش") + ")"));
+    const open_ = on.has(id) && !off.has(id);
+    const why = open_ ? ""
+      : (!on.has(id) && off.has(id)) ? "  ← هم از فهرست افتاده، هم بسته شده"
+      : !on.has(id) ? "  ← در فهرستِ بخش‌ها نیست"
+      : "  ← در فهرستِ «بسته‌ها»ست";
+    console.log("   " + (open_ ? "✅" : "⛔") + " " + label.padEnd(22) +
+      (n === null ? "" : "  (" + n + " ردیف داده" + (open_ ? "" : " — سرِ جایش") + ")") + why);
   }
-  const shut = all.filter(v => !on.has(v[0]));
+  const shut = all.filter(v => !on.has(v[0]) || off.has(v[0]));
   if (shut.length && !open)
     console.log("  برای باز کردنشان:  bash server/views.sh " + r.slug + " --open");
 
   if (open && who === r.slug) {
     cfg.views = all.map(v => v[0]);
+    /* و قفلِ دوم. فقط «view:*»ها برداشته می‌شوند — بقیهٔ بسته‌ها
+       (پشتیبان، هوش مصنوعی، …) تصمیمِ شماست و دست نمی‌خورد. */
+    cfg.off = (Array.isArray(cfg.off) ? cfg.off : [])
+      .filter(f => !String(f).startsWith("view:"));
     db.prepare("UPDATE planners SET cfg=? WHERE slug=?").run(JSON.stringify(cfg), r.slug);
-    console.log("  ← همهٔ بخش‌ها باز شد. یک بار سرویس را ریستارت کنید یا صفحه را تازه کنید.");
+    console.log("  ← هر دو قفل باز شد (هم فهرستِ بخش‌ها، هم «بسته‌ها»).");
+    console.log("    صفحه را با Ctrl+Shift+R تازه کنید.");
   }
 }
 if (!any) console.log("کارتابلی با این نام نیست: " + who);
