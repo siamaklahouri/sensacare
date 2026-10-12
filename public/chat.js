@@ -104,23 +104,39 @@
        دکمه از هر جای کارتابل یک کلیک تا گفت‌وگو فاصله دارد و شمارِ
        نخوانده‌ها را همان‌جا نشان می‌دهد.
 
-       چپِ پایین، چون راستِ پایین جای خبرهاست — دو چیزِ شناور روی هم
-       یعنی یکی‌شان آن یکی را می‌پوشاند.
+       راستِ پایین. ستونِ خبرها با inset-inline-end چیده شده و در
+       صفحهٔ راست‌به‌چپ یعنی چپ — پس این دو هیچ‌وقت روی هم نمی‌افتند
+       و دیگر لازم نیست ستونِ خبر را بالا ببریم.
 
-       left/bottom عمداً فیزیکی‌اند نه منطقی: در صفحهٔ راست‌به‌چپ،
-       inset-inline-start همان راست می‌شد. */
-    ".ch-fab-wrap{position:fixed;bottom:18px;left:18px;z-index:81;",
-    "  display:flex;flex-direction:column;align-items:flex-start;gap:10px}",
-    ".ch-fab{position:relative;width:52px;height:52px;border-radius:50%;flex:none;",
-    "  display:flex;align-items:center;justify-content:center;cursor:pointer;",
-    "  background:var(--brass);color:#fff;border:0;font-size:22px;line-height:1;",
-    "  box-shadow:0 8px 24px rgba(11,37,69,.28);transition:transform .14s,box-shadow .14s}",
-    ".ch-fab:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(11,37,69,.34)}",
-    ".ch-fab:focus-visible{outline:2px solid var(--brass-ink,#1A4FA3);outline-offset:3px}",
-    ".ch-fab .n{position:absolute;top:-3px;inset-inline-end:-3px;min-width:20px;height:20px;",
-    "  padding:0 5px;border-radius:10px;background:var(--red-ink,#A6222B);color:#fff;",
+       right/bottom عمداً فیزیکی‌اند نه منطقی: با inset-inline-end
+       همین‌جا هم چپ می‌افتاد. */
+    ".ch-fab-wrap{position:fixed;bottom:20px;right:20px;z-index:81;",
+    "  display:flex;flex-direction:column;align-items:flex-end;gap:12px}",
+    ".ch-fab{position:relative;width:56px;height:56px;border-radius:50%;flex:none;",
+    "  display:flex;align-items:center;justify-content:center;cursor:pointer;border:0;padding:0;",
+    "  background:linear-gradient(145deg,var(--brass),var(--brass-deep,var(--brass)));",
+    "  color:#fff;",
+    "  box-shadow:0 10px 26px rgba(11,37,69,.30), inset 0 1px 0 rgba(255,255,255,.22);",
+    "  transition:transform .16s cubic-bezier(.2,.8,.3,1), box-shadow .16s}",
+    ".ch-fab svg{width:25px;height:25px;display:block}",
+    /* حلقهٔ نازکِ دورش در تم شب از زمینه جدایش می‌کند */
+    ".ch-fab::after{content:'';position:absolute;inset:-3px;border-radius:50%;",
+    "  border:1px solid color-mix(in srgb,var(--brass) 28%,transparent);pointer-events:none}",
+    ".ch-fab:hover{transform:translateY(-3px) scale(1.04);",
+    "  box-shadow:0 16px 34px rgba(11,37,69,.36), inset 0 1px 0 rgba(255,255,255,.25)}",
+    ".ch-fab:active{transform:translateY(-1px) scale(.99)}",
+    ".ch-fab:focus-visible{outline:2px solid var(--brass-ink,#1A4FA3);outline-offset:4px}",
+    ".ch-fab .n{position:absolute;top:-2px;right:-2px;min-width:21px;height:21px;",
+    "  padding:0 6px;border-radius:11px;background:var(--red-ink,#A6222B);color:#fff;",
     "  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;",
-    "  border:2px solid var(--paper,#EEF2F6)}",
+    "  box-shadow:0 0 0 2.5px var(--paper,#EEF2F6)}",
+    /* نخوانده که هست، یک بار آرام نبض می‌زند — نه بی‌وقفه، که آزار شود */
+    ".ch-fab .n{animation:chPulse 1.6s ease-out 2}",
+    "@keyframes chPulse{0%{box-shadow:0 0 0 2.5px var(--paper,#EEF2F6),0 0 0 2.5px rgba(166,34,43,.5)}",
+    "  70%{box-shadow:0 0 0 2.5px var(--paper,#EEF2F6),0 0 0 12px rgba(166,34,43,0)}",
+    "  100%{box-shadow:0 0 0 2.5px var(--paper,#EEF2F6)}}",
+    "@media (prefers-reduced-motion:reduce){.ch-fab .n{animation:none}",
+    "  .ch-fab:hover{transform:none}}",
     ".ch-pop{width:min(290px,calc(100vw - 36px));background:var(--white);",
     "  border:1px solid var(--card-border);border-radius:16px;overflow:hidden;",
     "  box-shadow:0 18px 44px rgba(11,37,69,.24);animation:chnIn .18s ease-out}",
@@ -143,15 +159,9 @@
     ".ch-pop-row .n{min-width:19px;height:19px;padding:0 5px;border-radius:10px;flex:none;",
     "  background:var(--red-ink,#A6222B);color:#fff;font-size:10.5px;font-weight:700;",
     "  display:flex;align-items:center;justify-content:center}",
-    "@media (max-width:860px){.ch-fab-wrap{bottom:14px;left:14px}",
-    "  .ch-fab{width:48px;height:48px;font-size:20px}}",
-    "@media print{.ch-fab-wrap{display:none}}",
-    /* خبرها هم همین گوشه می‌نشینند: inset-inline-end در صفحهٔ
-       راست‌به‌چپ یعنی چپ. پس وقتی دکمهٔ شناور هست، ستونِ خبر بالاتر
-       می‌رود تا رویش نیفتد — هم خبرهای گفت‌وگو، هم خبرهای کارها. */
-    "body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{bottom:88px;inset-block-end:88px}",
-    "@media (max-width:860px){body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{",
-    "  bottom:76px;inset-block-end:76px}}"
+    "@media (max-width:760px){.ch-fab-wrap{bottom:16px;right:16px}",
+    "  .ch-fab{width:50px;height:50px}.ch-fab svg{width:23px;height:23px}}",
+    "@media print{.ch-fab-wrap{display:none}}"
   ].join("\n");
 
   function addCss() {
@@ -486,10 +496,20 @@
           '<button type="button" class="x" title="بستن">✕</button></div>' +
         '<div class="ch-pop-list"></div>' +
       "</div>" +
-      '<button type="button" class="ch-fab" aria-expanded="false" ' +
-        'title="گفت‌وگوها"><span class="ic">💬</span></button>';
+      '<button type="button" class="ch-fab" aria-expanded="false" title="گفت‌وگوها">' +
+        /* کشیده می‌شود، نه تایپ: «💬» را هر سیستم‌عامل یک جور می‌کشد —
+           در ویندوز آبیِ براق، در مک خاکستری — و کنارِ رنگِ هویتِ
+           کارتابل وصله به نظر می‌رسید. */
+        '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">' +
+        '<path d="M20.5 11.6c0 4.2-3.8 7.6-8.5 7.6-1 0-2-.15-2.9-.43l-4.3 1.4 1.4-3.6' +
+          'C4.9 15.3 3.5 13.6 3.5 11.6 3.5 7.4 7.3 4 12 4s8.5 3.4 8.5 7.6Z" ' +
+          'stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>' +
+        '<circle cx="8.6" cy="11.6" r="1.15" fill="currentColor"></circle>' +
+        '<circle cx="12" cy="11.6" r="1.15" fill="currentColor"></circle>' +
+        '<circle cx="15.4" cy="11.6" r="1.15" fill="currentColor"></circle>' +
+        '</svg>' +
+      "</button>";
     document.body.appendChild(w);
-    document.body.classList.add("chat-fab");
 
     var pop = w.querySelector(".ch-pop");
     var btn = w.querySelector(".ch-fab");

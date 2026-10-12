@@ -242,14 +242,21 @@ const fab = await a.evaluate(() => {
   const b = w.querySelector('.ch-fab');
   const r = b.getBoundingClientRect(), cs = getComputedStyle(w);
   return { shown: !!b.offsetParent, pos: cs.position,
-           left: Math.round(r.left), fromBottom: Math.round(innerHeight - r.bottom),
-           w: Math.round(r.width), popShut: w.querySelector('.ch-pop').hidden };
+           fromRight: Math.round(innerWidth - r.right),
+           fromBottom: Math.round(innerHeight - r.bottom),
+           w: Math.round(r.width), svg: !!b.querySelector('svg'),
+           txt: b.textContent.trim(),
+           popShut: w.querySelector('.ch-pop').hidden };
 });
 t(fab && fab.shown && fab.pos === 'fixed', 'دکمهٔ شناور آمد و با صفحه نمی‌رود',
   fab && fab.pos);
-t(fab && fab.left < 40 && fab.fromBottom < 40 && fab.w > 40,
-  'و چپِ پایین نشسته — راستِ پایین جای خبرهاست',
-  fab && ('چپ=' + fab.left + ' پایین=' + fab.fromBottom + ' قطر=' + fab.w));
+t(fab && fab.fromRight < 40 && fab.fromBottom < 40 && fab.w > 40,
+  'و راستِ پایین نشسته — ستونِ خبرها در صفحهٔ راست‌به‌چپ چپ می‌افتد، پس روی هم نمی‌افتند',
+  fab && ('راست=' + fab.fromRight + ' پایین=' + fab.fromBottom + ' قطر=' + fab.w));
+/* نشانه کشیده می‌شود نه تایپ: «💬» را هر سیستم‌عامل یک جور می‌کشد و
+   کنارِ رنگِ هویتِ کارتابل وصله به نظر می‌رسید. */
+t(fab && fab.svg && fab.txt === '',
+  'و نشانه‌اش SVG است، نه شکلکِ سیستم‌عامل', fab && JSON.stringify(fab.txt));
 t(fab && fab.popShut, 'و فهرستش بسته است تا زده نشود');
 /* خبرها هم همین گوشه می‌نشینند — inset-inline-end در صفحهٔ راست‌به‌چپ
    یعنی چپ. اگر بالاتر نروند، روی دکمه می‌افتند. */
@@ -257,21 +264,22 @@ const clash = await a.evaluate(() => {
   /* ظرفِ خبر تنبل ساخته می‌شود، پس یکی موقتی می‌سازیم تا خودِ قاعده
      سنجیده شود، نه اینکه سنجه به بختِ «الان خبری هست یا نه» باشد. */
   const b = document.querySelector('#chFab .ch-fab').getBoundingClientRect();
-  const out = {};
+  const out = { fabLeft: Math.round(b.left) };
   for (const cls of ['chn-wrap', 'shn-wrap']) {
     const d = document.createElement('div');
     d.className = cls;
+    d.style.width = '200px'; d.style.height = '40px';
     document.body.appendChild(d);
-    out[cls] = Math.round(parseFloat(getComputedStyle(d).bottom) || 0);
+    const r = d.getBoundingClientRect();
+    out[cls] = Math.round(r.right);
     d.remove();
   }
-  out.fabTop = Math.round(innerHeight - b.top);
   return out;
 });
-t(clash['chn-wrap'] >= clash.fabTop && clash['shn-wrap'] >= clash.fabTop,
-  'و ستونِ خبرها بالاتر از دکمه می‌نشیند تا رویش نیفتد — هر دو ستون',
-  'گفت‌وگو=' + clash['chn-wrap'] + ' کارها=' + clash['shn-wrap'] +
-  ' / بالای دکمه=' + clash.fabTop);
+t(clash['chn-wrap'] <= clash.fabLeft && clash['shn-wrap'] <= clash.fabLeft,
+  'و ستونِ خبرها آن طرفِ صفحه می‌ماند — هیچ‌کدام روی آن یکی نمی‌افتد',
+  'لبهٔ خبرها: گفت‌وگو=' + clash['chn-wrap'] + ' کارها=' + clash['shn-wrap'] +
+  ' / لبهٔ دکمه=' + clash.fabLeft);
 
 const popped = await a.evaluate(() => {
   document.querySelector('#chFab .ch-fab').click();
