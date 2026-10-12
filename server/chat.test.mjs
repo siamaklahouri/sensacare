@@ -233,15 +233,110 @@ await c.waitForTimeout(400);
 t(await c.evaluate(r => !document.querySelector('.navbtn[data-view="chat-' + r + '"] .ch-dot'), ROOM),
   'و با باز کردنِ اتاق، شمارنده صفر می‌شود');
 
-console.log('\n===== برداشتنِ پیام =====');
+console.log('\n===== دکمهٔ شناور =====');
+/* نوارِ کنار همیشه جلوِ چشم نیست — روی گوشی تا شده و روی صفحهٔ بزرگ
+   وقتی آدم پایینِ یک جدولِ بلند است، بالا مانده. */
+const fab = await a.evaluate(() => {
+  const w = document.getElementById('chFab');
+  if (!w) return null;
+  const b = w.querySelector('.ch-fab');
+  const r = b.getBoundingClientRect(), cs = getComputedStyle(w);
+  return { shown: !!b.offsetParent, pos: cs.position,
+           left: Math.round(r.left), fromBottom: Math.round(innerHeight - r.bottom),
+           w: Math.round(r.width), popShut: w.querySelector('.ch-pop').hidden };
+});
+t(fab && fab.shown && fab.pos === 'fixed', 'دکمهٔ شناور آمد و با صفحه نمی‌رود',
+  fab && fab.pos);
+t(fab && fab.left < 40 && fab.fromBottom < 40 && fab.w > 40,
+  'و چپِ پایین نشسته — راستِ پایین جای خبرهاست',
+  fab && ('چپ=' + fab.left + ' پایین=' + fab.fromBottom + ' قطر=' + fab.w));
+t(fab && fab.popShut, 'و فهرستش بسته است تا زده نشود');
+/* خبرها هم همین گوشه می‌نشینند — inset-inline-end در صفحهٔ راست‌به‌چپ
+   یعنی چپ. اگر بالاتر نروند، روی دکمه می‌افتند. */
+const clash = await a.evaluate(() => {
+  /* ظرفِ خبر تنبل ساخته می‌شود، پس یکی موقتی می‌سازیم تا خودِ قاعده
+     سنجیده شود، نه اینکه سنجه به بختِ «الان خبری هست یا نه» باشد. */
+  const b = document.querySelector('#chFab .ch-fab').getBoundingClientRect();
+  const out = {};
+  for (const cls of ['chn-wrap', 'shn-wrap']) {
+    const d = document.createElement('div');
+    d.className = cls;
+    document.body.appendChild(d);
+    out[cls] = Math.round(parseFloat(getComputedStyle(d).bottom) || 0);
+    d.remove();
+  }
+  out.fabTop = Math.round(innerHeight - b.top);
+  return out;
+});
+t(clash['chn-wrap'] >= clash.fabTop && clash['shn-wrap'] >= clash.fabTop,
+  'و ستونِ خبرها بالاتر از دکمه می‌نشیند تا رویش نیفتد — هر دو ستون',
+  'گفت‌وگو=' + clash['chn-wrap'] + ' کارها=' + clash['shn-wrap'] +
+  ' / بالای دکمه=' + clash.fabTop);
+
+const popped = await a.evaluate(() => {
+  document.querySelector('#chFab .ch-fab').click();
+  const w = document.getElementById('chFab');
+  const rows = [...w.querySelectorAll('.ch-pop-row')];
+  const pr = w.querySelector('.ch-pop').getBoundingClientRect();
+  const br = w.querySelector('.ch-fab').getBoundingClientRect();
+  return { open: !w.querySelector('.ch-pop').hidden,
+           rooms: rows.map(x => x.querySelector('.nm').textContent.trim()),
+           ids: rows.map(x => x.getAttribute('data-chgo')),
+           above: pr.bottom <= br.top + 1,
+           expanded: w.querySelector('.ch-fab').getAttribute('aria-expanded') };
+});
+t(popped.open && popped.ids.length >= 1, 'با زدنش، نامِ گروه‌هایش می‌آید',
+  popped.rooms.join(' | '));
+t(popped.ids.includes(ROOM), 'و همان گفت‌وگوی این کاربر داخلش هست', popped.ids.join(','));
+t(popped.above && popped.expanded === 'true', 'فهرست بالای دکمه باز می‌شود، نه زیرِ لبهٔ صفحه');
+
+/* از یک بخشِ دیگر، با همین دکمه سرِ گفت‌وگو */
+const jump = await a.evaluate(async r => {
+  document.querySelector('.navbtn[data-view="dashboard"]').click();
+  document.querySelector('#chFab .ch-fab').click();
+  document.querySelector('#chFab [data-chgo="' + r + '"]').click();
+  const sec = document.getElementById('view-chat-' + r);
+  return { on: !!(sec && sec.classList.contains('active') && sec.offsetParent),
+           shut: document.querySelector('#chFab .ch-pop').hidden };
+}, ROOM);
+t(jump.on, 'زدنِ نامِ گروه، همان گفت‌وگو را باز می‌کند — از هر جای کارتابل');
+t(jump.shut, 'و فهرست خودش بسته می‌شود');
+
+/* شمارِ روی دکمه جمعِ نخوانده‌هاست */
+await c.evaluate(() => document.querySelector('.navbtn[data-view="dashboard"]').click());
+await a.evaluate(() => document.querySelector('.navbtn[data-view="dashboard"]').click());
+await say(c, 'یک پیام وقتی سیامک جای دیگری است.');
+await a.waitForTimeout(6500);
+const badge = await a.evaluate(r => {
+  const n = document.querySelector('#chFab .ch-fab .n');
+  const row = document.querySelector('#chFab [data-chgo="' + r + '"] .n');
+  return { fab: n ? n.textContent : '', row: row ? row.textContent : '(فهرست باز نشده)' };
+}, ROOM);
+t(badge.fab === '۱', 'شمارِ نخوانده روی خودِ دکمه هم می‌نشیند', badge.fab);
 await a.evaluate(r => {
-  const ms = [...document.querySelectorAll('#ch-log-' + r + ' .ch-m')];
+  document.querySelector('#chFab .ch-fab').click();
+  document.querySelector('#chFab [data-chgo="' + r + '"]').click();
+}, ROOM);
+await a.waitForTimeout(400);
+t(await a.evaluate(() => !document.querySelector('#chFab .ch-fab .n')),
+  'و با باز کردنِ گفت‌وگو صفر می‌شود');
+
+console.log('\n===== برداشتنِ پیام =====');
+const before = await a.evaluate(r => document.querySelectorAll('#ch-log-' + r + ' .ch-m').length, ROOM);
+await a.evaluate(r => {
   window.confirm = () => true;
-  ms[ms.length - 1].querySelector('[data-chdel]').click();
+  /* همان پیامِ خودم، نه هر پیامی: دکمهٔ برداشتن فقط روی مالِ خودم هست */
+  const mine = [...document.querySelectorAll('#ch-log-' + r + ' .ch-m')]
+    .find(m => /چیزِ دیگر/.test(m.textContent));
+  mine.querySelector('[data-chdel]').click();
 }, ROOM);
 await a.waitForTimeout(900);
-t(await a.evaluate(r => document.querySelectorAll('#ch-log-' + r + ' .ch-m').length, ROOM) === 2,
-  'پیامِ خودم برداشته شد');
+const after = await a.evaluate(r => {
+  const ms = [...document.querySelectorAll('#ch-log-' + r + ' .ch-m')];
+  return { n: ms.length, still: ms.some(m => /چیزِ دیگر/.test(m.textContent)) };
+}, ROOM);
+t(after.n === before - 1 && !after.still, 'پیامِ خودم برداشته شد',
+  before + ' → ' + after.n);
 await c.waitForTimeout(1000);
 await openRoom(c);
 t(await c.evaluate(r => {

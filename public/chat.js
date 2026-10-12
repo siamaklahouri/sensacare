@@ -96,7 +96,62 @@
     ".chn .mt{font-size:11px;color:var(--ink-faint);margin-top:4px}",
     ".chn .x{background:transparent;border:0;color:var(--ink-faint);font-size:12px;",
     "  cursor:pointer;padding:2px 5px;border-radius:6px;line-height:1;flex:none}",
-    "@media (max-width:860px){.ch-log{height:min(46vh,380px)}.ch-m{max-width:88%}}"
+    "@media (max-width:860px){.ch-log{height:min(46vh,380px)}.ch-m{max-width:88%}}",
+
+    /* ---- دکمهٔ شناورِ گفت‌وگو ----
+       نوارِ کنار همیشه جلوِ چشم نیست: روی گوشی تا شده، و روی صفحهٔ
+       بزرگ وقتی آدم پایینِ یک جدولِ بلند است، بالای صفحه مانده. این
+       دکمه از هر جای کارتابل یک کلیک تا گفت‌وگو فاصله دارد و شمارِ
+       نخوانده‌ها را همان‌جا نشان می‌دهد.
+
+       چپِ پایین، چون راستِ پایین جای خبرهاست — دو چیزِ شناور روی هم
+       یعنی یکی‌شان آن یکی را می‌پوشاند.
+
+       left/bottom عمداً فیزیکی‌اند نه منطقی: در صفحهٔ راست‌به‌چپ،
+       inset-inline-start همان راست می‌شد. */
+    ".ch-fab-wrap{position:fixed;bottom:18px;left:18px;z-index:81;",
+    "  display:flex;flex-direction:column;align-items:flex-start;gap:10px}",
+    ".ch-fab{position:relative;width:52px;height:52px;border-radius:50%;flex:none;",
+    "  display:flex;align-items:center;justify-content:center;cursor:pointer;",
+    "  background:var(--brass);color:#fff;border:0;font-size:22px;line-height:1;",
+    "  box-shadow:0 8px 24px rgba(11,37,69,.28);transition:transform .14s,box-shadow .14s}",
+    ".ch-fab:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(11,37,69,.34)}",
+    ".ch-fab:focus-visible{outline:2px solid var(--brass-ink,#1A4FA3);outline-offset:3px}",
+    ".ch-fab .n{position:absolute;top:-3px;inset-inline-end:-3px;min-width:20px;height:20px;",
+    "  padding:0 5px;border-radius:10px;background:var(--red-ink,#A6222B);color:#fff;",
+    "  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;",
+    "  border:2px solid var(--paper,#EEF2F6)}",
+    ".ch-pop{width:min(290px,calc(100vw - 36px));background:var(--white);",
+    "  border:1px solid var(--card-border);border-radius:16px;overflow:hidden;",
+    "  box-shadow:0 18px 44px rgba(11,37,69,.24);animation:chnIn .18s ease-out}",
+    ".ch-pop[hidden]{display:none}",
+    ".ch-pop-h{display:flex;align-items:center;justify-content:space-between;gap:8px;",
+    "  padding:11px 14px;border-bottom:1px solid var(--card-border);",
+    "  font-size:12.5px;font-weight:700;color:var(--ink)}",
+    ".ch-pop-h button{background:transparent;border:0;color:var(--ink-faint);font-size:12px;",
+    "  cursor:pointer;padding:3px 6px;border-radius:6px;line-height:1}",
+    ".ch-pop-h button:hover{background:var(--paper-2,var(--paper,#EEF2F6));color:var(--ink)}",
+    ".ch-pop-list{max-height:min(46vh,340px);overflow-y:auto;padding:6px}",
+    ".ch-pop-row{display:flex;align-items:center;gap:9px;width:100%;text-align:start;",
+    "  font-family:var(--font-body);font-size:12.5px;color:var(--ink);cursor:pointer;",
+    "  background:transparent;border:1px solid transparent;border-radius:11px;padding:8px 10px}",
+    ".ch-pop-row:hover{background:var(--paper-2,var(--paper,#EEF2F6));border-color:var(--card-border)}",
+    ".ch-pop-row .ic{font-size:15px;line-height:1;flex:none}",
+    ".ch-pop-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".ch-pop-row .og{font-size:10.5px;color:var(--ink-faint);display:block;",
+    "  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".ch-pop-row .n{min-width:19px;height:19px;padding:0 5px;border-radius:10px;flex:none;",
+    "  background:var(--red-ink,#A6222B);color:#fff;font-size:10.5px;font-weight:700;",
+    "  display:flex;align-items:center;justify-content:center}",
+    "@media (max-width:860px){.ch-fab-wrap{bottom:14px;left:14px}",
+    "  .ch-fab{width:48px;height:48px;font-size:20px}}",
+    "@media print{.ch-fab-wrap{display:none}}",
+    /* خبرها هم همین گوشه می‌نشینند: inset-inline-end در صفحهٔ
+       راست‌به‌چپ یعنی چپ. پس وقتی دکمهٔ شناور هست، ستونِ خبر بالاتر
+       می‌رود تا رویش نیفتد — هم خبرهای گفت‌وگو، هم خبرهای کارها. */
+    "body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{bottom:88px;inset-block-end:88px}",
+    "@media (max-width:860px){body.chat-fab .chn-wrap,body.chat-fab .shn-wrap{",
+    "  bottom:76px;inset-block-end:76px}}"
   ].join("\n");
 
   function addCss() {
@@ -416,23 +471,109 @@
     setTimeout(off, 9000);
   }
 
+  /* ---------- دکمهٔ شناور ---------- */
+
+  function fab() { return document.getElementById("chFab"); }
+
+  function buildFab() {
+    if (fab() || !ROOMS.length) return;
+    var w = document.createElement("div");
+    w.id = "chFab";
+    w.className = "ch-fab-wrap";
+    w.innerHTML =
+      '<div class="ch-pop" hidden>' +
+        '<div class="ch-pop-h"><span>گفت‌وگوها</span>' +
+          '<button type="button" class="x" title="بستن">✕</button></div>' +
+        '<div class="ch-pop-list"></div>' +
+      "</div>" +
+      '<button type="button" class="ch-fab" aria-expanded="false" ' +
+        'title="گفت‌وگوها"><span class="ic">💬</span></button>';
+    document.body.appendChild(w);
+    document.body.classList.add("chat-fab");
+
+    var pop = w.querySelector(".ch-pop");
+    var btn = w.querySelector(".ch-fab");
+    var shut = function () { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var open = pop.hidden;
+      if (open) paintFabList();
+      pop.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    w.querySelector(".x").addEventListener("click", shut);
+    /* زدنِ یک گفت‌وگو یعنی همان را می‌خواهم: همان دکمهٔ نوار زده
+       می‌شود، تا یک جا بیشتر بخش را باز نکند و رفتارش همه‌جا یکی
+       باشد. */
+    w.querySelector(".ch-pop-list").addEventListener("click", function (e) {
+      var r = e.target.closest ? e.target.closest("[data-chgo]") : null;
+      if (!r) return;
+      var b = navOf(r.getAttribute("data-chgo"));
+      if (b) { b.scrollIntoView({ block: "nearest" }); b.click(); }
+      shut();
+    });
+    document.addEventListener("click", function (e) {
+      if (pop.hidden) return;
+      if (e.target.closest && e.target.closest("#chFab")) return;
+      shut();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") shut(); });
+    paintFab();
+  }
+
+  /* شمارِ روی دکمه: جمعِ نخوانده‌های همهٔ گفت‌وگوها. صفر که شد، نشان
+     هم می‌رود — «۰» روی یک نشانِ قرمز، خبرِ بی‌خبری است. */
+  function paintFab() {
+    var w = fab();
+    if (!w) return;
+    var n = 0;
+    for (var k in news.unread) n += news.unread[k] || 0;
+    var b = w.querySelector(".ch-fab");
+    var dot = b.querySelector(".n");
+    if (!n) { if (dot) dot.remove(); return; }
+    if (!dot) {
+      dot = document.createElement("span");
+      dot.className = "n";
+      b.appendChild(dot);
+    }
+    dot.textContent = faNum(n);
+  }
+
+  function paintFabList() {
+    var w = fab();
+    if (!w) return;
+    w.querySelector(".ch-pop-list").innerHTML = ROOMS.map(function (r) {
+      var n = news.unread[r.id] || 0;
+      return '<button type="button" class="ch-pop-row" data-chgo="' + esc(r.id) + '">' +
+        '<span class="ic">💬</span>' +
+        '<span class="nm">' + esc(r.title) +
+          (r.orgPath ? '<span class="og">' + esc(r.orgPath) + "</span>" : "") + "</span>" +
+        (n ? '<span class="n">' + faNum(n) + "</span>" : "") +
+        "</button>";
+    }).join("");
+  }
+
   function paintDot(id) {
     var btn = navOf(id);
     if (!btn) return;
     var dot = btn.querySelector(".ch-dot");
     var n = news.unread[id] || 0;
-    if (!n) { if (dot) dot.remove(); return; }
-    if (!dot) {
-      dot = document.createElement("span");
-      dot.className = "ch-dot";
-      btn.appendChild(dot);
+    if (!n) { if (dot) dot.remove(); }
+    else {
+      if (!dot) {
+        dot = document.createElement("span");
+        dot.className = "ch-dot";
+        btn.appendChild(dot);
+      }
+      dot.textContent = faNum(n);
     }
-    dot.textContent = faNum(n);
+    paintFab();
   }
   function clearDot(id) {
     if (!news.unread[id]) return;
     delete news.unread[id];
     paintDot(id);
+    paintFabList();
   }
 
   function open(id) {
@@ -511,6 +652,7 @@
       if (!ROOMS.length) return;
       addCss();
       ROOMS.forEach(mount);
+      buildFab();
       /* از همین حالا به بعد خبر است، نه از اولِ تاریخ. */
       news.since = Number(r.data.top) || 0;
       news.ready = false;
