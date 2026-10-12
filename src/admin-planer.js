@@ -597,6 +597,14 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         const all = (VIEWS[kind] || []).map(v => v.id);
         const bad2 = body.views.filter(v => !all.includes(v));
         if (bad2.length) return bad('بخشِ ناشناخته: ' + bad2.join('، '));
+        /* کفِ این فهرست یک است، نه صفر. فرمِ پنل این بلوک را شرطی
+           می‌سازد و اگر رندر نشده باشد، صفرتا تیک می‌فرستاد — و یک
+           ذخیرهٔ ساده (مثلاً عوض کردنِ نام) همهٔ بخش‌های کارتابل را
+           می‌بست. داده‌ها سرِ جایشان می‌مانند، ولی کاربر صبح می‌بیند
+           نصفِ کارتابلش نیست.
+           کارتابلِ «عمومی» استثناست: پیش‌فرضش بسته است. */
+        if (!body.views.length && kind !== 'gen')
+          return bad('دست‌کم یک بخشِ کارتابل باید باز بماند.');
         cfg.views = [...new Set(body.views)];
       }
       if (body.vault !== undefined) {

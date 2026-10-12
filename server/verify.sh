@@ -54,6 +54,11 @@ for slug in siamak sina reza; do
   has 'border-radius:11px' "$P" && m=$((m+1))
   say "$([ $m = 4 ] && echo 1 || echo 0)" "$slug: پوستهٔ مشترک آمده ($m از ۴ نشانه)"
   has 'PART:' "$P" && say 0 "$slug: یک {{PART}} باز نشده مانده" || true
+  # کدام بخش‌های این کارتابل بسته‌اند. خودِ صفحه این فهرست را دارد، پس
+  # لازم نیست کسی تا فردا صبح نفهمد که بخشی غیب شده.
+  SHUT=$(printf '%s' "$P" | grep -o 'KARTABL_OFF = \[[^]]*\]' | grep -o '"view:[a-z]*"' | tr -d '"' | sed 's/view://' | tr '\n' ' ')
+  if [ -n "$SHUT" ]; then say 0 "$slug: این بخش‌ها بسته‌اند → $SHUT  (bash server/views.sh $slug)"
+  else say 1 "$slug: همهٔ بخش‌هایش باز است"; fi
 done
 
 echo

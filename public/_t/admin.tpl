@@ -1932,10 +1932,22 @@ function openEdit(slug){
     }
     if(!secs.length){ document.getElementById("eErr").textContent = "دست‌کم یک بخش باید بماند."; return; }
     save.disabled = true;
-    const off = Array.from(document.querySelectorAll(".feat input[data-feat]"))
-      .filter(i=> !i.checked).map(i=> i.dataset.feat);
-    const views = Array.from(document.querySelectorAll(".feat input[data-view]"))
-      .filter(i=> i.checked).map(i=> i.dataset.view);
+    /* فقط تیک‌های همین پنجره — نه هرچه در کلِ صفحه هست. و «فهرستِ
+       خالی» فرستاده نمی‌شود: این بلوک شرطی است و اگر رندر نشده باشد،
+       صفرتا تیک یعنی «نمی‌دانم»، نه «همه را ببند». همین یک جا بود که
+       یک بارِ ذخیره، بخش‌های یک کارتابل را می‌برد. */
+    const ov = document.getElementById("ovBox");
+    const featBoxes = Array.from(ov.querySelectorAll(".feat input[data-feat]"));
+    const viewBoxes = Array.from(ov.querySelectorAll(".feat input[data-view]"));
+    const off = featBoxes.length
+      ? featBoxes.filter(i=> !i.checked).map(i=> i.dataset.feat) : undefined;
+    const views = viewBoxes.length
+      ? viewBoxes.filter(i=> i.checked).map(i=> i.dataset.view) : undefined;
+    if(viewBoxes.length && !views.length){
+      document.getElementById("eErr").textContent =
+        "دست‌کم یک بخشِ کارتابل باید باز بماند.";
+      save.disabled = false; return;
+    }
     const r = await api("/planners/" + slug, { method:"PUT", body: JSON.stringify({
       name: document.getElementById("eName").value.trim(),
       user: document.getElementById("eUser").value.trim().toLowerCase(),
