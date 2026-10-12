@@ -21,6 +21,7 @@ import { makeZip } from './kartabl-zip.js';
 import { buildAiContext, askKartablAI, looksPlannerRelated, CLAUDE_MODEL } from './kartabl-ai.js';
 import { boxesFor, getBox, rowsSince, newsFor, putRow, killRow, latinNum } from './shared.js';
 import { roomsFor, getRoom, lastMsgs, msgsSince, postMsg, killMsg, chatNews, chatTop } from './chat.js';
+import { withSessionResults } from './veeam.js';
 import { orgsOf, orgList, pathOf } from './orgs.js';
 import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
          editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
@@ -1503,6 +1504,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       next:   String(j && j.next || '').slice(0, 40),
       objects: String(j && j.objects || '').slice(0, 40),
       note:   String(j && j.note || '').slice(0, 200),
+      id:     String(j && j.id || '').slice(0, 60),
       /* پیامِ خودِ Veeam دربارهٔ آخرین اجرا. بریده می‌شود چون این
          گزارش تمامش در یک خانهٔ تنظیمات می‌نشیند و یک جابِ پرخطا
          می‌تواند چند صفحه متن بفرستد — ۶۰۰ نویسه برای فهمیدنِ علت
@@ -1537,7 +1539,10 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       start:  String(x && x.start || '').slice(0, 40),
       end:    String(x && x.end || '').slice(0, 40),
       mins:   String(x && x.mins || '').slice(0, 10),
-      message: String(x && x.message || '').slice(0, 600)
+      message: String(x && x.message || '').slice(0, 600),
+      /* فقط برای تطبیقِ جاب با اجرایش به کار می‌آید و به صفحه هم
+         می‌رسد؛ کوتاه است و چیزی لو نمی‌دهد. */
+      jobId:  String(x && x.jobId || '').slice(0, 60)
     })) : [];
 
     /* زمانِ گزارشِ قبلی نگه داشته می‌شود تا صفحه بفهمد اسکریپت هر چند
@@ -1730,8 +1735,17 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
   /* گزارشِ Veeam برای خودِ صفحه. فقط خواندن — نوشتنش فقط از راهِ
      اسکریپت و با کلیدِ جداست. */
-  if (p === '/veeam' && m === 'GET')
-    return json({ report: await getSetting(env, 'veeam:' + panel.slug, null) });
+  /* گزارش خام ذخیره می‌شود و نتیجهٔ هر جاب همین‌جا، لحظهٔ خواندن،
+     از روی اجراهایش درمی‌آید. چرا نه موقعِ ذخیره: آن وقت یک اصلاح در
+     قاعدهٔ تطبیق، گزارشِ ذخیره‌شده را درست نمی‌کرد و باید منتظر
+     ارسالِ بعدی می‌ماندیم. این‌طوری با همان update.sh، همان لحظه
+     درست می‌شود. */
+  if (p === '/veeam' && m === 'GET') {
+    const rep = await getSetting(env, 'veeam:' + panel.slug, null);
+    if (rep && Array.isArray(rep.jobs))
+      rep.jobs = withSessionResults(rep.jobs, Array.isArray(rep.sessions) ? rep.sessions : []);
+    return json({ report: rep });
+  }
 
   if (p === '/state' && m === 'GET') {
     const d = await loadKartabl(env, panel);

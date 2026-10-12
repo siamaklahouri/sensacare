@@ -9,12 +9,18 @@ DB=${DB_FILE:-/var/lib/sltech/sltech.db}
 SLUG=${SLUG:-siamak}
 [ -f "$DB" ] || { echo "دیتابیس پیدا نشد: $DB"; exit 1; }
 
-node -e '
-const { DatabaseSync } = require("node:sqlite");
+APP=$(cd "$(dirname "$0")/.." && pwd)
+node --input-type=module -e '
+const { DatabaseSync } = await import("node:sqlite");
+/* همان قاعده‌ای که صفحه می‌بیند — وگرنه این خروجی و آن جدول دو چیزِ
+   متفاوت می‌گفتند و همین، نیمِ روز را می‌برد. */
+const { withSessionResults } = await import(process.argv[3] + "/src/veeam.js");
 const db = new DatabaseSync(process.argv[1]);
 const row = db.prepare("SELECT v FROM settings WHERE k=?").get("veeam:" + process.argv[2]);
 if (!row) { console.log("هیچ گزارشی ذخیره نشده (کلیدِ veeam:" + process.argv[2] + " نیست)."); process.exit(0); }
 let r; try { r = JSON.parse(row.v); } catch (e) { console.log("ذخیره شده ولی خوانده نشد:", String(e)); process.exit(0); }
+
+if (Array.isArray(r.jobs)) r.jobs = withSessionResults(r.jobs, r.sessions || []);
 
 const age = r.at ? Math.round((Date.now() - r.at) / 60000) : null;
 const gap = (r.at && r.prev) ? Math.round((r.at - r.prev) / 60000) : null;
@@ -64,4 +70,4 @@ if (n(r.sessions)) {
     for (const x of orphan) console.log("    " + x);
   }
 }
-' "$DB" "$SLUG"
+' "$DB" "$SLUG" "$APP"

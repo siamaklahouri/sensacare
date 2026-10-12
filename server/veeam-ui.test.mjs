@@ -55,9 +55,7 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
           last: '2026-10-05 17:00', next: '2026-10-05 18:00', objects: '3',
           message: 'Unable to truncate transaction logs', scope: ['esxi-02.ehya.local'] },
         { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
-          last: '2026-10-04 23:00', next: '', objects: '58',
-          message: 'Error: Tape device is offline.\nRetry in 30 minutes.',
-          via: 'Archive-to-Tape (Full)', vms: ['SRV-DC01'] },
+          last: '2026-10-04 23:00', next: '', objects: '58', vms: ['SRV-DC01'] },
         { name: 'Tape-Weekly', type: 'BackupCopy', result: 'Success', state: 'Stopped',
           last: '2026-10-03 23:00', next: '', objects: '' }
       ],
@@ -71,9 +69,12 @@ const SLUG  = process.env.VS_SLUG || 'siamak';
           start: '2026-10-05 02:00', end: '2026-10-05 02:47', mins: '47' },
         { name: 'SQL-Hourly', type: 'Backup', result: 'Warning', state: 'Stopped',
           start: '2026-10-05 17:00', end: '2026-10-05 17:06', mins: '6' },
-        { name: 'Archive-to-Tape', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
+        /* نام با پسوندِ نوعِ بکاپ — همان‌طور که خودِ Veeam می‌نامدشان.
+           نتیجه و پیامِ جاب از همین اجرا درمی‌آید، نه از چیزی که
+           اسکریپت برای خودِ جاب فرستاده. */
+        { name: 'Archive-to-Tape (Full)', type: 'BackupCopy', result: 'Failed', state: 'Stopped',
           start: '2026-10-04 23:00', end: '2026-10-04 23:12', mins: '12',
-          message: 'Error: Tape device is offline.' }
+          message: 'Error: Tape device is offline.\nRetry in 30 minutes.' }
       ]
     })
   });
@@ -85,7 +86,11 @@ const errs = [];
 p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
 
 await p.goto(BASE + PAGE, { waitUntil: 'networkidle' });
-const login = await p.evaluate(async ({ a, w }) => {
+/* سقفِ ورود سمتِ سرور برای کاربرِ واقعی درست است و دست نمی‌خورد؛ ولی
+   وقتی کلِ مجموعه پشتِ سر هم و چند بار در یک ربع اجرا می‌شود، همان
+   سقف وسطِ کار می‌خورد و آزمون بی‌آنکه چیزی خراب باشد می‌افتد. یک بار
+   صبر و دوباره — ایرادِ مجموعه را به گردنِ کد نیندازیم. */
+const tryLogin = async () => p.evaluate(async ({ a, w }) => {
   const r = await fetch('/api/' + a + '/login', {
     method: 'POST', credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
@@ -93,6 +98,8 @@ const login = await p.evaluate(async ({ a, w }) => {
   });
   return r.status;
 }, { a: API, w: PASS });
+let login = await tryLogin();
+if (login === 429) { await p.waitForTimeout(2500); login = await tryLogin(); }
 t(login === 200, 'وارد شد', String(login));
 await p.goto(BASE + PAGE, { waitUntil: 'networkidle' });
 await p.waitForTimeout(3000);
@@ -216,7 +223,10 @@ t(/Tape device is offline/.test(kept.msg), 'سرور پیامِ جاب را نگ
 t(kept.vms.length === 3 && kept.vms[0] === 'SRV-DC01', 'و فهرستِ ماشین‌ها را', kept.vms.join(','));
 t(/Tape device is offline/.test(kept.smsg), 'و پیامِ اجرا را هم', kept.smsg.slice(0, 40));
 t(kept.scope.join(',') === 'esxi-02.ehya.local', 'و دامنهٔ جاب را جدا از ماشین‌ها', kept.scope.join(','));
-t(kept.via === 'Archive-to-Tape (Full)', 'و نامِ اجرایی که نتیجه از آن درآمده', kept.via);
+/* «via» را دیگر اسکریپت نمی‌گوید — سرور لحظهٔ خواندن از روی اجراها
+   حسابش می‌کند. پس این سنجه هم‌زمان می‌گوید که آن منطق سرِ جایش است. */
+t(kept.via === 'Archive-to-Tape (Full)',
+  'و سرور خودش می‌گوید نتیجه از کدام اجرا درآمده — نه اسکریپتِ روی ویندوز', kept.via);
 
 const rows = await p.evaluate(() => [...document.querySelectorAll('#veeamBody tr')].map(tr => ({
   cls: tr.className, vi: tr.getAttribute('data-vi'), vp: tr.getAttribute('data-vp'),
