@@ -1729,6 +1729,8 @@ function renderPlanners(){
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
         <div class="m"><span>آخرین ورود</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
         <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
+        <div class="m"><span>مقصد بله</span><span dir="ltr">${
+          esc(p.bale || p.phone || "—")}</span></div>
         <div class="m${p.until && daysLeft(p.until) <= 7 ? " warn" : ""}"><span>مهلت</span><span>${
           untilText(p)}</span></div>
         <div class="m"><span>بخش‌های کارتابل</span><span>${
@@ -1744,6 +1746,8 @@ function renderPlanners(){
       <div class="acts">
         <button class="btn" data-edit="${esc(p.slug)}">ویرایش</button>
         <button class="btn" data-pw="${esc(p.slug)}">رمز ورود</button>
+        <button class="btn" data-creds="${esc(p.slug)}"
+          title="فرستادنِ نام کاربری و رمز برای خودِ این شخص، با بله">ارسال مشخصات</button>
         <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
         ${((DATA.views||{})[p.kind]||[]).some(v=> v.id === "veeam")
           ? `<button class="btn" data-vee="${esc(p.slug)}" title="کلیدِ اسکریپتِ گزارشِ Veeam">کلید Veeam</button>` : ``}
@@ -1758,6 +1762,7 @@ function renderPlanners(){
 
   wrap.querySelectorAll("[data-edit]").forEach(b=> b.onclick = ()=> openEdit(b.dataset.edit));
   wrap.querySelectorAll("[data-pw]").forEach(b=> b.onclick = ()=> resetLoginPassword(b.dataset.pw));
+  wrap.querySelectorAll("[data-creds]").forEach(b=> b.onclick = ()=> openSendCreds(b.dataset.creds));
   wrap.querySelectorAll("[data-vpw]").forEach(b=> b.onclick = ()=> openVaultReset(b.dataset.vpw));
   wrap.querySelectorAll("[data-vee]").forEach(b=> b.onclick = ()=> openVeeamKey(b.dataset.vee));
   wrap.querySelectorAll("[data-off]").forEach(b=> b.onclick = ()=> toggleState(b.dataset.off));
@@ -1981,6 +1986,125 @@ async function resetLoginPassword(slug){
       ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">${ICON.copy}</button><br>` +
       "همین حالا جایی یادداشتش کنید — بعد از بستنِ این پیام دیگر هیچ‌جا نیست.");
   loadPlanners();
+}
+
+/* ---------- ارسال مشخصات ----------
+   نام کاربری و رمز را تا حالا دستی جایی می‌نوشتیم و برای کاربر
+   می‌فرستادیم. این پنجره همان متن را با رباتِ بله می‌فرستد.
+
+   رمز درهم‌شده ذخیره می‌شود، پس سرور نمی‌تواند رمزِ فعلی را بخواند و
+   خودش داخلِ متن بگذارد. دو راهِ صادق می‌ماند:
+     • رمزی که خودتان گذاشته‌اید را بنویسید — سرور با درهمِ ذخیره‌شده
+       می‌سنجدش و اگر یکی نبود پیام را نمی‌فرستد. پس هیچ‌وقت رمزی که
+       کار نمی‌کند دستِ کاربر نمی‌رسد.
+     • «رمزِ تازه بگذار» را بزنید — همان لحظه رمز گذاشته می‌شود و
+       بعد پیام می‌رود. بهایش این است که هر دستگاهی که وارد مانده
+       بیرون می‌افتد. */
+const credsText = (user, pass) => [
+  "سلام دوست عزیز 🌹", "",
+  "برای استفاده از سایت پلنر از لینک زیر وارد شو:", "",
+  "🔗 https://sltech.ir/", "",
+  "👤 یوزر: " + user,
+  "🔑 پسورد: " + pass, "",
+  "📱💻 سایت هم با گوشی و هم با کامپیوتر قابل استفاده‌ست.", "",
+  "موفق باشی 😊"
+].join("\n");
+
+function openSendCreds(slug){
+  const p = find(slug);
+  if(!p) return;
+  const user = p.user || p.slug;
+  const dest = p.bale || p.phone || "";
+
+  openOverlay(`
+    <h2>ارسال مشخصات — ${esc(p.name)}</h2>
+    <p class="sub">نام کاربری و رمزِ ورود با <b>بله</b> برای خودِ همین شخص فرستاده
+      می‌شود — همان متنی که پایین می‌بینید.</p>
+    ${DATA.baleReady ? `` : `<div class="hint" style="color:var(--red)">
+      توکنِ رباتِ بله گذاشته نشده، پس پیامی نمی‌رود. اول سربرگِ «سایت» را پر کنید.</div>`}
+    <div class="row">
+      <div class="fld"><label>نام کاربری</label>
+        <input type="text" id="scUser" dir="ltr" value="${esc(user)}" disabled></div>
+      <div class="fld"><label>رمز ورود</label>
+        <input type="text" id="scPass" dir="ltr" autocomplete="off" spellcheck="false"
+          placeholder="همان رمزی که خودتان گذاشته‌اید" data-ascii></div>
+      <div class="fld"><label>مقصد بله — شمارهٔ موبایل یا شناسهٔ گفتگو</label>
+        <input type="text" id="scDest" dir="ltr" autocomplete="off" spellcheck="false"
+          value="${esc(dest)}" placeholder="۰۹۱۲۱۲۳۴۵۶۷" data-ascii></div>
+    </div>
+    <label class="feat" id="scResetBox" style="margin-top:4px;display:flex;">
+      <input type="checkbox" id="scReset">
+      <span><span class="ft">رمزِ تازه بگذار</span><br>
+        <span class="fn">رمزِ بالا همان لحظه روی کارتابل نشانده می‌شود — خالی بگذارید
+        تا خودش یکی قوی بسازد. هر دستگاهی که وارد مانده بیرون می‌افتد.</span></span>
+    </label>
+    <p class="hint">با شمارهٔ موبایل فقط وقتی می‌رود که آن شخص یک‌بار رباتِ بله را باز
+      کرده و شماره‌اش را داده باشد؛ وگرنه بله راهی برای رساندنِ پیام ندارد و باید
+      شناسهٔ گفتگویش را نوشت. مقصدی که کار کند یادِ همین کارتابل می‌ماند.</p>
+    <div class="hint2" style="margin-top:14px;">پیش‌نمایشِ پیام:</div>
+    <pre id="scPrev" style="margin-top:6px;white-space:pre-wrap;line-height:2;
+      background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+      font-family:inherit;"></pre>
+    <div class="ov-acts">
+      <button class="btn btn-main" id="scSend" ${DATA.baleReady ? "" : "disabled"}>بفرست</button>
+      <button class="btn" id="scClose">بستن</button>
+    </div>
+    <div class="gate-err" id="scErr"></div>`);
+
+  const pw = document.getElementById("scPass");
+  const rs = document.getElementById("scReset");
+  const prev = document.getElementById("scPrev");
+  /* پیش‌نمایش از همان تابعی می‌آید که سرور هم دارد، پس چیزی که
+     ادمین می‌بیند همان چیزی است که می‌رود. */
+  const draw = ()=> {
+    prev.textContent = credsText(user,
+      pw.value.trim() || (rs.checked ? "(رمزی که همین حالا ساخته می‌شود)" : "…"));
+  };
+  pw.oninput = draw;
+  rs.onchange = ()=>{
+    document.getElementById("scResetBox").classList.toggle("closed", !rs.checked);
+    draw();
+  };
+  document.getElementById("scResetBox").classList.add("closed");
+  draw();
+  document.getElementById("scClose").onclick = closeOverlay;
+
+  const btn = document.getElementById("scSend");
+  btn.onclick = async ()=>{
+    const err = document.getElementById("scErr");
+    err.textContent = "";
+    const d = document.getElementById("scDest").value.trim();
+    /* شمارهٔ موبایل و شناسهٔ گفتگو هر دو عددند؛ ۱۱ رقمیِ ۰۹… شماره
+       است و بقیه شناسه. تشخیصش همین‌جا داده می‌شود تا سرور لازم
+       نباشد حدس بزند. */
+    const digits = d.replace(/[۰-۹]/g, c=>String("۰۱۲۳۴۵۶۷۸۹".indexOf(c))).replace(/\D/g,"");
+    const asPhone = /^(0?9\d{9}|98\d{10}|00989\d{9})$/.test(digits);
+    btn.disabled = true;
+    const r = await api("/planners/" + slug + "/send-creds", { method:"POST",
+      body: JSON.stringify({
+        password: pw.value.trim(),
+        reset: rs.checked,
+        phone: asPhone ? d : "",
+        chat: asPhone ? "" : d
+      })});
+    btn.disabled = false;
+    if(!r.ok){
+      err.innerHTML = esc(r.data.error || "نشد.") + (r.data.password
+        ? "<br>رمزِ تازه گذاشته شد ولی پیام نرفت — همین حالا جایی یادداشتش کنید:<br>" +
+          `<code>${esc(r.data.password)}</code>` +
+          ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">${ICON.copy}</button>`
+        : "");
+      err.querySelectorAll("[data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
+      if(r.data.password) loadPlanners();
+      return;
+    }
+    closeOverlay();
+    say("مشخصاتِ «" + esc(p.name) + "» با بله فرستاده شد." + (r.data.password
+      ? "<br>رمزِ تازه: <code>" + esc(r.data.password) + "</code>" +
+        ` <button class="copy" data-copy="${esc(r.data.password)}" title="رونوشت">${ICON.copy}</button>`
+      : ""));
+    loadPlanners();
+  };
 }
 
 /* ---------- رمز دیتای شخصی ---------- */
@@ -3984,7 +4108,8 @@ async function loadLog(){
   const items = (r.data && r.data.items) || [];
   const WHAT = { login:"ورود ادمین", create:"ساختن کارتابل", update:"ویرایش",
     delete:"حذف", password:"رمز ورود", "vault-password":"رمز دیتای شخصی",
-    "admin-password":"رمز ادمین", "escrow-key":"کلید اضطراری" };
+    "admin-password":"رمز ادمین", "escrow-key":"کلید اضطراری",
+    "send-creds":"ارسال مشخصات" };
   document.getElementById("logBody").innerHTML = items.length
     ? `<div class="tbl"><table><thead><tr><th>زمان</th><th>کار</th><th>کارتابل</th><th>توضیح</th></tr></thead>
        <tbody>${items.map(i=>`<tr>

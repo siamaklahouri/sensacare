@@ -115,6 +115,60 @@ const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های �
 const SITE_KEY = 'sltechSite';
 const MAX_PLANS = 6;
 
+/* ---------- فرستادنِ مشخصاتِ ورود ----------
+   نام کاربری و رمز را تا حالا دستی جایی می‌نوشتیم و برای کاربر
+   می‌فرستادیم. این چند تابع همان کار را از داخلِ پنل انجام می‌دهند،
+   با رباتِ بله — همان رباتی که تنظیماتش در سربرگِ «سایت» است. */
+
+/* رقمِ فارسی و عربی در شناسهٔ گفتگو و شمارهٔ موبایل زیاد پیش می‌آید
+   (کسی که کیبوردِ فارسی دارد عدد را هم فارسی می‌زند) و بله «chat not
+   found» می‌دهد. پس همان‌جا لاتین می‌شوند. */
+const latinDigits = s => String(s == null ? '' : s)
+  .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+  .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+
+/* همان قاعدهٔ index.js: تلگرام و بله شماره را 98912… می‌دهند، ما
+   09912… می‌خواهیم. */
+function phoneOf(raw) {
+  let d = latinDigits(raw).replace(/\D/g, '');
+  if (d.startsWith('0098')) d = d.slice(4);
+  else if (d.startsWith('98')) d = d.slice(2);
+  if (d.startsWith('9') && d.length === 10) d = '0' + d;
+  return /^09\d{9}$/.test(d) ? d : '';
+}
+
+/* شناسهٔ گفتگوی بله از روی شمارهٔ موبایل — فقط برای کسی که یک‌بار
+   شماره‌اش را به رباتِ بله داده باشد. اگر جدول نبود (نصبِ تازه) این
+   تابع هم «پیدا نشد» می‌گوید، نه خطای ۵۰۰. */
+async function baleChatOf(env, phone) {
+  if (!phone) return '';
+  try {
+    const r = await one(env,
+      'SELECT chat_id FROM bot_chats WHERE platform=? AND phone=? ORDER BY created DESC LIMIT 1',
+      'bale', phone);
+    return r ? String(r.chat_id) : '';
+  } catch (e) { return ''; }
+}
+
+/* متنِ پیام. همین‌جا یک جا نوشته شده تا پیش‌نمایشی که ادمین روی صفحه
+   می‌بیند و چیزی که واقعاً می‌رود یکی باشد. */
+export function credsText(user, pass) {
+  return [
+    'سلام دوست عزیز 🌹',
+    '',
+    'برای استفاده از سایت پلنر از لینک زیر وارد شو:',
+    '',
+    '🔗 https://sltech.ir/',
+    '',
+    '👤 یوزر: ' + user,
+    '🔑 پسورد: ' + pass,
+    '',
+    '📱💻 سایت هم با گوشی و هم با کامپیوتر قابل استفاده‌ست.',
+    '',
+    'موفق باشی 😊'
+  ].join('\n');
+}
+
 /* آنچه بیرون می‌رود: همه‌چیز جز توکن‌ها. */
 const publicSite = st => ({
   /* اگر ادمین چیزی ننوشته، همان پیش‌فرضی که سایت نشان می‌دهد این‌جا
@@ -440,6 +494,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         /* نامِ مسیرِ API — برای نشان دادنِ آدرسِ فرستندهٔ گزارشِ Veeam.
            همیشه برابرِ slug نیست: کارتابلِ سیامک «kartabl» است. */
         api: c.api || r.slug,
+        /* مقصدِ بله که بارِ قبل کار کرد — تا دکمهٔ «ارسال مشخصات»
+           دوباره نپرسد. رمز این‌جا نیست؛ آن هیچ‌جا ذخیره نمی‌شود. */
+        phone: String(c.phone || ''), bale: String(c.bale || ''),
         hasPassword: !!(await getSetting(env, (c.keys || {}).pass || '', '')),
         lastLogin: await getSetting(env, 'login:' + r.slug, 0),
         hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
@@ -454,6 +511,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                      disabled: false, closed: false, core: true, off: [], until: 0,
                      views: (VIEWS[b.kind] || []).map(v => v.id),
                      url: b.page, created: 0, builtin: true, api: b.api || b.slug,
+                     phone: '', bale: '',
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
@@ -486,6 +544,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       /* بخش‌های خودِ کارتابل، جدا برای هر نوع */
       views: VIEWS,
       escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null)),
+      /* بدونِ توکنِ بله دکمهٔ «ارسال مشخصات» کاری از پیش نمی‌برد، پس
+         همان‌جا می‌گوید اول کجا را پر کنند. */
+      baleReady: !!String(((await getSetting(env, SITE_KEY, {})) || {}).baleToken || '').trim(),
       /* آخرین تلاشِ پشتیبانِ همگانی — تا اگر نرفته، همین‌جا دیده شود
          و لازم نباشد کسی حدس بزند چرا چیزی نیامده. */
       backupAll: await getSetting(env, BK_LAST, null)
@@ -673,6 +734,101 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
       await log(env, 'password', slug, '');
       return json({ ok: true, password: pass });
+    }
+
+    /* --- فرستادنِ مشخصاتِ ورود با بله ---
+       دو حالت دارد و هر دو صادق‌اند:
+         • «همین رمز را بفرست» — رمزی که ادمین تایپ کرده با درهمِ
+           ذخیره‌شده سنجیده می‌شود. اگر یکی نبود، پیام نمی‌رود. یعنی
+           هیچ‌وقت رمزی که کار نمی‌کند فرستاده نمی‌شود، و کسی هم از
+           کارتابلش بیرون نمی‌افتد.
+         • «رمزِ تازه بگذار» — همان لحظه رمز گذاشته می‌شود و بعد پیام
+           می‌رود، پس متنِ پیام حتماً درست است. بهایش این است که هر
+           دستگاهی که وارد مانده بیرون می‌افتد — مثلِ دکمهٔ «رمز ورود».
+
+       رمز هیچ‌جا ذخیره نمی‌شود: نه در تنظیمات، نه در لاگ. */
+    if (sub === '/send-creds' && m === 'POST') {
+      const st = (await getSetting(env, SITE_KEY, {})) || {};
+      const token = String(st.baleToken || '').trim();
+      if (!token) return bad('اول توکنِ رباتِ بله را در سربرگِ «سایت» بگذارید.');
+
+      let cfg = null;
+      if (!builtin) {
+        try { cfg = JSON.parse(row.cfg); }
+        catch (e) { return bad('تنظیماتِ این کارتابل خوانا نیست.', 500); }
+      }
+      const user = String((cfg && cfg.user) || panel.user || slug).toLowerCase();
+
+      /* مقصد: یا شناسهٔ گفتگو، یا شمارهٔ موبایلی که همان آدم یک‌بار به
+         رباتِ بله داده. شماره راحت‌تر است ولی فقط وقتی کار می‌کند که
+         آن سلامِ اول را کرده باشد — وگرنه بله راهی برای رساندنِ پیام
+         ندارد و باید شناسهٔ گفتگو را دستی داد. */
+      const chatOf = v => latinDigits(v).replace(/[^\d-]/g, '');
+      const askPhone = String(body.phone || '').trim();
+      let chat = chatOf(body.chat);
+      let phone = phoneOf(askPhone);
+      if (askPhone && !phone)
+        return bad('شمارهٔ موبایل درست نیست — مثلِ ۰۹۱۲۱۲۳۴۵۶۷.');
+      /* چیزی ننوشته؟ همان چیزی که بارِ قبل کار کرد. */
+      if (!chat && !phone) {
+        chat = chatOf(cfg && cfg.bale);
+        phone = phoneOf(cfg && cfg.phone);
+      }
+      if (!chat && phone) {
+        chat = await baleChatOf(env, phone);
+        if (!chat) return bad('این شماره هنوز به رباتِ بله سلام نکرده، پس بله راهی برای ' +
+          'رساندنِ پیام ندارد. از خودش بخواهید یک‌بار رباتِ بله را باز کند و شماره‌اش ' +
+          'را بدهد — یا شناسهٔ گفتگویش را همین‌جا بنویسید.');
+      }
+      if (!chat) return bad('شمارهٔ موبایل یا شناسهٔ گفتگوی بله را بنویسید.');
+
+      const typed = String(body.password || '').trim();
+      const fresh = !!body.reset;
+      const pass = fresh ? (typed || newPassword()) : typed;
+      if (!pass) return bad('رمز را بنویسید، یا گزینهٔ «رمزِ تازه بگذار» را بزنید.');
+      if (fresh && pass.length < 8) return bad('رمز کوتاه است — دست‌کم ۸ حرف.');
+      if (!fresh) {
+        const stored = await getSetting(env, panel.keys.pass, '');
+        if (!stored) return bad('این کارتابل هنوز رمزی ندارد؛ «رمزِ تازه بگذار» را بزنید.');
+        /* checkPassword یک شیء برمی‌گرداند، نه بله/نه — و شیء همیشه
+           راست است. پس باید .ok را خواند، وگرنه هر رمزی قبول می‌شود. */
+        if (!(await checkPassword(pass, stored)).ok)
+          return bad('این رمز با رمزِ فعلیِ کارتابل یکی نیست، پس پیامی نرفت. یا درستش را ' +
+                     'بنویسید، یا «رمزِ تازه بگذار» را بزنید.');
+      }
+
+      /* ترتیب: اول رمز گذاشته شود، بعد پیام برود. برعکسش یعنی ممکن است
+         پیامی برود که رمزش هنوز ننشسته. اگر پیام نرفت، رمزِ تازه در
+         همین جواب برمی‌گردد تا ادمین دستی برساندش — وگرنه کاربر با
+         رمزی می‌ماند که هیچ‌کس نمی‌داند. */
+      if (fresh) {
+        await setSetting(env, panel.keys.pass, await hashPassword(pass));
+        await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
+        await log(env, 'password', slug, 'send-creds');
+      }
+
+      let sent = false, err = '';
+      try {
+        const r = await fetch(BOT_API.bale(token) + '/sendMessage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chat, text: credsText(user, pass) })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (d && d.ok) sent = true;
+        else err = 'ربات نپذیرفت: ' + ((d && d.description) || 'پاسخِ نامفهوم');
+      } catch (e) { err = 'به رباتِ بله نرسیدیم: ' + e.message; }
+
+      /* مقصدی که کار کرد یادِ کارتابل می‌ماند تا بارِ بعد تایپ نشود.
+         رمز نه — آن هیچ‌جا نمی‌نشیند. */
+      if (sent && cfg) {
+        if (chat) cfg.bale = chat;
+        if (phone) cfg.phone = phone;
+        await run(env, 'UPDATE planners SET cfg=? WHERE slug=?', JSON.stringify(cfg), slug);
+      }
+      if (!sent)
+        return json({ error: err, password: fresh ? pass : undefined, reset: fresh }, 502);
+      await log(env, 'send-creds', slug, 'bale');
+      return json({ ok: true, chat, reset: fresh, password: fresh ? pass : undefined });
     }
 
     /* --- کلیدِ فرستندهٔ گزارشِ Veeam ---
