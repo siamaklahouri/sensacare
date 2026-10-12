@@ -4254,6 +4254,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dellock}}
 {{PART:dayexport}}
 {{PART:navmobile}}
+{{PART:dayjump}}
 {{PART:rowdrag}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------

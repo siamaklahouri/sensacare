@@ -17,6 +17,9 @@ ADMIN_USER=admin
 ADMIN_PASS=adminadminadmin
 JWT_SECRET=testsecrettestsecrettestsecret12
 PANEL_HOST=sltech.ir
+# «بله»ی قلابیِ آزمونِ ارسالِ مشخصات. بی این خط، sendcreds سراغِ
+# بلهٔ واقعی می‌رود و — به‌درستی — می‌افتد.
+BALE_BASE=http://127.0.0.1:8913
 EOT
 
 # جدول‌ها

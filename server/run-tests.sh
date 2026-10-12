@@ -21,14 +21,17 @@ fail=0
 for f in theme.test.mjs serversize.test.mjs vshare.test.mjs vshare-ui.test.mjs \
          veeam.test.mjs veeam-ui.test.mjs rowdrag-all.test.mjs donedate.test.mjs \
          mobile-shared.test.mjs chat.test.mjs views.test.mjs \
-         veeam-match.test.mjs; do
+         veeam-match.test.mjs sendcreds.test.mjs sendcreds-ui.test.mjs \
+         dayjump.test.mjs; do
   [ -f "$f" ] || continue
   printf '%-24s ' "$f"
   # پیش از هر فایل، نه فقط یک بار سرِ شروع: مجموعه که بزرگ شد، سقفِ
   # ورود وسطِ اجرا پر می‌شد و آزمونِ ششم با ۴۲۹ می‌افتاد — ایرادِ
   # مجموعه، نه ایرادِ کد.
   clear_limits
-  out=$(VS_BASE="$BASE" node "$f" 2>&1)
+  # DB_FILE هم می‌رود: چند آزمون باید ردیفی را که از راهِ ربات
+  # می‌آید (مثلِ گفتگوی بله) خودشان در جدول بگذارند.
+  out=$(VS_BASE="$BASE" DB_FILE="$DB" node "$f" 2>&1)
   echo "$out" | tail -1
   # «۰ bad» شکست نیست — فقط عددِ غیرصفر
   if echo "$out" | tail -1 | grep -qE 'BAD [1-9]|[1-9][0-9]* bad'; then
