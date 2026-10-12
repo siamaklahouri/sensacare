@@ -296,7 +296,7 @@ const esc = t => String(t == null ? '' : t)
 
 /* فهرستِ بخش‌های دیتای شخصی، به شکلی که داخلِ <script> بنشیند.
    فقط نوع‌های شناخته‌شده رد می‌شوند تا صفحه با یک مقدارِ عجیب نشکند. */
-const VAULT_TYPES = ['creds', 'inst', 'contacts', 'table'];
+const VAULT_TYPES = ['creds', 'inst', 'contacts', 'table', 'exp'];
 const VAULT_FALLBACK = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
                         { id: 'inst', type: 'inst', title: 'اقساط' }];
 

@@ -66,7 +66,7 @@ const RESERVED = new Set(['admin', 'admin.planer', 'api', 'f', 'v', 'assets', 'c
   'logout', 'search', 'sitemap', 'robots', 'favicon', '_t', 'icon']);
 
 const KINDS = new Set(['it', 'fin', 'gen']);
-const VAULT_TYPES = new Set(['creds', 'inst', 'contacts', 'table']);
+const VAULT_TYPES = new Set(['creds', 'inst', 'contacts', 'table', 'exp']);
 
 /* ---------- ساختنِ تنظیماتِ یک کارتابلِ تازه ---------- */
 
@@ -529,7 +529,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
          همان‌جا جابه‌جا کند. */
       jobs: Object.entries(JOBS).map(([id, j]) => ({ id, label: j.label, views: j.views || [] })),
       vaultTypes: [{ id: 'creds', label: 'شرکت‌ها و رمزها' }, { id: 'inst', label: 'اقساط و وام' },
-                   { id: 'contacts', label: 'دفتر تلفن' }, { id: 'table', label: 'جدول دل‌خواه' }],
+                   { id: 'contacts', label: 'دفتر تلفن' }, { id: 'exp', label: 'هزینه‌ها' },
+                   { id: 'table', label: 'جدول دل‌خواه' }],
       features: [
         { id: 'pass', label: 'عوض کردن رمز ورود', note: 'کاربر بتواند رمز ورودِ خودش را عوض کند' },
         { id: 'backup', label: 'تنظیم پشتیبان تلگرام', note: 'ربات و گفتگوی پشتیبان و ارسال دستی' },

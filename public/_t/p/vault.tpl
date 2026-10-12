@@ -342,6 +342,7 @@ function renderPersonalView(){
   const stype = personalCurrentSection.type;
   if(stype === "creds") renderPersonalCreds();
   else if(stype === "inst") renderPersonalInstallments();
+  else if(stype === "exp") renderPersonalExpenses(personalCurrentSection);
   else renderPersonalGrid(personalCurrentSection);
 }
 
@@ -391,7 +392,7 @@ const VAULT_DEFAULT_SECTIONS = [
   { id:"creds", type:"creds", title:"شرکت‌های من" },
   { id:"inst",  type:"inst",  title:"اقساط" }
 ];
-const VAULT_TYPE_ICON = { creds:"🏢", inst:"💳", contacts:"📞", table:"📋" };
+const VAULT_TYPE_ICON = { creds:"🏢", inst:"💳", contacts:"📞", exp:"🧾", table:"📋" };
 const VAULT_CONTACT_COLS = ["نام", "سمت / نسبت", "تلفن", "تلفن دوم", "ایمیل", "یادداشت"];
 
 let personalCurrentSection = null;
@@ -984,4 +985,203 @@ function renderPersonalInstallments(){
       renderPersonalInstallments();
     });
   });
+}
+
+/* ---------------- هزینه‌ها ----------------
+   چهار ستون و بس: موضوع، تاریخِ هزینه، مبلغ، و نوع — «ورودی» یا
+   «خروجی». بخشی است که ادمین باز می‌کند، مثلِ بقیهٔ بخش‌های دیتای
+   شخصی، و محتوایش هم مثلِ آن‌ها داخلِ همان صندوقِ رمزدار می‌نشیند.
+
+   سه تصمیم:
+
+   یک) تاریخ با تقویم انتخاب می‌شود، نه با تایپ. کافی است خانه
+       data-date داشته باشد؛ خودِ تقویم (پارهٔ datepick) پیدایش
+       می‌کند، و بعد از انتخاب همان رویدادی را می‌فرستد که دستْ‌نوشتن
+       می‌فرستد. پس این‌جا چیزی دربارهٔ تقویم نوشته نشده.
+
+   دو) فیلترِ نوع بالای جدول است و جمع‌ها هم با آن جابه‌جا می‌شوند:
+       اگر «خروجی» را زده‌ای، عددی که می‌بینی جمعِ همان چیزی است که
+       روی صفحه است — وگرنه فیلتر آدم را گمراه می‌کرد.
+
+   سه) جمع‌ها با تایپ به‌روز می‌شوند ولی جدول بازسازی نمی‌شود:
+       بازسازی وسطِ تایپ، نشانه‌گر را می‌پراند. فقط عوض‌کردنِ «نوع»
+       بازسازی می‌کند، چون ممکن است ردیف از فیلتر بیرون بیفتد. */
+
+const EXP_KINDS = [{ id:"out", label:"خروجی" }, { id:"in", label:"ورودی" }];
+let personalExpFilter = "";      /* "" یعنی همه */
+
+const expKindOf = r => String(r && r.kind) === "in" ? "in" : "out";
+/* مبلغ همیشه عدد ذخیره می‌شود، ولی دادهٔ قدیمی یا دست‌کاری‌شده هم
+   نباید NaN روی صفحه بیاورد. */
+function expAmount(r){
+  const n = Number(String((r && r.amount) != null ? r.amount : "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+const expMoney = n => fa(Math.round(n).toLocaleString("en-US"));
+/* تاریخِ امروز به همان شکلی که تقویم می‌نویسد — تا ردیفِ تازه از
+   اول پر باشد و کسی لازم نباشد تاریخِ همین امروز را دستی بزند. */
+function expToday(){
+  try{
+    const t = window.DatePick.today();
+    return window.DatePick.fmt(t.jy, t.jm, t.jd);
+  }catch(e){ return ""; }
+}
+
+function expSums(rows){
+  let inn = 0, out = 0;
+  for(const r of rows){
+    if(expKindOf(r) === "in") inn += expAmount(r); else out += expAmount(r);
+  }
+  return { inn, out, net: inn - out };
+}
+
+function renderPersonalExpenses(sec){
+  const body = document.getElementById("personalTabBody");
+  if(!body) return;
+  const rows = vaultRows(sec);
+  const nIn = rows.filter(r=> expKindOf(r) === "in").length;
+  const nOut = rows.length - nIn;
+
+  /* شمارهٔ واقعیِ ردیف با خودش می‌آید: با فیلتر، جای ردیف روی صفحه
+     دیگر جای آن در آرایه نیست — و همین یک جا بود که حذفِ یک ردیف
+     می‌توانست ردیفِ دیگری را ببرد. */
+  const shown = rows.map((r, i)=> ({ r, i }))
+    .filter(x=> !personalExpFilter || expKindOf(x.r) === personalExpFilter);
+
+  const kindOpts = r => EXP_KINDS.map(k=>
+    `<option value="${k.id}" ${expKindOf(r) === k.id ? "selected" : ""}>${k.label}</option>`).join("");
+
+  const bodyHtml = shown.map(({ r, i })=> `
+    <tr class="exp-row exp-${expKindOf(r)}" data-exp-row="${i}">
+      <td><input type="text" class="exp-cell" data-row="${i}" data-k="subj"
+           value="${escapeHtml(r.subj || "")}" placeholder="موضوع"></td>
+      <td><input type="text" class="exp-cell exp-date" data-row="${i}" data-k="date" data-date
+           value="${escapeHtml(r.date || "")}" placeholder="تاریخ را انتخاب کنید"></td>
+      <td><input type="text" inputmode="numeric" class="exp-cell exp-amt" data-row="${i}" data-k="amount"
+           value="${expAmount(r) ? expAmount(r).toLocaleString("en-US") : ""}" placeholder="مبلغ"></td>
+      <td><select class="exp-kind" data-row="${i}">${kindOpts(r)}</select></td>
+      <td><button type="button" class="btn-del" data-exp-del="${i}" title="حذف این ردیف">✕</button></td>
+    </tr>`).join("");
+
+  const empty = rows.length
+    ? "با این فیلتر چیزی نیست."
+    : "هنوز چیزی ثبت نشده. از دکمهٔ پایین شروع کنید.";
+
+  body.innerHTML = `
+    <div class="cred-toolbar">
+      <div class="company-tabs">
+        <button type="button" class="company-tab-btn ${personalExpFilter === "" ? "active" : ""}"
+          data-expf="">همه <span class="cnt">${fa(rows.length)}</span></button>
+        <button type="button" class="company-tab-btn ${personalExpFilter === "in" ? "active" : ""}"
+          data-expf="in">ورودی <span class="cnt">${fa(nIn)}</span></button>
+        <button type="button" class="company-tab-btn ${personalExpFilter === "out" ? "active" : ""}"
+          data-expf="out">خروجی <span class="cnt">${fa(nOut)}</span></button>
+      </div>
+    </div>
+    <div class="inst-box">
+      <div class="inst-box-head">
+        <h4>🧾 جمع${personalExpFilter ? "ِ همین فیلتر" : ""}</h4>
+        <span class="inst-box-sum" id="expSums"></span>
+      </div>
+    </div>
+    <div class="panel" style="padding:14px;">
+      <div class="tbl-wrap">
+        <table class="cred-table exp-tab">
+          <colgroup><col><col style="width:160px"><col style="width:150px">
+            <col style="width:110px"><col style="width:34px"></colgroup>
+          <thead><tr>
+            <th>موضوع</th><th>تاریخ</th><th>مبلغ (تومان)</th><th>نوع</th><th></th>
+          </tr></thead>
+          <tbody>${bodyHtml || `<tr><td colspan="5" style="color:var(--ink-faint);
+            font-size:12.5px; text-align:center; padding:14px;">${empty}</td></tr>`}</tbody>
+        </table>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="btn btn-brass btn-sm" id="expAdd">＋ افزودن هزینه</button>
+      </div>
+    </div>`;
+
+  paintExpSums(sec);
+  /* تقویم خانه‌های تازه را خودش پیدا می‌کند، ولی یک تکان دستی هم
+     بزنیم تا همان لحظه آماده باشد، نه یک تیک بعد. */
+  if(window.datePickScan) window.datePickScan(body);
+
+  body.querySelectorAll("[data-expf]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      personalExpFilter = btn.getAttribute("data-expf");
+      renderPersonalExpenses(sec);
+    });
+  });
+
+  body.querySelectorAll(".exp-amt").forEach(inp=>{
+    /* جداکنندهٔ هزارگان همان‌جا که تایپ می‌شود */
+    inp.addEventListener("input", ()=>{ formatThousandsInput(inp); });
+  });
+
+  body.querySelectorAll(".exp-cell").forEach(inp=>{
+    const save = ()=>{
+      const r = rows[parseInt(inp.getAttribute("data-row"), 10)];
+      if(!r) return;
+      const k = inp.getAttribute("data-k");
+      if(k === "amount"){
+        const raw = inp.value.replace(/[^\d]/g, "");
+        r.amount = raw ? Number(raw) : 0;
+      } else {
+        r[k] = inp.value.trim();
+      }
+      encryptPersonalVault();
+      paintExpSums(sec);
+    };
+    inp.addEventListener("change", save);
+    /* تقویم input می‌فرستد نه فقط change؛ و مبلغ هم بهتر است جمع را
+       همان لحظه عوض کند، نه وقتی خانه را ترک کردی. */
+    if(inp.getAttribute("data-k") !== "subj") inp.addEventListener("input", save);
+  });
+
+  body.querySelectorAll(".exp-kind").forEach(sel=>{
+    sel.addEventListener("change", ()=>{
+      const r = rows[parseInt(sel.getAttribute("data-row"), 10)];
+      if(!r) return;
+      r.kind = sel.value === "in" ? "in" : "out";
+      encryptPersonalVault();
+      /* با فیلترِ روشن، این ردیف ممکن است همین حالا نباید دیده شود */
+      renderPersonalExpenses(sec);
+    });
+  });
+
+  body.querySelectorAll("[data-exp-del]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(!confirm("این ردیف حذف شود؟")) return;
+      rows.splice(parseInt(btn.getAttribute("data-exp-del"), 10), 1);
+      encryptPersonalVault();
+      renderPersonalExpenses(sec);
+    });
+  });
+
+  document.getElementById("expAdd").addEventListener("click", ()=>{
+    /* ردیفِ تازه از نوعِ همان فیلتری است که باز است — وگرنه با فیلترِ
+       «ورودی» یک ردیفِ خروجی ساخته می‌شد و همان لحظه غیب. */
+    rows.push({ subj: "", date: expToday(), amount: 0,
+                kind: personalExpFilter === "in" ? "in" : "out" });
+    encryptPersonalVault();
+    renderPersonalExpenses(sec);
+    /* مکان‌نما می‌رود داخلِ موضوعِ همان ردیفِ تازه */
+    const all = document.querySelectorAll('#personalTabBody .exp-cell[data-k="subj"]');
+    const last = all[all.length - 1];
+    if(last){ last.focus(); last.scrollIntoView({ block:"nearest" }); }
+  });
+}
+
+/* جمع‌ها جدا نوشته می‌شوند تا با هر تایپ، جدول بازسازی نشود */
+function paintExpSums(sec){
+  const el = document.getElementById("expSums");
+  if(!el) return;
+  const rows = vaultRows(sec)
+    .filter(r=> !personalExpFilter || expKindOf(r) === personalExpFilter);
+  const s = expSums(rows);
+  el.innerHTML =
+    'ورودی <b class="exp-sum-in">' + expMoney(s.inn) + '</b> · ' +
+    'خروجی <b class="exp-sum-out">' + expMoney(s.out) + '</b> · ' +
+    'مانده <b class="' + (s.net < 0 ? "exp-sum-out" : "exp-sum-in") + '">' +
+    expMoney(s.net) + '</b> تومان';
 }

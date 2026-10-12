@@ -138,6 +138,26 @@
   }
   .inst-pay-toggle.paid{ background:var(--green-bg); border-color:var(--green); color:var(--green-ink); }
 
+  /* ---------- هزینه‌ها ---------- */
+  /* جدولش همان .cred-table است؛ این‌جا فقط چیزهایی که مالِ خودش است:
+     کادرِ «نوع»، و رنگی که ورودی را از خروجی جدا می‌کند. */
+  .exp-tab select.exp-kind{
+    width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:12.5px;
+    padding:5px 6px; border:1px solid var(--line); border-radius:7px;
+    background:var(--paper); color:var(--ink); cursor:pointer;
+  }
+  .exp-tab select.exp-kind:focus{ outline:none; border-color:var(--brass); background:var(--white); }
+  /* مبلغ، و نه کلِ ردیف: رنگ‌کردنِ همهٔ خانه‌ها جدول را شلوغ می‌کرد و
+     خواندنِ موضوع را سخت. */
+  .exp-tab tr.exp-in .exp-amt{ color:var(--green-ink); font-weight:600; }
+  .exp-tab tr.exp-out .exp-amt{ color:var(--red-ink); font-weight:600; }
+  /* یک نوارِ باریکِ رنگی لبهٔ ردیف، تا با یک نگاه معلوم باشد کدام است */
+  .exp-tab tr.exp-in > td:first-child{ box-shadow:inset 3px 0 0 var(--green-ink); }
+  .exp-tab tr.exp-out > td:first-child{ box-shadow:inset 3px 0 0 var(--red-ink); }
+  .exp-tab .exp-date{ direction:rtl; }
+  .exp-sum-in{ color:var(--green-ink); }
+  .exp-sum-out{ color:var(--red-ink); }
+
   .cred-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .company-tabs{ display:flex; flex-wrap:wrap; gap:8px; }
   .company-tab-btn{
