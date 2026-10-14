@@ -499,6 +499,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         phone: String(c.phone || ''), bale: String(c.bale || ''),
         hasPassword: !!(await getSetting(env, (c.keys || {}).pass || '', '')),
         lastLogin: await getSetting(env, 'login:' + r.slug, 0),
+        /* آخرین باری که این کارتابل واقعاً کار کرده — نه لحظهٔ زدنِ
+           رمز. کسی که وارد مانده، «ورود»ش قدیمی است ولی این تازه. */
+        lastSeen: await getSetting(env, 'seen:' + r.slug, 0),
         hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
         builtin: false
       });
@@ -514,6 +517,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                      phone: '', bale: '',
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
+                     lastSeen: await getSetting(env, 'seen:' + b.slug, 0),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
     return json({
       items,
@@ -695,7 +699,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       await run(env, 'DELETE FROM kartabl WHERE k IN (?,?)', keys.state, keys.db);
       try { await run(env, 'DELETE FROM kartabl_hist WHERE k IN (?,?)', keys.state, keys.db); } catch (e) {}
       for (const k of [keys.pass, keys.gen, keys.last, keys.reset,
-                       'login:' + slug, 'escrow:' + slug])
+                       'login:' + slug, 'seen:' + slug, 'escrow:' + slug])
         await run(env, 'DELETE FROM settings WHERE k=?', k);
       await log(env, 'delete', slug, '');
       return json({ ok: true });

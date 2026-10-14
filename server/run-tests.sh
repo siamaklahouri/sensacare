@@ -22,7 +22,7 @@ for f in theme.test.mjs serversize.test.mjs vshare.test.mjs vshare-ui.test.mjs \
          veeam.test.mjs veeam-ui.test.mjs rowdrag-all.test.mjs donedate.test.mjs \
          mobile-shared.test.mjs chat.test.mjs views.test.mjs \
          veeam-match.test.mjs sendcreds.test.mjs sendcreds-ui.test.mjs \
-         dayjump.test.mjs vaultexp.test.mjs; do
+         dayjump.test.mjs vaultexp.test.mjs lastseen.test.mjs; do
   [ -f "$f" ] || continue
   printf '%-24s ' "$f"
   # پیش از هر فایل، نه فقط یک بار سرِ شروع: مجموعه که بزرگ شد، سقفِ

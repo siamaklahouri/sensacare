@@ -44,26 +44,28 @@ const slugs = [...new Set(rows.map(r=>r.slug).concat(keys.map(k=>k.slice(6))))];
 const nameOf = {}; for (const r of rows) nameOf[r.slug] = r.name;
 
 console.log("");
-console.log("کارتابل".padEnd(16), "آخرین ورود".padEnd(34), "چقدر پیش");
-console.log("-".repeat(78));
+console.log("کارتابل".padEnd(14), "آخرین ورود با رمز".padEnd(30),
+            "آخرین استفاده".padEnd(26), "نام");
+console.log("-".repeat(96));
 let bad = 0;
 for (const s of slugs) {
-  const v = get("login:" + s);
+  const v = get("login:" + s), sv = get("seen:" + s);
   const nm = (nameOf[s] || (s === "admin.planer" ? "پنلِ ادمین" : "—"));
-  if (v === null || v === 0 || v === "") {
-    console.log(s.padEnd(16), "هیچ‌وقت وارد نشده".padEnd(30), "", " ", nm);
-    continue;
-  }
-  const n = Number(v);
-  const ok = Number.isFinite(n) && n > 1600000000000 && n < Date.now() + 60000;
-  if (!ok) bad++;
-  console.log(s.padEnd(16), (ok ? fa(n) : "مقدارِ مشکوک: " + JSON.stringify(v)).padEnd(30),
-              " ", ok ? ago(n) : "", " ", nm, ok ? "" : "  ← بررسی شود");
+  const cell = x => {
+    if (x === null || x === 0 || x === "") return "—";
+    const n = Number(x);
+    if (!(Number.isFinite(n) && n > 1600000000000 && n < Date.now() + 60000)) {
+      bad++; return "مشکوک: " + JSON.stringify(x);
+    }
+    return fa(n) + "  (" + ago(n) + ")";
+  };
+  console.log(s.padEnd(14), cell(v).padEnd(30), cell(sv).padEnd(26), nm);
 }
 console.log("");
-console.log("نکته: این عدد لحظهٔ آخرین «ورود با رمز» است، نه آخرین باری که");
-console.log("      صفحه باز شده. کسی که با «مرا به خاطر بسپار» وارد مانده،");
-console.log("      تا وقتی دوباره رمز نزند این تاریخ برایش عوض نمی‌شود.");
+console.log("نکته: «ورود با رمز» لحظهٔ زدنِ رمز است؛ کسی که وارد مانده تا وقتی");
+console.log("      دوباره رمز نزند آن تاریخ برایش عوض نمی‌شود. «آخرین استفاده»");
+console.log("      هر بار که کارتابل واقعاً کاری می‌کند تازه می‌شود (حداکثر هر");
+console.log("      پنج دقیقه یک‌بار نوشته می‌شود، و خبرگیرهای پس‌زمینه حساب نیستند).");
 if (bad) { console.log(""); console.log("‼ " + bad + " مقدارِ غیرعادی پیدا شد."); }
 console.log("");
 /* ساعتِ خودِ سرور هم کنارش، چون اگر ساعتِ سرور عقب باشد همهٔ این

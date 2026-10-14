@@ -1246,6 +1246,20 @@ function faDateTime(ms){
   }catch(e){ return "—"; }
 }
 
+/* «آخرین استفاده» را نزدیک‌تر از «تاریخ» می‌خوانند: «۲ ساعت پیش»
+   یک نگاه می‌خواهد، «۲۲ مهر — ۰۷:۴۳» دو تا. پس هر دو را می‌دهیم:
+   عدد نزدیک در متن، تاریخِ دقیق روی tooltip. */
+function seenText(ms){
+  if(!ms) return "—";
+  const s = Math.round((Date.now() - Number(ms)) / 1000);
+  if(s < 0)      return faDateTime(ms);
+  if(s < 120)    return "همین حالا";
+  if(s < 3600)   return fa(Math.round(s/60)) + " دقیقه پیش";
+  if(s < 86400)  return fa(Math.round(s/3600)) + " ساعت پیش";
+  if(s < 7*86400)return fa(Math.round(s/86400)) + " روز پیش";
+  return faDateTime(ms);
+}
+
 /* هر پیام شمارهٔ خودش را دارد: وگرنه تایمرِ پیامِ قبلی پیامِ بعدی را
    پاک می‌کرد و کار انجام‌شده بی‌جواب به نظر می‌رسید. */
 let msgSeq = 0;
@@ -1727,7 +1741,9 @@ function renderPlanners(){
         <div class="m"><span>چک‌لیست آماده</span><span>${p.job ? esc(jobLabel(p.job)) : "—"}</span></div>
         <div class="m"><span>بخش‌های شخصی</span><span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">${
           esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
-        <div class="m"><span>آخرین ورود</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
+        <div class="m"><span>آخرین استفاده</span><span title="${
+          esc(p.lastSeen ? faDateTime(p.lastSeen) : "")}">${esc(seenText(p.lastSeen))}</span></div>
+        <div class="m"><span>آخرین ورود با رمز</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
         <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
         <div class="m"><span>مقصد بله</span><span dir="ltr">${
           esc(p.bale || p.phone || "—")}</span></div>
