@@ -808,6 +808,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .daily-plan-table td:nth-child(5), .daily-plan-table th:nth-child(5){ padding-right:14px; padding-left:14px; }
   .daily-plan-table td.editable-text input, .daily-plan-table td select{ width:100%; box-sizing:border-box; }
   .daily-date-cell{ color:var(--ink-faint); font-size:11.5px; white-space:nowrap; text-align:center; }
+  /* تاریخِ انجام: تا وقتی کار تمام نشده «—» است و کم‌رنگ می‌ماند؛
+     تمام که شد، سبز می‌شود تا با یک نگاه معلوم باشد. */
+  .daily-done-cell.on{ color:var(--green-ink); font-weight:600; }
   .cal-block{ margin-bottom:20px; }
   .cal-head{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
   .cal-head h4{ font-family:var(--font-display); font-size:13.5px; margin:0; color:var(--ink); }
@@ -1099,11 +1102,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:180px;">🏢 شرکت</th><th style="width:120px;">وضعیت</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
           <tr class="filter-row">
             <th></th><th></th><th></th><th></th>
             <th><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
+            <th></th>
             <th></th>
             <th></th>
           </tr>
@@ -1352,7 +1356,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
         </div>
         <div class="guide-item">
           <div class="ic">🗓️</div>
-          <div><h4>برنامه روزانه</h4><p>برای هر روز ماه، وظایف اصلی، جلسات و وضعیت پیشرفت را ثبت کنید.</p></div>
+          <div><h4>برنامه روزانه</h4><p>برای هر روز ماه، وظایف اصلی، جلسات و وضعیت پیشرفت را ثبت کنید. تا کاری «انجام شد» بخورد، تاریخِ انجامش خودش می‌افتد.</p></div>
         </div>
 <!--IT-->
         <div class="guide-item">
@@ -2573,7 +2577,7 @@ function renderDaily(){
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
     <tr data-idx="${d.idx}">
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell">${escapeHtml(d.createdDate||"—")}</td>
+      <td class="daily-date-cell">${escapeHtml(fa(d.createdDate||"—"))}</td>
       <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
@@ -2583,13 +2587,14 @@ function renderDaily(){
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
+      <td class="daily-date-cell daily-done-cell${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
       <td style="text-align:center;">
         <button type="button" class="star-btn ${d.important?'is-important':''}" data-star-idx="${d.idx}"
           title="${d.important && d.reminderAt ? 'یادآوری: '+formatReminderAtFa(d.reminderAt) : 'علامت‌گذاری به‌عنوان مهم برای یادآوری'}">${d.important?'⭐':'☆'}</button>
       </td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
+  `).join("") || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
   const companyNames = companiesData ? Object.keys(companiesData.companies) : [];
   const dl = document.getElementById("dailyCompanyOptions");
   if(dl) dl.innerHTML = companyNames.map(n=>`<option value="${escapeHtml(n)}">`).join("");
@@ -2618,7 +2623,7 @@ function renderDaily(){
 
 function addDayRow(){
   const maxDay = state.days.reduce((m,d)=> Math.max(m, parseInt(d.day)||0), 0);
-  state.days.push({ day: maxDay+1, createdDate: getTodayJalaliStr(), main:"", meet:"", company:"", status:"", important:false, reminderAt:"", reminderFired:false });
+  state.days.push({ day: maxDay+1, createdDate: getTodayJalaliStr(), main:"", meet:"", company:"", status:"", doneDate:"", important:false, reminderAt:"", reminderFired:false });
   renderDaily();
   scheduleSave();
 }
@@ -2866,8 +2871,23 @@ function onDayFieldChange(e){
   const tr = e.target.closest("tr");
   const idx = parseInt(tr.getAttribute("data-idx"));
   const field = e.target.getAttribute("data-field");
-  state.days[idx][field] = e.target.value;
-  if(field==="status") renderCharts();
+  const row = state.days[idx];
+  if(!row) return;
+  const was = row[field];
+  row[field] = e.target.value;
+  /* تاریخِ انجام خودش می‌افتد: همان لحظه‌ای که کار «انجام شد» می‌شود.
+     و اگر کار دوباره باز شود پاک می‌شود — تاریخِ انجام برای کاری که
+     هنوز تمام نشده دروغ است. همان قاعده‌ای که بخش‌های مشترک دارند.
+     دستی هم نوشته نمی‌شود؛ خانه‌اش فقط خوانده می‌شود. */
+  if(field === "status"){
+    const isDone = v => String(v == null ? "" : v).trim() === "انجام شد";
+    if(isDone(row.status) && !isDone(was)) row.doneDate = fa(getTodayJalaliStr());
+    else if(!isDone(row.status) && isDone(was)) row.doneDate = "";
+    renderCharts();
+    /* دوباره می‌کشیم تا تاریخِ تازه همان لحظه دیده شود. فقط برای
+       وضعیت، چون این یکی <select> است و نشانه‌گرِ کسی را نمی‌پراند. */
+    renderDaily();
+  }
   scheduleSave();
 }
 

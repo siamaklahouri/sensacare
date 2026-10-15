@@ -582,6 +582,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .daily-plan-table td:nth-child(6), .daily-plan-table th:nth-child(6){ padding-right:14px; padding-left:14px; }
   .daily-plan-table td.editable-text input, .daily-plan-table td select{ width:100%; box-sizing:border-box; }
   .daily-date-cell{ color:var(--ink-faint); font-size:11.5px; white-space:nowrap; text-align:center; }
+  /* تاریخِ انجام: تا وقتی کار تمام نشده «—» است و کم‌رنگ می‌ماند؛
+     تمام که شد، سبز می‌شود تا با یک نگاه معلوم باشد. */
+  .daily-done-cell.on{ color:var(--green-ink); font-weight:600; }
 
   /* ---------- Chart drill-down modal ---------- */
   .cm-overlay{
@@ -838,12 +841,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:150px;">👥 طرف‌حساب</th><th style="width:130px;">وضعیت</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:40px;"></th></tr>
+          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:40px;"></th></tr>
           <tr class="filter-row">
             <th></th><th></th><th></th><th></th>
             <th><div class="msf" id="msfDailyParty" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
-            <th></th><th></th>
+            <th></th><th></th><th></th>
           </tr>
           </thead>
           <tbody id="dailyBody"></tbody>
@@ -1257,7 +1260,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
         </div>
         <div class="guide-item">
           <div class="ic">🗓️</div>
-          <div><h4>برنامه روزانه</h4><p>وظایف و طرف‌حساب‌های مرتبط با هر روز را ثبت کنید. با ساختن ماه جدید، فقط ردیف‌های «در حال انجام» یا «انجام نشده» به ماه جدید منتقل می‌شوند؛ ردیف‌های «انجام شد» در همان ماه می‌مانند.</p></div>
+          <div><h4>برنامه روزانه</h4><p>وظایف و طرف‌حساب‌های مرتبط با هر روز را ثبت کنید. تا کاری «انجام شد» بخورد، تاریخِ انجامش خودش می‌افتد. با ساختن ماه جدید، فقط ردیف‌های «در حال انجام» یا «انجام نشده» به ماه جدید منتقل می‌شوند؛ ردیف‌های «انجام شد» در همان ماه می‌مانند.</p></div>
         </div>
         <div class="guide-item">
           <div class="ic">🗂️</div>
@@ -3621,7 +3624,7 @@ function renderDaily(){
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
     <tr data-idx="${d.idx}">
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell">${escapeHtml(d.createdDate||"—")}</td>
+      <td class="daily-date-cell">${escapeHtml(fa(d.createdDate||"—"))}</td>
       <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="توضیحات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام طرف‌حساب" list="dailyPartyOptions"></td>
@@ -3631,10 +3634,11 @@ function renderDaily(){
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
+      <td class="daily-date-cell daily-done-cell${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
       <td><button class="star-btn ${d.reminder && !d.reminder.fired ? 'active':''}" data-day-star="${d.idx}" title="${d.reminder && !d.reminder.fired ? 'یادآور تنظیم‌شده — برای تغییر کلیک کنید':'تنظیم یادآور'}">${d.reminder && !d.reminder.fired ? '⭐':'☆'}</button></td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="8" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
+  `).join("") || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
 
   const partyNames = partiesData.map(p=>p.name);
   const dl = document.getElementById("dailyPartyOptions");
@@ -3660,7 +3664,7 @@ function renderDaily(){
 }
 function addDayRow(){
   const maxDay = state.days.reduce((m,d)=> Math.max(m, parseInt(d.day)||0), 0);
-  state.days.push({ day: maxDay+1, createdDate: getTodayJalaliStr(), main:"", meet:"", company:"", status:"" });
+  state.days.push({ day: maxDay+1, createdDate: getTodayJalaliStr(), main:"", meet:"", company:"", status:"", doneDate:"" });
   renderDaily();
   scheduleSave();
 }
@@ -3668,8 +3672,23 @@ function onDayFieldChange(e){
   const tr = e.target.closest("tr");
   const idx = parseInt(tr.getAttribute("data-idx"));
   const field = e.target.getAttribute("data-field");
-  state.days[idx][field] = e.target.value;
-  if(field==="status") renderCharts();
+  const row = state.days[idx];
+  if(!row) return;
+  const was = row[field];
+  row[field] = e.target.value;
+  /* تاریخِ انجام خودش می‌افتد: همان لحظه‌ای که کار «انجام شد» می‌شود.
+     و اگر کار دوباره باز شود پاک می‌شود — تاریخِ انجام برای کاری که
+     هنوز تمام نشده دروغ است. همان قاعده‌ای که بخش‌های مشترک دارند.
+     دستی هم نوشته نمی‌شود؛ خانه‌اش فقط خوانده می‌شود. */
+  if(field === "status"){
+    const isDone = v => String(v == null ? "" : v).trim() === "انجام شد";
+    if(isDone(row.status) && !isDone(was)) row.doneDate = fa(getTodayJalaliStr());
+    else if(!isDone(row.status) && isDone(was)) row.doneDate = "";
+    renderCharts();
+    /* دوباره می‌کشیم تا تاریخِ تازه همان لحظه دیده شود. فقط برای
+       وضعیت، چون این یکی <select> است و نشانه‌گرِ کسی را نمی‌پراند. */
+    renderDaily();
+  }
   scheduleSave();
 }
 function setupDaily(){
