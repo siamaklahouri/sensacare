@@ -223,6 +223,15 @@ a{ color:var(--brass-ink); }
 .bell-item.b-ok{ border-inline-start-color:var(--green,#2C7A4B); }
 .bell-item.b-info{ border-inline-start-color:var(--line); }
 .bell-empty{ padding:22px 14px; text-align:center; font-size:12px; color:var(--ink-faint); }
+/* خبرِ دیده‌شده پاک نمی‌شود، کم‌رنگ می‌شود: شاید فردا بخواهی دوباره بخوانی‌اش. */
+.bell-item.b-seen{ opacity:.52; }
+.bell-foot{ padding:9px 11px; border-top:1px solid var(--line); display:flex; }
+.bell-foot button{
+  border:1px solid var(--line); background:var(--paper-2); color:var(--ink);
+  border-radius:9px; padding:6px 12px; font-family:inherit; font-size:11.5px; cursor:pointer;
+}
+.bell-foot button:hover{ border-color:var(--brass); }
+.bell-foot button[disabled]{ opacity:.5; cursor:default; }
 
 /* ---------- نوار آمار ---------- */
 .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
@@ -781,6 +790,9 @@ table.inv-tab td.desc{ text-align:right; }
           <button type="button" class="bell-x" id="bellX" title="بستن">✕</button>
         </div>
         <div class="bell-list" id="bellList"></div>
+        <div class="bell-foot">
+          <button type="button" id="bellSeenAll">همه را دیدم</button>
+        </div>
       </div>
     </div>
     <button class="icon-btn" id="themeBtn" title="تم روز و شب">🌙</button>
@@ -1533,7 +1545,12 @@ let BELL_LOGIN = 0;
 
 function bellItems(){
   const out = [];
-  const add = (kind, icon, title, body) => out.push({ kind, icon, title, body });
+  /* هر خبر یک کلید دارد، و کلید از محتوایش ساخته می‌شود: خبری که عوض
+     شود کلیدِ تازه دارد و دوباره شمرده می‌شود، و خبری که همان است
+     بعد از «همه را دیدم» دیگر شمرده نمی‌شود. بی این، شمارنده روی
+     چیزی مثل «کلیدِ اضطراری گذاشته نشده» برای همیشه گیر می‌کرد. */
+  const add = (kind, icon, title, body, key) =>
+    out.push({ kind, icon, title, body, key: key || (kind + "|" + title) });
 
   /* پشتیبانِ همگانی */
   const b = DATA.backupAll;
@@ -1543,19 +1560,23 @@ function bellItems(){
       add("ok", ICON.archive, "پشتیبان رفت",
         when + " — " + fa(b.count || 0) + " کارتابل، " +
         fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
-        ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""));
+        ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""),
+        "bk-ok|" + b.at);
       if((b.failed || []).length)
         add("warn", "⚠️", "یکی از ربات‌ها نگرفت",
           (b.failed || []).join(" — ") + (b.note ? " (" + b.note + ")" : "") +
-          " — همان‌هایی که گرفتند خبر داده شدند.");
+          " — همان‌هایی که گرفتند خبر داده شدند.", "bk-failed|" + b.at);
       if((b.noHtml || []).length)
-        add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند", (b.noHtml || []).join("، "));
+        add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند",
+          (b.noHtml || []).join("، "), "bk-nohtml|" + b.at);
     } else {
       add("bad", "⛔", "پشتیبان نرفت",
-        when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"));
+        when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"),
+        "bk-bad|" + b.at);
     }
   } else {
-    add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده", "اولین نوبت که برود، همین‌جا نوشته می‌شود.");
+    add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده",
+      "اولین نوبت که برود، همین‌جا نوشته می‌شود.", "bk-none");
   }
 
   /* مهلتِ کارتابل‌ها */
@@ -1566,18 +1587,40 @@ function bellItems(){
     if(p.until < now) over.push(p.name || p.slug);
     else if(p.until - now < 7 * DAY) soon.push((p.name || p.slug) + " — " + fa(Math.ceil((p.until - now) / DAY)) + " روز");
   });
-  if(over.length) add("bad", "⏳", "مهلتشان تمام شده", over.join("، "));
-  if(soon.length) add("warn", "⏳", "مهلتشان نزدیک است", soon.join("، "));
+  /* کلید از نامِ کارتابل‌ها ساخته می‌شود نه از تعدادِ روزِ مانده،
+     وگرنه هر روز همان خبر تازه حساب می‌شد. */
+  if(over.length) add("bad", "⏳", "مهلتشان تمام شده", over.join("، "),
+    "exp-over|" + over.slice().sort().join("|"));
+  if(soon.length) add("warn", "⏳", "مهلتشان نزدیک است", soon.join("، "),
+    "exp-soon|" + soon.map(x=> x.split(" — ")[0]).sort().join("|"));
 
   /* کلیدِ اضطراری */
   if(!DATA.escrowReady)
     add("warn", "🔑", "کلیدِ اضطراری گذاشته نشده",
-        "بدونِ آن، اگر کاربری رمزِ بخشِ شخصی‌اش را فراموش کند کاری نمی‌شود کرد.");
+        "بدونِ آن، اگر کاربری رمزِ بخشِ شخصی‌اش را فراموش کند کاری نمی‌شود کرد.",
+        "escrow-missing");
 
   /* ورودِ قبلی */
-  if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN));
+  if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN), "login|" + BELL_LOGIN);
 
   return out;
+}
+
+/* ---------- خبرهای دیده‌شده ----------
+   در همین مرورگر نگه داشته می‌شوند. پنلِ ادمین جای دادهٔ کاربر نیست
+   که بشود این را کنارِ بقیه ذخیره کرد، و «دیدمش» هم چیزی نیست که
+   ارزشِ یک جدولِ تازه روی سرور را داشته باشد. */
+const BELL_SEEN_KEY = "sl-admin-bell-seen";
+function bellSeen(){
+  try{ const v = JSON.parse(localStorage.getItem(BELL_SEEN_KEY) || "[]");
+       return Array.isArray(v) ? v : []; }catch(e){ return []; }
+}
+function bellMarkAll(items){
+  try{
+    const keep = bellSeen();
+    items.forEach(i=>{ if(keep.indexOf(i.key) < 0) keep.push(i.key); });
+    localStorage.setItem(BELL_SEEN_KEY, JSON.stringify(keep.slice(-240)));
+  }catch(e){ /* مرورگرِ بسته‌دست — همان یک‌بار نشان می‌دهد و بس */ }
 }
 
 function bellPaint(){
@@ -1585,15 +1628,20 @@ function bellPaint(){
   const dot = document.getElementById("bellDot");
   if(!list) return;
   const items = bellItems();
-  const need = items.filter(i=> i.kind === "bad" || i.kind === "warn").length;
-  dot.hidden = !need;
-  dot.textContent = need ? fa(need) : "";
+  const seen = bellSeen();
+  const unseen = items.filter(i=> seen.indexOf(i.key) < 0);
+  /* شمارنده فقط نخوانده‌ها را می‌شمارد — همین است که دیگر روی یک
+     عددِ همیشگی گیر نمی‌کند. */
+  dot.hidden = !unseen.length;
+  dot.textContent = unseen.length ? fa(unseen.length) : "";
   list.innerHTML = items.length ? items.map(i=>`
-    <div class="bell-item b-${i.kind}">
+    <div class="bell-item b-${i.kind}${seen.indexOf(i.key) < 0 ? "" : " b-seen"}">
       <span class="bi">${i.icon}</span>
       <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p></div>
     </div>`).join("")
     : `<div class="bell-empty">فعلاً خبری نیست.</div>`;
+  const sb = document.getElementById("bellSeenAll");
+  if(sb) sb.disabled = !unseen.length;
 }
 
 function setupBell(){
@@ -1609,6 +1657,8 @@ function setupBell(){
     btn.setAttribute("aria-expanded", open ? "true" : "false");
   });
   document.getElementById("bellX").addEventListener("click", close);
+  const seenBtn = document.getElementById("bellSeenAll");
+  if(seenBtn) seenBtn.addEventListener("click", ()=>{ bellMarkAll(bellItems()); bellPaint(); });
   /* کلیکِ بیرون و Esc می‌بندندش — وگرنه روی موبایل باز می‌ماند و
      جلوی بقیهٔ صفحه را می‌گیرد. */
   document.addEventListener("click", (e)=>{ if(!pop.hidden && !pop.contains(e.target)) close(); });

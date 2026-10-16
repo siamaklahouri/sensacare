@@ -1215,7 +1215,17 @@
 
   function navOf(id) { return document.querySelector('.navbtn[data-view="shared-' + id + '"]'); }
 
+  /* جمعِ نخوانده‌ها، برای زنگوله‌ی نوارِ بالا. همان شمارشی که نشانِ
+     کنارِ نامِ بخش از آن می‌آید؛ دو جا، یک عدد. */
+  function tellBell() {
+    var n = 0;
+    for (var k in news.unread) n += news.unread[k] || 0;
+    window.SHARED_UNREAD = n;
+    try { if (window.BELL) window.BELL.refresh(); } catch (e) { }
+  }
+
   function paintDot(id) {
+    tellBell();
     var btn = navOf(id);
     if (!btn) return;
     var dot = btn.querySelector(".shn-dot");
@@ -1233,6 +1243,7 @@
     if (!news.unread[id]) return;
     delete news.unread[id];
     paintDot(id);
+    tellBell();
   }
 
   /* باز کردنِ بخش یعنی دیدمش */

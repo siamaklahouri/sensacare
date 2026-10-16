@@ -636,6 +636,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
   @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
 {{PART:navcss}}
+{{PART:bellcss}}
 {{PART:colorcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
   .theme-btn:active{ transform:scale(.94); }
@@ -4274,6 +4275,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dayexport}}
 {{PART:navmobile}}
 {{PART:dayjump}}
+{{PART:bell}}
 {{PART:rowdrag}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------

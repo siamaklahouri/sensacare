@@ -869,6 +869,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:convertcss}}
 
 {{PART:navcss}}
+{{PART:bellcss}}
 {{PART:colorcss}}
 {{PART:veeamcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
@@ -4716,6 +4717,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dayexport}}
 {{PART:navmobile}}
 {{PART:dayjump}}
+{{PART:bell}}
 {{PART:rowdrag}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------

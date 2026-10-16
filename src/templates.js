@@ -20,6 +20,8 @@ import p_convert from '../public/_t/p/convert.tpl';
 import p_dellock from '../public/_t/p/dellock.tpl';
 import p_dayexport from '../public/_t/p/dayexport.tpl';
 import p_dayjump from '../public/_t/p/dayjump.tpl';
+import p_bell from '../public/_t/p/bell.tpl';
+import p_bellcss from '../public/_t/p/bellcss.tpl';
 import p_rowdrag from '../public/_t/p/rowdrag.tpl';
 import p_rowdragcss from '../public/_t/p/rowdragcss.tpl';
 import p_convertcss from '../public/_t/p/convertcss.tpl';
@@ -84,6 +86,8 @@ export const PARTS = new Map([
   ['mobilecss', p_mobilecss],
   ['navmobile', p_navmobile],
   ['dayjump', p_dayjump],
+  ['bell', p_bell],
+  ['bellcss', p_bellcss],
   ['monthpop', p_monthpop],
   ['navcss', p_navcss],
   ['noautofill', p_noautofill],

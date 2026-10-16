@@ -555,6 +555,9 @@
     if (!w) return;
     var n = 0;
     for (var k in news.unread) n += news.unread[k] || 0;
+    /* زنگوله‌ی نوارِ بالا هم همین عدد را می‌خواند — یک شمارش، دو جا. */
+    window.CHAT_UNREAD = n;
+    try { if (window.BELL) window.BELL.refresh(); } catch (e) { }
     var b = w.querySelector(".ch-fab");
     var dot = b.querySelector(".n");
     if (!n) { if (dot) dot.remove(); return; }
