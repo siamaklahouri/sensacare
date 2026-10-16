@@ -1594,6 +1594,24 @@ function bellItems(){
   if(soon.length) add("warn", "⏳", "مهلتشان نزدیک است", soon.join("، "),
     "exp-soon|" + soon.map(x=> x.split(" — ")[0]).sort().join("|"));
 
+  /* تلاشِ ناموفقِ ورود — رمزِ اشتباه */
+  const bp = [];
+  (DATA.items || []).forEach(p=>{
+    const x = p.badPass;
+    if(x && Number(x.n)) bp.push((p.name || p.slug) + ": " + fa(x.n) + " بار");
+  });
+  const abp = DATA.adminBadPass;
+  if(abp && Number(abp.n)) bp.push("پنلِ ادمین: " + fa(abp.n) + " بار");
+  if(bp.length){
+    /* آخرین تلاش، از هرکدام که تازه‌تر است */
+    const last = [...(DATA.items || []).map(p=> p.badPass), abp]
+      .filter(x=> x && Number(x.n)).reduce((m,x)=> Math.max(m, Number(x.at) || 0), 0);
+    add("warn", "🔐", "تلاشِ ناموفقِ ورود",
+      bp.join("، ") + (last ? " — آخرین بار: " + faDateTime(last) : "") +
+      " (از ابتدا شمرده می‌شود؛ خودِ رمزِ غلط هیچ‌جا ذخیره نمی‌شود.)",
+      "badpass|" + bp.join("|"));
+  }
+
   /* کلیدِ اضطراری */
   if(!DATA.escrowReady)
     add("warn", "🔑", "کلیدِ اضطراری گذاشته نشده",

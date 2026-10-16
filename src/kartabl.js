@@ -270,6 +270,24 @@ export async function allPanels(env) {
   return [...out.values()];
 }
 
+/* ---------- تلاشِ ناموفقِ ورود ----------
+   رمزِ اشتباه تا امروز بی‌صدا رد می‌شد: فقط سقفِ تعدادِ تلاش جلویش را
+   می‌گرفت و هیچ‌کس خبردار نمی‌شد. حالا شمرده می‌شود و در زنگولهٔ خبرها
+   می‌آید — هم برای صاحبِ کارتابل، هم برای ادمین.
+
+   خودِ رمزِ تایپ‌شده جایی نوشته نمی‌شود؛ فقط شمار، زمان، و نشانیِ
+   اینترنتی. نگه‌داشتنِ رمزِ غلط هم بی‌فایده است هم خطرناک: آدم‌ها
+   رمزِ *درستِ* جای دیگرشان را اشتباهی این‌جا می‌زنند. */
+export async function noteBadPass(env, slug, ip) {
+  const k = 'badpass:' + String(slug || '');
+  const cur = (await getSetting(env, k, null)) || {};
+  const next = { n: (Number(cur.n) || 0) + 1, at: Date.now(),
+                 ip: String(ip || '').slice(0, 45) };
+  await setSetting(env, k, next);
+  return next;
+}
+export const badPassOf = (env, slug) => getSetting(env, 'badpass:' + String(slug || ''), null);
+
 export async function panelBySlug(env, slug) {
   return (await allPanels(env)).find(p => p.slug === slug) || null;
 }
@@ -1412,7 +1430,12 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
     const stored = await getSetting(env, panel.keys.pass, '');
     const check = await checkPassword(String(body.password || ''), stored);
-    if (!check.ok) return bad(check.error, check.status);
+    if (!check.ok) {
+      /* ۵۰۳ و ۵۰۰ یعنی ایرادِ خودِ سرور، نه رمزِ غلط — آن‌ها را به پای
+         کسی نمی‌نویسیم. */
+      if (check.status === 401) await noteBadPass(env, panel.slug, clientIp(req));
+      return bad(check.error, check.status);
+    }
     const days = body.remember ? 30 : 1;
     /* ورودِ قبلی را برمی‌گردانیم، نه همین یکی: فایدهٔ این عدد این است که
        صاحبِ کارتابل ببیند آخرین بار کِی وارد شده و اگر یادش نمی‌آید،
@@ -1575,7 +1598,8 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     /* زمانِ آخرین ورود فقط برای کسی که وارد شده. بیرونِ در، این عدد
        به هر کسی که آدرس را دارد می‌گفت این کارتابل کِی استفاده شده. */
     return json(session
-      ? { in: true, lastLogin: await getSetting(env, 'login:' + panel.slug, 0) }
+      ? { in: true, lastLogin: await getSetting(env, 'login:' + panel.slug, 0),
+          badPass: await badPassOf(env, panel.slug) }
       : { in: false });
   if (!session) return bad('وارد نشده‌اید.', 401);
 

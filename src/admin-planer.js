@@ -16,7 +16,7 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API
+  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
@@ -399,7 +399,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       const stored = await getSetting(env, ADMIN.keys.pass, '');
       if (!stored) return bad('هنوز رمزِ ادمین گذاشته نشده.', 409);
       const check = await checkPassword(pass, stored);
-      if (!check.ok) return check.status === 429 ? bad(check.error, 429) : nope();
+      if (!check.ok) {
+        if (check.status === 401) await noteBadPass(env, 'admin.planer', clientIp(req));
+        return check.status === 429 ? bad(check.error, 429) : nope();
+      }
       const prev = await getSetting(env, 'login:admin.planer', 0);
       await setSetting(env, 'login:admin.planer', Date.now());
       await log(env, 'login', '', 'ورودِ مشترک');
@@ -412,7 +415,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     const stored = await getSetting(env, panel.keys.pass, '');
     if (!stored) return nope();
     const check = await checkPassword(pass, stored);
-    if (!check.ok) return check.status === 429 ? bad(check.error, 429) : nope();
+    if (!check.ok) {
+      if (check.status === 401) await noteBadPass(env, panel.slug, clientIp(req));
+      return check.status === 429 ? bad(check.error, 429) : nope();
+    }
     /* رمزِ درست را اول بررسی می‌کنیم و بعد می‌گوییم کارتابل بسته است:
        این‌طور کسی که رمز را ندارد از پیام هم چیزی نمی‌فهمد. */
     if (panel.disabled)
@@ -502,6 +508,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         /* آخرین باری که این کارتابل واقعاً کار کرده — نه لحظهٔ زدنِ
            رمز. کسی که وارد مانده، «ورود»ش قدیمی است ولی این تازه. */
         lastSeen: await getSetting(env, 'seen:' + r.slug, 0),
+        /* تلاشِ ناموفقِ ورود — تا ادمین ببیند کسی دمِ درِ کدام کارتابل
+           ایستاده. خودِ رمزِ غلط ذخیره نمی‌شود. */
+        badPass: await badPassOf(env, r.slug),
         hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
         builtin: false
       });
@@ -518,6 +527,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                      hasPassword: !!(await getSetting(env, b.keys.pass, '')),
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
                      lastSeen: await getSetting(env, 'seen:' + b.slug, 0),
+                     badPass: await badPassOf(env, b.slug),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
     return json({
       items,
@@ -549,6 +559,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       /* بخش‌های خودِ کارتابل، جدا برای هر نوع */
       views: VIEWS,
       escrowReady: !!(await getSetting(env, 'vaultEscrowPub', null)),
+      adminBadPass: await badPassOf(env, 'admin.planer'),
       /* بدونِ توکنِ بله دکمهٔ «ارسال مشخصات» کاری از پیش نمی‌برد، پس
          همان‌جا می‌گوید اول کجا را پر کنند. */
       baleReady: !!String(((await getSetting(env, SITE_KEY, {})) || {}).baleToken || '').trim(),
@@ -699,7 +710,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       await run(env, 'DELETE FROM kartabl WHERE k IN (?,?)', keys.state, keys.db);
       try { await run(env, 'DELETE FROM kartabl_hist WHERE k IN (?,?)', keys.state, keys.db); } catch (e) {}
       for (const k of [keys.pass, keys.gen, keys.last, keys.reset,
-                       'login:' + slug, 'seen:' + slug, 'escrow:' + slug])
+                       'login:' + slug, 'seen:' + slug, 'badpass:' + slug,
+                       'escrow:' + slug])
         await run(env, 'DELETE FROM settings WHERE k=?', k);
       await log(env, 'delete', slug, '');
       return json({ ok: true });

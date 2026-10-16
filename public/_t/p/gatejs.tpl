@@ -211,6 +211,8 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
         signedIn = true;
         /* همان عدد در تنظیمات هم نشان داده می‌شود تا بعداً هم در دسترس باشد */
         if(r.data.lastLogin) window.__lastLogin = Number(r.data.lastLogin);
+        /* تلاش‌های ناموفقِ ورود — زنگوله از همین‌جا برمی‌دارد */
+        if(r.data.badPass) window.__badPass = r.data.badPass;
         closeGate(); letMeIn(true);
       }
       else openGate();

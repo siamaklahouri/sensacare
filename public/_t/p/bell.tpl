@@ -105,6 +105,17 @@
           "rem|" + rem.slice().sort().join("|"));
     }
 
+    /* تلاشِ ناموفقِ ورود به همین کارتابل */
+    var bp = window.__badPass;
+    if (bp && Number(bp.n)) {
+      var when = "";
+      try { when = faDateTime(Number(bp.at)); } catch (e) { }
+      add("bad", "🔐", "با رمزِ اشتباه وارد شدن را امتحان کرده‌اند",
+        faN(bp.n) + " بار" + (when ? " — آخرین بار: " + when : "") +
+        ". اگر خودتان نبوده‌اید، رمز را عوض کنید.",
+        "badpass|" + bp.n);
+    }
+
     /* نخوانده‌های گفت‌وگو و بخش‌های مشترک — این دو خودشان خبر می‌دهند */
     var ch = Number(window.CHAT_UNREAD || 0);
     if (ch) add("info", "💬", "پیامِ خوانده‌نشده",
