@@ -66,3 +66,50 @@ DB_FILE=$D/t.db bash server/run-tests.sh
 
 هر آزمون رمزِ کارتابلی را که لازم دارد خودش می‌گذارد، پس ترتیبشان مهم
 نیست و هرکدام تنها هم اجرا می‌شود.
+
+---
+
+## همان راه‌اندازی، این بار کوتاه
+
+اگر محفظه از نو ساخته شده و همه‌چیز از صفر لازم است، بعد از ساختنِ
+جدول‌ها و رمزِ ادمین (بالا) این‌ها فیکسچرِ موردِ نیازِ همهٔ آزمون‌ها را
+می‌سازند. `theme.test.mjs` یک کارتابلِ «عمومی» می‌خواهد و
+`vshare-ui.test.mjs` یک گروه، دو اشتراک و سه سرور:
+
+```sh
+B=http://127.0.0.1:8911; A=$B/api/admin.planer
+C=$(curl -s -i -X POST $A/signin -H 'Content-Type: application/json' \
+      -d '{"user":"admin","password":"adminadminadmin"}' \
+    | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: //' | cut -d';' -f1 | paste -sd'; ')
+j(){ curl -s -H 'Content-Type: application/json' -H "cookie: $C" "$@"; }
+
+# کارتابلِ عمومی
+j -X POST $A/planners -d '{"name":"علی","slug":"ali","kind":"gen","password":"alialialiali"}'
+
+# گروه، و دو بخشِ سیامک که با آن گروه به اشتراک می‌رود
+j -X POST $A/orgs -d '{"name":"گروه آزمون","members":["siamak","sina"]}'
+ORG=$(j $A/orgs | python3 -c 'import sys,json; print(json.load(sys.stdin)["items"][0]["id"])')
+j -X POST $A/view-shares -d "{\"owner\":\"siamak\",\"view\":\"servers\",\"org\":\"$ORG\",\"w\":true}"
+j -X POST $A/view-shares -d "{\"owner\":\"siamak\",\"view\":\"checklist\",\"org\":\"$ORG\",\"w\":false}"
+```
+
+و سه سرورِ نمونه در دادهٔ سیامک (آزمون انتظار دارد `srv-a` تا `srv-c`
+باشند):
+
+```sh
+node -e '
+const {DatabaseSync}=require("node:sqlite");
+const db=new DatabaseSync(process.env.DB_FILE);
+const vm=[["srv-a","10.0.0.11",120,12],["srv-b","10.0.0.12",240,20],["srv-c","10.0.0.13",80,8]]
+  .map(([server,location,sizeUsed,sizeVib])=>({ server, location, sizeUsed, sizeVib,
+      schedule:"هر شب", lastRestore:"۱۴۰۵/۰۶/۰۱", lastFullBackup:"۱۴۰۵/۰۷/۰۱", storage:"NAS" }));
+const cur=db.prepare("SELECT v FROM kartabl WHERE k=?").get("db");
+const obj=cur&&cur.v?JSON.parse(cur.v):{}; obj.vm=vm;
+db.prepare("INSERT INTO kartabl(k,v,rev,updated) VALUES(?,?,1,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v, rev=kartabl.rev+1, updated=excluded.updated")
+  .run("db", JSON.stringify(obj), Date.now());
+'
+```
+
+نکتهٔ خاموش‌کردنِ سرورِ محلی: `pkill -f "node server/index.js"` خطِ فرمانِ
+خودِ پوسته را هم می‌گیرد و وسطِ کار می‌کُشدش. الگو را لنگر بزنید:
+`pgrep -f '^node server/index\.js$'`.

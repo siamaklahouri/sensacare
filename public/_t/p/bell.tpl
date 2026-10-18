@@ -20,6 +20,7 @@
   "use strict";
 
   var SRC = [];                 /* منبع‌های بیرونی: چت، بخش‌های مشترک */
+  var closePop = function () { };
   var MAX_SEEN = 240;           /* کلیدهای قدیمی دور ریخته می‌شوند */
 
   function faN(n) {
@@ -39,6 +40,13 @@
     try { return latin(getTodayJalaliStr()); } catch (e) { return ""; }
   }
   var isDone = function (v) { return String(v == null ? "" : v).trim() === "انجام شد"; };
+
+  /* «برو به دیتای شخصی» = زدنِ همان دکمهٔ نوارِ کنار. این‌طور صفحهٔ
+     قفل و پرسیدنِ رمز هم سرِ جای خودش می‌ماند و این‌جا تکرار نمی‌شود. */
+  function goPersonal() {
+    var nb = document.querySelector('.navbtn[data-view="personal"]');
+    if (nb) { nb.click(); nb.scrollIntoView({ block: "nearest" }); }
+  }
 
   /* ---------- دیده‌شده‌ها ---------- */
   function seenList() {
@@ -61,8 +69,8 @@
   /* ---------- خبرها ---------- */
   function items() {
     var out = [];
-    var add = function (kind, icon, title, body, key) {
-      out.push({ kind: kind, icon: icon, title: title, body: body, key: key });
+    var add = function (kind, icon, title, body, key, go) {
+      out.push({ kind: kind, icon: icon, title: title, body: body, key: key, go: go });
     };
     var s = st();
 
@@ -116,6 +124,22 @@
         "badpass|" + bp.n);
     }
 
+    /* سررسیدِ قسط یا چک — از «دیتای شخصی»
+       این‌جا هیچ‌چیز از محتوای صندوق گفته نمی‌شود: نه عنوان، نه مبلغ،
+       نه حتی اینکه قسط است یا چک. فقط «چند مورد» و «کِی» — همان‌قدر
+       که برای خبر کردن لازم است. جزئیات را خودِ صفحهٔ دیتای شخصی
+       می‌گوید، بعد از اینکه کاربر رمزش را زد. */
+    var due = null;
+    try { due = window.vaultDueDigest ? window.vaultDueDigest() : null; } catch (e) { due = null; }
+    if (due && due.n) {
+      var say = [];
+      if (due.late) say.push(faN(due.late) + " سررسیدِ عقب‌افتاده");
+      if (due.soon) say.push(faN(due.soon) + " سررسید تا " + faN(due.days) + " روز آینده");
+      add(due.late ? "bad" : "warn", "🔔", "دیتای شخصی",
+        say.join(" و ") + " (قسط یا چک). برای دیدنش رمزِ دیتای شخصی را بزنید.",
+        "vdue|" + due.n + "|" + due.nearest, goPersonal);
+    }
+
     /* نخوانده‌های گفت‌وگو و بخش‌های مشترک — این دو خودشان خبر می‌دهند */
     var ch = Number(window.CHAT_UNREAD || 0);
     if (ch) add("info", "💬", "پیامِ خوانده‌نشده",
@@ -151,6 +175,7 @@
     var btn = document.getElementById("bellBtnK");
     var pop = document.getElementById("bellPopK");
     var close = function () { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+    closePop = close;
     btn.addEventListener("click", function (e) {
       e.stopPropagation();
       var open = pop.hidden;
@@ -185,11 +210,26 @@
       dot.textContent = faN(unseen.length);
     } else if (dot) dot.remove();
 
-    list.innerHTML = all.length ? all.map(function (i) {
-      return '<div class="bell-i k-' + i.kind + (isSeen(i.key) ? " seen" : "") + '">' +
+    list.innerHTML = all.length ? all.map(function (i, n) {
+      return '<div class="bell-i k-' + i.kind + (isSeen(i.key) ? " seen" : "") +
+        (i.go ? ' go" data-bi="' + n : "") + '">' +
         '<span class="ic">' + i.icon + '</span>' +
-        '<div class="tx"><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p></div></div>';
+        '<div class="tx"><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p>' +
+        (i.go ? '<span class="bell-go">نشانم بده ›</span>' : "") + '</div></div>';
     }).join("") : '<div class="bell-e">فعلاً خبری نیست.</div>';
+
+    /* خبری که جایی برای رفتن دارد، زدنی است — و با زدنش همان یکی
+       «دیده‌شده» می‌شود، نه همهٔ فهرست. */
+    list.onclick = function (e) {
+      var el = e.target && e.target.closest ? e.target.closest(".bell-i[data-bi]") : null;
+      if (!el) return;
+      var it = all[Number(el.getAttribute("data-bi"))];
+      if (!it || typeof it.go !== "function") return;
+      markAll([it]);
+      closePop();
+      try { it.go(); } catch (err) { }
+      paint();
+    };
 
     var sb = document.getElementById("bellSeenK");
     if (sb) sb.disabled = !unseen.length;

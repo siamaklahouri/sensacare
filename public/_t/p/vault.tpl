@@ -41,6 +41,9 @@ async function encryptPersonalVault(){
   const cipherBuf = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, personalCryptoKey, data);
   state.personalVault.iv = b64FromBuf(iv);
   state.personalVault.cipher = b64FromBuf(cipherBuf);
+  /* تاریخ‌های سررسید بیرونِ صندوق هم همین‌جا تازه می‌شوند: زنگوله
+     کلیدِ صندوق را ندارد و تنها راهِ خبر دادنش همین‌هاست. */
+  refreshVaultDue();
   scheduleSave();
   savePersonalSheet();
 }
@@ -119,6 +122,7 @@ async function tryUnlockPersonal(password){
     if(!Array.isArray(personalVaultPlain.installments)) personalVaultPlain.installments = [];
     if(!personalVaultPlain.sections || typeof personalVaultPlain.sections !== "object") personalVaultPlain.sections = {};
     personalUnlocked = true;
+    refreshVaultDue();
     renderPersonalView();
     reEscrowIfStale(password);
   }catch(e){
@@ -137,6 +141,7 @@ async function resetPersonalVault(){
   if(!confirm("با این کار همه‌ی داده‌های این بخش (شرکت‌ها و اقساط) برای همیشه پاک می‌شود و قابل بازگشت نیست. مطمئنید؟")) return;
   state.personalVault = null;
   state.personalRecovery = null;   /* پاکتِ بازیابی هم با صندوق می‌رود */
+  state.personalDue = [];          /* و تاریخ‌های سررسید که بیرون نشسته بودند */
   lockPersonal();
   savePersonalSheet();
 }
@@ -270,6 +275,68 @@ async function recoverVaultWithCode(){
   }
 }
 
+/* ---------------- بنرِ سررسید، داخلِ دیتای شخصی ----------------
+   زنگوله بیرون فقط می‌گوید «یک سررسید نزدیک است»؛ این‌جا — که رمز
+   خورده و صندوق باز است — می‌گوید کدام، کِی، و چند. از هر ردیفش
+   می‌شود پرید سرِ خودِ همان قسط، حتی اگر در بخشِ دیگری باشد. */
+function vaultDueBanner(){
+  let list = [];
+  try{ list = vaultDueSoonList(); }catch(e){ return ""; }
+  if(!list.length) return "";
+  const when = x => x.late ? "عقب‌افتاده"
+    : x.days === 0 ? "همین امروز" : x.days === 1 ? "فردا" : fa(x.days) + " روز مانده";
+  return `
+    <div class="due-banner${list.some(x=> x.late) ? " has-late" : ""}">
+      <div class="db-head">
+        <h4>🔔 سررسیدهای نزدیک</h4>
+        <span>${fa(list.length)} مورد — تا ${fa(VAULT_DUE_DAYS)} روز آینده و عقب‌افتاده‌ها</span>
+      </div>
+      <div class="db-list">
+        ${list.map(x => `
+          <button type="button" class="db-item${x.late ? " late" : ""}"
+                  data-due-sec="${escapeHtml(x.secId)}" data-due-plan="${x.pIdx}" data-due-i="${x.i}"
+                  title="رفتن به همین مورد">
+            <span class="db-k">${PLAN_KINDS[x.kind].icon} ${PLAN_KINDS[x.kind].label}</span>
+            <span class="db-t">${escapeHtml(x.title)}</span>
+            <span class="db-d">${formatJalaliYMD(x.y, x.m, x.d)}</span>
+            <span class="db-a">${planMoney(x.amount)} تومان</span>
+            <span class="db-f">${when(x)}</span>
+          </button>`).join("")}
+      </div>
+    </div>`;
+}
+
+/* از بنرِ سررسید، پریدن سرِ خودِ آن قسط — حتی اگر در بخشِ دیگری باشد */
+function wireDueBanner(root){
+  (root || document).querySelectorAll("[data-due-sec]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const sid = btn.getAttribute("data-due-sec");
+      const pIdx = btn.getAttribute("data-due-plan"), i = btn.getAttribute("data-due-i");
+      if(personalActiveTab !== sid){ personalActiveTab = sid; renderPersonalView(); }
+      setTimeout(()=> flashInstRow(pIdx, i), 120);
+    });
+  });
+}
+
+/* بنر را تنها خودش از نو می‌کشد. با هر «پرداخت شد» یا هر چکِ تازه،
+   سررسیدها عوض می‌شوند؛ تا دیروز بنر همان‌طور می‌ماند تا کاربر از
+   بخش بیرون و دوباره داخل می‌شد. بازسازیِ همهٔ صفحه هم راهش نبود:
+   وسطِ کار، سربرگ و جای صفحه می‌پرید. */
+function paintDueBanner(){
+  const wrap = document.getElementById("personalWrap");
+  if(!wrap || !personalUnlocked) return;
+  const old = wrap.querySelector(".due-banner");
+  if(old) old.remove();
+  const html = vaultDueBanner();
+  if(!html) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  const node = tmp.firstElementChild;
+  if(!node) return;
+  wrap.insertBefore(node, wrap.firstChild);
+  wireDueBanner(node);
+}
+
 function renderPersonalView(){
   const wrap = document.getElementById("personalWrap");
   if(!wrap) return;
@@ -318,7 +385,7 @@ function renderPersonalView(){
   /* اگر ادمین بخشی را خاموش کرده و همان باز بود، می‌رویم سراغ اولی. */
   const secs = vaultSections();
   if(!secs.some(s=> s.id === personalActiveTab)) personalActiveTab = secs[0].id;
-  wrap.innerHTML = `
+  wrap.innerHTML = vaultDueBanner() + `
     <div class="personal-toolbar">
       <div class="personal-tabs">
         ${vaultSections().map(s=>`<button type="button" data-ptab="${escapeHtml(s.id)}" class="${personalActiveTab===s.id?'active':''}">${VAULT_TYPE_ICON[s.type]||'📋'} ${escapeHtml(s.title||s.id)}</button>`).join("")}
@@ -334,6 +401,7 @@ function renderPersonalView(){
   wrap.querySelectorAll("[data-ptab]").forEach(btn=>{
     btn.addEventListener("click", ()=>{ personalActiveTab = btn.getAttribute("data-ptab"); renderPersonalView(); });
   });
+  wireDueBanner(wrap);
   document.getElementById("personalLockBtn").addEventListener("click", lockPersonal);
   document.getElementById("personalChangePwBtn").addEventListener("click", openChangePersonalPassword);
   document.getElementById("personalRecoveryBtn").addEventListener("click", armVaultRecovery);
@@ -817,91 +885,281 @@ function numFromFormatted(id){
   const v = document.getElementById(id).value.replace(/,/g,"");
   return v ? parseFloat(v) : NaN;
 }
+/* ---------------- سه‌گونهٔ «اقساط» ----------------
+   یک آرایه و سه شکل، نه سه آرایه:
+
+   - وام (بی‌kind یا kind:"loan") — اصلِ وام و نرخِ سود دارد و قسطش
+     محاسبه می‌شود. همان چیزی که از اول بود، پس دادهٔ قدیمی دست‌نخورده
+     باز می‌شود.
+   - متفرقه (kind:"misc") — خریدِ اقساطی مثلِ دیجی‌کالا یا اسنپ. این‌جا
+     نرخِ سودی در کار نیست: مبلغِ هر قسط را خودِ فروشنده گفته، پس همان
+     نوشته می‌شود و حساب نمی‌کنیم.
+   - چک (kind:"cheque") — یک سررسید و یک مبلغ، تمام.
+
+   هر سه با یک شکل نگه داشته می‌شوند — per/count/startY,M,D/paid[] — تا
+   خلاصه و یادآور و «پرداخت شد» یک کد داشته باشند، نه سه تا. چک هم
+   «قسطی با تعدادِ یک» است؛ همین یک تصمیم، نصفِ این فایل را کم کرد. */
+const PLAN_KINDS = {
+  loan:   { label: "وام",     icon: "💳" },
+  misc:   { label: "متفرقه",  icon: "🛒" },
+  cheque: { label: "چک",      icon: "🧾" }
+};
+const planKind = p => (p && PLAN_KINDS[p.kind]) ? p.kind : "loan";
+const planTitle = p => String((p && p.title) || "").trim() || "بی‌عنوان";
+const planMoney = n => fa(Math.round(Number(n) || 0).toLocaleString("en-US"));
+function planPaidArr(plan){
+  if(!Array.isArray(plan.paid)) plan.paid = [];
+  return plan.paid;
+}
+function planCalc(plan){
+  const count = Math.max(1, parseInt(plan && plan.count, 10) || 1);
+  if(planKind(plan) === "loan"){
+    const c = calcInstallment(Number(plan.principal) || 0, count, plan.percent);
+    return { per: c.per, total: c.total, count };
+  }
+  const per = Number(plan && plan.per) || 0;
+  return { per, total: per * count, count };
+}
+
+/* ---------------- یادآورِ سررسید ----------------
+   دو روز پیش از هر قسط و هر چک باید خبر بیاید. ولی زنگوله بیرونِ
+   صندوق کار می‌کند و کلیدِ صندوق هیچ‌وقت به آن نمی‌رسد — پس یا باید
+   چیزی بیرون بنشیند، یا خبری در کار نیست.
+
+   آن‌چه بیرون می‌نشیند فقط «تاریخ»هاست: نه عنوان، نه مبلغ، نه اینکه
+   قسط است یا چک. زنگوله با همین‌ها می‌گوید «یک سررسید نزدیک است» و
+   جزئیات را فقط بعد از زدنِ رمزِ دیتای شخصی نشان می‌دهد. */
+const VAULT_DUE_DAYS = 2;
+const VAULT_DUE_MAX = 400;
+
+function jalaliPlusDays(y, m, d, n){
+  let Y = y, M = m, D = d + n;
+  while(D > daysInJalaliMonth(Y, M)){
+    D -= daysInJalaliMonth(Y, M);
+    M++;
+    if(M > 12){ M = 1; Y++; }
+  }
+  return { y: Y, m: M, d: D };
+}
+/* کلیدِ تاریخ با رقمِ لاتین و دو رقمیِ ماه و روز: این‌طور مقایسهٔ
+   رشته‌ای همان مقایسهٔ تاریخ است و به تابع نیازی نیست. */
+const dueKey = (y, m, d) =>
+  String(y) + "/" + String(m).padStart(2, "0") + "/" + String(d).padStart(2, "0");
+function todayJalali(){
+  const p = getTodayJalaliParts();
+  return { y: parseInt(p.year, 10) || 1405, m: p.monthNum || 1, d: p.day || 1 };
+}
+
+/* هر سررسیدِ پرداخت‌نشده، از همهٔ بخش‌هایی که نوعشان «اقساط» است —
+   ادمین می‌تواند بیشتر از یکی باز کند. */
+function vaultDueAll(){
+  const out = [];
+  if(!personalVaultPlain) return out;
+  vaultSections().filter(s => s.type === "inst").forEach(sec => {
+    (vaultRows(sec) || []).forEach((plan, pIdx) => {
+      if(!plan) return;
+      const { per, count } = planCalc(plan);
+      const paid = planPaidArr(plan);
+      for(let i = 0; i < count; i++){
+        if(paid[i]) continue;
+        const due = addJalaliMonths(plan.startY, plan.startM, plan.startD, i);
+        out.push({ secId: sec.id, secTitle: sec.title || sec.id, pIdx, i,
+                   kind: planKind(plan), title: planTitle(plan),
+                   y: due.y, m: due.m, d: due.d, amount: per,
+                   key: dueKey(due.y, due.m, due.d) });
+      }
+    });
+  });
+  return out;
+}
+
+/* همان تاریخ‌ها، بیرونِ صندوق. فقط وقتی عوض شده باشند نوشته می‌شود:
+   وگرنه هر بار باز کردنِ صندوق یک ذخیرهٔ بی‌دلیل بود. */
+function refreshVaultDue(){
+  try{
+    if(!personalVaultPlain) return;
+    let keys = vaultDueAll().map(x => x.key).sort();
+    if(keys.length > VAULT_DUE_MAX) keys = keys.slice(0, VAULT_DUE_MAX);
+    if(JSON.stringify(state.personalDue || []) === JSON.stringify(keys)) return;
+    state.personalDue = keys;
+    scheduleSave();
+    /* زنگوله همین تاریخ‌ها را می‌خواند، پس همان لحظه خبردارش می‌کنیم */
+    if(window.BELL) window.BELL.refresh();
+  }catch(e){ }
+}
+
+/* پنجرهٔ «نزدیک»: از امروز تا دو روز بعد. عقب‌افتاده‌ها هم می‌آیند —
+   قسطی که سررسیدش گذشته و پرداخت نشده، خبرِ مهم‌تری است. */
+function vaultDueWindow(){
+  const t = todayJalali();
+  const win = {};
+  for(let n = 0; n <= VAULT_DUE_DAYS; n++){
+    const x = jalaliPlusDays(t.y, t.m, t.d, n);
+    win[dueKey(x.y, x.m, x.d)] = n;
+  }
+  return { todayKey: dueKey(t.y, t.m, t.d), win };
+}
+
+/* فهرستِ کاملِ سررسیدهای نزدیک — فقط وقتی صندوق باز است */
+function vaultDueSoonList(){
+  const { todayKey, win } = vaultDueWindow();
+  return vaultDueAll().map(x => {
+    if(x.key < todayKey) return Object.assign({ late: true, days: 0 }, x);
+    if(x.key in win) return Object.assign({ late: false, days: win[x.key] }, x);
+    return null;
+  }).filter(Boolean).sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+}
+
+/* همین را زنگوله می‌خواند، بی‌آنکه صندوق باز باشد: چند مورد، و
+   نزدیک‌ترینشان کِی — و بس. */
+window.vaultDueDigest = function(){
+  let dates = [];
+  try{ dates = Array.isArray(state.personalDue) ? state.personalDue : []; }
+  catch(e){ return null; }
+  if(!dates.length) return null;
+  const { todayKey, win } = vaultDueWindow();
+  let soon = 0, late = 0, nearest = "";
+  dates.forEach(k => {
+    const isLate = k < todayKey, isSoon = (k in win);
+    if(!isLate && !isSoon) return;
+    if(isLate) late++; else soon++;
+    if(!nearest || k < nearest) nearest = k;
+  });
+  if(!soon && !late) return null;
+  return { soon, late, n: soon + late, nearest, days: VAULT_DUE_DAYS };
+};
+
+let instAddTab = "loan";       /* کدام فرمِ افزودن باز است */
+
 function renderPersonalInstallments(){
   const body = document.getElementById("personalTabBody");
   if(!body) return;
-  const todayParts = getTodayJalaliParts();
-  const today = { year: parseInt(todayParts.year)||1405, month: todayParts.monthNum||1, day: todayParts.day||1 };
-  const nDaysStart = daysInJalaliMonth(today.year, today.month);
+  const tj = todayJalali();
+  const today = { year: tj.y, month: tj.m, day: tj.d };
+  const rows = instRows();
 
-  const nextUp = [];
+  const nextUp = [], cheques = [], cards = [];
   let sumRemaining = 0, sumLeftCount = 0;
-  const cardsHtml = instRows().map((plan, pIdx)=>{
-    const { per, total } = calcInstallment(plan.principal, plan.count, plan.percent);
-    const paidCount = plan.paid.filter(Boolean).length;
-    const remaining = total - (per*paidCount);
-    sumRemaining += remaining;
-    sumLeftCount += (plan.count - paidCount);
+
+  rows.forEach((plan, pIdx) => {
+    if(!plan) return;
+    const kind = planKind(plan);
+    const { per, total, count } = planCalc(plan);
+    const paid = planPaidArr(plan);
+    const paidCount = paid.filter(Boolean).length;
+    sumRemaining += total - (per * paidCount);
+    sumLeftCount += (count - paidCount);
+
     /* قسطِ پیشِ رو = اولین قسطِ پرداخت‌نشده. همین یکی است که آدم
        دنبالش می‌گردد، پس بالای صفحه می‌آید و از آن‌جا می‌شود پرید
        سرِ خودش. */
     let nextIdx = -1;
-    for(let i=0;i<plan.count;i++) if(!plan.paid[i]){ nextIdx = i; break; }
+    for(let i = 0; i < count; i++) if(!paid[i]){ nextIdx = i; break; }
     if(nextIdx >= 0){
       const d = addJalaliMonths(plan.startY, plan.startM, plan.startD, nextIdx);
-      nextUp.push({ pIdx, i: nextIdx, title: plan.title || 'بدون عنوان',
-                    y:d.y, m:d.m, d:d.d, amount: per,
+      nextUp.push({ pIdx, i: nextIdx, kind, title: planTitle(plan),
+                    y: d.y, m: d.m, d: d.d, amount: per,
                     late: cmpJalali(d, today) < 0 });
     }
-    const scheduleRows = Array.from({length:plan.count}, (_,i)=>{
+
+    /* چک‌ها همه در یک کادر جمع می‌شوند، نه هر کدام یک کارت: چکِ تنها
+       سه خانه دارد و یک کارتِ کامل برایش زیادی است. */
+    if(kind === "cheque"){
+      const d = addJalaliMonths(plan.startY, plan.startM, plan.startD, 0);
+      cheques.push({ pIdx, per, paid: !!paid[0], title: planTitle(plan),
+                     y: d.y, m: d.m, d: d.d, late: !paid[0] && cmpJalali(d, today) < 0 });
+      return;
+    }
+
+    const scheduleRows = Array.from({ length: count }, (_, i) => {
       const due = addJalaliMonths(plan.startY, plan.startM, plan.startD, i);
-      const isPaid = !!plan.paid[i];
+      const isPaid = !!paid[i];
       return `<tr id="inst-${pIdx}-${i}" class="${isPaid?'paid':''}${i===nextIdx?' inst-next':''}">
         <td>${fa(i+1)}</td>
         <td>${formatJalaliYMD(due.y,due.m,due.d)}</td>
-        <td>${fa(Math.round(per).toLocaleString("en-US"))}</td>
+        <td>${planMoney(per)}</td>
         <td><button type="button" class="inst-pay-toggle ${isPaid?'paid':''}" data-pay-plan="${pIdx}" data-pay-inst="${i}">${isPaid?'✓ پرداخت‌شده':'پرداخت‌نشده'}</button></td>
       </tr>`;
     }).join("");
-    return `
+
+    const sumLine = kind === "misc"
+      ? `مبلغ هر قسط: <b>${planMoney(per)}</b> تومان — تعداد اقساط: <b>${fa(count)}</b><br>
+         مبلغ کل: <b>${planMoney(total)}</b> تومان`
+      : `مبلغ اصل وام: <b>${planMoney(plan.principal)}</b> تومان — نرخ سود سالانه: <b>${fa(plan.percent||0)}٪</b> — تعداد اقساط: <b>${fa(count)}</b><br>
+         مبلغ کل قابل‌پرداخت: <b>${planMoney(total)}</b> تومان — مبلغ هر قسط: <b>${planMoney(per)}</b> تومان`;
+
+    cards.push(`
       <div class="inst-card">
         <div class="inst-card-head">
-          <h4>${escapeHtml(plan.title||'بدون عنوان')}</h4>
-          <button class="btn-del" data-remove-inst="${pIdx}" title="حذف این وام">✕</button>
+          <h4><span class="inst-kind-badge k-${kind}">${PLAN_KINDS[kind].icon} ${PLAN_KINDS[kind].label}</span> ${escapeHtml(planTitle(plan))}</h4>
+          <button class="btn-del" data-remove-inst="${pIdx}" title="حذف این مورد">✕</button>
         </div>
         <div class="inst-summary">
-          مبلغ اصل وام: <b>${fa(plan.principal.toLocaleString("en-US"))}</b> تومان — نرخ سود سالانه: <b>${fa(plan.percent)}٪</b> — تعداد اقساط: <b>${fa(plan.count)}</b><br>
-          مبلغ کل قابل‌پرداخت: <b>${fa(Math.round(total).toLocaleString("en-US"))}</b> تومان — مبلغ هر قسط: <b>${fa(Math.round(per).toLocaleString("en-US"))}</b> تومان<br>
-          پرداخت‌شده: <b>${fa(paidCount)}/${fa(plan.count)}</b> قسط — مانده: <b>${fa(Math.round(remaining).toLocaleString("en-US"))}</b> تومان
+          ${sumLine}<br>
+          پرداخت‌شده: <b>${fa(paidCount)}/${fa(count)}</b> قسط — مانده: <b>${planMoney(total - per*paidCount)}</b> تومان
         </div>
         <table class="inst-schedule">
           <thead><tr><th>#</th><th>تاریخ سررسید</th><th>مبلغ (تومان)</th><th>وضعیت</th></tr></thead>
           <tbody>${scheduleRows}</tbody>
         </table>
-      </div>`;
-  }).join("");
+      </div>`);
+  });
 
-  /* خلاصهٔ بالای صفحه. وقتی هیچ وامی نیست، اصلاً نمی‌آید — یک کادرِ
+  /* کادرِ چک‌ها */
+  const chqLeft = cheques.filter(c => !c.paid).reduce((s, c) => s + c.per, 0);
+  const chqHtml = cheques.length ? `
+    <div class="inst-card chq-card">
+      <div class="inst-card-head">
+        <h4>🧾 چک‌ها</h4>
+        <span class="chq-sum">${fa(cheques.length)} چک · پاس‌نشده: <b>${planMoney(chqLeft)}</b> تومان</span>
+      </div>
+      <table class="inst-schedule chq-table">
+        <thead><tr><th>چک / بابتِ</th><th>تاریخ سررسید</th><th>مبلغ (تومان)</th><th>وضعیت</th><th></th></tr></thead>
+        <tbody>
+          ${cheques.map(c => `
+            <tr id="inst-${c.pIdx}-0" class="${c.paid?'paid':''}${c.late?' chq-late':''}">
+              <td>${escapeHtml(c.title)}</td>
+              <td>${formatJalaliYMD(c.y,c.m,c.d)}${c.late?' <span class="chq-flag">عقب‌افتاده</span>':''}</td>
+              <td>${planMoney(c.per)}</td>
+              <td><button type="button" class="inst-pay-toggle ${c.paid?'paid':''}" data-pay-plan="${c.pIdx}" data-pay-inst="0">${c.paid?'✓ پاس شده':'پاس نشده'}</button></td>
+              <td><button type="button" class="btn-del" data-remove-inst="${c.pIdx}" title="حذف این چک">✕</button></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>` : "";
+
+  /* خلاصهٔ بالای صفحه. وقتی هیچ چیزی نیست، اصلاً نمی‌آید — یک کادرِ
      خالیِ صفر تومانی به کسی چیزی نمی‌گوید. */
-  const lateCount = nextUp.filter(x=> x.late).length;
-  nextUp.sort((a,b)=> cmpJalali(a,b));
+  const lateCount = nextUp.filter(x => x.late).length;
+  nextUp.sort((a, b) => cmpJalali(a, b));
   const boxHtml = nextUp.length ? `
     <div class="inst-box">
       <div class="inst-box-head">
         <h4>📋 خلاصهٔ اقساط</h4>
         <span class="inst-box-sum">
-          <b>${fa(nextUp.length)}</b> وام ·
-          <b>${fa(sumLeftCount)}</b> قسط مانده ·
-          <b>${fa(Math.round(sumRemaining).toLocaleString("en-US"))}</b> تومان
-          ${lateCount ? `· <span class="inst-late-n">${fa(lateCount)} قسط عقب‌افتاده</span>` : ""}
+          <b>${fa(nextUp.length)}</b> مورد ·
+          <b>${fa(sumLeftCount)}</b> قسط/چکِ مانده ·
+          <b>${planMoney(sumRemaining)}</b> تومان
+          ${lateCount ? `· <span class="inst-late-n">${fa(lateCount)} موردِ عقب‌افتاده</span>` : ""}
         </span>
       </div>
       <div class="inst-box-grid">
-        ${nextUp.map(x=> `
+        ${nextUp.map(x => `
           <button type="button" class="inst-next-chip${x.late?' late':''}"
                   data-goto-plan="${x.pIdx}" data-goto-inst="${x.i}"
-                  title="رفتن به همین قسط در فهرست">
-            <span class="inb-title">${escapeHtml(x.title)}</span>
+                  title="رفتن به همین مورد در فهرست">
+            <span class="inb-title">${PLAN_KINDS[x.kind].icon} ${escapeHtml(x.title)}</span>
             <span class="inb-date">${formatJalaliYMD(x.y,x.m,x.d)}</span>
-            <span class="inb-meta">قسط ${fa(x.i+1)} · ${fa(Math.round(x.amount).toLocaleString("en-US"))} تومان</span>
+            <span class="inb-meta">${x.kind === "cheque" ? "چک" : "قسط " + fa(x.i+1)} · ${planMoney(x.amount)} تومان</span>
             ${x.late ? `<span class="inb-flag">عقب‌افتاده</span>` : ""}
           </button>`).join("")}
       </div>
     </div>` : "";
 
-  body.innerHTML = boxHtml + `
-    <div class="panel" style="padding:16px; margin-bottom:16px;">
-      <h4 style="margin:0 0 10px; font-family:var(--font-display); font-size:14px;">＋ افزودن وام/قسط جدید</h4>
+  /* سه فرمِ افزودن، پشتِ سه سربرگ: وام، چک، متفرقه. یک‌جا نشانشان
+     دادن صفحه را شلوغ می‌کرد و آدم نمی‌فهمید کدام خانه مالِ کدام. */
+  const addForms = {
+    loan: `
       <div class="inst-form">
         <input type="text" id="instTitle" placeholder="عنوان — مثلاً: وام خرید تجهیزات">
         <input type="text" inputmode="numeric" id="instPrincipal" placeholder="مبلغ اصل وام (تومان)">
@@ -915,47 +1173,124 @@ function renderPersonalInstallments(){
         <select id="instYear"></select>
       </div>
       <p class="inst-note">📌 محاسبه به روش استاندارد «اقساط مساوی» (فرمول تنزیل / همان روشی که وام‌های بانکی و اکثر سایت‌های محاسبه‌ی اقساط استفاده می‌کنند) انجام می‌شود: نرخ سود سالانه به نرخ ماهانه تبدیل شده و قسط ثابت ماهانه از روی آن محاسبه می‌شود. سررسید هر قسط، یک ماه شمسی بعد از قسط قبلی است.</p>
-      <button type="button" class="btn btn-brass btn-sm" id="addInstallmentBtn">محاسبه و افزودن</button>
+      <button type="button" class="btn btn-brass btn-sm" id="addInstallmentBtn">محاسبه و افزودن</button>`,
+    cheque: `
+      <div class="inst-form inst-form-3">
+        <input type="text" id="chqTitle" placeholder="چک / بابتِ — مثلاً: چک ۱۲۳۴۵۶ بانک ملت">
+        <input type="text" inputmode="numeric" id="chqAmount" placeholder="مبلغ چک (تومان)">
+        <input type="text" id="chqDate" data-date placeholder="تاریخ سررسید را انتخاب کنید" autocomplete="off">
+      </div>
+      <p class="inst-note">📌 چک هم مثلِ قسط در «خلاصهٔ اقساط» می‌آید و دو روز پیش از سررسیدش در زنگولهٔ خبرها خبر می‌دهد. تاریخ را از تقویم انتخاب کنید.</p>
+      <button type="button" class="btn btn-brass btn-sm" id="addChequeBtn">افزودن چک</button>`,
+    misc: `
+      <div class="inst-form inst-form-4">
+        <input type="text" id="mscTitle" placeholder="عنوان — مثلاً: دیجی‌کالا / اسنپ">
+        <input type="text" inputmode="numeric" id="mscPer" placeholder="مبلغ هر قسط (تومان)">
+        <input type="number" id="mscCount" placeholder="تعداد اقساط" min="1">
+        <input type="text" id="mscDate" data-date placeholder="تاریخ اولین قسط" autocomplete="off">
+      </div>
+      <p class="inst-note">📌 برای خریدهای اقساطی که خودشان مبلغِ قسط را گفته‌اند (دیجی‌کالا، اسنپ و مانندشان): نرخ سودی حساب نمی‌شود، همان مبلغی که نوشتید هر ماه تکرار می‌شود. روزِ همین تاریخ، سررسیدِ ماه‌های بعد هم هست.</p>
+      <button type="button" class="btn btn-brass btn-sm" id="addMiscBtn">افزودن</button>`
+  };
+
+  body.innerHTML = boxHtml + `
+    <div class="panel inst-add" style="padding:16px; margin-bottom:16px;">
+      <div class="inst-add-tabs">
+        ${["loan","cheque","misc"].map(k => `
+          <button type="button" data-iadd="${k}" class="${instAddTab===k?'active':''}">
+            ${PLAN_KINDS[k].icon} ${k==="loan" ? "افزودن وام/قسط" : k==="cheque" ? "افزودن چک" : "متفرقه (دیجی‌کالا / اسنپ)"}
+          </button>`).join("")}
+      </div>
+      ${addForms[instAddTab] || addForms.loan}
     </div>
-    ${cardsHtml || `<p style="color:var(--ink-faint); font-size:12.5px;">هنوز وام/قسطی ثبت نشده.</p>`}
+    ${chqHtml}
+    ${cards.join("") || (cheques.length ? "" : `<p style="color:var(--ink-faint); font-size:12.5px;">هنوز وام، چک یا قسطی ثبت نشده.</p>`)}
   `;
 
+  /* تقویمِ خانه‌های تازه */
+  if(window.datePickScan) window.datePickScan(body);
+
+  body.querySelectorAll("[data-iadd]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      instAddTab = btn.getAttribute("data-iadd");
+      renderPersonalInstallments();
+    });
+  });
+
+  /* ---- فرمِ وام ---- */
   const daySel = document.getElementById("instDay");
   const monthSel = document.getElementById("instMonth");
   const yearSel = document.getElementById("instYear");
-  monthSel.innerHTML = JALALI_MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${i+1===today.month?"selected":""}>${m}</option>`).join("");
-  for(let y=1400; y<=today.year+5; y++) yearSel.innerHTML += `<option value="${y}" ${y===today.year?"selected":""}>${fa(y)}</option>`;
-  function refreshInstDays(){
-    const y = parseInt(yearSel.value), m = parseInt(monthSel.value);
-    const keep = parseInt(daySel.value) || today.day;
-    daySel.innerHTML = jalaliMonthDayOptions(y, m, Math.min(keep, daysInJalaliMonth(y,m)));
+  if(daySel && monthSel && yearSel){
+    monthSel.innerHTML = JALALI_MONTH_NAMES.map((m,i)=>`<option value="${i+1}" ${i+1===today.month?"selected":""}>${m}</option>`).join("");
+    for(let y=1400; y<=today.year+5; y++) yearSel.innerHTML += `<option value="${y}" ${y===today.year?"selected":""}>${fa(y)}</option>`;
+    const refreshInstDays = ()=>{
+      const y = parseInt(yearSel.value), m = parseInt(monthSel.value);
+      const keep = parseInt(daySel.value) || today.day;
+      daySel.innerHTML = jalaliMonthDayOptions(y, m, Math.min(keep, daysInJalaliMonth(y,m)));
+    };
+    daySel.innerHTML = jalaliMonthDayOptions(today.year, today.month, today.day);
+    yearSel.addEventListener("change", refreshInstDays);
+    monthSel.addEventListener("change", refreshInstDays);
   }
-  daySel.innerHTML = jalaliMonthDayOptions(today.year, today.month, today.day);
-  yearSel.addEventListener("change", refreshInstDays);
-  monthSel.addEventListener("change", refreshInstDays);
+  /* جداکنندهٔ هزارگان، در هر سه فرم */
+  ["instPrincipal", "chqAmount", "mscPer"].forEach(id => {
+    const inp = document.getElementById(id);
+    if(inp) inp.addEventListener("input", ()=> formatThousandsInput(inp));
+  });
 
-  const principalInput = document.getElementById("instPrincipal");
-  principalInput.addEventListener("input", ()=> formatThousandsInput(principalInput));
-
-  document.getElementById("addInstallmentBtn").addEventListener("click", ()=>{
+  const addBtn = document.getElementById("addInstallmentBtn");
+  if(addBtn) addBtn.addEventListener("click", ()=>{
     const title = document.getElementById("instTitle").value.trim();
     const principal = numFromFormatted("instPrincipal");
     const count = parseInt(document.getElementById("instCount").value);
     const percent = parseFloat(document.getElementById("instPercent").value) || 0;
     if(!principal || principal<=0){ alert("مبلغ اصل وام را درست وارد کنید."); return; }
     if(!count || count<=0){ alert("تعداد اقساط را درست وارد کنید."); return; }
-    const startY = parseInt(yearSel.value), startM = parseInt(monthSel.value), startD = parseInt(daySel.value);
-    instRows().push({
-      title, principal, count, percent, startY, startM, startD, paid: Array.from({length:count}, ()=>false)
-    });
+    rows.push({ kind:"loan", title, principal, count, percent,
+                startY: parseInt(yearSel.value), startM: parseInt(monthSel.value),
+                startD: parseInt(daySel.value),
+                paid: Array.from({length:count}, ()=>false) });
+    encryptPersonalVault();
+    renderPersonalInstallments();
+  });
+
+  /* ---- فرمِ چک ---- */
+  const chqBtn = document.getElementById("addChequeBtn");
+  if(chqBtn) chqBtn.addEventListener("click", ()=>{
+    const title = document.getElementById("chqTitle").value.trim();
+    const amount = numFromFormatted("chqAmount");
+    const d = pickedJalali("chqDate");
+    if(!title){ alert("چک را بنویسید — مثلاً شمارهٔ چک یا بابتِ چه چیزی است."); return; }
+    if(!amount || amount<=0){ alert("مبلغ چک را درست وارد کنید."); return; }
+    if(!d){ alert("تاریخ سررسید چک را از تقویم انتخاب کنید."); return; }
+    rows.push({ kind:"cheque", title, per: amount, count: 1,
+                startY: d.jy, startM: d.jm, startD: d.jd, paid: [false] });
+    encryptPersonalVault();
+    renderPersonalInstallments();
+  });
+
+  /* ---- فرمِ متفرقه ---- */
+  const mscBtn = document.getElementById("addMiscBtn");
+  if(mscBtn) mscBtn.addEventListener("click", ()=>{
+    const title = document.getElementById("mscTitle").value.trim();
+    const per = numFromFormatted("mscPer");
+    const count = parseInt(document.getElementById("mscCount").value);
+    const d = pickedJalali("mscDate");
+    if(!per || per<=0){ alert("مبلغ هر قسط را درست وارد کنید."); return; }
+    if(!count || count<=0){ alert("تعداد اقساط را درست وارد کنید."); return; }
+    if(!d){ alert("تاریخ اولین قسط را از تقویم انتخاب کنید."); return; }
+    rows.push({ kind:"misc", title, per, count,
+                startY: d.jy, startM: d.jm, startD: d.jd,
+                paid: Array.from({length:count}, ()=>false) });
     encryptPersonalVault();
     renderPersonalInstallments();
   });
 
   body.querySelectorAll("[data-remove-inst]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این وام/قسط حذف شود؟")) return;
-      instRows().splice(parseInt(btn.getAttribute("data-remove-inst")),1);
+      if(!confirm("این مورد حذف شود؟")) return;
+      rows.splice(parseInt(btn.getAttribute("data-remove-inst")),1);
       encryptPersonalVault();
       renderPersonalInstallments();
     });
@@ -964,14 +1299,7 @@ function renderPersonalInstallments(){
      در فهرستی با بیست ردیف معلوم نیست کجا رفتیم. */
   body.querySelectorAll("[data-goto-plan]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const id = "inst-" + btn.getAttribute("data-goto-plan") + "-" + btn.getAttribute("data-goto-inst");
-      const row = document.getElementById(id);
-      if(!row) return;
-      row.scrollIntoView({ behavior:"smooth", block:"center" });
-      row.classList.remove("inst-flash");
-      void row.offsetWidth;          /* تا انیمیشن دوباره از اول بیفتد */
-      row.classList.add("inst-flash");
-      setTimeout(()=> row.classList.remove("inst-flash"), 2400);
+      flashInstRow(btn.getAttribute("data-goto-plan"), btn.getAttribute("data-goto-inst"));
     });
   });
 
@@ -979,12 +1307,34 @@ function renderPersonalInstallments(){
     btn.addEventListener("click", ()=>{
       const pIdx = parseInt(btn.getAttribute("data-pay-plan"));
       const iIdx = parseInt(btn.getAttribute("data-pay-inst"));
-      const plan = instRows()[pIdx];
-      plan.paid[iIdx] = !plan.paid[iIdx];
+      const plan = rows[pIdx];
+      if(!plan) return;
+      const paid = planPaidArr(plan);
+      paid[iIdx] = !paid[iIdx];
       encryptPersonalVault();
       renderPersonalInstallments();
     });
   });
+
+  /* بنرِ بالای صفحه با همین فهرست عوض می‌شود، پس همین‌جا تازه‌اش
+     می‌کنیم — نه با بازسازیِ همهٔ صفحه. */
+  paintDueBanner();
+}
+
+/* تاریخی که از تقویم انتخاب شده — یا null اگر خانه خالی یا بی‌معنا باشد */
+function pickedJalali(id){
+  const el = document.getElementById(id);
+  if(!el) return null;
+  try{ return window.DatePick.parse(el.value); }catch(e){ return null; }
+}
+function flashInstRow(pIdx, i){
+  const row = document.getElementById("inst-" + pIdx + "-" + i);
+  if(!row) return;
+  row.scrollIntoView({ behavior:"smooth", block:"center" });
+  row.classList.remove("inst-flash");
+  void row.offsetWidth;          /* تا انیمیشن دوباره از اول بیفتد */
+  row.classList.add("inst-flash");
+  setTimeout(()=> row.classList.remove("inst-flash"), 2400);
 }
 
 /* ---------------- هزینه‌ها ----------------

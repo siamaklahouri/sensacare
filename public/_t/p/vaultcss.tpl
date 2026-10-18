@@ -173,3 +173,72 @@
   }
   .cred-import-bar p{ margin:0; font-size:11px; color:var(--ink-soft); line-height:1.8; flex:1; min-width:200px; }
   .cred-import-status{ font-size:11.5px; font-weight:600; color:var(--green-ink); }
+
+  /* ---------- سه‌گونهٔ اقساط: سربرگ‌های فرمِ افزودن ---------- */
+  .inst-add-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .inst-add-tabs button{
+    border:1px solid var(--card-border); background:var(--white); border-radius:9px;
+    padding:8px 14px; font-size:12.5px; font-family:var(--font-body); cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .inst-add-tabs button:hover{ border-color:var(--brass); color:var(--ink); }
+  .inst-add-tabs button.active{ background:var(--deep); color:#fff; border-color:var(--deep); font-weight:600; }
+  /* فرمِ چک سه خانه دارد و فرمِ متفرقه چهار تا — همان گریدِ اقساط،
+     با ستون‌های خودشان. */
+  .inst-form-3{ grid-template-columns:1.6fr 1fr 1fr; }
+  .inst-form-4{ grid-template-columns:1.4fr 1fr .8fr 1fr; }
+  @media (max-width:760px){
+    .inst-form-3, .inst-form-4{ grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:430px){
+    .inst-form-3, .inst-form-4{ grid-template-columns:1fr; }
+  }
+  .inst-kind-badge{
+    display:inline-block; font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:7px;
+    background:var(--paper-deep,rgba(0,0,0,.05)); color:var(--ink-soft);
+    font-family:var(--font-body); vertical-align:middle; margin-inline-end:4px;
+  }
+  .inst-kind-badge.k-misc{ background:var(--brass-bg,rgba(176,141,87,.18)); color:var(--brass-ink,#7A5C2E); }
+  /* ---------- چک‌ها ---------- */
+  .chq-sum{ font-size:12px; color:var(--ink-soft); }
+  .chq-sum b{ color:var(--ink); }
+  table.chq-table td:first-child{ text-align:start; }
+  table.chq-table tr.chq-late td{ background:var(--red-bg,#FBECED); }
+  .chq-flag{
+    font-size:10.5px; padding:1px 7px; border-radius:6px; margin-inline-start:4px;
+    background:var(--red-bg,#FBECED); color:var(--red-ink,#A6222B);
+  }
+  /* ---------- بنرِ سررسیدهای نزدیک ---------- */
+  .due-banner{
+    border:1px solid var(--brass); border-radius:12px; padding:14px 16px; margin-bottom:16px;
+    background:var(--brass-bg,rgba(176,141,87,.12));
+  }
+  .due-banner.has-late{ border-color:var(--red,#A6222B); background:var(--red-bg,#FBECED); }
+  .due-banner .db-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    flex-wrap:wrap; margin-bottom:12px;
+  }
+  .due-banner .db-head h4{ margin:0; font-family:var(--font-display); font-size:14px; color:var(--ink); }
+  .due-banner .db-head span{ font-size:11.5px; color:var(--ink-soft); }
+  .due-banner .db-list{
+    display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .db-item{
+    display:flex; flex-direction:column; gap:3px; text-align:start; cursor:pointer;
+    border:1px solid var(--card-border); border-radius:10px; padding:10px 12px;
+    background:var(--white); font-family:var(--font-body);
+    transition:border-color .15s, transform .15s;
+  }
+  .db-item:hover{ border-color:var(--brass); transform:translateY(-1px); }
+  .db-item .db-k{ font-size:10.5px; color:var(--ink-faint); }
+  .db-item .db-t{ font-size:12.5px; color:var(--ink-soft); }
+  .db-item .db-d{ font-family:var(--font-display); font-size:15px; color:var(--ink); letter-spacing:.3px; }
+  .db-item .db-a{ font-size:11px; color:var(--ink-faint); }
+  .db-item .db-f{
+    align-self:flex-start; font-size:10.5px; padding:1px 7px; border-radius:6px;
+    background:var(--brass-bg,rgba(176,141,87,.22)); color:var(--brass-ink,#7A5C2E);
+  }
+  .db-item.late{ border-color:var(--red,#A6222B); }
+  .db-item.late .db-d{ color:var(--red-ink,#A6222B); }
+  .db-item.late .db-f{ background:var(--red-bg,#FBECED); color:var(--red-ink,#A6222B); }
+  @media (prefers-reduced-motion:reduce){ .db-item:hover{ transform:none; } }

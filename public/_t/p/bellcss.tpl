@@ -53,3 +53,11 @@
   @media (max-width:760px){
     .bellp{ position:fixed; top:64px; inset-inline:12px; width:auto; }
   }
+
+  /* خبری که جایی برای رفتن دارد — زدنی است */
+  .bell-i.go{ cursor:pointer; }
+  .bell-i.go:hover{ background:var(--paper-deep,rgba(0,0,0,.04)); }
+  .bell-go{
+    display:inline-block; margin-top:4px; font-size:10.5px; font-weight:600;
+    color:var(--brass-ink,#7A5C2E);
+  }
