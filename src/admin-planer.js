@@ -118,6 +118,32 @@ const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های �
 
    «خوانده» یعنی تبِ پیام‌ها باز شده؛ یک زمان ذخیره می‌شود و هرچه از
    آن تازه‌تر باشد نخوانده است. */
+/* ---------- مهلتِ کارتابل ----------
+   پنل تاریخِ پایان می‌فرستد (until، به میلی‌ثانیه) نه تعدادِ روز:
+   «تا پانزدهم آذر» چیزی است که آدم در ذهن دارد، و «۳۷ روز» همان را
+   با یک حسابِ دستی می‌گفت. عددِ روز هم پذیرفته می‌شود چون سفارش‌های
+   فروشگاه با همان می‌آیند.
+
+   خروجی: عددِ لحظهٔ پایان، ۰ یعنی بی‌مهلت، و رشته یعنی ایراد. */
+const MAX_UNTIL = 3650 * 86400000;
+function untilFrom(body) {
+  if (body.until !== undefined && body.until !== null && body.until !== '') {
+    const u = Number(body.until);
+    if (!Number.isFinite(u) || u < 0) return 'تاریخِ مهلت درست نیست.';
+    if (u === 0) return 0;
+    if (u < Date.now() - 86400000) return 'تاریخِ مهلت باید از امروز جلوتر باشد.';
+    if (u > Date.now() + MAX_UNTIL) return 'تاریخِ مهلت بیش از حد دور است.';
+    return Math.round(u);
+  }
+  if (body.days !== undefined && body.days !== null && body.days !== '') {
+    const d = Number(body.days);
+    if (!Number.isFinite(d) || d < 0 || d > 3650)
+      return 'تعداد روز باید عددی بین ۱ تا ۳۶۵۰ باشد.';
+    return d > 0 ? Date.now() + Math.round(d) * 86400000 : 0;
+  }
+  return null;        /* چیزی نگفته — یعنی دست نزن */
+}
+
 const MSG_SEEN = 'msgSeen:admin';
 async function msgNews(env) {
   try {
@@ -623,12 +649,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
     cfg.user = user;
     /* مهلت را هم می‌شود همین‌جا گذاشت، نه اینکه اول بسازی و بعد ویرایش
        کنی — مخصوصاً وقتی کارتابل از روی یک سفارشِ چندروزه ساخته می‌شود. */
-    if (body.days !== undefined && body.days !== null && body.days !== '') {
-      const d = Number(body.days);
-      if (!Number.isFinite(d) || d < 0 || d > 3650)
-        return bad('تعداد روز باید عددی بین ۱ تا ۳۶۵۰ باشد.');
-      if (d > 0) cfg.until = Date.now() + Math.round(d) * 86400000;
-    }
+    const until0 = untilFrom(body);
+    if (typeof until0 === 'string') return bad(until0);
+    if (until0) cfg.until = until0;
     if (views) cfg.views = views;
     const pass = String(body.password || '').trim() || newPassword();
     await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
@@ -673,14 +696,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         if (await userTaken(env, user, slug)) return bad('این نام کاربری گرفته شده.');
         cfg.user = user;
       }
-      if (body.days !== undefined) {
-        /* عددِ روز می‌گیریم و تاریخِ پایان را حساب می‌کنیم؛ خالی یا صفر
-           یعنی بی‌مهلت. سقفِ ده سال تا یک صفرِ اضافه تاریخ را پرت نکند. */
-        const d = Number(body.days);
-        if (body.days === null || body.days === '' || d === 0) cfg.until = 0;
-        else if (!Number.isFinite(d) || d < 0 || d > 3650)
-          return bad('تعداد روز باید عددی بین ۱ تا ۳۶۵۰ باشد.');
-        else cfg.until = Date.now() + Math.round(d) * 86400000;
+      if (body.until !== undefined || body.days !== undefined) {
+        /* خالی یا صفر یعنی بی‌مهلت. سقفِ ده سال تا یک رقمِ اضافه
+           تاریخ را پرت نکند. */
+        const u = untilFrom(body);
+        if (typeof u === 'string') return bad(u);
+        if (u !== null) cfg.until = u;
+        else cfg.until = 0;
       }
       if (body.off !== undefined) {
         if (!Array.isArray(body.off)) return bad('فهرست بخش‌های بسته درست نیست.');
@@ -750,9 +772,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       /* روشن‌کردنِ کارتابلی که مهلتش گذشته، بدون برداشتنِ مهلت بی‌فایده
          است: لحظهٔ بعد دوباره خودش بسته می‌شود. */
       if (!off && Number(cfg.until) && Date.now() > Number(cfg.until)) {
-        const d = Number(body.days);
-        cfg.until = (Number.isFinite(d) && d > 0 && d <= 3650)
-          ? Date.now() + Math.round(d) * 86400000 : 0;
+        const u = untilFrom(body);
+        if (typeof u === 'string') return bad(u);
+        cfg.until = u || 0;
       }
       await run(env, 'UPDATE planners SET cfg=? WHERE slug=?', JSON.stringify(cfg), slug);
       /* هر دستگاهی که وارد مانده باید بیرون بیفتد، وگرنه تا وقتی کوکی

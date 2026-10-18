@@ -42,6 +42,8 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   --purple:#5B3E8C;--purple-bg:#EBE5F3;--purple-ink:#5B3E8C;
   --line:#DCE3EA; --line-soft:#E9EEF3; --white:#FFFFFF;
   --font:'Vazirmatn', Tahoma, 'Segoe UI', Arial, sans-serif;
+  /* تقویمِ شمسی همان پارهٔ کارتابل‌هاست و با این دو نام کار می‌کند */
+  --card-border:var(--line); --font-body:var(--font);
   --r-lg:18px; --r:13px; --r-sm:9px;
   --sh-1:0 1px 2px rgba(11,37,69,.04), 0 2px 8px rgba(11,37,69,.05);
   --sh-2:0 2px 6px rgba(11,37,69,.06), 0 12px 32px rgba(11,37,69,.09);
@@ -773,6 +775,7 @@ table.inv-tab td.desc{ text-align:right; }
   .ov-box{ padding:18px; }
   .meta .m span:first-child{ min-width:96px; }
 }
+{{PART:datepickcss}}
 </style>
 </head>
 <body>
@@ -905,9 +908,9 @@ table.inv-tab td.desc{ text-align:right; }
         <div class="fld"><label>چک‌لیست آماده (اختیاری)</label><select id="nJob"></select></div>
         <div class="fld"><label>رمز ورود (خالی = خودکار)</label>
           <input type="text" id="nPass" placeholder="خودش می‌سازد" dir="ltr" autocomplete="off" data-ascii></div>
-        <div class="fld"><label>مهلت به روز (خالی = بی‌مهلت)</label>
-          <input type="number" id="nDays" min="0" max="3650" dir="ltr" autocomplete="off"
-            placeholder="مثلاً ۳۰"></div>
+        <div class="fld"><label>مهلت تا تاریخِ (خالی = بی‌مهلت)</label>
+          <input type="text" id="nUntil" data-date autocomplete="off"
+            placeholder="تاریخ را انتخاب کنید"></div>
       </div>
       <input type="hidden" id="nKind" value="gen">
       <div class="hint" id="nPreview"></div>
@@ -1876,6 +1879,25 @@ function featLabel(id){
   return f ? f.label : id;
 }
 
+/* ---------- مهلت، به تاریخ ----------
+   آدم «تا پانزدهم آذر» را در ذهن دارد، نه «۳۷ روز». خانه‌ها تاریخ
+   می‌گیرند و همین‌جا به لحظه تبدیل می‌شوند — پایانِ همان روز، نه
+   نیمه‌شبِ آغازش، وگرنه روزی که انتخاب شده خودش مهلت نداشت. */
+function untilText2(ms){
+  try{ return window.DatePick ? DatePick.fromStamp(ms) : ""; }catch(e){ return ""; }
+}
+/* خروجی: عدد (۰ یعنی بی‌مهلت) یا null اگر نوشته‌شده ولی تاریخ نبود */
+function untilValue(id){
+  const el = document.getElementById(id);
+  if(!el) return 0;
+  const txt = String(el.value || "").trim();
+  if(!txt) return 0;
+  let d = null;
+  try{ d = DatePick.parse(txt); }catch(e){ d = null; }
+  if(!d) return null;
+  return DatePick.toStamp(d.jy, d.jm, d.jd);
+}
+
 /* مهلتِ کارتابل: چند روز مانده، یا کِی تمام شد. */
 function daysLeft(until){
   if(!until) return null;
@@ -1887,7 +1909,10 @@ function untilText(p){
   const d = daysLeft(p.until);
   if(d === null) return "بی‌مهلت";
   if(d <= 0) return "تمام شد — " + esc(faDateTime(p.until));
-  return "‏" + fa(d) + " روز مانده";
+  /* خودِ تاریخ هم می‌آید، نه فقط شمارِ روز: مهلت را با تاریخ
+     می‌گذاریم، پس با تاریخ هم باید دیده شود. */
+  const dt = untilText2(p.until);
+  return "‏" + fa(d) + " روز مانده" + (dt ? " — تا " + esc(dt) : "");
 }
 
 function renderStats(){
@@ -2057,9 +2082,10 @@ function openEdit(slug){
       <div class="fld"><label>نام کاربری</label>
         <input type="text" id="eUser" dir="ltr" autocomplete="off" spellcheck="false"
           value="${esc(p.user || p.slug)}" ${p.builtin ? "disabled" : ""} data-ascii></div>
-      <div class="fld"><label>مهلت (روز)</label>
-        <input type="number" id="eDays" min="0" max="3650" dir="ltr" autocomplete="off"
-          placeholder="${p.until ? esc(String(Math.max(0, daysLeft(p.until)))) : "بی‌مهلت"}"></div>
+      <div class="fld"><label>مهلت تا تاریخِ</label>
+        <input type="text" id="eUntil" data-date autocomplete="off"
+          value="${p.until ? esc(untilText2(p.until)) : ""}"
+          placeholder="بی‌مهلت — برای مهلت‌دار کردن، تاریخ را انتخاب کنید"></div>
       <div class="fld"><label>شغل (چک‌لیست آماده)</label><select id="eJob">${
         jobs.map(j=>`<option value="${esc(j.id)}" ${p.job===j.id?"selected":""}>${esc(j.label)}</option>`).join("")
       }</select></div>
@@ -2171,13 +2197,17 @@ function openEdit(slug){
         "دست‌کم یک بخشِ کارتابل باید باز بماند.";
       save.disabled = false; return;
     }
+    /* خالی یعنی بی‌مهلت؛ تاریخ یعنی تا پایانِ همان روز */
+    const until = untilValue("eUntil");
+    if(until === null){
+      document.getElementById("eErr").textContent = "تاریخِ مهلت را از تقویم انتخاب کنید.";
+      save.disabled = false; return;
+    }
     const r = await api("/planners/" + slug, { method:"PUT", body: JSON.stringify({
       name: document.getElementById("eName").value.trim(),
       user: document.getElementById("eUser").value.trim().toLowerCase(),
       job: document.getElementById("eJob").value,
-      off, views, vault: secs,
-      days: document.getElementById("eDays").value.trim() === ""
-        ? undefined : Number(document.getElementById("eDays").value)
+      off, views, vault: secs, until
     })});
     save.disabled = false;
     if(!r.ok){ document.getElementById("eErr").textContent = r.data.error || "نشد."; return; }
@@ -2572,6 +2602,35 @@ async function runVaultReset(slug){
   }
 }
 
+/* پرسیدنِ یک تاریخ، با همان تقویمی که همه‌جای پنل هست. prompt
+   نمی‌توانست تقویم نشان بدهد و آدم باید تاریخ را با دست می‌نوشت. */
+function askUntil({ title, note, value }){
+  return new Promise(resolve=>{
+    openOverlay(`
+      <h3>${esc(title || "مهلت")}</h3>
+      <p class="sub">${esc(note || "")}</p>
+      <div class="fld"><label>تا تاریخِ</label>
+        <input type="text" id="auDate" data-date autocomplete="off"
+          value="${esc(value || "")}" placeholder="تاریخ را انتخاب کنید"></div>
+      <div class="hint" id="auErr"></div>
+      <div class="ov-acts">
+        <button class="btn btn-main" id="auOk">تأیید</button>
+        <button class="btn" id="auNo">بی‌مهلت</button>
+        <button class="btn" id="auCancel">لغو</button>
+      </div>`);
+    if(window.datePickScan) window.datePickScan(document.getElementById("ovBox"));
+    const done = v =>{ closeOverlay(); resolve(v); };
+    document.getElementById("auOk").onclick = ()=>{
+      const v = untilValue("auDate");
+      if(v === null){ document.getElementById("auErr").textContent =
+        "تاریخ را از تقویم انتخاب کنید."; return; }
+      done(v);
+    };
+    document.getElementById("auNo").onclick = ()=> done(0);
+    document.getElementById("auCancel").onclick = ()=> done(undefined);
+  });
+}
+
 /* ---------- غیرفعال / فعال ---------- */
 async function toggleState(slug){
   const p = find(slug);
@@ -2584,17 +2643,17 @@ async function toggleState(slug){
       "• هیچ داده‌ای پاک نمی‌شود؛ هر وقت خواستید با یک کلیک برمی‌گردد.")) return;
   /* اگر مهلتش گذشته، روشن‌کردنِ خالی بی‌فایده است — لحظهٔ بعد دوباره
      خودش بسته می‌شود. پس همان‌جا می‌پرسیم چند روز دیگر. */
-  let days;
+  let until;
   if(!off && p.until && daysLeft(p.until) <= 0){
-    const t = prompt(
-      "مهلتِ «" + p.name + "» تمام شده.\n\n" +
-      "چند روز دیگر باز بماند؟ خالی بگذارید تا بی‌مهلت شود.", "30");
-    if(t === null) return;
-    days = t.trim() === "" ? 0 : Number(t);
-    if(!Number.isFinite(days) || days < 0 || days > 3650){ say("عدد روز درست نیست.", true); return; }
+    until = await askUntil({
+      title: "مهلتِ «" + p.name + "» تمام شده",
+      note: "تا چه تاریخی باز بماند؟ خالی بگذارید تا بی‌مهلت شود.",
+      value: untilText2(Date.now() + 30 * 86400000)
+    });
+    if(until === undefined) return;          /* لغو شد */
   }
   const r = await api("/planners/" + slug + "/state",
-    { method:"POST", body: JSON.stringify({ disabled: off, days }) });
+    { method:"POST", body: JSON.stringify({ disabled: off, until }) });
   if(!r.ok){ say(r.data.error || "نشد.", true); return; }
   say(off
     ? "«" + esc(p.name) + "» غیرفعال شد. داده‌هایش سرِ جایشان است و پشتیبان خودکار هم دیگر برایش نمی‌رود."
@@ -2699,6 +2758,8 @@ function setupNew(){
 
   document.getElementById("nCreate").onclick = async ()=>{
     const btn = document.getElementById("nCreate");
+    const nUntilVal = untilValue("nUntil");
+    if(nUntilVal === null){ say("تاریخِ مهلت را از تقویم انتخاب کنید.", true); return; }
     btn.disabled = true;
     const r = await api("/planners", { method:"POST", body: JSON.stringify({
       name: name.value.trim(),
@@ -2709,13 +2770,13 @@ function setupNew(){
       views: Array.from(document.querySelectorAll("#nViews input"))
         .filter(i=> i.checked).map(i=> i.dataset.nview),
       password: document.getElementById("nPass").value.trim(),
-      days: document.getElementById("nDays").value.trim()
+      until: nUntilVal
     })});
     btn.disabled = false;
     if(!r.ok){ say(r.data.error || "نشد.", true); return; }
     name.value = ""; slug.value = ""; document.getElementById("nPass").value = "";
     document.getElementById("nUser").value = "";
-    document.getElementById("nDays").value = "";
+    document.getElementById("nUntil").value = "";
     paint();
     say("کارتابل ساخته شد: <b>" + esc(HOST) + esc(r.data.url) + "</b><br>" +
         "از صفحهٔ ورود (<b>" + esc(HOST) + "/login</b>) با این نام کاربری وارد می‌شود:<br>" +
@@ -2816,8 +2877,11 @@ async function loadOrders(){
       if(k) k.click();
       const jb = document.getElementById("nJob");
       if(jb && o.job) { jb.value = o.job; jb.dispatchEvent(new Event("change")); }
-      const dd = document.getElementById("nDays");
-      if(dd) dd.value = o.days || "";
+      /* فاکتور «مدت» را به روز می‌گوید؛ فرم تاریخ می‌خواهد، پس
+         همین‌جا به تاریخِ پایان تبدیلش می‌کنیم. */
+      const dd = document.getElementById("nUntil");
+      if(dd) dd.value = Number(o.days)
+        ? untilText2(Date.now() + Number(o.days) * 86400000) : "";
       say("فرم از روی فاکتور <b dir=\"ltr\">" + esc(o.id) + "</b> پر شد. آدرس و نام کاربری را بنویسید و بسازید.");
     };
   });
@@ -4344,6 +4408,7 @@ async function loadLog(){
 </script>
 <script>
 {{PART:fadigits}}
+{{PART:datepick}}
 </script>
 </body>
 </html>

@@ -292,6 +292,26 @@
     document.addEventListener("DOMContentLoaded", later);
   else later();
 
+  /* ---------- از تاریخِ شمسی به لحظه، و برعکس ----------
+     پنلِ ادمین «مهلتِ کارتابل» را از همین‌جا حساب می‌کند: آدم یک
+     تاریخ انتخاب می‌کند و آن‌چه روی سرور می‌نشیند لحظهٔ پایانِ همان
+     روز است، نه نیمه‌شبِ آغازش — وگرنه روزی که انتخاب شده خودش
+     مهلت نداشت. */
+  function toG(jy, jm, jd){ return d2g(j2d(jy, jm, jd)); }
+  function toStamp(jy, jm, jd){
+    var g = toG(jy, jm, jd);
+    return new Date(g.gy, g.gm - 1, g.gd, 23, 59, 59, 999).getTime();
+  }
+  /* لحظه → متنِ تاریخِ شمسی، برای پر کردنِ همان خانه */
+  function fromStamp(ms){
+    var n = Number(ms);
+    if(!n) return "";
+    var d = new Date(n);
+    var j = d2j(g2d(d.getFullYear(), d.getMonth() + 1, d.getDate()));
+    return j ? fmt(j.jy, j.jm, j.jd) : "";
+  }
+
   window.DatePick = { open: open, close: close, parse: parse, fmt: fmt,
-                      today: today, scan: scan, FIELDS: FIELDS };
+                      today: today, scan: scan, FIELDS: FIELDS,
+                      toG: toG, toStamp: toStamp, fromStamp: fromStamp };
 })();
