@@ -297,17 +297,18 @@ const bell = await p.evaluate(() => {
   }));
   return { locked, dot: btn ? !!btn.querySelector('.nd') : false, its };
 });
-const vd = bell.its.find(x => /دیتای شخصی/.test(x.txt)) || null;
+const vd = bell.its.find(x => /سررسیدِ دیتای شخصی/.test(x.txt)) || null;
 t(bell.locked, 'صندوق بسته است و رمزش را کسی نزده');
 t(!!vd, 'ولی زنگوله خبرِ «دیتای شخصی» را دارد', vd ? vd.txt : bell.its.map(x => x.txt).join(' || '));
 t(!!bell.dot, 'و شمارنده روشن است');
 t(vd && !/۱۲۳۴۵۶|دیجی|وام آزمون/.test(vd.txt),
   'و هیچ‌چیز از محتوای صندوق لو نمی‌دهد — نه عنوان، نه مبلغ', vd ? vd.txt : '—');
-t(vd && /رمزِ دیتای شخصی/.test(vd.txt), 'بلکه می‌گوید برای دیدنش رمز را بزن');
+t(vd && vd.txt.replace(/\s+/g, ' ').length < 70,
+  'و کوتاه است، نه یک بندِ کامل', String(vd ? vd.txt.replace(/\s+/g, ' ').length : 0) + ' نویسه');
 t(vd && vd.go, 'و خبر زدنی است — جایی برای رفتن دارد');
 
 await p.evaluate(() => {
-  const el = [...document.querySelectorAll('#bellListK .bell-i')].find(x => /دیتای شخصی/.test(x.textContent));
+  const el = [...document.querySelectorAll('#bellListK .bell-i')].find(x => /سررسیدِ دیتای شخصی/.test(x.textContent));
   if (el) el.click();
 });
 await p.waitForTimeout(700);

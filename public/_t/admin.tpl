@@ -207,17 +207,23 @@ a{ color:var(--brass-ink); }
 }
 .bell-x{ border:0; background:none; cursor:pointer; color:var(--ink-faint); font-size:13px; }
 .bell-x:hover{ color:var(--ink); }
-.bell-list{ max-height:min(60vh, 420px); overflow-y:auto; }
+.bell-list{ max-height:min(52vh, 340px); overflow-y:auto; }
+/* کادرِ هر خبر کوچک است و متنش دو خط بیشتر نمی‌شود: فهرستی که هر
+   خبرش چهار خط بود، با سه خبر تمامِ صفحه را می‌گرفت. */
 .bell-item{
-  display:flex; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line-soft, var(--line));
+  display:flex; align-items:center; gap:8px; padding:7px 11px;
+  border-bottom:1px solid var(--line-soft, var(--line));
   border-inline-start:3px solid transparent;
 }
 .bell-item:last-child{ border-bottom:0; }
-.bell-item .bi{ font-size:15px; line-height:1.5; flex:none; }
-.bell-item .bt{ min-width:0; }
-.bell-item b{ font-size:12.5px; display:block; }
-.bell-item p{ margin:3px 0 0; font-size:11.5px; line-height:1.9; color:var(--ink-soft);
-  overflow-wrap:anywhere; }
+.bell-item .bi{ font-size:14px; line-height:1.4; flex:none; }
+.bell-item .bt{ min-width:0; flex:1; }
+.bell-item b{ font-size:12px; display:block; line-height:1.5;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bell-item p{ margin:1px 0 0; font-size:11px; line-height:1.6; color:var(--ink-soft);
+  overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.bell-item .bar{ flex:none; font-size:15px; line-height:1; color:var(--brass); }
 .bell-item.b-bad{ border-inline-start-color:var(--red,#A6222B); }
 .bell-item.b-warn{ border-inline-start-color:var(--amber,#B4801F); }
 .bell-item.b-ok{ border-inline-start-color:var(--green,#2C7A4B); }
@@ -232,11 +238,10 @@ a{ color:var(--brass-ink); }
 }
 .bell-foot button:hover{ border-color:var(--brass); }
 .bell-foot button[disabled]{ opacity:.5; cursor:default; }
-/* خبری که جایی برای رفتن دارد، زدنی است */
-.bell-item.b-go{ cursor:pointer; }
-.bell-item.b-go:hover{ background:var(--paper-2, rgba(0,0,0,.03)); }
-.bell-item.b-go:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
-.bell-go{ display:inline-block; margin-top:4px; font-size:11px; font-weight:700; color:var(--brass); }
+/* هر خبر زدنی است — دستِ‌کم برای «خواندم» */
+.bell-item{ cursor:pointer; }
+.bell-item:hover{ background:var(--paper-2, rgba(0,0,0,.03)); }
+.bell-item:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
 /* و جایی که رفتیم، یک چشمک می‌زند تا پیدا باشد */
 @keyframes bellFlash{
   0%, 100%{ box-shadow:0 0 0 0 transparent; }
@@ -1578,8 +1583,7 @@ function bellItems(){
   const mn = DATA.msgNews;
   if(mn && Number(mn.n))
     add("info", "💬", "پیامِ تازهٔ پشتیبانی",
-      fa(mn.n) + " پیامِ خوانده‌نشده" +
-      (mn.last ? " — آخرین: " + faDateTime(mn.last) : "") + ". برای خواندن همین‌جا را بزنید.",
+      fa(mn.n) + " پیامِ خوانده‌نشده" + (mn.last ? " — " + faDateTime(mn.last) : ""),
       "msg|" + mn.n + "|" + (mn.last || 0), ()=> goBellTab("msgs"));
 
   /* پشتیبانِ همگانی */
@@ -1590,25 +1594,22 @@ function bellItems(){
     if(b.ok){
       add("ok", ICON.archive, "پشتیبان رفت",
         when + " — " + fa(b.count || 0) + " کارتابل، " +
-        fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
-        ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""),
+        fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت",
         "bk-ok|" + b.at, goBk);
       if((b.failed || []).length)
         add("warn", "⚠️", "یکی از ربات‌ها نگرفت",
-          (b.failed || []).join(" — ") + (b.note ? " (" + b.note + ")" : "") +
-          " — همان‌هایی که گرفتند خبر داده شدند.", "bk-failed|" + b.at,
+          (b.failed || []).join(" و "), "bk-failed|" + b.at,
           ()=> goBellTab("site"));
       if((b.noHtml || []).length)
         add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند",
           (b.noHtml || []).join("، "), "bk-nohtml|" + b.at, goBk);
     } else {
       add("bad", "⛔", "پشتیبان نرفت",
-        when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"),
-        "bk-bad|" + b.at, goBk);
+        when + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"), "bk-bad|" + b.at, goBk);
     }
   } else {
     add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده",
-      "اولین نوبت که برود، همین‌جا نوشته می‌شود.", "bk-none", goBk);
+      "اولین نوبت که برود، همین‌جا می‌آید.", "bk-none", goBk);
   }
 
   /* مهلتِ کارتابل‌ها */
@@ -1640,8 +1641,7 @@ function bellItems(){
     const last = [...(DATA.items || []).map(p=> p.badPass), abp]
       .filter(x=> x && Number(x.n)).reduce((m,x)=> Math.max(m, Number(x.at) || 0), 0);
     add("warn", "🔐", "تلاشِ ناموفقِ ورود",
-      bp.join("، ") + (last ? " — آخرین بار: " + faDateTime(last) : "") +
-      " (از ابتدا شمرده می‌شود؛ خودِ رمزِ غلط هیچ‌جا ذخیره نمی‌شود.)",
+      bp.join("، ") + (last ? " — " + faDateTime(last) : ""),
       "badpass|" + bp.join("|"),
       ()=> goBellPlanner(String(bp[0] || "").split(":")[0]));
   }
@@ -1649,12 +1649,12 @@ function bellItems(){
   /* کلیدِ اضطراری */
   if(!DATA.escrowReady)
     add("warn", "🔑", "کلیدِ اضطراری گذاشته نشده",
-        "بدونِ آن، اگر کاربری رمزِ بخشِ شخصی‌اش را فراموش کند کاری نمی‌شود کرد.",
+        "بی آن، رمزِ فراموش‌شدهٔ کاربر باز نمی‌شود.",
         "escrow-missing", ()=> goBellTab("keys", "escrowState"));
 
-  /* ورودِ قبلی */
+  /* ورودِ قبلی — خبرِ محض است و جایی برای رفتن ندارد */
   if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN),
-    "login|" + BELL_LOGIN, ()=> goBellTab("keys"));
+    "login|" + BELL_LOGIN);
 
   return out;
 }
@@ -1754,32 +1754,41 @@ function bellPaint(){
      عددِ همیشگی گیر نمی‌کند. */
   dot.hidden = !unseen.length;
   dot.textContent = unseen.length ? fa(unseen.length) : "";
+  /* هر خبر زدنی است، چه جایی برای رفتن داشته باشد چه نه: زدنش
+     دستِ‌کم یعنی «همین یکی را خواندم». پیکانِ کوچک فقط روی آن‌هایی
+     می‌آید که جایی برای رفتن دارند — به‌جای یک خطِ نوشتهٔ اضافه. */
   list.innerHTML = items.length ? items.map((i, n)=>`
     <div class="bell-item b-${i.kind}${seen.indexOf(i.key) < 0 ? "" : " b-seen"}${i.go ? " b-go" : ""}"
-         ${i.go ? 'data-bi="' + n + '" role="button" tabindex="0"' : ""}>
+         data-bi="${n}" role="button" tabindex="0">
       <span class="bi">${i.icon}</span>
-      <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p>
-        ${i.go ? `<span class="bell-go">نشانم بده ›</span>` : ""}</div>
+      <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p></div>
+      ${i.go ? `<span class="bar">›</span>` : ""}
     </div>`).join("")
     : `<div class="bell-empty">فعلاً خبری نیست.</div>`;
   const sb = document.getElementById("bellSeenAll");
   if(sb) sb.disabled = !unseen.length;
 
-  /* زدنِ خبر: همان یکی «دیده‌شده» می‌شود، پنجره بسته می‌شود، و
-     می‌رویم همان‌جا که خبر از آن حرف می‌زند. */
+  /* زدنِ خبر: همان یکی «دیده‌شده» می‌شود — و اگر جایی برای رفتن
+     داشت، پنجره بسته می‌شود و می‌رویم همان‌جا. وگرنه پنجره باز
+     می‌ماند تا آدم ببیند که همان یکی کم‌رنگ شد. */
   const hit = (el)=>{
     const i = items[Number(el.getAttribute("data-bi"))];
-    if(!i || typeof i.go !== "function") return;
+    if(!i) return;
     bellMarkAll([i]);
-    const pop = document.getElementById("bellPop");
-    if(pop) pop.hidden = true;
-    const bb = document.getElementById("bellBtn");
-    if(bb) bb.setAttribute("aria-expanded", "false");
-    try{ i.go(); }catch(e){ }
+    if(typeof i.go === "function"){
+      const pop = document.getElementById("bellPop");
+      if(pop) pop.hidden = true;
+      const bb = document.getElementById("bellBtn");
+      if(bb) bb.setAttribute("aria-expanded", "false");
+      try{ i.go(); }catch(e){ }
+    }
     bellPaint();
   };
   list.querySelectorAll("[data-bi]").forEach(el=>{
-    el.addEventListener("click", ()=> hit(el));
+    /* کلیک به سندِ بالا نمی‌رسد: آن‌جا هر کلیکِ بیرونِ پنجره پنجره را
+       می‌بندد، و چون همین پایین فهرست از نو کشیده می‌شود، این گره تا
+       آن لحظه دیگر داخلِ پنجره نیست و «بیرون» حساب می‌شد. */
+    el.addEventListener("click", (e)=>{ e.stopPropagation(); hit(el); });
     el.addEventListener("keydown", (e)=>{
       if(e.key === "Enter" || e.key === " "){ e.preventDefault(); hit(el); }
     });

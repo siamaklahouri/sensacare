@@ -77,12 +77,15 @@ const items = await p.evaluate(() =>
   [...document.querySelectorAll('#bellListK .bell-i')].map(x => ({
     txt: x.textContent.replace(/\s+/g, ' ').trim(),
     go: x.classList.contains('go'), bi: x.getAttribute('data-bi'),
-    hint: !!x.querySelector('.bell-go')
+    arrow: !!x.querySelector('.ar')
   })));
 t(items.length >= 3, 'چند خبر روی صفحه است', String(items.length));
-t(items.every(x => x.go && x.bi !== null && x.hint),
-  'و هر کدامشان زدنی است و «نشانم بده» دارد',
-  items.map(x => (x.go ? '✔' : '✘')).join(''));
+t(items.every(x => x.bi !== null),
+  'هر خبر زدنی است — دستِ‌کم برای «خواندم»',
+  items.map(x => (x.bi === null ? '✘' : '✔')).join(''));
+t(items.filter(x => x.arrow).length && items.some(x => !x.arrow),
+  'و پیکان فقط روی آن‌هایی است که جایی برای رفتن دارند',
+  items.map(x => (x.arrow ? '›' : '·')).join(''));
 
 const clickItem = async (re) => {
   await openBell();
@@ -107,14 +110,29 @@ t(await viewNow() === 'view-checklist', 'زدنِ «کارهای عقب‌افت
   await viewNow());
 
 await p.evaluate(() => document.querySelector('.navbtn[data-view="dashboard"]').click());
-await clickItem(/یادآورهای برنامهٔ روزانه/);
+await clickItem(/یادآور.* برنامهٔ روزانه/);
 t(await viewNow() === 'view-daily', 'و «یادآورهای برنامهٔ روزانه» سرِ برنامهٔ روزانه',
   await viewNow());
 
+/* خبرِ محض: زدنش نباید آدم را هیچ‌جا ببرد — فقط خوانده شود. پیش از
+   این می‌بردش سرِ تنظیمات، که نه کسی خواسته بود و نه کاری از آن‌جا
+   پیش می‌رفت. */
 await p.evaluate(() => document.querySelector('.navbtn[data-view="dashboard"]').click());
-await clickItem(/رمزِ اشتباه/);
-t(await viewNow() === 'view-settings',
-  'و «با رمزِ اشتباه وارد شدن…» سرِ تنظیمات، همان‌جا که رمز عوض می‌شود', await viewNow());
+await openBell();
+const stay = await p.evaluate(() => {
+  const el = [...document.querySelectorAll('#bellListK .bell-i')]
+    .find(x => /رمزِ اشتباه/.test(x.textContent));
+  if (!el) return null;
+  el.click();
+  return { view: ([...document.querySelectorAll('.view')].find(v => v.classList.contains('active')) || {}).id,
+           pop: !document.getElementById('bellPopK').hidden,
+           seen: !!document.querySelector('#bellListK .bell-i.seen') };
+});
+t(stay && stay.view === 'view-dashboard',
+  'زدنِ خبرِ «رمزِ اشتباه» هیچ‌جا نمی‌بردت — دیگر سرِ تنظیمات نمی‌پرد',
+  stay ? stay.view : '—');
+t(stay && stay.pop, 'و پنجره باز می‌ماند تا ببینی همان یکی کم‌رنگ شد');
+t(stay && stay.seen, 'و خوانده می‌شود');
 
 /* خبری که زده شد، همان یکی دیده‌شده می‌شود — نه همهٔ فهرست */
 await openBell();
@@ -173,7 +191,7 @@ const chatItem = await p.evaluate(() => {
     .find(x => /پیامِ خوانده‌نشده/.test(x.textContent));
   return el ? { txt: el.textContent.replace(/\s+/g, ' ').trim(), go: el.classList.contains('go') } : null;
 });
-t(chatItem && chatItem.go, 'زنگوله خبرش را دارد و زدنی است',
+t(chatItem && chatItem.go, 'زنگوله خبرش را دارد و پیکانِ رفتن دارد',
   chatItem ? chatItem.txt : '—');
 await clickItem(/پیامِ خوانده‌نشده/);
 const landed = await p.evaluate(r => {
@@ -245,8 +263,8 @@ if (DB) {
   t(!!msgIt, 'خبرِ «پیامِ تازهٔ پشتیبانی» در زنگولهٔ ادمین هست',
     msgIt ? msgIt.txt : aItems.map(x => x.txt.slice(0, 28)).join(' || '));
   t(msgIt && /۲/.test(msgIt.txt), 'با شمارِ درست');
-  t(aItems.filter(x => x.go).length >= 3,
-    'و خبرهای ادمین هم زدنی‌اند، نه فقط یکی',
+  t(aItems.every(x => x.bi !== null) && aItems.filter(x => x.go).length >= 3,
+    'و خبرهای ادمین هم همه زدنی‌اند، و چندتایشان جایی برای رفتن دارند',
     aItems.filter(x => x.go).length + ' از ' + aItems.length);
 
   await a.evaluate(() => {

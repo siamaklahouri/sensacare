@@ -93,12 +93,13 @@
     var until = Number(window.KARTABL_UNTIL || 0);
     if (until) {
       var left = Math.ceil((until - Date.now()) / 864e5);
+      /* این دو خبرِ محض‌اند و جایی برای رفتن ندارند: زدنشان فقط
+         «خواندم» است. پیش از این می‌بردشان سرِ تنظیمات، که نه کسی
+         خواسته بود و نه کاری از آن‌جا پیش می‌رفت. */
       if (left <= 0)
-        add("bad", "⏳", "مهلتِ کارتابل تمام شده", "برای ادامه با مدیر تماس بگیرید.",
-          "exp-over", function () { goView("settings"); });
+        add("bad", "⏳", "مهلتِ کارتابل تمام شد", "با مدیر تماس بگیرید.", "exp-over");
       else if (left <= 7)
-        add("warn", "⏳", "مهلتِ کارتابل نزدیک است", faN(left) + " روز مانده.",
-          "exp-soon", function () { goView("settings"); });
+        add("warn", "⏳", "مهلتِ کارتابل نزدیک است", faN(left) + " روز مانده.", "exp-soon");
     }
 
     /* کارهای عقب‌افتادهٔ چک‌لیست */
@@ -108,13 +109,11 @@
         var d = latin(t && t.deadline);
         return d && td && d < td && !isDone(t.status);
       }).map(function (t) { return String(t.task || "").trim() || "بی‌عنوان"; });
-      if (late.length) {
-        var head = late.slice(0, 3).join("، ");
+      if (late.length)
         add("bad", "⚠️", "کارهای عقب‌افتاده",
-          head + (late.length > 3 ? " و " + faN(late.length - 3) + " تای دیگر" : ""),
+          faN(late.length) + " کار — " + late[0],
           "late|" + late.slice().sort().join("|"),
           function () { goView("checklist"); });
-      }
     }
 
     /* یادآورهای ستاره‌دارِ برنامهٔ روزانه — شکلِ هر دو قالب */
@@ -126,8 +125,8 @@
         return false;
       }).map(function (d) { return String(d.main || "").trim() || "بی‌عنوان"; });
       if (rem.length)
-        add("warn", "⭐", "یادآورهای برنامهٔ روزانه",
-          rem.slice(0, 3).join("، ") + (rem.length > 3 ? " و " + faN(rem.length - 3) + " تای دیگر" : ""),
+        add("warn", "⭐", "یادآورِ برنامهٔ روزانه",
+          faN(rem.length) + " یادآور — " + rem[0],
           "rem|" + rem.slice().sort().join("|"),
           function () { goView("daily"); });
     }
@@ -137,10 +136,8 @@
     if (bp && Number(bp.n)) {
       var when = "";
       try { when = faDateTime(Number(bp.at)); } catch (e) { }
-      add("bad", "🔐", "با رمزِ اشتباه وارد شدن را امتحان کرده‌اند",
-        faN(bp.n) + " بار" + (when ? " — آخرین بار: " + when : "") +
-        ". اگر خودتان نبوده‌اید، رمز را عوض کنید.",
-        "badpass|" + bp.n, function () { goView("settings"); });
+      add("bad", "🔐", "رمزِ اشتباه زده شده",
+        faN(bp.n) + " بار" + (when ? " — " + when : ""), "badpass|" + bp.n);
     }
 
     /* سررسیدِ قسط یا چک — از «دیتای شخصی»
@@ -152,21 +149,19 @@
     try { due = window.vaultDueDigest ? window.vaultDueDigest() : null; } catch (e) { due = null; }
     if (due && due.n) {
       var say = [];
-      if (due.late) say.push(faN(due.late) + " سررسیدِ عقب‌افتاده");
-      if (due.soon) say.push(faN(due.soon) + " سررسید تا " + faN(due.days) + " روز آینده");
-      add(due.late ? "bad" : "warn", "🔔", "دیتای شخصی",
-        say.join(" و ") + " (قسط یا چک). برای دیدنش رمزِ دیتای شخصی را بزنید.",
-        "vdue|" + due.n + "|" + due.nearest, goPersonal);
+      if (due.late) say.push(faN(due.late) + " عقب‌افتاده");
+      if (due.soon) say.push(faN(due.soon) + " تا " + faN(due.days) + " روز آینده");
+      add(due.late ? "bad" : "warn", "🔔", "سررسیدِ دیتای شخصی",
+        say.join("، "), "vdue|" + due.n + "|" + due.nearest, goPersonal);
     }
 
     /* نخوانده‌های گفت‌وگو و بخش‌های مشترک — این دو خودشان خبر می‌دهند */
     var ch = Number(window.CHAT_UNREAD || 0);
     if (ch) add("info", "💬", "پیامِ خوانده‌نشده",
-      faN(ch) + " پیامِ تازه در گفت‌وگوها. برای خواندنشان همین‌جا را بزنید.",
-      "chat|" + ch, goChat);
+      faN(ch) + " پیامِ تازه", "chat|" + ch, goChat);
     var sh = Number(window.SHARED_UNREAD || 0);
     if (sh) add("info", "✅", "تغییر در بخش‌های مشترک",
-      faN(sh) + " تغییرِ تازه.", "shared|" + sh, goShared);
+      faN(sh) + " تغییرِ تازه", "shared|" + sh, goShared);
 
     /* منبع‌های دیگری که خودشان را ثبت کرده‌اند — اگر «برو» نداده
        باشند، همان‌طور بی‌دست‌گیره می‌مانند. */
@@ -231,25 +226,45 @@
       dot.textContent = faN(unseen.length);
     } else if (dot) dot.remove();
 
+    /* هر خبر زدنی است، چه جایی برای رفتن داشته باشد چه نه: زدنش
+       دستِ‌کم یعنی «همین یکی را خواندم». پیکانِ کوچک هم فقط روی
+       آن‌هایی می‌آید که جایی برای رفتن دارند. */
     list.innerHTML = all.length ? all.map(function (i, n) {
       return '<div class="bell-i k-' + i.kind + (isSeen(i.key) ? " seen" : "") +
-        (i.go ? ' go" data-bi="' + n : "") + '">' +
+        (i.go ? " go" : "") + '" data-bi="' + n + '" role="button" tabindex="0">' +
         '<span class="ic">' + i.icon + '</span>' +
-        '<div class="tx"><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p>' +
-        (i.go ? '<span class="bell-go">نشانم بده ›</span>' : "") + '</div></div>';
+        '<div class="tx"><b>' + esc(i.title) + '</b><p>' + esc(i.body) + '</p></div>' +
+        (i.go ? '<span class="ar">›</span>' : "") + '</div>';
     }).join("") : '<div class="bell-e">فعلاً خبری نیست.</div>';
 
-    /* خبری که جایی برای رفتن دارد، زدنی است — و با زدنش همان یکی
-       «دیده‌شده» می‌شود، نه همهٔ فهرست. */
+    var hit = function (el) {
+      var it = all[Number(el.getAttribute("data-bi"))];
+      if (!it) return;
+      markAll([it]);
+      if (typeof it.go === "function") {
+        /* جایی برای رفتن دارد: پنجره بسته می‌شود و می‌رویم همان‌جا */
+        closePop();
+        try { it.go(); } catch (err) { }
+      }
+      /* وگرنه پنجره باز می‌ماند تا آدم ببیند که همان یکی کم‌رنگ شد */
+      paint();
+    };
     list.onclick = function (e) {
       var el = e.target && e.target.closest ? e.target.closest(".bell-i[data-bi]") : null;
       if (!el) return;
-      var it = all[Number(el.getAttribute("data-bi"))];
-      if (!it || typeof it.go !== "function") return;
-      markAll([it]);
-      closePop();
-      try { it.go(); } catch (err) { }
-      paint();
+      /* جلوی رسیدنِ کلیک به سندِ بالا را می‌گیریم: آن‌جا هر کلیکِ
+         بیرونِ پنجره، پنجره را می‌بندد — و از آن‌جا که همین پایین
+         فهرست از نو کشیده می‌شود، تا نوبتِ آن برسد این گره دیگر
+         داخلِ پنجره نیست و «بیرون» حساب می‌شد. */
+      e.stopPropagation();
+      hit(el);
+    };
+    list.onkeydown = function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var el = e.target && e.target.closest ? e.target.closest(".bell-i[data-bi]") : null;
+      if (!el) return;
+      e.preventDefault();
+      hit(el);
     };
 
     var sb = document.getElementById("bellSeenK");

@@ -178,10 +178,10 @@ console.log('\n===== زنگولهٔ کارتابل =====');
   const list = await p.evaluate(() =>
     [...document.querySelectorAll('#bellListK .bell-i')].map(x => x.textContent.replace(/\s+/g, ' ').trim()));
   const mine2 = list.find(x => /رمزِ اشتباه/.test(x)) || '';
-  t(!!mine2, 'صاحبِ کارتابل خبرِ «با رمزِ اشتباه وارد شدن را امتحان کرده‌اند» را می‌بیند',
-    mine2.slice(0, 170));
+  t(!!mine2, 'صاحبِ کارتابل خبرِ «رمزِ اشتباه زده شده» را می‌بیند', mine2.slice(0, 170));
   t(/۴ بار/.test(mine2), 'با شمارِ درست و رقمِ فارسی');
-  t(/رمز را عوض کنید/.test(mine2), 'و می‌گوید چه کار کند');
+  t(mine2.replace(/\s+/g, ' ').length < 70, 'و کوتاه است، نه یک بندِ کامل',
+    String(mine2.replace(/\s+/g, ' ').length) + ' نویسه');
   t(!/ghalat/.test(list.join(' ')), 'و خودِ رمزِ غلط این‌جا هم نیست');
   const kind = await p.evaluate(() => {
     const el = [...document.querySelectorAll('#bellListK .bell-i')].find(x => /رمزِ اشتباه/.test(x.textContent));
