@@ -41,11 +41,26 @@
   }
   var isDone = function (v) { return String(v == null ? "" : v).trim() === "انجام شد"; };
 
-  /* «برو به دیتای شخصی» = زدنِ همان دکمهٔ نوارِ کنار. این‌طور صفحهٔ
-     قفل و پرسیدنِ رمز هم سرِ جای خودش می‌ماند و این‌جا تکرار نمی‌شود. */
-  function goPersonal() {
-    var nb = document.querySelector('.navbtn[data-view="personal"]');
-    if (nb) { nb.click(); nb.scrollIntoView({ block: "nearest" }); }
+  /* «برو همان‌جا» = زدنِ همان دکمهٔ نوارِ کنار. این‌طور هرچه به آن
+     دکمه بسته است — قفلِ دیتای شخصی، خوانده‌شدنِ نخوانده‌ها، کشیدنِ
+     دوبارهٔ جدول — سرِ جای خودش می‌ماند و این‌جا تکرار نمی‌شود. */
+  function goView(v) {
+    var nb = document.querySelector('.navbtn[data-view="' + v + '"]');
+    if (!nb) return false;
+    nb.scrollIntoView({ block: "nearest" });
+    nb.click();
+    return true;
+  }
+  function goPersonal() { goView("personal"); }
+  /* گفت‌وگوها و بخش‌های مشترک، دستِ خودشان است: کدام اتاق نخوانده
+     دارد را آن‌ها می‌دانند، نه زنگوله. */
+  function goChat() {
+    if (typeof window.CHAT_GO === "function") { window.CHAT_GO(); return; }
+    goView("dashboard");
+  }
+  function goShared() {
+    if (typeof window.SHARED_GO === "function") { window.SHARED_GO(); return; }
+    goView("dashboard");
   }
 
   /* ---------- دیده‌شده‌ها ---------- */
@@ -79,9 +94,11 @@
     if (until) {
       var left = Math.ceil((until - Date.now()) / 864e5);
       if (left <= 0)
-        add("bad", "⏳", "مهلتِ کارتابل تمام شده", "برای ادامه با مدیر تماس بگیرید.", "exp-over");
+        add("bad", "⏳", "مهلتِ کارتابل تمام شده", "برای ادامه با مدیر تماس بگیرید.",
+          "exp-over", function () { goView("settings"); });
       else if (left <= 7)
-        add("warn", "⏳", "مهلتِ کارتابل نزدیک است", faN(left) + " روز مانده.", "exp-soon");
+        add("warn", "⏳", "مهلتِ کارتابل نزدیک است", faN(left) + " روز مانده.",
+          "exp-soon", function () { goView("settings"); });
     }
 
     /* کارهای عقب‌افتادهٔ چک‌لیست */
@@ -95,7 +112,8 @@
         var head = late.slice(0, 3).join("، ");
         add("bad", "⚠️", "کارهای عقب‌افتاده",
           head + (late.length > 3 ? " و " + faN(late.length - 3) + " تای دیگر" : ""),
-          "late|" + late.slice().sort().join("|"));
+          "late|" + late.slice().sort().join("|"),
+          function () { goView("checklist"); });
       }
     }
 
@@ -110,7 +128,8 @@
       if (rem.length)
         add("warn", "⭐", "یادآورهای برنامهٔ روزانه",
           rem.slice(0, 3).join("، ") + (rem.length > 3 ? " و " + faN(rem.length - 3) + " تای دیگر" : ""),
-          "rem|" + rem.slice().sort().join("|"));
+          "rem|" + rem.slice().sort().join("|"),
+          function () { goView("daily"); });
     }
 
     /* تلاشِ ناموفقِ ورود به همین کارتابل */
@@ -121,7 +140,7 @@
       add("bad", "🔐", "با رمزِ اشتباه وارد شدن را امتحان کرده‌اند",
         faN(bp.n) + " بار" + (when ? " — آخرین بار: " + when : "") +
         ". اگر خودتان نبوده‌اید، رمز را عوض کنید.",
-        "badpass|" + bp.n);
+        "badpass|" + bp.n, function () { goView("settings"); });
     }
 
     /* سررسیدِ قسط یا چک — از «دیتای شخصی»
@@ -143,12 +162,14 @@
     /* نخوانده‌های گفت‌وگو و بخش‌های مشترک — این دو خودشان خبر می‌دهند */
     var ch = Number(window.CHAT_UNREAD || 0);
     if (ch) add("info", "💬", "پیامِ خوانده‌نشده",
-      faN(ch) + " پیامِ تازه در گفت‌وگوها.", "chat|" + ch);
+      faN(ch) + " پیامِ تازه در گفت‌وگوها. برای خواندنشان همین‌جا را بزنید.",
+      "chat|" + ch, goChat);
     var sh = Number(window.SHARED_UNREAD || 0);
     if (sh) add("info", "✅", "تغییر در بخش‌های مشترک",
-      faN(sh) + " تغییرِ تازه.", "shared|" + sh);
+      faN(sh) + " تغییرِ تازه.", "shared|" + sh, goShared);
 
-    /* منبع‌های دیگری که خودشان را ثبت کرده‌اند */
+    /* منبع‌های دیگری که خودشان را ثبت کرده‌اند — اگر «برو» نداده
+       باشند، همان‌طور بی‌دست‌گیره می‌مانند. */
     SRC.forEach(function (fn) {
       try { (fn() || []).forEach(function (i) { if (i && i.key) out.push(i); }); } catch (e) { }
     });

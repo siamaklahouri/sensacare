@@ -235,6 +235,27 @@
 
   function navOf(id) { return document.querySelector('.navbtn[data-view="chat-' + id + '"]'); }
 
+  /* «برو سرِ پیام‌های نخوانده» — زنگولهٔ نوارِ بالا از این‌جا صدا
+     می‌زند. کدام اتاق نخوانده دارد را فقط همین فایل می‌داند، پس
+     انتخابش هم همین‌جاست: پرنخوانده‌ترین اتاق باز می‌شود، و اگر
+     هیچ‌کدام نخوانده نداشت، فهرستِ گفت‌وگوها. */
+  window.CHAT_GO = function () {
+    var best = "", n = 0;
+    for (var k in news.unread) {
+      var v = news.unread[k] || 0;
+      if (v > n) { n = v; best = k; }
+    }
+    var b = best ? navOf(best) : null;
+    if (b) { b.scrollIntoView({ block: "nearest" }); b.click(); return true; }
+    var w = fab();
+    var fb = w && w.querySelector(".ch-fab");
+    if (fb) { fb.click(); return true; }
+    /* نه اتاقی در نوار، نه دکمهٔ شناور: دستِ‌کم اولین گفت‌وگو */
+    var any = ROOMS.length ? navOf(ROOMS[0].id) : null;
+    if (any) { any.click(); return true; }
+    return false;
+  };
+
   function mount(room) {
     var vid = "view-chat-" + room.id;
     if (document.getElementById(vid)) return;

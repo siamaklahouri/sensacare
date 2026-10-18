@@ -232,6 +232,27 @@ a{ color:var(--brass-ink); }
 }
 .bell-foot button:hover{ border-color:var(--brass); }
 .bell-foot button[disabled]{ opacity:.5; cursor:default; }
+/* خبری که جایی برای رفتن دارد، زدنی است */
+.bell-item.b-go{ cursor:pointer; }
+.bell-item.b-go:hover{ background:var(--paper-2, rgba(0,0,0,.03)); }
+.bell-item.b-go:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
+.bell-go{ display:inline-block; margin-top:4px; font-size:11px; font-weight:700; color:var(--brass); }
+/* و جایی که رفتیم، یک چشمک می‌زند تا پیدا باشد */
+@keyframes bellFlash{
+  0%, 100%{ box-shadow:0 0 0 0 transparent; }
+  25%, 65%{ box-shadow:0 0 0 3px color-mix(in srgb, var(--brass) 55%, transparent); }
+}
+.bell-flash{ animation:bellFlash 2.2s ease; border-radius:10px; }
+@media (prefers-reduced-motion:reduce){
+  .bell-flash{ animation:none; outline:2px solid var(--brass); }
+}
+/* نشانِ نخوانده روی سربرگِ «پیام‌ها» */
+.tabs button{ position:relative; }
+.tabs button .tab-n{
+  display:inline-block; min-width:17px; margin-inline-start:6px; padding:0 4px;
+  border-radius:9px; background:var(--red,#A6222B); color:#fff;
+  font-size:10.5px; line-height:17px; text-align:center; font-weight:700;
+}
 
 /* ---------- نوار آمار ---------- */
 .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
@@ -1549,11 +1570,21 @@ function bellItems(){
      شود کلیدِ تازه دارد و دوباره شمرده می‌شود، و خبری که همان است
      بعد از «همه را دیدم» دیگر شمرده نمی‌شود. بی این، شمارنده روی
      چیزی مثل «کلیدِ اضطراری گذاشته نشده» برای همیشه گیر می‌کرد. */
-  const add = (kind, icon, title, body, key) =>
-    out.push({ kind, icon, title, body, key: key || (kind + "|" + title) });
+  const add = (kind, icon, title, body, key, go) =>
+    out.push({ kind, icon, title, body, key: key || (kind + "|" + title), go });
+
+  /* پیام‌های پشتیبانیِ خوانده‌نشده — بالاترین خبر، چون کسی منتظرِ
+     جواب است. زدنش تبِ «پیام‌ها» را باز می‌کند. */
+  const mn = DATA.msgNews;
+  if(mn && Number(mn.n))
+    add("info", "💬", "پیامِ تازهٔ پشتیبانی",
+      fa(mn.n) + " پیامِ خوانده‌نشده" +
+      (mn.last ? " — آخرین: " + faDateTime(mn.last) : "") + ". برای خواندن همین‌جا را بزنید.",
+      "msg|" + mn.n + "|" + (mn.last || 0), ()=> goBellTab("msgs"));
 
   /* پشتیبانِ همگانی */
   const b = DATA.backupAll;
+  const goBk = ()=> goBellTab("list", "bkAll");
   if(b && b.at){
     const when = faDateTime(b.at);
     if(b.ok){
@@ -1561,22 +1592,23 @@ function bellItems(){
         when + " — " + fa(b.count || 0) + " کارتابل، " +
         fa(Math.round((b.size || 0) / 1024)) + " کیلوبایت، به " +
         ((b.to || []).join(" و ") || "—") + (b.note ? " (" + b.note + ")" : ""),
-        "bk-ok|" + b.at);
+        "bk-ok|" + b.at, goBk);
       if((b.failed || []).length)
         add("warn", "⚠️", "یکی از ربات‌ها نگرفت",
           (b.failed || []).join(" — ") + (b.note ? " (" + b.note + ")" : "") +
-          " — همان‌هایی که گرفتند خبر داده شدند.", "bk-failed|" + b.at);
+          " — همان‌هایی که گرفتند خبر داده شدند.", "bk-failed|" + b.at,
+          ()=> goBellTab("site"));
       if((b.noHtml || []).length)
         add("warn", "⚠️", "این کارتابل‌ها صفحهٔ HTML نداشتند",
-          (b.noHtml || []).join("، "), "bk-nohtml|" + b.at);
+          (b.noHtml || []).join("، "), "bk-nohtml|" + b.at, goBk);
     } else {
       add("bad", "⛔", "پشتیبان نرفت",
         when + (b.note ? " (" + b.note + ")" : "") + " — " + (b.error || "بی‌دلیلِ ثبت‌شده"),
-        "bk-bad|" + b.at);
+        "bk-bad|" + b.at, goBk);
     }
   } else {
     add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده",
-      "اولین نوبت که برود، همین‌جا نوشته می‌شود.", "bk-none");
+      "اولین نوبت که برود، همین‌جا نوشته می‌شود.", "bk-none", goBk);
   }
 
   /* مهلتِ کارتابل‌ها */
@@ -1590,9 +1622,10 @@ function bellItems(){
   /* کلید از نامِ کارتابل‌ها ساخته می‌شود نه از تعدادِ روزِ مانده،
      وگرنه هر روز همان خبر تازه حساب می‌شد. */
   if(over.length) add("bad", "⏳", "مهلتشان تمام شده", over.join("، "),
-    "exp-over|" + over.slice().sort().join("|"));
+    "exp-over|" + over.slice().sort().join("|"), ()=> goBellPlanner(over[0]));
   if(soon.length) add("warn", "⏳", "مهلتشان نزدیک است", soon.join("، "),
-    "exp-soon|" + soon.map(x=> x.split(" — ")[0]).sort().join("|"));
+    "exp-soon|" + soon.map(x=> x.split(" — ")[0]).sort().join("|"),
+    ()=> goBellPlanner(String(soon[0] || "").split(" — ")[0]));
 
   /* تلاشِ ناموفقِ ورود — رمزِ اشتباه */
   const bp = [];
@@ -1609,17 +1642,19 @@ function bellItems(){
     add("warn", "🔐", "تلاشِ ناموفقِ ورود",
       bp.join("، ") + (last ? " — آخرین بار: " + faDateTime(last) : "") +
       " (از ابتدا شمرده می‌شود؛ خودِ رمزِ غلط هیچ‌جا ذخیره نمی‌شود.)",
-      "badpass|" + bp.join("|"));
+      "badpass|" + bp.join("|"),
+      ()=> goBellPlanner(String(bp[0] || "").split(":")[0]));
   }
 
   /* کلیدِ اضطراری */
   if(!DATA.escrowReady)
     add("warn", "🔑", "کلیدِ اضطراری گذاشته نشده",
         "بدونِ آن، اگر کاربری رمزِ بخشِ شخصی‌اش را فراموش کند کاری نمی‌شود کرد.",
-        "escrow-missing");
+        "escrow-missing", ()=> goBellTab("keys", "escrowState"));
 
   /* ورودِ قبلی */
-  if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN), "login|" + BELL_LOGIN);
+  if(BELL_LOGIN) add("info", "🔓", "ورودِ قبلی شما", faDateTime(BELL_LOGIN),
+    "login|" + BELL_LOGIN, ()=> goBellTab("keys"));
 
   return out;
 }
@@ -1628,6 +1663,73 @@ function bellItems(){
    در همین مرورگر نگه داشته می‌شوند. پنلِ ادمین جای دادهٔ کاربر نیست
    که بشود این را کنارِ بقیه ذخیره کرد، و «دیدمش» هم چیزی نیست که
    ارزشِ یک جدولِ تازه روی سرور را داشته باشد. */
+/* زمانِ تازه‌ترین پیامِ رسیده را «خوانده» می‌کند. عددِ خودِ پیام را
+   می‌فرستیم نه «همین حالا»: اگر وسطِ باز بودنِ تب پیامی برسد، نباید
+   ناخوانده‌خورده شود. */
+async function markMessagesSeen(items){
+  const upto = (items || []).reduce((m, x)=>
+    Math.max(m, Number(x && x.created) || 0), 0);
+  if(!upto) return;
+  if(DATA.msgNews && Number(DATA.msgNews.since) >= upto) return;
+  try{
+    await api("/messages/seen",
+      { method:"POST", body: JSON.stringify({ upto }) });
+  }catch(e){ return; }
+  DATA.msgNews = { n: 0, last: upto, since: upto };
+  bellPaint();
+  paintMsgBadge();
+}
+
+/* نشانِ کوچکِ کنارِ سربرگِ «پیام‌ها» — تا بی‌باز کردنِ زنگوله هم
+   پیدا باشد. */
+function paintMsgBadge(){
+  const btn = document.querySelector('.tabs button[data-tab="msgs"]');
+  if(!btn) return;
+  const n = Number((DATA.msgNews || {}).n) || 0;
+  let dot = btn.querySelector(".tab-n");
+  if(!n){ if(dot) dot.remove(); return; }
+  if(!dot){
+    dot = document.createElement("span");
+    dot.className = "tab-n";
+    btn.appendChild(dot);
+  }
+  dot.textContent = fa(n);
+}
+
+/* ---------- «برو همان‌جا» ----------
+   خبری که جایی برای رفتن دارد باید با یک زدن آدم را ببرد همان‌جا.
+   پیش از این، زدنِ خبر هیچ کاری نمی‌کرد و آدم باید خودش می‌گشت. */
+function goBellTab(tab, focusId){
+  const btn = document.querySelector('.tabs button[data-tab="' + tab + '"]');
+  if(btn) btn.click();
+  if(!focusId) return;
+  setTimeout(()=>{
+    const el = document.getElementById(focusId);
+    if(!el) return;
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    el.classList.add("bell-flash");
+    setTimeout(()=> el.classList.remove("bell-flash"), 2400);
+  }, 180);
+}
+/* کارتِ یک کارتابل در فهرست — با نامی که در متنِ خبر آمده */
+function goBellPlanner(name){
+  goBellTab("list");
+  const want = String(name || "").trim();
+  setTimeout(()=>{
+    const cards = [...document.querySelectorAll('#tab-list [data-slug]')];
+    const row = cards.find(c=> c.getAttribute("data-slug") === want) ||
+      cards.find(c=> (c.querySelector("h3,h4,.p-name") || {}).textContent &&
+                     (c.querySelector("h3,h4,.p-name").textContent || "").indexOf(want) >= 0);
+    const el = row || document.getElementById("tab-list");
+    if(!el) return;
+    el.scrollIntoView({ behavior:"smooth", block:"center" });
+    if(row){
+      row.classList.add("bell-flash");
+      setTimeout(()=> row.classList.remove("bell-flash"), 2400);
+    }
+  }, 220);
+}
+
 const BELL_SEEN_KEY = "sl-admin-bell-seen";
 function bellSeen(){
   try{ const v = JSON.parse(localStorage.getItem(BELL_SEEN_KEY) || "[]");
@@ -1652,14 +1754,36 @@ function bellPaint(){
      عددِ همیشگی گیر نمی‌کند. */
   dot.hidden = !unseen.length;
   dot.textContent = unseen.length ? fa(unseen.length) : "";
-  list.innerHTML = items.length ? items.map(i=>`
-    <div class="bell-item b-${i.kind}${seen.indexOf(i.key) < 0 ? "" : " b-seen"}">
+  list.innerHTML = items.length ? items.map((i, n)=>`
+    <div class="bell-item b-${i.kind}${seen.indexOf(i.key) < 0 ? "" : " b-seen"}${i.go ? " b-go" : ""}"
+         ${i.go ? 'data-bi="' + n + '" role="button" tabindex="0"' : ""}>
       <span class="bi">${i.icon}</span>
-      <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p></div>
+      <div class="bt"><b>${esc(i.title)}</b><p>${esc(i.body)}</p>
+        ${i.go ? `<span class="bell-go">نشانم بده ›</span>` : ""}</div>
     </div>`).join("")
     : `<div class="bell-empty">فعلاً خبری نیست.</div>`;
   const sb = document.getElementById("bellSeenAll");
   if(sb) sb.disabled = !unseen.length;
+
+  /* زدنِ خبر: همان یکی «دیده‌شده» می‌شود، پنجره بسته می‌شود، و
+     می‌رویم همان‌جا که خبر از آن حرف می‌زند. */
+  const hit = (el)=>{
+    const i = items[Number(el.getAttribute("data-bi"))];
+    if(!i || typeof i.go !== "function") return;
+    bellMarkAll([i]);
+    const pop = document.getElementById("bellPop");
+    if(pop) pop.hidden = true;
+    const bb = document.getElementById("bellBtn");
+    if(bb) bb.setAttribute("aria-expanded", "false");
+    try{ i.go(); }catch(e){ }
+    bellPaint();
+  };
+  list.querySelectorAll("[data-bi]").forEach(el=>{
+    el.addEventListener("click", ()=> hit(el));
+    el.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); hit(el); }
+    });
+  });
 }
 
 function setupBell(){
@@ -1722,6 +1846,7 @@ async function loadPlanners(){
   renderNewViews();
   renderPlanners();
   renderEscrowState();
+  paintMsgBadge();
   bkLast();
 }
 
@@ -1784,7 +1909,7 @@ function renderPlanners(){
   const cnt = document.getElementById("plistCount");
   if(cnt) cnt.textContent = fa(items.length) + " کارتابل";
   wrap.innerHTML = items.map(p=>`
-    <div class="pcard k-${esc(p.kind)}${p.closed?' off':''}">
+    <div class="pcard k-${esc(p.kind)}${p.closed?' off':''}" data-slug="${esc(p.slug)}">
       <div class="pc-head">
         <div class="pc-ic">${kindIcon(p.kind)}</div>
         <div style="min-width:0;flex:1;">
@@ -3630,6 +3755,10 @@ async function loadMessages(){
   const r = await api("/messages");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   const items = r.data.items || [];
+  /* باز کردنِ این تب یعنی دیدمشان: تا زمانِ تازه‌ترین پیام «خوانده»
+     می‌شود و شمارندهٔ زنگوله خاموش می‌شود. تا دیروز پیامِ تازه هیچ
+     نشانی نداشت و باید خودِ آدم سر می‌زد. */
+  markMessagesSeen(items);
   if(!items.length){ box.textContent = "هنوز پیامی نیامده."; return; }
 
   /* پیام‌ها بر اساس گفتگو دسته می‌شوند، وگرنه فهرستِ درهمی می‌شد که

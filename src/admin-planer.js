@@ -111,6 +111,24 @@ function cleanVault(list) {
 const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
                        { id: 'inst', type: 'inst', title: 'اقساط' }];
 
+/* ---------- پیام‌های پشتیبانیِ خوانده‌نشده ----------
+   تا امروز پیامِ تازه هیچ نشانی در پنل نداشت: فقط به ربات می‌رفت و
+   اگر آدم سراغِ تبِ «پیام‌ها» نمی‌رفت، خبردار نمی‌شد. حالا زنگوله
+   می‌شمارد و با زدنش همان تب باز می‌شود.
+
+   «خوانده» یعنی تبِ پیام‌ها باز شده؛ یک زمان ذخیره می‌شود و هرچه از
+   آن تازه‌تر باشد نخوانده است. */
+const MSG_SEEN = 'msgSeen:admin';
+async function msgNews(env) {
+  try {
+    const since = Number(await getSetting(env, MSG_SEEN, 0)) || 0;
+    const r = await one(env,
+      `SELECT COUNT(*) AS n, MAX(created) AS last FROM support_msgs
+       WHERE dir='in' AND created > ?`, since);
+    return { n: Number(r && r.n) || 0, last: Number(r && r.last) || 0, since };
+  } catch (e) { return { n: 0, last: 0, since: 0 }; }
+}
+
 /* ---------- تنظیماتِ سایت ---------- */
 const SITE_KEY = 'sltechSite';
 const MAX_PLANS = 6;
@@ -565,7 +583,9 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       baleReady: !!String(((await getSetting(env, SITE_KEY, {})) || {}).baleToken || '').trim(),
       /* آخرین تلاشِ پشتیبانِ همگانی — تا اگر نرفته، همین‌جا دیده شود
          و لازم نباشد کسی حدس بزند چرا چیزی نیامده. */
-      backupAll: await getSetting(env, BK_LAST, null)
+      backupAll: await getSetting(env, BK_LAST, null),
+      /* پیام‌های پشتیبانیِ خوانده‌نشده — زنگوله از همین خبر می‌دهد */
+      msgNews: await msgNews(env)
     });
   }
 
@@ -1158,6 +1178,15 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
   /* ---- پیام‌های پشتیبانی ---- */
   if (p === '/messages' && m === 'GET')
     return json({ ok: true, items: await recentMessages(env, 80) });
+
+  /* «پیام‌ها را دیدم» — تبِ پیام‌ها که باز شود، همین صدا زده می‌شود.
+     زمانِ خودِ تازه‌ترین پیام ذخیره می‌شود، نه «همین حالا»: اگر وسطِ
+     باز بودنِ تب پیامی برسد، خوانده حساب نمی‌شود. */
+  if (p === '/messages/seen' && m === 'POST') {
+    const upto = Number(body.upto) || Date.now();
+    await setSetting(env, MSG_SEEN, upto);
+    return json({ ok: true, upto });
+  }
 
   /* جواب از داخلِ پنل — همان کاری که ریپلای در ربات می‌کند */
   if (p === '/messages/reply' && m === 'POST') {

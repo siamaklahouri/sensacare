@@ -1215,6 +1215,25 @@
 
   function navOf(id) { return document.querySelector('.navbtn[data-view="shared-' + id + '"]'); }
 
+  /* «برو سرِ تغییرهای نخوانده» — همان کاری که برای گفت‌وگوها می‌شود:
+     بخشی که بیشترین نخواندهٔ تازه را دارد باز می‌شود. */
+  window.SHARED_GO = function () {
+    var best = "", n = 0;
+    for (var k in news.unread) {
+      var v = news.unread[k] || 0;
+      if (v > n) { n = v; best = k; }
+    }
+    var b = best ? navOf(best) : null;
+    if (!b) {
+      var first = document.querySelector('.navbtn[data-view^="shared-"]');
+      b = first || null;
+    }
+    if (!b) return false;
+    b.scrollIntoView({ block: "nearest" });
+    b.click();
+    return true;
+  };
+
   /* جمعِ نخوانده‌ها، برای زنگوله‌ی نوارِ بالا. همان شمارشی که نشانِ
      کنارِ نامِ بخش از آن می‌آید؛ دو جا، یک عدد. */
   function tellBell() {
