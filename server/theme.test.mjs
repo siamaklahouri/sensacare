@@ -67,18 +67,6 @@ async function open(spec) {
 /* یک صفحه، در یک حالتِ رنگ. مقدارها را خودِ مرورگر می‌دهد. */
 async function read(p, dark) {
   await p.evaluate(d => document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light'), dark);
-  /* پوستهٔ ظاهریِ هر کارتابل (data-skin) این‌جا کنار گذاشته می‌شود.
-     این آزمون می‌گوید «هر سه قالب یک پوستهٔ پایه دارند»، و پوستهٔ
-     رنگی عمداً فرق دارد — اگر کنار گذاشته نشود، آزمون همان چیزی را
-     ایراد می‌گیرد که خواسته شده بود. خودِ پوستهٔ رنگی جای دیگری
-     آزموده می‌شود: server/vivid.test.mjs */
-  await p.evaluate(() => {
-    const b = document.body;
-    if (b.getAttribute('data-skin')) {
-      b.setAttribute('data-skin-was', b.getAttribute('data-skin'));
-      b.setAttribute('data-skin', '');
-    }
-  });
   await p.waitForTimeout(500);
 
   const out = await p.evaluate(() => {

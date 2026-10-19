@@ -904,12 +904,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
      را ۲۱۶ پیکسل قفل می‌کرد و منو را به آن شکل درمی‌آورد.
      مدیا-کوئری باید حرفِ آخر را بزند. */
 {{PART:mobilecss}}
-/* پوستهٔ رنگی، آخر از همه: فقط زیرِ body[data-skin="vivid"] کار
-   می‌کند، پس برای بقیه انگار نیست. */
-{{PART:vividcss}}
 </style>
 </head>
-<body data-skin="{{SKIN}}">
+<body>
 
 <div id="gateScreen">
   <form class="gate-card" id="gateForm" autocomplete="off">
