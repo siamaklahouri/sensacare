@@ -556,9 +556,26 @@ a{ color:var(--brass-ink); }
 .x:hover{ background:var(--red-bg); }
 
 /* ---------- پیام ---------- */
-.msg{ padding:12px 14px; border-radius:var(--r); font-size:12.5px; line-height:2.1;
-  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
-  animation:rise .3s cubic-bezier(.2,.8,.3,1); box-shadow:var(--sh-1); }
+/* کادرِ پیام شناور است: نه چیزی را هل می‌دهد، نه صفحه را تکان
+   می‌دهد. هر جای فهرست که باشی، پیام را می‌بینی. */
+#msg{ position:fixed; top:72px; inset-inline:0; margin-inline:auto; z-index:95;
+  width:min(620px, calc(100vw - 24px)); pointer-events:none; }
+@media (max-width:760px){ #msg{ top:60px; } }
+#msg:empty{ display:none; }
+.msg{ position:relative; pointer-events:auto;
+  padding:12px 36px 12px 14px; border-radius:var(--r); font-size:12.5px; line-height:2.1;
+  margin:0 0 10px; white-space:pre-wrap; word-break:break-word;
+  max-height:min(60vh, 460px); overflow:auto;
+  animation:rise .3s cubic-bezier(.2,.8,.3,1); box-shadow:var(--sh-2, var(--sh-1)); }
+/* نشانهٔ بستن با CSS نوشته می‌شود، نه با متن: متنش داخلِ
+   textContentِ پیام می‌نشست و هر کسی که پیام را می‌خواند، یک «✕»
+   هم سرِ جمله می‌دید. */
+.msg-x{ position:absolute; top:6px; inset-inline-end:8px; border:0; background:none;
+  cursor:pointer; font-size:13px; line-height:1; color:inherit; opacity:.6; padding:4px; }
+.msg-x::before{ content:"✕"; }
+.msg-x:hover{ opacity:1; }
+/* فهرستی که دارد تازه می‌شود: کم‌رنگ، نه خالی */
+.is-busy{ opacity:.55; transition:opacity .15s; }
 .msg-ok{ background:var(--green-bg); color:var(--green-ink);
   border:1px solid transparent; border-right:3px solid var(--green); }
 .msg-bad{ background:var(--red-bg); color:var(--red-ink);
@@ -1304,13 +1321,58 @@ function seenText(ms){
 /* هر پیام شمارهٔ خودش را دارد: وگرنه تایمرِ پیامِ قبلی پیامِ بعدی را
    پاک می‌کرد و کار انجام‌شده بی‌جواب به نظر می‌رسید. */
 let msgSeq = 0;
+/* پیامِ نتیجه. دو چیزِ این تابع، فهرست را بالا و پایین می‌کرد:
+
+   یک) هر بار صفحه را می‌کشید سرِ بالا (scrollTo) تا پیام دیده شود.
+       یعنی هر «غیرفعال شد» یا «ذخیره شد»، آدم را از همان‌جایی که کار
+       می‌کرد می‌پراند بالای صفحه.
+   دو) کادرِ پیام داخلِ خودِ صفحه بود، پس ظاهر شدنش همهٔ فهرست را به
+       اندازهٔ بلندیِ خودش هل می‌داد پایین.
+
+   حالا کادر شناور است (position:fixed) و هیچ‌جا را هل نمی‌دهد، و
+   صفحه هم سرِ جای خودش می‌ماند. */
 function say(text, bad){
   const el = document.getElementById("msg");
   const mine = ++msgSeq;
-  el.innerHTML = `<div class="msg ${bad?'msg-bad':'msg-ok'}">${text}</div>`;
+  el.innerHTML = `<div class="msg ${bad?'msg-bad':'msg-ok'}">` +
+    `<button type="button" class="msg-x" title="بستن" aria-label="بستن"></button>` +
+    `<div class="msg-t">${text}</div></div>`;
   el.querySelectorAll("[data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
+  const x = el.querySelector(".msg-x");
+  if(x) x.onclick = ()=> { el.innerHTML = ""; };
   if(!bad) setTimeout(()=>{ if(msgSeq === mine) el.innerHTML = ""; }, 12000);
-  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* فهرست وسطِ تازه‌سازی خالی نمی‌شود. تا دیروز هر بار که فهرستی از
+   نو خوانده می‌شد، اول محتوایش با یک «…» جایگزین می‌شد: صفحه یک‌باره
+   کوتاه می‌شد، جای اسکرول می‌پرید، و وقتی محتوا برمی‌گشت آدم جای
+   دیگری بود. حالا فقط کم‌رنگ می‌شود و جای همه‌چیز سرِ جایش می‌ماند.
+
+   نشانه خودش برداشته می‌شود: اولین باری که چیزی داخلِ همان کادر
+   نوشته شود، یعنی کار تمام است. */
+function loading(box){
+  if(!box) return;
+  if(!String(box.textContent || "").trim()){ box.textContent = "…"; return; }
+  box.classList.add("is-busy");
+  const off = ()=> box.classList.remove("is-busy");
+  const mo = new MutationObserver(()=>{ off(); mo.disconnect(); });
+  mo.observe(box, { childList:true, characterData:true, subtree:true });
+  setTimeout(()=>{ off(); mo.disconnect(); }, 8000);
+}
+
+/* جای صفحه را نگه می‌دارد. فهرست که از نو کشیده می‌شود، کارتی که
+   زیرِ دست بود باید همان‌جا بماند — نه اینکه صفحه بپرد.
+
+   چرا یک تابع و نه «قبلش بگیر، بعدش بگذار» در هر جا: بعضی از این
+   بازسازی‌ها async هستند و اگر هر کدام خودش این کار را بکند، یکی
+   یادش می‌رود. */
+function keepPlace(fn){
+  const y = window.scrollY;
+  const r = fn();
+  const back = ()=>{ if(Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); };
+  back();
+  requestAnimationFrame(back);
+  return r;
 }
 
 /* ---------- ابزارِ رمزنگاری ---------- */
@@ -1938,6 +2000,9 @@ function fa(n){ return String(n).replace(/[0-9]/g, d=>"۰۱۲۳۴۵۶۷۸۹"[d])
 function jobLabel(j){ const f = DATA.jobs.find(x=>x.id===j); return f ? f.label : ""; }
 
 function renderPlanners(){
+  return keepPlace(()=> renderPlannersNow());
+}
+function renderPlannersNow(){
   const wrap = document.getElementById("plist");
   const items = DATA.items;
   const cnt = document.getElementById("plistCount");
@@ -2808,7 +2873,7 @@ const KIND_FA = { gen:"عمومی", it:"مدیر IT", fin:"مالی" };
 
 async function loadOrders(){
   const box = document.getElementById("ordBody");
-  box.textContent = "…";
+  loading(box);
   const r = await api("/orders");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   const items = r.data.items || [];
@@ -2898,7 +2963,7 @@ let ORGS = [];
 
 async function loadOrgs(){
   const box = document.getElementById("orgTree");
-  box.textContent = "…";
+  loading(box);
   const r = await api("/orgs");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   ORGS = r.data.items || [];
@@ -3039,7 +3104,7 @@ let VS_OWNERS = [], VS_ORGS = [];
 async function loadVShares(){
   const box = document.getElementById("vsList");
   if(!box) return;
-  box.textContent = "…";
+  loading(box);
   const r = await api("/view-shares");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   VS_OWNERS = r.data.owners || [];
@@ -3153,7 +3218,7 @@ function setupVsAdd(){
 async function loadChat(){
   const box = document.getElementById("chList");
   if(!box) return;
-  box.textContent = "…";
+  loading(box);
   const r = await api("/chat-rooms");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   const items = r.data.items || [];
@@ -3283,7 +3348,7 @@ function chForm(c){
 
 async function loadShared(){
   const box = document.getElementById("shList");
-  box.textContent = "…";
+  loading(box);
   const r = await api("/shared-boxes");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   SH_TYPES = r.data.types || [];
@@ -3824,7 +3889,7 @@ const PF_NAME = { sltg:"تلگرام", slbale:"بله", slweb:"فرمِ سایت
 
 async function loadMessages(){
   const box = document.getElementById("msgBody");
-  box.textContent = "…";
+  loading(box);
   const r = await api("/messages");
   if(!r.ok){ box.textContent = r.data.error || "نشد."; return; }
   const items = r.data.items || [];
