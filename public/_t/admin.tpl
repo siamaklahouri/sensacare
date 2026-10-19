@@ -2154,6 +2154,10 @@ function openEdit(slug){
       <div class="fld"><label>شغل (چک‌لیست آماده)</label><select id="eJob">${
         jobs.map(j=>`<option value="${esc(j.id)}" ${p.job===j.id?"selected":""}>${esc(j.label)}</option>`).join("")
       }</select></div>
+      <div class="fld"><label>ظاهر کارتابل</label><select id="eSkin">
+        <option value="" ${p.skin !== "vivid" ? "selected" : ""}>کلاسیک — آرام و سفید</option>
+        <option value="vivid" ${p.skin === "vivid" ? "selected" : ""}>رنگی — پررنگ‌تر و زنده‌تر</option>
+      </select></div>
     </div>
     <p class="hint">${p.until
       ? "این کارتابل " + (daysLeft(p.until) > 0
@@ -2272,7 +2276,8 @@ function openEdit(slug){
       name: document.getElementById("eName").value.trim(),
       user: document.getElementById("eUser").value.trim().toLowerCase(),
       job: document.getElementById("eJob").value,
-      off, views, vault: secs, until
+      off, views, vault: secs, until,
+      skin: document.getElementById("eSkin").value
     })});
     save.disabled = false;
     if(!r.ok){ document.getElementById("eErr").textContent = r.data.error || "نشد."; return; }

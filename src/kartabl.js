@@ -242,6 +242,9 @@ export function panelFromRow(row) {
        شناخته‌شده رد می‌شود تا یک مقدارِ عجیب چیزی را باز نکند. */
     off: effectiveOff(c, kind),
     job: c.job || '',
+    /* ظاهرِ صفحه («» یا «vivid»). اگر ادمین چیزی نگفته باشد undefined
+       می‌ماند و skinOf خودش تصمیم می‌گیرد. */
+    skin: c.skin,
     vault: Array.isArray(c.vault) ? c.vault : null,
     folder: c.folder,
     /* کارتابل‌هایی که از پنل ساخته می‌شوند «filehtml» ندارند و تا
@@ -417,12 +420,28 @@ export async function renderPanelPage(env, req, panel) {
   /* نامِ خودِ کارتابل، برای ستونِ «آخرین تغییر» در بخش‌های مشترک:
      صفحه باید بفهمد کدام ردیف را خودش عوض کرده و کدام را آن یکی. */
   html = html.replaceAll('{{SLUG}}', esc(panel.id));
+  html = html.replaceAll('{{SKIN}}', esc(skinOf(panel)));
   for (const [k, v] of [['TITLE', t.title], ['NAME', t.name], ['API', t.api],
                         ['ICON', t.icon], ['STORE', t.store], ['IDB', t.idb],
                         ['DBCACHE', t.dbcache], ['FILEJSON', t.filejson],
                         ['FILEXLSX', t.filexlsx]])
     html = html.replaceAll('{{' + k + '}}', esc(v));
   return html;
+}
+
+/* ---------- پوستهٔ ظاهری ----------
+   یک پوستهٔ تازه داریم («vivid») که همان ساختار را رنگی‌تر می‌کند.
+   کدام کارتابل آن را بگیرد، در cfg نوشته می‌شود؛ فعلاً فقط کارتابلِ
+   سیامک، چون قرار شد اول همان‌جا آزموده شود. برای بقیه مقدارش خالی
+   است و شیوه‌نامهٔ رنگی اصلاً نمی‌گیردشان.
+
+   خالی‌گذاشتنِ صریح هم ممکن است: cfg.skin = "" یعنی «کلاسیک». */
+export function skinOf(panel) {
+  if (panel && panel.skin !== undefined && panel.skin !== null) {
+    const s = String(panel.skin).trim();
+    return s === 'vivid' ? 'vivid' : '';
+  }
+  return (panel && (panel.slug === 'siamak' || panel.id === 'siamak')) ? 'vivid' : '';
 }
 
 const enc = new TextEncoder();

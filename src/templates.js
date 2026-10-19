@@ -32,6 +32,7 @@ import p_cloudpush from '../public/_t/p/cloudpush.tpl';
 import p_cloudsync from '../public/_t/p/cloudsync.tpl';
 import p_datepick from '../public/_t/p/datepick.tpl';
 import p_datepickcss from '../public/_t/p/datepickcss.tpl';
+import p_vividcss from '../public/_t/p/vividcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_gatecss from '../public/_t/p/gatecss.tpl';
 import p_gatejs from '../public/_t/p/gatejs.tpl';
@@ -78,6 +79,7 @@ export const PARTS = new Map([
   ['cloudsync', p_cloudsync],
   ['datepick', p_datepick],
   ['datepickcss', p_datepickcss],
+  ['vividcss', p_vividcss],
   ['fadigits', p_fadigits],
   ['gatecss', p_gatecss],
   ['gatejs', p_gatejs],

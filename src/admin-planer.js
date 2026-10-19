@@ -16,7 +16,8 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf
+  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf,
+  skinOf
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
@@ -540,6 +541,8 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         views: enabledViews(c, r.kind === 'it' ? 'it' : r.kind === 'fin' ? 'fin' : 'gen'),
         core: Object.values(PANELS).some(b => b.slug === r.slug),
         vault: Array.isArray(c.vault) ? c.vault : DEFAULT_VAULT,
+        /* ظاهرِ کارتابل — همان که صفحه با data-skin می‌گیردش */
+        skin: skinOf({ slug: r.slug, skin: c.skin }),
         url: '/' + r.slug + '/', created: r.created,
         /* نامِ مسیرِ API — برای نشان دادنِ آدرسِ فرستندهٔ گزارشِ Veeam.
            همیشه برابرِ slug نیست: کارتابلِ سیامک «kartabl» است. */
@@ -695,6 +698,13 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
           return bad('نام کاربری فقط حروف انگلیسی کوچک، عدد، نقطه، خط تیره و زیرخط — بین ۲ تا ۳۱ حرف.');
         if (await userTaken(env, user, slug)) return bad('این نام کاربری گرفته شده.');
         cfg.user = user;
+      }
+      /* ظاهر: «کلاسیک» یا «رنگی». چیزِ دیگری پذیرفته نمی‌شود تا یک
+         غلطِ تایپی، صفحهٔ کسی را بی‌پوسته نکند. */
+      if (body.skin !== undefined) {
+        const sk = String(body.skin || '').trim();
+        if (sk && sk !== 'vivid') return bad('این ظاهر را نمی‌شناسم.');
+        cfg.skin = sk;
       }
       if (body.until !== undefined || body.days !== undefined) {
         /* خالی یا صفر یعنی بی‌مهلت. سقفِ ده سال تا یک رقمِ اضافه
