@@ -75,32 +75,49 @@ for (const w of WHO) {
       .map(x => x.textContent.trim()));
   const latin = s => String(s).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
 
-  /* ---------- مرتب‌سازی ---------- */
+  /* ---------- پالایهٔ ستونِ تاریخ ---------- */
   const asc = (await dates()).map(latin);
-  const sorted = asc.filter(x => x !== '—');
-  t(sorted.length === 4 && sorted.join() === sorted.slice().sort().join(),
-    'جدول از ابتدا بر اساس تاریخ مرتب است', asc.join(' | '));
-  t(asc[asc.length - 1] === '—', 'و ردیفِ بی‌تاریخ ته فهرست می‌ماند');
+  t(asc.length === 5, 'همهٔ ردیف‌ها دیده می‌شوند', asc.join(' | '));
+  t(!(await p.evaluate(() => !!document.querySelector('#view-daily th.dcal-sort'))),
+    'سرستونِ تاریخ دیگر مرتب‌سازی ندارد — خواسته شد که نباشد');
 
-  const th = () => p.evaluate(() => {
-    const el = document.querySelector('#view-daily th.dcal-sort');
-    return el ? { txt: el.textContent.replace(/\s+/g, ' ').trim(),
-                  mark: (el.querySelector('.dcal-arrow') || {}).textContent } : null;
+  const msf = await p.evaluate(() => {
+    const el = document.getElementById('msfDailyDate');
+    if (!el) return null;
+    el.querySelector('.msf-btn').click();
+    const panel = document.querySelector('.msf-panel, [class*=msf][class*=panel]');
+    return { label: el.querySelector('.lbl').textContent.trim(),
+             opts: panel ? [...panel.querySelectorAll('.msf-opt span')].map(x => x.textContent.trim()) : [] };
   });
-  t((await th()) && /▲/.test((await th()).mark), 'سرستونِ تاریخ نشانِ صعودی دارد', (await th()).mark);
-  await p.evaluate(() => document.querySelector('#view-daily th.dcal-sort').click());
-  await p.waitForTimeout(500);
-  const desc = (await dates()).map(latin).filter(x => x !== '—');
-  t(desc.join() === sorted.slice().reverse().join(), 'با یک کلیک، نزولی می‌شود', desc.join(' | '));
-  t(/▼/.test((await th()).mark), 'و نشانش هم برمی‌گردد');
-  await p.evaluate(() => document.querySelector('#view-daily th.dcal-sort').click());
-  await p.waitForTimeout(500);
-  const manual = (await dates()).map(latin);
-  t(manual.join() !== desc.join() && /↕/.test((await th()).mark),
-    'کلیکِ بعدی ترتیبِ دستی است — همان‌طور که ردیف‌ها چیده شده‌اند', manual.join(' | '));
-  await p.evaluate(() => document.querySelector('#view-daily th.dcal-sort').click());
-  await p.waitForTimeout(500);
-  t((await dates()).map(latin).join() === asc.join(), 'و دوباره صعودی');
+  t(!!msf, 'ستونِ تاریخ پالایه دارد — مثلِ وضعیت و شرکت');
+  t(msf && msf.label === 'همه', 'و سرِ شروع روی «همه» است', msf && msf.label);
+  t(msf && msf.opts.length === 3 &&
+    msf.opts.join() === msf.opts.slice().sort().join(),
+    'فهرستش تاریخ‌های موجود است، مرتب و بی‌تکرار', msf && msf.opts.join(' , '));
+  t(msf && msf.opts.every(x => /^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/.test(x)),
+    'و با رقمِ فارسی نوشته شده — همان‌طور که در ستون دیده می‌شود');
+
+  /* یک تاریخ را تیک می‌زنیم */
+  await p.evaluate(d => {
+    const panel = document.querySelector('.msf-panel, [class*=msf][class*=panel]');
+    const row = [...panel.querySelectorAll('.msf-opt')].find(x => x.textContent.indexOf(d) >= 0);
+    const cb = row.querySelector('input');
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  }, (function () {
+    const f = '۰۱۲۳۴۵۶۷۸۹';
+    return String(seed.mid).split('').map(c => f[+c]).join('');
+  })());
+  await p.waitForTimeout(700);
+  const filtered = await dates();
+  t(filtered.length === 2 && new Set(filtered).size === 1,
+    'با تیکِ یک تاریخ، جدول همان روز می‌شود', filtered.join(' | '));
+  const chip1 = await p.evaluate(() => (document.getElementById('dayCalChip') || {}).textContent || '');
+  t(/۲/.test(chip1) && /کار/.test(chip1),
+    'و نشانِ بالای جدول هم همان را می‌گوید', chip1.replace(/\s+/g, ' ').trim());
+  await p.evaluate(() => { const c = document.getElementById('dayCalClear'); if (c) c.click(); });
+  await p.waitForTimeout(600);
+  t((await dates()).length === 5, 'و با ✕ همه برمی‌گردند');
 
   /* ---------- تقویم ---------- */
   const btn = await p.evaluate(() => {
@@ -203,11 +220,24 @@ for (const w of WHO) {
   t(kept.before === kept.after, 'و تاریخِ ردیفِ قدیمی دست‌نخورده می‌ماند',
     kept.before + ' → ' + kept.after);
 
-  /* کشیدنِ ردیف یعنی ترتیبِ دستی */
-  await p.evaluate(() => { if (window.DAYCAL) DAYCAL.manual(); });
-  await p.waitForTimeout(300);
-  t(/↕/.test((await th()).mark),
-    'جابه‌جا کردنِ ردیف‌ها، مرتب‌سازی را به «دستی» برمی‌گرداند', (await th()).mark);
+  /* تقویم و پالایهٔ ستون، یک حالتِ مشترک دارند */
+  await p.evaluate(() => document.getElementById('dayCalBtn').click());
+  await p.waitForTimeout(500);
+  await p.evaluate(d => {
+    const el = [...document.querySelectorAll('.dcal-pop .dcal-d')]
+      .find(x => Number(x.getAttribute('data-dcal-day')) === d);
+    el.click();
+  }, Number(seed.mid));
+  await p.waitForTimeout(700);
+  const sync = await p.evaluate(() => ({
+    lbl: document.getElementById('msfDailyDate').querySelector('.lbl').textContent.trim(),
+    on: [...document.querySelectorAll('.dcal-pop .dcal-d.on')].map(x => x.getAttribute('data-dcal-day'))
+  }));
+  t(sync.on.length === 1 && /[۰-۹]{4}\//.test(sync.lbl),
+    'زدنِ روز در تقویم، همان تاریخ را در پالایهٔ ستون تیک می‌زند — یک حالت، دو راهِ تنظیم',
+    sync.lbl + ' / ' + sync.on.join(','));
+  await p.evaluate(() => { const c = document.getElementById('dayCalClear'); if (c) c.click(); });
+  await p.waitForTimeout(600);
 
   await p.evaluate(() => { state.days = []; scheduleSave(); });
   await p.waitForTimeout(1600);

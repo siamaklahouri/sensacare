@@ -12,11 +12,6 @@
   }
   .dcal-chip button:hover{ opacity:1; }
 
-  /* سرستونِ تاریخ، زدنی */
-  th.dcal-sort{ cursor:pointer; user-select:none; white-space:nowrap; }
-  th.dcal-sort:hover{ color:var(--brass-ink); }
-  .dcal-arrow{ font-size:9px; margin-inline-start:3px; opacity:.85; }
-  .dcal-arrow.off{ opacity:.4; }
 
   .dcal-pop{
     position:fixed; z-index:330; width:272px; padding:10px;
@@ -52,7 +47,8 @@
   .dcal-d.on b{ opacity:1; }
   .dcal-d[disabled]{ cursor:default; opacity:.55; }
   .dcal-d[disabled]:hover{ border-color:transparent; color:var(--ink-faint); }
-  .dcal-foot{ display:flex; gap:6px; margin-top:9px; }
+  .dcal-note{ font-size:10.5px; color:var(--ink-faint); text-align:center; margin-top:8px; }
+  .dcal-foot{ display:flex; gap:6px; margin-top:7px; }
   .dcal-foot button{
     flex:1; height:27px; border:1px solid var(--line); border-radius:7px;
     background:transparent; font-family:var(--font-body); font-size:11.5px; cursor:pointer;

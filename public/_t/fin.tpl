@@ -845,7 +845,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
           <thead>
           <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:40px;"></th></tr>
           <tr class="filter-row">
-            <th></th><th></th><th></th><th></th>
+            <th></th>
+            <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
+            <th></th><th></th>
             <th><div class="msf" id="msfDailyParty" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
             <th></th><th></th><th></th>
@@ -3608,18 +3610,30 @@ function setupChecklist(){
 }
 
 /* ---------------- Daily plan rendering ---------------- */
-let dailyFilters = { status: [], company: [] };
+let dailyFilters = { status: [], company: [], createdDate: [] };
+/* تقویمِ روزها (پارهٔ daycal) با همین فیلتر کار می‌کند: زدنِ یک روز
+   در تقویم، همان تاریخ را در همین پالایه تیک می‌زند. یک حالت، دو
+   راهِ تنظیم — وگرنه دو فیلترِ جدا روی یک ستون گیج‌کننده می‌شد. */
+window.DAY_DATE = { get: ()=> dailyFilters.createdDate || [],
+                    set: v => { dailyFilters.createdDate = v; } };
 function renderDaily(){
   const body = document.getElementById("dailyBody");
   if(!body) return;
   const statusFilter = dailyFilters.status || [];
   const companyFilter = dailyFilters.company || [];
-  /* فیلترِ روزِ تقویم و مرتب‌سازیِ تاریخ، هر دو در پارهٔ daycal */
-  const arrange = rs => (window.DAYCAL ? DAYCAL.arrange(rs) : rs);
-  const rowsToShow = arrange(state.days
+  /* پالایهٔ تاریخ: مقدارش با رقمِ فارسی نگه داشته می‌شود، چون همان
+     چیزی است که در ستون دیده می‌شود و در فهرستِ پالایه هم همان. */
+  const dateFilter = dailyFilters.createdDate || [];
+  const rowsToShow = (state.days
     .map((d,i)=>({...d, idx:i}))
+    .filter(d=> dateFilter.length===0 || dateFilter.includes(fa(d.createdDate||"")))
     .filter(d=> statusFilter.length===0 || statusFilter.includes(d.status))
     .filter(d=> companyFilter.length===0 || companyFilter.includes(d.company||"")));
+  /* فهرستِ تاریخ‌ها، مرتب و بی‌تکرار */
+  const msfDateEl = document.getElementById("msfDailyDate");
+  if(msfDateEl) renderMultiFilter(msfDateEl,
+    [...new Set(state.days.map(d=> d.createdDate).filter(Boolean))].sort().map(v=> fa(v)),
+    dailyFilters, "createdDate", renderDaily);
   const msfStatusEl = document.getElementById("msfDailyStatus");
   if(msfStatusEl) renderMultiFilter(msfStatusEl, STATUS, dailyFilters, "status", renderDaily);
   const msfPartyEl = document.getElementById("msfDailyParty");
@@ -3665,6 +3679,9 @@ function renderDaily(){
       scheduleSave();
     });
   });
+  /* نشانِ «این روز» بالای جدول: چه فیلتر از تقویم آمده باشد چه از
+     پالایهٔ ستونِ تاریخ، همین‌جا تازه می‌شود. */
+  if(window.DAYCAL) DAYCAL.refresh();
 }
 function addDayRow(){
   const maxDay = state.days.reduce((m,d)=> Math.max(m, parseInt(d.day)||0), 0);
@@ -4302,10 +4319,7 @@ if(window.ROWDRAG) ROWDRAG.register({
   checklistBody:       { arr: ()=> state.tasks,
                          done: ()=>{ scheduleSave(); renderChecklist(); } },
   dailyBody:           { arr: ()=> state.days,
-                         /* جابه‌جایی یعنی «ترتیب را خودم می‌چینم»؛ وگرنه
-                            زیرِ مرتب‌سازیِ تاریخ دیده نمی‌شد. */
-                         done: ()=>{ if(window.DAYCAL) DAYCAL.manual();
-                                     scheduleSave(); renderDaily(); } },
+                         done: ()=>{ scheduleSave(); renderDaily(); } },
   partiesBody:         { arr: ()=> partiesData,
                          done: ()=>{ savePartiesSheet(); renderParties(); } },
   invoicesBody:        { arr: ()=> invoicesData,

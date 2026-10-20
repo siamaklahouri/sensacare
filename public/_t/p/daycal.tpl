@@ -1,22 +1,18 @@
 /* ==================== تقویمِ برنامهٔ روزانه ====================
-   سه کار را با هم می‌کند، چون هر سه یک چیزند: «این روز، چه کاری؟»
+   «این روز، چه کاری؟» — همین یک سؤال، با یک تقویم.
 
-   یک) دکمهٔ «تقویم» کنارِ خروجی‌ها. با زدنش یک ماهِ شمسی باز می‌شود و
-       روی هر روز، شمارِ کارهای همان روز نوشته است.
-   دو) زدنِ یک روز، جدول را همان روز می‌کند. زدنِ خودِ تاریخ داخلِ
-       جدول هم همین کار را می‌کند — همان‌جا که چشم است.
-   سه) مرتب‌سازیِ جدول بر اساس تاریخ. سرستونِ «📅 تاریخ» زدنی است و
-       بین سه حالت می‌چرخد: تاریخِ صعودی، نزولی، و «دستی» (همان
-       ترتیبی که خودِ کاربر با کشیدنِ ردیف‌ها ساخته).
+   دکمهٔ «تقویم» کنارِ خروجی‌ها یک ماهِ شمسی باز می‌کند و روی هر روز،
+   شمارِ کارهای همان روز نوشته است. زدنِ یک روز، جدول را همان روز
+   می‌کند. زدنِ خودِ تاریخ داخلِ جدول هم همین کار را می‌کند — همان‌جا
+   که چشم است.
 
-   چرا یک پاره و نه دو تا: فیلترِ روز و مرتب‌سازی هر دو روی همان
-   فهرست می‌نشینند و باید از هم خبر داشته باشند. قالب‌ها فقط یک خط
-   صدا می‌زنند — DAYCAL.arrange(rows) — و بقیه‌اش این‌جاست. */
+   همهٔ این‌ها روی *همان* پالایهٔ ستونِ تاریخ می‌نشیند، نه یک فیلترِ
+   جداگانه: ستونِ «📅 تاریخ» خودش پالایه دارد (مثلِ وضعیت و شرکت) و
+   تقویم فقط راهی دیگر برای تیک زدنِ همان است. یک حالت، سه راهِ
+   تنظیم — وگرنه آدم نمی‌دانست کدام‌یک حرفِ آخر را می‌زند. */
 (function () {
   "use strict";
 
-  var dayFilter = "";          /* "" یعنی همهٔ روزها */
-  var sortMode = "asc";        /* asc | desc | manual */
   var view = null;             /* ماهی که تقویم نشان می‌دهد: {jy, jm} */
   var pop = null;
 
@@ -31,13 +27,13 @@
       .replace(/[۰-۹]/g, function (d) { return String(FA.indexOf(d)); })
       .replace(/[٠-٩]/g, function (d) { return String("٠١٢٣٤٥٦٧٨٩".indexOf(d)); });
   }
-  /* کلیدِ تاریخ: رقمِ لاتین، ماه و روزِ دورقمی. این‌طور مقایسهٔ رشته‌ای
-     همان مقایسهٔ تاریخ است. */
+  /* کلیدِ تاریخ: رقمِ لاتین و دو رقمیِ ماه و روز — برای مقایسه و شمردن */
   function key(v) {
     var m = latin(v).match(/(\d{3,4})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{1,2})/);
     if (!m) return "";
     return m[1] + "/" + ("0" + m[2]).slice(-2) + "/" + ("0" + m[3]).slice(-2);
   }
+  /* و همان تاریخ، به شکلی که در ستون و در پالایه دیده می‌شود */
   function faKey(k) {
     var p = String(k || "").split("/");
     return p.length === 3 ? faN(p[0]) + "/" + faN(p[1]) + "/" + faN(p[2]) : "";
@@ -45,6 +41,15 @@
   function rows() {
     try { return Array.isArray(state.days) ? state.days : []; } catch (e) { return []; }
   }
+  /* پالایهٔ ستونِ تاریخ — همان که قالب نگه می‌دارد */
+  function picked() {
+    try { return (window.DAY_DATE ? DAY_DATE.get() : []) || []; } catch (e) { return []; }
+  }
+  function setPicked(list) {
+    try { if (window.DAY_DATE) DAY_DATE.set(list); } catch (e) { }
+  }
+  function pickedKeys() { return picked().map(key).filter(Boolean); }
+
   function monthLen(jy, jm) {
     try { return daysInJalaliMonth(jy, jm); }
     catch (e) { return jm <= 6 ? 31 : (jm <= 11 ? 30 : 29); }
@@ -60,29 +65,8 @@
   function weekStart(jy, jm) {
     try {
       var g = DatePick.toG(jy, jm, 1);
-      var w = new Date(g.gy, g.gm - 1, g.gd).getDay();   /* یکشنبه صفر */
-      return (w + 1) % 7;
+      return (new Date(g.gy, g.gm - 1, g.gd).getDay() + 1) % 7;
     } catch (e) { return 0; }
-  }
-
-  /* ---------- آن یک خطی که قالب‌ها صدا می‌زنند ---------- */
-  function arrange(list) {
-    var out = list;
-    if (dayFilter) out = out.filter(function (d) { return key(d && d.createdDate) === dayFilter; });
-    if (sortMode !== "manual") {
-      var dir = sortMode === "desc" ? -1 : 1;
-      /* ردیفِ بی‌تاریخ همیشه ته فهرست می‌ماند، در هر دو جهت: «بی‌تاریخ»
-         نه از همه قدیمی‌تر است نه از همه تازه‌تر. */
-      out = out.slice().sort(function (a, b) {
-        var ka = key(a && a.createdDate), kb = key(b && b.createdDate);
-        if (!ka && !kb) return (a.idx || 0) - (b.idx || 0);
-        if (!ka) return 1;
-        if (!kb) return -1;
-        if (ka === kb) return (a.idx || 0) - (b.idx || 0);
-        return ka < kb ? -dir : dir;
-      });
-    }
-    return out;
   }
 
   /* شمارِ کارهای هر روزِ یک ماه */
@@ -96,21 +80,15 @@
     });
     return out;
   }
-  /* ماهی که تقویم با آن باز می‌شود: همین ماه، اگر کاری داشته باشد —
-     چون «برنامهٔ روزانه» یعنی همین ماه. وگرنه آخرین ماهی که کاری در
-     آن ثبت شده، تا تقویم خالی باز نشود. */
+  /* ماهی که تقویم با آن باز می‌شود: همین ماه اگر کاری داشته باشد،
+     وگرنه آخرین ماهی که کاری در آن ثبت شده — تا خالی باز نشود. */
   function startView() {
     var t = today();
-    if (t) {
-      var here = counts(t.jy, t.jm);
-      if (Object.keys(here).length) return { jy: t.jy, jm: t.jm };
-    }
-    var ks = rows().map(function (d) { return key(d && d.createdDate); })
-      .filter(Boolean).sort();
-    if (ks.length) {
-      var p = ks[ks.length - 1].split("/");
-      return { jy: +p[0], jm: +p[1] };
-    }
+    var ks = pickedKeys();
+    if (ks.length) { var q = ks[0].split("/"); return { jy: +q[0], jm: +q[1] }; }
+    if (t && Object.keys(counts(t.jy, t.jm)).length) return { jy: t.jy, jm: t.jm };
+    var all = rows().map(function (d) { return key(d && d.createdDate); }).filter(Boolean).sort();
+    if (all.length) { var p = all[all.length - 1].split("/"); return { jy: +p[0], jm: +p[1] }; }
     return t ? { jy: t.jy, jm: t.jm } : { jy: 1405, jm: 1 };
   }
 
@@ -118,7 +96,6 @@
     try { renderDaily(); } catch (e) { }
     paintBar();
     if (pop && !pop.hidden) paintCal();
-    paintSortMark();
   }
 
   /* ---------- نوارِ بالای جدول ---------- */
@@ -128,7 +105,7 @@
     var b = sec.querySelector(".day-cal-bar");
     if (b) return b;
     /* کنارِ خروجی‌ها می‌نشیند. اگر ادمین خروجی‌ها را بسته باشد، آن
-       کادر خالی است و همین‌جا یک کادرِ خودمان می‌سازیم. */
+       کادر نیست و همین‌جا یک کادرِ خودمان می‌سازیم. */
     var host = sec.querySelector(".day-ex");
     b = document.createElement("span");
     b.className = "day-cal-bar";
@@ -147,20 +124,22 @@
   function paintBar() {
     var b = bar();
     if (!b) return;
-    var n = dayFilter
-      ? rows().filter(function (d) { return key(d && d.createdDate) === dayFilter; }).length : 0;
+    var ks = pickedKeys();
+    var n = ks.length
+      ? rows().filter(function (d) { return ks.indexOf(key(d && d.createdDate)) >= 0; }).length : 0;
     b.innerHTML =
       '<button type="button" class="btn btn-ghost btn-sm dcal-btn" id="dayCalBtn" ' +
         'title="تقویمِ برنامهٔ روزانه">🗓 تقویم</button>' +
-      (dayFilter
-        ? '<span class="dcal-chip" id="dayCalChip">📅 ' + faKey(dayFilter) +
+      (ks.length
+        ? '<span class="dcal-chip" id="dayCalChip">📅 ' +
+          (ks.length === 1 ? faKey(ks[0]) : faN(ks.length) + ' روز') +
           ' <b>' + faN(n) + '</b> کار' +
           '<button type="button" title="نمایشِ همهٔ روزها" id="dayCalClear">✕</button></span>'
         : "");
     var btn = document.getElementById("dayCalBtn");
     if (btn) btn.addEventListener("click", function (e) { e.stopPropagation(); toggle(); });
     var clr = document.getElementById("dayCalClear");
-    if (clr) clr.addEventListener("click", function () { pick(""); });
+    if (clr) clr.addEventListener("click", function () { setPicked([]); redraw(); });
   }
 
   /* ---------- خودِ تقویم ---------- */
@@ -178,6 +157,7 @@
       '<div class="dcal-wd"><span>ش</span><span>ی</span><span>د</span><span>س</span>' +
         '<span>چ</span><span>پ</span><span>ج</span></div>' +
       '<div class="dcal-grid"></div>' +
+      '<div class="dcal-note">روزی را بزنید تا کارهای همان روز را ببینید</div>' +
       '<div class="dcal-foot">' +
         '<button type="button" class="dcal-all">همهٔ روزها</button>' +
         '<button type="button" class="dcal-today">امروز</button>' +
@@ -187,8 +167,7 @@
     pop.addEventListener("click", function (e) {
       var st = e.target.closest ? e.target.closest("[data-dcal-step]") : null;
       if (st) {
-        var n = Number(st.getAttribute("data-dcal-step"));
-        view.jm += n;
+        view.jm += Number(st.getAttribute("data-dcal-step"));
         if (view.jm > 12) { view.jm = 1; view.jy++; }
         if (view.jm < 1) { view.jm = 12; view.jy--; }
         paintCal();
@@ -198,19 +177,21 @@
       if (d) {
         var k = view.jy + "/" + ("0" + view.jm).slice(-2) + "/" +
                 ("0" + d.getAttribute("data-dcal-day")).slice(-2);
-        pick(k === dayFilter ? "" : k);     /* همان روز را دوباره زدن، برش می‌دارد */
+        /* با Ctrl/⌘ چند روز با هم؛ بی آن، همان یک روز. و زدنِ دوبارهٔ
+           یک روزِ انتخاب‌شده، برش می‌دارد. */
+        toggleDay(k, e.ctrlKey || e.metaKey);
         return;
       }
-      if (e.target.closest(".dcal-all")) { pick(""); return; }
+      if (e.target.closest(".dcal-all")) { setPicked([]); redraw(); return; }
       if (e.target.closest(".dcal-today")) {
         var t = today();
         if (!t) return;
         view = { jy: t.jy, jm: t.jm };
         var tk = t.jy + "/" + ("0" + t.jm).slice(-2) + "/" + ("0" + t.jd).slice(-2);
-        /* اگر امروز کاری ندارد، فقط می‌رویم سرِ ماهِ امروز و فیلتر
-           نمی‌گذاریم — وگرنه جدولِ خالی دستِ آدم می‌ماند. */
-        var has = rows().some(function (r) { return key(r && r.createdDate) === tk; });
-        if (has) pick(tk); else { paintCal(); }
+        /* اگر امروز کاری ندارد، فقط می‌رویم سرِ ماهِ امروز — وگرنه
+           جدولِ خالی دستِ آدم می‌ماند. */
+        if (rows().some(function (r) { return key(r && r.createdDate) === tk; })) toggleDay(tk, false);
+        else paintCal();
       }
     });
     document.addEventListener("click", function (e) {
@@ -223,10 +204,22 @@
     return pop;
   }
 
+  function toggleDay(k, many) {
+    var cur = pickedKeys();
+    var has = cur.indexOf(k) >= 0;
+    var next;
+    if (many) next = has ? cur.filter(function (x) { return x !== k; }) : cur.concat([k]);
+    else next = has && cur.length === 1 ? [] : [k];
+    setPicked(next.map(faKey));
+    if (next.length) { var p = next[0].split("/"); view = { jy: +p[0], jm: +p[1] }; }
+    redraw();
+  }
+
   function paintCal() {
     if (!pop) return;
     var t = today();
     var c = counts(view.jy, view.jm);
+    var on = pickedKeys();
     var pad = weekStart(view.jy, view.jm);
     var len = monthLen(view.jy, view.jm);
     var html = "";
@@ -234,11 +227,10 @@
     for (var d = 1; d <= len; d++) {
       var k = view.jy + "/" + ("0" + view.jm).slice(-2) + "/" + ("0" + d).slice(-2);
       var n = c[d] || 0;
-      var cls = "dcal-d" + (n ? " has" : "") + (k === dayFilter ? " on" : "") +
+      var cls = "dcal-d" + (n ? " has" : "") + (on.indexOf(k) >= 0 ? " on" : "") +
         (t && t.jy === view.jy && t.jm === view.jm && t.jd === d ? " now" : "");
       /* روزی که کاری ندارد زدنی نیست: زدنش یک جدولِ خالی می‌داد و آدم
-         خیال می‌کرد چیزی خراب شده. خودِ تقویم هم همان را می‌گوید —
-         روزِ بی‌کار، بی‌نشان است. */
+         خیال می‌کرد چیزی خراب شده. */
       html += '<button type="button" class="' + cls + '" data-dcal-day="' + d + '"' +
         (n ? ' title="' + faN(n) + ' کار"' : ' disabled title="کاری ثبت نشده"') + '>' +
         '<i>' + faN(d) + '</i>' + (n ? '<b>' + faN(n) + '</b>' : "") + '</button>';
@@ -251,7 +243,7 @@
     var btn = document.getElementById("dayCalBtn");
     if (!btn || !pop) return;
     var r = btn.getBoundingClientRect();
-    var w = pop.offsetWidth || 262, h = pop.offsetHeight || 300;
+    var w = pop.offsetWidth || 272, h = pop.offsetHeight || 320;
     var left = Math.min(Math.max(8, r.left - (w - r.width) / 2), innerWidth - w - 8);
     var top = r.bottom + 6;
     if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
@@ -262,57 +254,12 @@
   function toggle() { if (pop && !pop.hidden) close(); else open(); }
   function open() {
     build();
-    if (!view) view = startView();
+    view = startView();
     pop.hidden = false;
     paintCal();
     place();
   }
   function close() { if (pop) pop.hidden = true; }
-
-  function pick(k) {
-    dayFilter = k || "";
-    if (dayFilter) {
-      var p = dayFilter.split("/");
-      view = { jy: +p[0], jm: +p[1] };
-    }
-    redraw();
-  }
-
-  /* ---------- مرتب‌سازی ---------- */
-  function sortTh() {
-    var sec = document.getElementById("view-daily");
-    if (!sec) return null;
-    var ths = sec.querySelectorAll(".daily-plan-table thead tr:first-child th");
-    for (var i = 0; i < ths.length; i++)
-      if (/تاریخ/.test(ths[i].textContent) && !/انجام/.test(ths[i].textContent)) return ths[i];
-    return null;
-  }
-  function paintSortMark() {
-    var th = sortTh();
-    if (!th) return;
-    th.classList.add("dcal-sort");
-    th.setAttribute("title", sortMode === "asc" ? "تاریخ: از قدیم به تازه — برای عوض کردن بزنید"
-      : sortMode === "desc" ? "تاریخ: از تازه به قدیم — برای عوض کردن بزنید"
-      : "ترتیبِ دستی (همان‌طور که ردیف‌ها را چیده‌اید) — برای مرتب‌سازی بزنید");
-    var mark = th.querySelector(".dcal-arrow");
-    if (!mark) {
-      mark = document.createElement("span");
-      mark.className = "dcal-arrow";
-      th.appendChild(mark);
-    }
-    mark.textContent = sortMode === "asc" ? "▲" : sortMode === "desc" ? "▼" : "↕";
-    mark.classList.toggle("off", sortMode === "manual");
-  }
-  function wireSort() {
-    var th = sortTh();
-    if (!th || th.__dcal) return;
-    th.__dcal = true;
-    th.addEventListener("click", function () {
-      sortMode = sortMode === "asc" ? "desc" : sortMode === "desc" ? "manual" : "asc";
-      redraw();
-    });
-    paintSortMark();
-  }
 
   /* زدنِ خودِ تاریخ داخلِ جدول = همان روز را نشان بده. ردیف‌ها مدام از
      نو کشیده می‌شوند، پس شنونده روی خودِ جدول است نه روی خانه‌ها. */
@@ -325,30 +272,18 @@
       if (!td || td.classList.contains("daily-done-cell")) return;
       var k = key(td.textContent);
       if (!k) return;
-      pick(k === dayFilter ? "" : k);
+      toggleDay(k, e.ctrlKey || e.metaKey);
     });
   }
 
-  function boot() {
-    paintBar();
-    wireSort();
-    wireCells();
-  }
+  function boot() { paintBar(); wireCells(); }
 
-  window.DAYCAL = {
-    arrange: arrange,
-    open: open, close: close,
-    /* کشیدنِ ردیف یعنی «ترتیب را خودم می‌چینم» — وگرنه جابه‌جایی‌اش
-       زیرِ مرتب‌سازیِ تاریخ دیده نمی‌شد و آدم خیال می‌کرد کار نکرد. */
-    manual: function () { sortMode = "manual"; paintSortMark(); },
-    refresh: boot,
-    key: key
-  };
+  window.DAYCAL = { open: open, close: close, refresh: boot, key: key, pick: toggleDay };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
-  /* ردیف‌ها و دکمه‌ها بعد از ورود ساخته می‌شوند؛ یک تکانِ دوم تا
-     دکمهٔ تقویم و سرستونِ زدنی جا بیفتند. */
+  /* ردیف‌ها و دکمه‌ها بعد از ورود ساخته می‌شوند؛ دو تکانِ بعدی تا
+     دکمهٔ تقویم جا بیفتد. */
   setTimeout(boot, 1200);
   setTimeout(boot, 3000);
 })();
