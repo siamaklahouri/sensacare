@@ -136,6 +136,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:cellpopcss}}
 {{PART:rowdragcss}}
 {{PART:datepickcss}}
+{{PART:daycalcss}}
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
   .period label{ font-size:12px; color:var(--ink-faint); }
 
@@ -3613,10 +3614,12 @@ function renderDaily(){
   if(!body) return;
   const statusFilter = dailyFilters.status || [];
   const companyFilter = dailyFilters.company || [];
-  const rowsToShow = state.days
+  /* فیلترِ روزِ تقویم و مرتب‌سازیِ تاریخ، هر دو در پارهٔ daycal */
+  const arrange = rs => (window.DAYCAL ? DAYCAL.arrange(rs) : rs);
+  const rowsToShow = arrange(state.days
     .map((d,i)=>({...d, idx:i}))
     .filter(d=> statusFilter.length===0 || statusFilter.includes(d.status))
-    .filter(d=> companyFilter.length===0 || companyFilter.includes(d.company||""));
+    .filter(d=> companyFilter.length===0 || companyFilter.includes(d.company||"")));
   const msfStatusEl = document.getElementById("msfDailyStatus");
   if(msfStatusEl) renderMultiFilter(msfStatusEl, STATUS, dailyFilters, "status", renderDaily);
   const msfPartyEl = document.getElementById("msfDailyParty");
@@ -3677,6 +3680,15 @@ function onDayFieldChange(e){
   if(!row) return;
   const was = row[field];
   row[field] = e.target.value;
+  /* تاریخِ ایجاد، اولین باری که چیزی در ردیف نوشته می‌شود.
+
+     ایرادی که گزارش شد همین بود: ردیف‌های آمادهٔ ماه (و ماه‌های تازه)
+     با تاریخِ خالی ساخته می‌شوند و فقط ردیفی که با دکمهٔ «افزودن»
+     می‌آمد تاریخ می‌گرفت. پس در بعضی کارتابل‌ها ستونِ تاریخ خط تیره
+     می‌ماند. حالا هر ردیفی که پر شود، همان لحظه تاریخ می‌خورد — و اگر
+     از قبل تاریخ داشته باشد دست نمی‌خورد. */
+  if(!String(row.createdDate || "").trim() && String(e.target.value || "").trim())
+    row.createdDate = getTodayJalaliStr();
   /* تاریخِ انجام خودش می‌افتد: همان لحظه‌ای که کار «انجام شد» می‌شود.
      و اگر کار دوباره باز شود پاک می‌شود — تاریخِ انجام برای کاری که
      هنوز تمام نشده دروغ است. همان قاعده‌ای که بخش‌های مشترک دارند.
@@ -4279,6 +4291,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dayexport}}
 {{PART:navmobile}}
 {{PART:dayjump}}
+{{PART:daycal}}
 {{PART:bell}}
 {{PART:rowdrag}}
 
@@ -4289,7 +4302,10 @@ if(window.ROWDRAG) ROWDRAG.register({
   checklistBody:       { arr: ()=> state.tasks,
                          done: ()=>{ scheduleSave(); renderChecklist(); } },
   dailyBody:           { arr: ()=> state.days,
-                         done: ()=>{ scheduleSave(); renderDaily(); } },
+                         /* جابه‌جایی یعنی «ترتیب را خودم می‌چینم»؛ وگرنه
+                            زیرِ مرتب‌سازیِ تاریخ دیده نمی‌شد. */
+                         done: ()=>{ if(window.DAYCAL) DAYCAL.manual();
+                                     scheduleSave(); renderDaily(); } },
   partiesBody:         { arr: ()=> partiesData,
                          done: ()=>{ savePartiesSheet(); renderParties(); } },
   invoicesBody:        { arr: ()=> invoicesData,

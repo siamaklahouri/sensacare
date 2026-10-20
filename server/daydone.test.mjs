@@ -57,6 +57,10 @@ for (const w of WHO) {
   /* یک ردیفِ تازه و تمیز، تا آزمون به دادهٔ قبلی بند نباشد */
   await p.evaluate(() => document.getElementById('addDayRowBtn').click());
   await p.waitForTimeout(400);
+  /* شمارهٔ همان ردیف در آرایهٔ داده. جدول حالا بر اساس تاریخ مرتب
+     می‌شود، پس «آخرین ردیفِ روی صفحه» دیگر لزوماً «آخرین ردیفِ داده»
+     نیست — ردیف را با data-idx دنبال می‌کنیم، نه با جایش. */
+  const IDX = await p.evaluate(() => state.days.length - 1);
 
   const head = await p.evaluate(() => {
     const th = [...document.querySelectorAll('#view-daily .daily-plan-table thead tr:first-child th')]
@@ -68,13 +72,13 @@ for (const w of WHO) {
   t(head.th.length === head.filt, 'و ردیفِ پالایه هم همان تعداد خانه دارد',
     head.th.length + ' در برابر ' + head.filt);
 
-  const sel = '#view-daily .daily-plan-table tbody tr:last-child';
-  const cell = async () => p.evaluate(s => {
-    const tr = document.querySelector(s);
-    const td = tr.querySelector('.daily-done-cell');
+  const sel = '#view-daily .daily-plan-table tbody tr[data-idx="' + IDX + '"]';
+  const cell = async () => p.evaluate(a => {
+    const tr = document.querySelector(a.sel);
+    const td = tr ? tr.querySelector('.daily-done-cell') : null;
     return { txt: td ? td.textContent.trim() : null, on: td ? td.classList.contains('on') : false,
-             val: (state.days[state.days.length - 1] || {}).doneDate };
-  }, sel);
+             val: (state.days[a.i] || {}).doneDate };
+  }, { sel, i: IDX });
 
   const before = await cell();
   t(before.txt === '—' && !before.on && !before.val,
@@ -122,10 +126,11 @@ for (const w of WHO) {
     'و بعد از باز شدنِ دوبارهٔ صفحه سرِ جایش است', kept.txt);
 
   /* خروجیِ اکسل هم باید همین ستون را ببیند */
+  await p.evaluate(x => { window.__doneSel = x; }, sel);
   const inExport = await p.evaluate(() => {
     const th = [...document.querySelectorAll('#view-daily .daily-plan-table thead tr:first-child th')];
     const i = th.findIndex(x => /تاریخ انجام/.test(x.textContent));
-    const tr = document.querySelector('#view-daily .daily-plan-table tbody tr:last-child');
+    const tr = document.querySelector(window.__doneSel);
     return i >= 0 && tr ? tr.children[i].textContent.trim() : '';
   });
   t(inExport === today, 'و در همان ستونی نشسته که خروجیِ اکسل و PDF می‌خوانند', inExport);
