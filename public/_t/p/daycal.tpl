@@ -157,14 +157,21 @@
       '<div class="dcal-wd"><span>ش</span><span>ی</span><span>د</span><span>س</span>' +
         '<span>چ</span><span>پ</span><span>ج</span></div>' +
       '<div class="dcal-grid"></div>' +
-      '<div class="dcal-note">روزی را بزنید تا کارهای همان روز را ببینید</div>' +
+      '<div class="dcal-note">هر روز را که بزنید اضافه می‌شود — چند روز با هم' +
+        '<br>(با Shift، بازه)</div>' +
       '<div class="dcal-foot">' +
         '<button type="button" class="dcal-all">همهٔ روزها</button>' +
+        '<button type="button" class="dcal-month">همهٔ این ماه</button>' +
         '<button type="button" class="dcal-today">امروز</button>' +
       '</div>';
     document.body.appendChild(pop);
 
     pop.addEventListener("click", function (e) {
+      /* کلیک به سندِ بالا نمی‌رسد: آن‌جا هر کلیکِ بیرونِ تقویم آن را
+         می‌بندد، و چون همین پایین شبکهٔ روزها از نو کشیده می‌شود، تا
+         نوبتِ آن برسد این گره دیگر داخلِ تقویم نیست و «بیرون» حساب
+         می‌شد — تقویم با اولین انتخاب بسته می‌شد. */
+      e.stopPropagation();
       var st = e.target.closest ? e.target.closest("[data-dcal-step]") : null;
       if (st) {
         view.jm += Number(st.getAttribute("data-dcal-step"));
@@ -175,14 +182,30 @@
       }
       var d = e.target.closest ? e.target.closest("[data-dcal-day]") : null;
       if (d) {
-        var k = view.jy + "/" + ("0" + view.jm).slice(-2) + "/" +
-                ("0" + d.getAttribute("data-dcal-day")).slice(-2);
-        /* با Ctrl/⌘ چند روز با هم؛ بی آن، همان یک روز. و زدنِ دوبارهٔ
-           یک روزِ انتخاب‌شده، برش می‌دارد. */
-        toggleDay(k, e.ctrlKey || e.metaKey);
+        var k = dayKey(Number(d.getAttribute("data-dcal-day")));
+        /* هر زدن یک روز را اضافه یا کم می‌کند و بقیه سرِ جایشان
+           می‌مانند: این یک پالایه است، نه یک انتخابِ تک‌نفره. پیش از
+           این برای چند روز باید Ctrl نگه می‌داشتی — که نه کسی می‌دید
+           و نه روی گوشی اصلاً ممکن بود.
+
+           Shift هم هست و کارش بازه است: از آخرین روزی که زده‌ای تا
+           این یکی. */
+        if (e.shiftKey && lastDay) rangeTo(k);
+        else toggleDay(k);
         return;
       }
-      if (e.target.closest(".dcal-all")) { setPicked([]); redraw(); return; }
+      if (e.target.closest(".dcal-all")) { lastDay = ""; setPicked([]); redraw(); return; }
+      /* همهٔ روزهای کاردارِ همین ماه، با یک زدن */
+      if (e.target.closest(".dcal-month")) {
+        var c2 = counts(view.jy, view.jm);
+        var all = Object.keys(c2).map(function (d) { return dayKey(+d); });
+        var cur2 = pickedKeys();
+        var already = all.length && all.every(function (k2) { return cur2.indexOf(k2) >= 0; });
+        /* اگر همه‌شان از قبل انتخاب‌اند، همین دکمه برشان می‌دارد */
+        apply(already ? cur2.filter(function (k2) { return all.indexOf(k2) < 0; })
+                      : cur2.concat(all));
+        return;
+      }
       if (e.target.closest(".dcal-today")) {
         var t = today();
         if (!t) return;
@@ -190,7 +213,7 @@
         var tk = t.jy + "/" + ("0" + t.jm).slice(-2) + "/" + ("0" + t.jd).slice(-2);
         /* اگر امروز کاری ندارد، فقط می‌رویم سرِ ماهِ امروز — وگرنه
            جدولِ خالی دستِ آدم می‌ماند. */
-        if (rows().some(function (r) { return key(r && r.createdDate) === tk; })) toggleDay(tk, false);
+        if (rows().some(function (r) { return key(r && r.createdDate) === tk; })) toggleDay(tk);
         else paintCal();
       }
     });
@@ -204,15 +227,37 @@
     return pop;
   }
 
-  function toggleDay(k, many) {
+  var lastDay = "";            /* آخرین روزی که زده شده — برای بازه */
+
+  function dayKey(d) {
+    return view.jy + "/" + ("0" + view.jm).slice(-2) + "/" + ("0" + d).slice(-2);
+  }
+  function apply(list) {
+    /* مرتب و بی‌تکرار، تا فهرستِ پالایه همیشه یک شکل باشد */
+    var seen = {}, out = [];
+    list.filter(Boolean).sort().forEach(function (k) {
+      if (!seen[k]) { seen[k] = 1; out.push(k); }
+    });
+    setPicked(out.map(faKey));
+    if (out.length) { var p = out[0].split("/"); view = { jy: +p[0], jm: +p[1] }; }
+    redraw();
+  }
+  function toggleDay(k) {
     var cur = pickedKeys();
     var has = cur.indexOf(k) >= 0;
-    var next;
-    if (many) next = has ? cur.filter(function (x) { return x !== k; }) : cur.concat([k]);
-    else next = has && cur.length === 1 ? [] : [k];
-    setPicked(next.map(faKey));
-    if (next.length) { var p = next[0].split("/"); view = { jy: +p[0], jm: +p[1] }; }
-    redraw();
+    lastDay = has ? "" : k;
+    apply(has ? cur.filter(function (x) { return x !== k; }) : cur.concat([k]));
+  }
+  /* بازه: از آخرین روزِ زده‌شده تا این یکی. فقط روزهایی که کار دارند
+     وارد می‌شوند — روزِ خالی در پالایه هیچ کاری نمی‌کند جز شلوغی. */
+  function rangeTo(k) {
+    var a = lastDay, b = k;
+    if (!a) { toggleDay(k); return; }
+    if (a > b) { var t2 = a; a = b; b = t2; }
+    var add = rows().map(function (r) { return key(r && r.createdDate); })
+      .filter(function (x) { return x && x >= a && x <= b; });
+    lastDay = k;
+    apply(pickedKeys().concat(add));
   }
 
   function paintCal() {
@@ -236,7 +281,8 @@
         '<i>' + faN(d) + '</i>' + (n ? '<b>' + faN(n) + '</b>' : "") + '</button>';
     }
     pop.querySelector(".dcal-grid").innerHTML = html;
-    pop.querySelector(".dcal-ttl").textContent = monthName(view.jm) + " " + faN(view.jy);
+    pop.querySelector(".dcal-ttl").textContent = monthName(view.jm) + " " + faN(view.jy) +
+      (on.length ? " — " + faN(on.length) + " روز" : "");
   }
 
   function place() {
@@ -272,13 +318,14 @@
       if (!td || td.classList.contains("daily-done-cell")) return;
       var k = key(td.textContent);
       if (!k) return;
-      toggleDay(k, e.ctrlKey || e.metaKey);
+      if (e.shiftKey && lastDay) rangeTo(k); else toggleDay(k);
     });
   }
 
   function boot() { paintBar(); wireCells(); }
 
-  window.DAYCAL = { open: open, close: close, refresh: boot, key: key, pick: toggleDay };
+  window.DAYCAL = { open: open, close: close, refresh: boot, key: key,
+                  pick: toggleDay, range: rangeTo, clear: function () { lastDay = ""; setPicked([]); redraw(); } };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

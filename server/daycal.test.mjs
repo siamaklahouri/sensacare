@@ -220,8 +220,91 @@ for (const w of WHO) {
   t(kept.before === kept.after, 'و تاریخِ ردیفِ قدیمی دست‌نخورده می‌ماند',
     kept.before + ' → ' + kept.after);
 
-  /* تقویم و پالایهٔ ستون، یک حالتِ مشترک دارند */
+  /* ---------- چند روز با هم ---------- */
+  const dayBtn = (d, shift) => p.evaluate(a => {
+    const el = [...document.querySelectorAll('.dcal-pop .dcal-d')]
+      .find(x => Number(x.getAttribute('data-dcal-day')) === a.d);
+    if (!el) return false;
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: !!a.sh }));
+    return true;
+  }, { d, sh: shift });
+  const calState = () => p.evaluate(() => ({
+    open: !document.querySelector('.dcal-pop').hidden,
+    on: [...document.querySelectorAll('.dcal-pop .dcal-d.on')].map(x => Number(x.getAttribute('data-dcal-day'))),
+    ttl: (document.querySelector('.dcal-ttl') || {}).textContent.trim(),
+    rows: document.querySelectorAll('#dailyBody tr').length,
+    chip: (document.getElementById('dayCalChip') || {}).textContent || ''
+  }));
+
   await p.evaluate(() => document.getElementById('dayCalBtn').click());
+  await p.waitForTimeout(500);
+  await dayBtn(2); await p.waitForTimeout(500);
+  const one = await calState();
+  t(one.open, 'تقویم با اولین انتخاب بسته نمی‌شود — پیش از این می‌بست');
+  t(one.on.join() === '2', 'روزِ اول انتخاب شد', one.on.join(','));
+
+  await dayBtn(Number(seed.mid)); await p.waitForTimeout(500);
+  const two = await calState();
+  t(two.on.length === 2 && two.on.indexOf(2) >= 0,
+    'روزِ دوم به انتخاب اضافه می‌شود، نه اینکه جایش را بگیرد', two.on.join(','));
+  t(two.rows === 3, 'و جدول کارهای هر دو روز را نشان می‌دهد', String(two.rows));
+  t(/۲ روز/.test(two.chip) && /۳/.test(two.chip),
+    'نشانِ بالای جدول می‌گوید چند روز و چند کار', two.chip.replace(/\s+/g, ' ').trim());
+  t(/۲ روز/.test(two.ttl), 'سرستونِ تقویم هم شمارِ روزها را می‌گوید', two.ttl);
+
+  await dayBtn(2); await p.waitForTimeout(500);
+  const back = await calState();
+  t(back.on.length === 1 && back.on[0] === Number(seed.mid),
+    'و زدنِ دوبارهٔ یک روز فقط همان را برمی‌دارد', back.on.join(','));
+
+  /* انتظار را از خودِ داده درمی‌آوریم، نه از عددِ دستی: ردیف‌های آزمون
+     در همین فایل عوض می‌شوند (یکی‌شان تاریخِ امروز را می‌گیرد). */
+  const monthFacts = await p.evaluate(() => {
+    const t0 = DatePick.today();
+    const pre = t0.jy + '/' + ('0' + t0.jm).slice(-2) + '/';
+    const mine = state.days.filter(d => String(d.createdDate || '').indexOf(pre) === 0);
+    return { days: new Set(mine.map(d => d.createdDate)).size, rows: mine.length };
+  });
+  await p.evaluate(() => document.querySelector('.dcal-month').click());
+  await p.waitForTimeout(600);
+  const month = await calState();
+  t(month.on.length === monthFacts.days && month.rows === monthFacts.rows,
+    '«همهٔ این ماه» همهٔ روزهای کاردارِ ماه را با هم می‌گیرد',
+    month.on.join(',') + ' / ' + month.rows + ' ردیف، انتظار: ' +
+    monthFacts.days + ' روز و ' + monthFacts.rows + ' ردیف');
+
+  await p.evaluate(() => document.querySelector('.dcal-all').click());
+  await p.waitForTimeout(600);
+  const none = await calState();
+  t(none.on.length === 0 && none.rows === 5, '«همهٔ روزها» انتخاب را پاک می‌کند',
+    String(none.rows));
+
+  /* بازه با Shift: از روزِ دوم تا روزِ میانی — هر روزی که در این
+     بازه کاری داشته باشد. */
+  const want = await p.evaluate(mid => {
+    const t0 = DatePick.today();
+    const pre = t0.jy + '/' + ('0' + t0.jm).slice(-2) + '/';
+    const inRange = state.days.filter(d => {
+      const v = String(d.createdDate || '');
+      if (v.indexOf(pre) !== 0) return false;
+      const dd = Number(v.slice(-2));
+      return dd >= 2 && dd <= mid;
+    });
+    return { days: new Set(inRange.map(d => d.createdDate)).size, rows: inRange.length };
+  }, Number(seed.mid));
+  await dayBtn(2); await p.waitForTimeout(400);
+  await dayBtn(Number(seed.mid), true); await p.waitForTimeout(600);
+  const range = await calState();
+  t(range.on.length === want.days && range.rows === want.rows,
+    'با Shift، بازهٔ بینِ دو روز انتخاب می‌شود',
+    range.on.join(',') + ' / ' + range.rows + ' ردیف، انتظار: ' +
+    want.days + ' روز و ' + want.rows + ' ردیف');
+  await p.evaluate(() => document.querySelector('.dcal-all').click());
+  await p.waitForTimeout(500);
+
+  /* تقویم و پالایهٔ ستون، یک حالتِ مشترک دارند.
+     باز بودنش را صریح می‌خواهیم: دکمه کلید است و اگر باز باشد می‌بندد. */
+  await p.evaluate(() => { if (window.DAYCAL) DAYCAL.open(); });
   await p.waitForTimeout(500);
   await p.evaluate(d => {
     const el = [...document.querySelectorAll('.dcal-pop .dcal-d')]
