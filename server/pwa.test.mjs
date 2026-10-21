@@ -2,6 +2,7 @@
    دکمه‌های پایینی که فقط در حالتِ نصب‌شده می‌آید.
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
 import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import http from 'node:http';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -98,6 +99,29 @@ console.log('===== فایلِ نصب =====');
     apk.headers.get('content-type'));
   t(buf.length > 1000000 && buf[0] === 0x50 && buf[1] === 0x4B,
     'و یک فایلِ سالمِ اندروید است', (buf.length / 1048576).toFixed(1) + 'MB');
+}
+
+/* ---------- دکمهٔ دانلود روی صفحهٔ اصلی ----------
+   صفحهٔ اصلیِ sltech.ir فقط روی همان دامنه سرو می‌شود، و fetchِ نود
+   سرآیندِ Host را نادیده می‌گیرد؛ پس این یکی با http خام می‌رود. */
+const panelGet = path => new Promise((ok2, bad2) => {
+  const u = new URL(BASE + path);
+  http.get({ hostname: u.hostname, port: u.port, path: u.pathname,
+             headers: { Host: 'sltech.ir' } }, r => {
+    let d = ''; r.setEncoding('utf8');
+    r.on('data', c => { d += c; });
+    r.on('end', () => ok2({ status: r.statusCode, body: d }));
+  }).on('error', bad2);
+});
+{
+  const home = await panelGet('/');
+  t(home.status === 200 && /کارتابل ماهانه SLTech/.test(home.body),
+    'صفحهٔ اصلیِ دامنهٔ پنل باز می‌شود', 'status=' + home.status);
+  t(/href="\/sltech\.apk"\s+download/.test(home.body),
+    'و دکمهٔ دانلودِ برنامهٔ اندروید رویش هست — با download، وگرنه مرورگر بازش می‌کند');
+  t((home.body.match(/\/sltech\.apk/g) || []).length >= 2,
+    'در سرصفحه و در پرسش‌های پرتکرار، هر دو',
+    (home.body.match(/\/sltech\.apk/g) || []).length + ' جا');
 }
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });

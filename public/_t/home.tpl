@@ -149,6 +149,11 @@ html:not(.hasdot) .topnav a.on{ background:var(--brand-soft); }
 .btn-main{ background:linear-gradient(145deg, var(--brand), var(--brand-deep));
   color:#fff; border-color:transparent; box-shadow:0 3px 12px rgba(18,62,128,.28); }
 .btn-main:hover{ box-shadow:0 6px 18px rgba(18,62,128,.34); border-color:transparent; }
+/* دکمهٔ فایلِ نصب: هم‌وزنِ بقیه، ولی با رنگِ فیروزه‌ایِ خودِ پالت تا از
+   دکمه‌های راهنما جدا دیده شود. رنگ از متغیر می‌آید، پس حالتِ شب هم
+   خودش درست است. */
+.btn-apk{ border-color:var(--s-it); color:var(--s-it); }
+.btn-apk:hover{ border-color:var(--s-it); }
 
 /* ---------- سرصفحه ---------- */
 /* سرصفحه یک میدانِ خالیِ خاکستری بود. حالا روی یک تختهٔ نرم با
@@ -640,8 +645,14 @@ html.anim details[open] summary::after{
       <a class="btn btn-main" href="#jobs">شغل‌ها را ببینم</a>
       <a class="btn buyLink" href="#buy" hidden>پلن‌ها و قیمت</a>
       <a class="btn" href="#how">چطور شروع کنم؟</a>
+      <!-- فایلِ نصبِ اندروید. «download» لازم است، وگرنه بعضی مرورگرها
+           به‌جای دانلود، سعی می‌کنند بازش کنند. -->
+      <a class="btn btn-apk" href="/sltech.apk" download>
+        <span aria-hidden="true">⬇</span> برنامهٔ اندروید
+      </a>
     </div>
-    <p class="note">بدون نصب. در مرورگر باز می‌شود — روی موبایل هم.</p>
+    <p class="note">در مرورگر باز می‌شود — روی موبایل هم. روی اندروید اگر خواستید،
+      همین کارتابل مثلِ یک برنامه روی صفحهٔ خانه می‌نشیند.</p>
   </header>
 
   <section id="why">
@@ -899,7 +910,11 @@ html.anim details[open] summary::after{
 
     <details>
       <summary>روی موبایل هم کار می‌کند؟</summary>
-      <p>بله. چیزی نصب نمی‌شود؛ در مرورگر باز می‌شود و برای صفحهٔ کوچک هم چیده شده.</p>
+      <p>بله. در مرورگر باز می‌شود و برای صفحهٔ کوچک هم چیده شده. روی اندروید دو راهِ
+         دیگر هم هست: از منوی کروم «افزودن به صفحهٔ اصلی»، یا
+         <a href="/sltech.apk" download>فایلِ نصب (APK)</a> را بگیرید و مثلِ هر برنامهٔ
+         دیگری نصبش کنید. هر دو همان کارتابل‌اند، فقط بی‌نوارِ آدرس و با نوارِ دکمه‌های
+         پایینی.</p>
     </details>
     <details>
       <summary>اگر اینترنت قطع باشد چه؟</summary>
