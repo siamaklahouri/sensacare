@@ -59,9 +59,67 @@
   function buttons(){
     return [].slice.call(document.querySelectorAll(".nav-list .navbtn"));
   }
-  function iconOf(b){
-    var ic = b.querySelector(".ic");
-    return ic ? ic.textContent.trim() : "•";
+  /* ---------- نشانه‌های خودِ برنامه ----------
+     منوی مرورگری ایموجی دارد و همان‌جا خوب است: رنگی است و سریع
+     خوانده می‌شود. ولی روی نوارِ پایینی، ایموجی‌های سیستم هر کدام از
+     یک خانواده‌اند — یکی تخت، یکی براق، یکی با سایه — و ردیفشان
+     ناهماهنگ دیده می‌شود. این‌ها یک خانواده‌اند: خطِ یک‌دست، و رنگ را
+     از خودِ دکمه می‌گیرند، پس در حالتِ فعال و در شب هم درست‌اند.
+
+     هر بخشی که این‌جا نباشد نشانهٔ پیش‌فرض می‌گیرد، پس بخشِ تازه
+     چیزی را نمی‌شکند. */
+  var ICONS = {
+    dashboard: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/>' +
+               '<rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/>',
+    checklist: '<path d="M10 5.5h10M10 12h10M10 18.5h10"/>' +
+               '<path d="M3.6 5.4l1.2 1.2 2.2-2.6M3.6 11.9l1.2 1.2 2.2-2.6M3.6 18.4l1.2 1.2 2.2-2.6"/>',
+    daily:     '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 2.8v4M16 2.8v4M3 10h18"/>' +
+               '<path d="M7.6 14.3h.01M12 14.3h.01M16.4 14.3h.01M7.6 17.8h.01M12 17.8h.01"/>',
+    personal:  '<rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>' +
+               '<path d="M12 14.6v2.8"/>',
+    settings:  '<path d="M3.5 7.5h9M16.5 7.5h4M3.5 16.5h4M11.5 16.5h9"/>' +
+               '<circle cx="14.5" cy="7.5" r="2.3"/><circle cx="8.5" cy="16.5" r="2.3"/>',
+    servers:   '<rect x="3" y="4" width="18" height="7" rx="2.2"/><rect x="3" y="13" width="18" height="7" rx="2.2"/>' +
+               '<path d="M6.8 7.5h.01M6.8 16.5h.01"/>',
+    companies: '<path d="M4 21V5.8A1.8 1.8 0 0 1 5.8 4h7.4A1.8 1.8 0 0 1 15 5.8V21"/>' +
+               '<path d="M15 10.5h3.2A1.8 1.8 0 0 1 20 12.3V21"/><path d="M7.6 8h3.8M7.6 12h3.8M7.6 16h3.8M2.5 21h19"/>',
+    mvpn:      '<rect x="6.2" y="2.5" width="11.6" height="19" rx="3"/><path d="M10.4 18.6h3.2"/>',
+    datetools: '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M7.8 7.6h8.4"/>' +
+               '<path d="M8 12.4h3M8 16.4h3M15.4 11.4v4M13.4 13.4h4"/>',
+    report:    '<path d="M14 3H7.4A2.4 2.4 0 0 0 5 5.4v13.2A2.4 2.4 0 0 0 7.4 21h9.2a2.4 2.4 0 0 0 2.4-2.4V8z"/>' +
+               '<path d="M14 3v5h5"/><path d="M9 17.5v-3M12 17.5v-5.5M15 17.5v-2"/>',
+    veeam:     '<path d="M12 2.8l7.2 3v5.4c0 4.5-3 8.4-7.2 10-4.2-1.6-7.2-5.5-7.2-10V5.8z"/><path d="M9 11.8l2.2 2.2 4-4.2"/>',
+    assistant: '<path d="M11.2 3.2l1.5 3.9 3.9 1.5-3.9 1.5-1.5 3.9-1.5-3.9L5.8 8.6l3.9-1.5z"/>' +
+               '<path d="M17.6 14.4l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    guide:     '<path d="M5 4.6A2.6 2.6 0 0 1 7.6 2H19v17.4H7.6A2.6 2.6 0 0 0 5 22z"/><path d="M5 17.4A2.6 2.6 0 0 1 7.6 15H19"/>',
+    invoices:  '<path d="M6 2.6h12v18.8l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 19.8z"/><path d="M9.4 8h5.2M9.4 12.2h5.2"/>',
+    payables:  '<circle cx="12" cy="12" r="9"/><path d="M12 16.4V7.8M8.6 11.2L12 7.8l3.4 3.4"/>',
+    payablenotes: '<circle cx="12" cy="12" r="9"/><path d="M12 16.4V7.8M8.6 11.2L12 7.8l3.4 3.4"/>',
+    receivablenotes: '<circle cx="12" cy="12" r="9"/><path d="M12 7.6v8.6M8.6 12.8L12 16.2l3.4-3.4"/>',
+    expenses:  '<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10.2h18"/><path d="M16.8 14.6h.01"/>',
+    bank:      '<path d="M12 3l9 4.6H3z"/><path d="M5.2 8.4v8.2M9.7 8.4v8.2M14.3 8.4v8.2M18.8 8.4v8.2M3 20h18"/>',
+    budget:    '<circle cx="12" cy="12" r="9"/><path d="M12 12V3M12 12l7.4 4.4"/>',
+    parties:   '<circle cx="9.2" cy="8" r="3.3"/><path d="M3.4 19.6a5.8 5.8 0 0 1 11.6 0"/>' +
+               '<path d="M16.2 11.1a3.1 3.1 0 0 0 0-6M17.8 19.6a5.9 5.9 0 0 0-2.3-4.6"/>',
+    shared:    '<circle cx="9.2" cy="8" r="3.3"/><path d="M3.4 19.6a5.8 5.8 0 0 1 11.6 0"/>' +
+               '<path d="M16.2 11.1a3.1 3.1 0 0 0 0-6M17.8 19.6a5.9 5.9 0 0 0-2.3-4.6"/>',
+    vshare:    '<circle cx="8" cy="12" r="4.2"/><path d="M12.2 12H21M18.2 12v3.2M15.4 12v2.4"/>',
+    chat:      '<path d="M21 11.6a8.4 8.4 0 0 1-12.2 7.5L3.4 20.6l1.5-5A8.4 8.4 0 1 1 21 11.6z"/>',
+    more:      '<rect x="3.4" y="3.4" width="7.2" height="7.2" rx="2.2"/><rect x="13.4" y="3.4" width="7.2" height="7.2" rx="2.2"/>' +
+               '<rect x="3.4" y="13.4" width="7.2" height="7.2" rx="2.2"/><rect x="13.4" y="13.4" width="7.2" height="7.2" rx="2.2"/>',
+    _:         '<rect x="3.4" y="3.4" width="17.2" height="17.2" rx="5"/><circle cx="12" cy="12" r="2.3"/>'
+  };
+
+  function svgFor(view){
+    var v = String(view || "");
+    var d = ICONS[v];
+    if(!d){
+      /* بخش‌های مشترک و گفتگو شناسهٔ ساختگی دارند (shared-…، vshare-…) */
+      var pre = v.split("-")[0];
+      d = ICONS[pre] || ICONS._;
+    }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + d + '</svg>';
   }
   function labelOf(b){
     var ic = b.querySelector(".ic");
@@ -85,11 +143,11 @@
     bar.id = "appBar";
     bar.innerHTML = pick.map(function(b){
       return '<button type="button" class="ab" data-go="' + escapeHtml(b.getAttribute("data-view")) + '">' +
-        '<span class="i">' + escapeHtml(iconOf(b)) + '</span>' +
+        '<span class="i">' + svgFor(b.getAttribute("data-view")) + '</span>' +
         '<span class="l">' + escapeHtml(labelOf(b)) + '</span></button>';
     }).join("") +
       '<button type="button" class="ab ab-more" id="abMore">' +
-      '<span class="i">☰</span><span class="l">بخش‌ها</span></button>';
+      '<span class="i">' + svgFor("more") + '</span><span class="l">بخش‌ها</span></button>';
     document.body.appendChild(bar);
 
     bar.addEventListener("click", function(e){
@@ -121,11 +179,38 @@
       if(e.key === "Escape") sheet(false);
     });
 
+    tuck();
     sync();
     try{
       new MutationObserver(sync).observe(document.querySelector(".nav-list"),
         { attributes: true, attributeFilter: ["class"], subtree: true, childList: true });
     }catch(e){}
+  }
+
+  /* ---------- چیدمانِ برنامه ----------
+     ردیفِ «پشتیبان / بازیابی / خروج» بالای هر صفحه یک نوارِ کاملِ
+     اضافه بود، و هیچ‌کدامشان کاری نیستند که آدم هر دقیقه بزند. می‌روند
+     ته کشو — همان جایی که در هر برنامه‌ای «بیشتر» است — و صفحه یک
+     ردیفِ تمام آزاد می‌کند.
+
+     «در حال ذخیره…» ولی باید دیده شود، پس زیرِ نامِ کارتابل در نوارِ
+     بالا می‌نشیند. خودِ گره جابه‌جا می‌شود، نه یک رونوشتش: شنونده‌ها و
+     شناسه‌ها سرِ جایشان می‌مانند و هیچ کدی لازم نیست عوض شود. */
+  function tuck(){
+    var titles = document.querySelector(".topbar .brand .titles");
+    var hint = document.getElementById("saveHint");
+    if(titles && hint && hint.parentNode !== titles) titles.appendChild(hint);
+
+    var card = document.querySelector("#appSheet .as-card");
+    if(!card || card.querySelector(".as-foot")) return;
+    var foot = document.createElement("div");
+    foot.className = "as-foot";
+    /* هر کدام ممکن است نباشد: ادمین می‌تواند «فایل‌ها» را بسته باشد. */
+    [".sidebar-foot .foot-actions", "#importFile", "#lockBtn"].forEach(function(sel){
+      var el = document.querySelector(sel);
+      if(el) foot.appendChild(el);
+    });
+    if(foot.childNodes.length) card.appendChild(foot);
   }
 
   /* زدنِ دکمهٔ واقعیِ منو، نه تکرارِ کارش: هر بخش موقعِ باز شدن چیزی
@@ -178,7 +263,7 @@
       var on = b.classList.contains("active") ? " on" : "";
       return '<button type="button" class="as-t' + on + '" data-go="' +
         escapeHtml(b.getAttribute("data-view")) + '">' +
-        '<span class="i">' + escapeHtml(iconOf(b)) + '</span>' +
+        '<span class="i">' + svgFor(b.getAttribute("data-view")) + '</span>' +
         '<span class="l">' + escapeHtml(labelOf(b)) + '</span></button>';
     }).join("");
   }

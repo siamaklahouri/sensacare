@@ -276,16 +276,28 @@ for (const w of WHO) {
       more: !!document.getElementById('abMore'),
       vis: bar ? getComputedStyle(bar).display : '',
       pos: bar ? getComputedStyle(bar).position : '',
-      navHidden: getComputedStyle(document.querySelector('.nav-list')).display === 'none',
-      footShown: getComputedStyle(document.querySelector('.sidebar-foot')).display !== 'none'
+      navHidden: getComputedStyle(document.querySelector('.sidebar')).display === 'none',
+      /* ذخیره و پشتیبان و قفل گم نشده‌اند: اولی زیرِ نامِ کارتابل در
+         نوارِ بالا، آن دوتا ته کشو. */
+      hintInBar: !!document.querySelector('.topbar .brand .titles #saveHint'),
+      footInSheet: !!document.querySelector('#appSheet .as-foot #lockBtn'),
+      sticky: getComputedStyle(document.querySelector('.topbar')).position
     };
   });
   t(barred.app === '1', 'در حالتِ نصب‌شده، data-app روشن می‌شود', barred.app);
   t(barred.n === 5 && barred.more, 'نوارِ پایینی پنج دکمه دارد، آخری «بخش‌ها»', 'n=' + barred.n);
   t(barred.vis === 'flex' && barred.pos === 'fixed', 'و پایینِ صفحه قفل است', barred.vis + '/' + barred.pos);
   t(barred.labels.every(x => x.length > 0), 'هر دکمه نامِ بخشِ خودش را دارد', barred.labels.join(' | '));
-  t(barred.navHidden, 'منوی قدیمی در حالتِ برنامه کنار می‌رود');
-  t(barred.footShown, 'ولی ذخیره و پشتیبان و قفل سرِ جایشان می‌مانند');
+  const ic = await p.evaluate(() => ({
+    bar: document.querySelectorAll('#appBar .ab .i svg').length,
+    emoji: /[\u{1F300}-\u{1FAFF}]/u.test(document.getElementById('appBar').textContent)
+  }));
+  t(ic.bar === 5 && !ic.emoji,
+    'نشانه‌ها یک خانواده‌اند (خطی، نه ایموجیِ سیستم)', 'svg=' + ic.bar);
+  t(barred.navHidden, 'ستونِ کناری در حالتِ برنامه کنار می‌رود');
+  t(barred.hintInBar, '«ذخیره شد» زیرِ نامِ کارتابل می‌نشیند، نه در یک ردیفِ جدا');
+  t(barred.footInSheet, 'و پشتیبان و بازیابی و خروج می‌روند ته کشو');
+  t(barred.sticky === 'sticky', 'نوارِ بالا با صفحه بالا نمی‌رود', barred.sticky);
 
   const pad = await p.evaluate(() => parseFloat(getComputedStyle(document.body).paddingBottom) || 0);
   t(pad >= 70, 'ردیفِ آخرِ جدول زیرِ نوار نمی‌ماند', 'padding-bottom=' + pad);
