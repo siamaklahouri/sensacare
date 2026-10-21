@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ir.sltech.kartabl",
+      "sha256_cert_fingerprints": [
+        "4F:5E:81:ED:6C:5E:AF:89:9F:04:F8:46:8C:50:65:71:C4:5C:E2:6B:FE:DD:CE:84:F0:3C:6B:16:AC:D1:35:F5"
+      ]
+    }
+  }
+]

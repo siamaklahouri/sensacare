@@ -7,3 +7,8 @@ backup-*.sql
 # عکس‌های آزمایشی که موقع تست ساخته می‌شوند
 a-*.png
 r-*.png
+
+# کلیدِ امضای برنامهٔ اندروید هیچ‌وقت داخلِ مخزن نمی‌رود
+android/android.keystore
+android/*.keystore
+android/*.jks

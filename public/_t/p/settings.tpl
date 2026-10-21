@@ -24,12 +24,15 @@
           باز می‌شود (داده‌ها البته با اینترنت تازه می‌شوند).</p>
         <div class="pwa-row">
           <button type="button" class="btn btn-brass" id="pwaInstall" hidden>نصب روی گوشی</button>
+          <a class="btn btn-ghost" href="/sltech.apk" download>⬇ فایل نصبِ اندروید (APK)</a>
           <span class="set-state" id="pwaState"></span>
         </div>
         <div class="pwa-how" id="pwaHow" hidden>
           در کرومِ اندروید: منوی سه‌نقطهٔ بالا ← <b>Install app</b> یا
           <b>افزودن به صفحهٔ اصلی</b>.<br>
-          روی آیفون، سافاری: دکمهٔ هم‌رسانی ← <b>Add to Home Screen</b>.
+          روی آیفون، سافاری: دکمهٔ هم‌رسانی ← <b>Add to Home Screen</b>.<br>
+          یا فایلِ APK را بگیرید و مثلِ هر برنامهٔ دیگری نصبش کنید؛ همان کارتابل است،
+          فقط از راهِ فایل.
         </div>
       </div>
 

@@ -31,6 +31,9 @@ const TYPES = {
   '.tpl': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
   '.webmanifest': 'application/manifest+json',
+  /* فایلِ نصبِ اندروید. بی این، با نوعِ ناشناس سرو می‌شد و بعضی
+     مرورگرهای گوشی به‌جای نصب، بازش می‌کردند. */
+  '.apk': 'application/vnd.android.package-archive',
 };
 
 /* public/_headers را می‌خواند: هر بلوک یک مسیر و چند هدر.

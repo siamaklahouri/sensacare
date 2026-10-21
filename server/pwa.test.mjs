@@ -69,6 +69,37 @@ t(!/\/api\//.test(swText.split('\n').filter(l => /cache|put\(/i.test(l)).join('\
 t(/notificationclick/.test(swText) && /openWindow/.test(swText),
   'و زدنِ روی اعلان، کارتابل را جلو می‌آورد');
 
+/* ---------- فایلِ نصبِ اندروید و تأییدِ دامنه ----------
+   APK یک TWA است: همان کارتابل، بی‌نوارِ آدرس. اندروید فقط وقتی نوارِ
+   آدرس را برمی‌دارد که assetlinks روی دامنه باشد و اثرِ انگشتِ داخلش
+   با کلیدی که APK با آن امضا شده یکی باشد. */
+console.log('===== فایلِ نصب =====');
+{
+  const al = await fetch(BASE + '/.well-known/assetlinks.json');
+  const ct = al.headers.get('content-type') || '';
+  let j = [];
+  try { j = await al.json(); } catch (e) { }
+  t(al.status === 200 && /application\/json/.test(ct),
+    'assetlinks.json روی دامنه سرو می‌شود', al.status + ' ' + ct);
+  const tgt = (j[0] || {}).target || {};
+  t(tgt.package_name === 'ir.sltech.kartabl',
+    'و نامِ بستهٔ برنامه را می‌گوید', tgt.package_name);
+  t((j[0] || {}).relation && j[0].relation.indexOf('delegate_permission/common.handle_all_urls') >= 0,
+    'با همان نسبتی که اندروید می‌خواهد');
+  const fp = (tgt.sha256_cert_fingerprints || [])[0] || '';
+  t(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(fp),
+    'و اثرِ انگشتِ کلیدِ امضا، کامل و با رقمِ بزرگ', fp.slice(0, 17) + '…');
+
+  const apk = await fetch(BASE + '/sltech.apk');
+  const buf = apk.ok ? Buffer.from(await apk.arrayBuffer()) : Buffer.alloc(0);
+  t(apk.status === 200, 'فایلِ APK از همین دامنه دانلود می‌شود', 'status=' + apk.status);
+  t(/vnd\.android\.package-archive/.test(apk.headers.get('content-type') || ''),
+    'و نوعش را درست می‌گوید — وگرنه بعضی گوشی‌ها بازش می‌کنند به‌جای نصب',
+    apk.headers.get('content-type'));
+  t(buf.length > 1000000 && buf[0] === 0x50 && buf[1] === 0x4B,
+    'و یک فایلِ سالمِ اندروید است', (buf.length / 1048576).toFixed(1) + 'MB');
+}
+
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const errs = [];
 
@@ -115,11 +146,14 @@ for (const w of WHO) {
     const nb = document.querySelector('.navbtn[data-view="settings"]');
     if (nb) nb.click();
     const box = document.getElementById('pwaBox');
+    const a = box ? box.querySelector('a[href$=".apk"]') : null;
     return { box: !!box,
+             apk: a ? a.getAttribute('href') : '',
              state: (document.getElementById('pwaState') || {}).textContent || '',
              how: !!(document.getElementById('pwaHow') && !document.getElementById('pwaHow').hidden) };
   });
   t(inst.box, 'تنظیمات کارتِ «برنامهٔ گوشی» دارد');
+  t(inst.apk, 'و لینکِ دانلودِ فایلِ نصب هم کنارش هست', inst.apk);
   t(/نصب/.test(inst.state) && inst.how,
     'و چون کروم پیشنهادِ نصب نداده، راهِ دستی را می‌گوید', inst.state.trim());
 
