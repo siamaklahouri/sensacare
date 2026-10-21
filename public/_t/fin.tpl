@@ -3357,6 +3357,8 @@ function ensureMonthsMigration(){
       state.days = target.days;
     }
   }
+  /* سطرهای قدیمیِ بی‌تاریخ: روزِ اولِ ماهِ خودشان را می‌گیرند */
+  try{ if(backfillCreatedDates() > 0) scheduleSave(); }catch(e){}
 }
 function allMonthsSnapshot(){
   const snap = deepClone(state.monthsData||{});

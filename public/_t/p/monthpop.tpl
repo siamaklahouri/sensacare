@@ -109,3 +109,61 @@ function renderMonthSelector(){
     `</div>`;
   }).join("") : `<div class="mpop-empty">هنوز ماهی ساخته نشده. از همین پایین یکی بساز.</div>`;
 }
+
+/* ---------- ردیف‌های قدیمیِ بی‌تاریخ ----------
+   «تاریخِ ایجاد» دیرتر از خودِ برنامهٔ روزانه به جدول اضافه شد، و هر
+   سطری که پیش از آن ساخته شده بود بی‌تاریخ ماند. همان سطرها در پالایهٔ
+   تاریخ و در تقویمِ روز هیچ‌جا دیده نمی‌شوند — جدول نشانشان می‌دهد، ولی
+   هیچ روزی مالِ خودش حسابشان نمی‌کند.
+
+   تاریخِ واقعیِ آن سطرها هیچ‌جا ذخیره نشده، ولی ماهشان را می‌دانیم: هر
+   ماه آرایهٔ خودش را دارد و کلیدش نام و سال را با خود می‌برد. پس روزِ
+   اولِ همان ماه می‌نشیند — حدسی که از خالی بودن راست‌تر است و کاربر
+   خودش خواسته.
+
+   دو قیدِ عمدی: فقط سطری مُهر می‌خورد که چیزی داخلش نوشته شده (سطرهای
+   خالیِ نمونه باید خالی بمانند، وگرنه پالایهٔ تاریخ پر از «روزِ اولِ
+   ماه» می‌شود)، و هر ماه فقط یک بار (اگر کسی بعداً تاریخی را پاک کرد،
+   دفعهٔ بعد دوباره برنمی‌گردد). */
+function monthFirstDay(key){
+  const p = String(key||"").split("|");
+  const y = faToEn(p[0]||"").trim();
+  const name = String(p[1]||"").trim();
+  if(!/^\d{4}$/.test(y)) return "";
+  let m = -1;
+  try{ m = JALALI_MONTH_NAMES.indexOf(name); }catch(e){ return ""; }
+  if(m < 0) return "";
+  return y + "/" + String(m+1).padStart(2,"0") + "/01";
+}
+
+function dayRowHasContent(d){
+  if(!d || typeof d !== "object") return false;
+  return !!(String(d.main||"").trim() || String(d.meet||"").trim()
+    || String(d.company||"").trim() || String(d.status||"").trim()
+    || String(d.doneDate||"").trim());
+}
+
+function backfillCreatedDates(){
+  if(typeof state !== "object" || !state) return 0;
+  if(!state.datesFilled || typeof state.datesFilled !== "object") state.datesFilled = {};
+  /* نسخهٔ در دستِ کار اول برمی‌گردد داخلِ نقشه، تا ماهِ جاری هم از
+     همین‌جا دیده شود و هر دو به یک آرایه اشاره کنند. */
+  try{ syncWorkingMonth(); }catch(e){}
+  const map = state.monthsData || {};
+  let n = 0;
+  for(const key of Object.keys(map)){
+    if(state.datesFilled[key]) continue;
+    const stamp = monthFirstDay(key);
+    if(!stamp) continue;            /* ماهی که نام یا سالش خوانا نیست، دست نمی‌خورد */
+    const days = (map[key] && map[key].days) || [];
+    if(!Array.isArray(days)) continue;
+    for(const d of days){
+      if(!dayRowHasContent(d)) continue;
+      if(String(d.createdDate||"").trim()) continue;
+      d.createdDate = stamp;        /* رقمِ انگلیسی، عینِ getTodayJalaliStr */
+      n++;
+    }
+    state.datesFilled[key] = true;
+  }
+  return n;
+}
