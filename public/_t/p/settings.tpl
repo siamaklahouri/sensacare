@@ -16,6 +16,23 @@
         <div id="histList"></div>
       </div>
 
+      <div class="panel" id="pwaBox">
+        <h3 class="set-h">📱 برنامهٔ گوشی</h3>
+        <p class="set-p">کارتابل روی گوشی می‌تواند مثلِ یک برنامهٔ اندروید نصب شود:
+          نشانهٔ SLTech روی صفحهٔ خانه می‌نشیند، بی‌نوارِ آدرس و بی‌تبِ مرورگر باز
+          می‌شود، نوارِ دکمه‌های پایینی می‌آید، و بعد از اولین باز شدن، بی‌اینترنت هم
+          باز می‌شود (داده‌ها البته با اینترنت تازه می‌شوند).</p>
+        <div class="pwa-row">
+          <button type="button" class="btn btn-brass" id="pwaInstall" hidden>نصب روی گوشی</button>
+          <span class="set-state" id="pwaState"></span>
+        </div>
+        <div class="pwa-how" id="pwaHow" hidden>
+          در کرومِ اندروید: منوی سه‌نقطهٔ بالا ← <b>Install app</b> یا
+          <b>افزودن به صفحهٔ اصلی</b>.<br>
+          روی آیفون، سافاری: دکمهٔ هم‌رسانی ← <b>Add to Home Screen</b>.
+        </div>
+      </div>
+
       <div class="panel">
         <h3 class="set-h">🎨 تم کارتابل</h3>
         <p class="set-p">رنگِ کاغذ و رنگِ برندِ کارتابل را خودتان انتخاب کنید. تم روی

@@ -17,6 +17,9 @@ function applyTheme(mode){
     }
   }catch(e){}
   try{ localStorage.setItem(THEME_KEY, mode); }catch(e){}
+  /* نوارِ وضعیتِ گوشی هم‌رنگِ کاغذِ کارتابل می‌ماند؛ وگرنه در حالتِ شب
+     یک نوارِ سفید بالای صفحهٔ تاریک می‌نشست. */
+  try{ if(window.PWA) PWA.tint(); }catch(e){}
 }
 
 function setupTheme(){

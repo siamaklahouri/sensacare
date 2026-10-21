@@ -53,6 +53,8 @@
     id = clean(id);
     var el = document.documentElement;
     if (id) el.setAttribute("data-kt", id); else el.removeAttribute("data-kt");
+    /* رنگِ نوارِ وضعیتِ گوشی هم با تم عوض می‌شود */
+    try { if (window.PWA) PWA.tint(); } catch (e) { }
   }
   function save(id) {
     id = clean(id);

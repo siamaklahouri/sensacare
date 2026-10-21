@@ -385,6 +385,50 @@ export async function withParts(env, req, html) {
   return html.replace(PART_RE, (m, n) => map.get(n));
 }
 
+/* ---------- برنامهٔ اندروید ----------
+   کارتابل روی گوشی همان صفحهٔ وب است، ولی با این فایل اندروید اجازه
+   می‌دهد «نصب» شود: نشانه‌اش روی صفحهٔ خانه می‌نشیند، بی‌نوارِ آدرس و
+   بی‌تبِ مرورگر باز می‌شود، و اسمِ زیرِ نشانه SLTech است.
+
+   برای هر کارتابل جداگانه ساخته می‌شود چون «scope» و «start_url» باید
+   همان مسیرِ خودش باشد (/siamak/)؛ یک فایلِ ثابت روی ریشه، کارتابلِ
+   دیگری را باز می‌کرد.
+
+   نشانه سه‌تاست و عمدی: ۱۹۲ و ۵۱۲ برای خودِ اندروید، و یکی maskable
+   که زمینهٔ سرمه‌ای دارد — گوشی‌هایی که نشانه را گرد یا شش‌ضلعی
+   می‌بُرند، لبهٔ لوگو را نمی‌خورند. */
+export function appManifest(panel) {
+  const base = panel.page || ('/' + panel.id + '/');
+  const icons = [
+    { src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-sl.3.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/app-icon-mask.1.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+  ];
+  const cut = (name, short, view) => ({
+    name, short_name: short, url: base + '#' + view,
+    icons: [{ src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png' }]
+  });
+  return {
+    id: base,
+    name: 'SLTech',
+    short_name: 'SLTech',
+    description: panel.title || 'کارتابل ماهانه',
+    lang: 'fa', dir: 'rtl',
+    start_url: base, scope: base,
+    display: 'standalone',
+    display_override: ['standalone', 'minimal-ui'],
+    orientation: 'any',
+    background_color: '#EEF2F6',
+    theme_color: '#EEF2F6',
+    categories: ['productivity', 'business'],
+    icons,
+    /* نگه داشتنِ نشانه روی صفحهٔ خانه، فهرستِ کوتاه می‌آورد */
+    shortcuts: [cut('برنامهٔ روزانه', 'روزانه', 'daily'),
+                cut('چک‌لیست ماهانه', 'چک‌لیست', 'checklist'),
+                cut('داشبورد', 'داشبورد', 'dashboard')]
+  };
+}
+
 export async function renderPanelPage(env, req, panel) {
   /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
      ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */

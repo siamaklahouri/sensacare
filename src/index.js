@@ -88,7 +88,8 @@ function disabledPanelPage(panel) {
 }
 
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
-         renderPanelPage, withParts, assetReq, useBundledTemplates } from './kartabl.js';
+         renderPanelPage, withParts, assetReq, useBundledTemplates,
+         appManifest } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -1994,6 +1995,19 @@ export default {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',
         'X-Robots-Tag': 'noindex, nofollow' } }));
+    }
+
+    /* ---------------- مانیفستِ برنامهٔ اندروید ----------------
+       /siamak/app.webmanifest — چون پسوند دارد، از شاخهٔ صفحهٔ کارتابل
+       (که فقط آدرسِ بی‌پسوند را می‌گیرد) رد می‌شود و باید پیش از
+       فایل‌های ثابت بیاید، وگرنه ۴۰۴ می‌گیرد. */
+    if (req.method === 'GET' && /^\/[A-Za-z0-9_-]+\/app\.webmanifest$/.test(p) && env.DB) {
+      const panel = await panelBySlug(env, p.split('/')[1]).catch(() => null);
+      if (panel && !panel.disabled)
+        return withSecurity(new Response(JSON.stringify(appManifest(panel)), {
+          headers: { 'Content-Type': 'application/manifest+json; charset=utf-8',
+                     'Cache-Control': 'no-cache',
+                     'X-Robots-Tag': 'noindex, nofollow' } }));
     }
 
     /* ---------------- صفحهٔ کارتابل ----------------

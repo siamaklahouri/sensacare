@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="{{ICON}}">
-<link rel="apple-touch-icon" href="{{ICON}}">
+<link rel="apple-touch-icon" href="/app-icon-apple.1.png">
+<!-- برنامهٔ اندروید: مانیفست برای هر کارتابل جداگانه ساخته می‌شود، پس
+     نشانی‌اش نسبی است («/siamak/app.webmanifest»). -->
+<link rel="manifest" href="app.webmanifest">
+<meta name="theme-color" content="#EEF2F6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SLTech">
+<meta name="application-name" content="SLTech">
 <script>
 /* تم ذخیره‌شده را پیش از رسم شدن صفحه می‌گذاریم؛ وگرنه صفحهٔ ورود
    روشن می‌ماند و بعد از ورود یک دفعه تاریک می‌شود. */
@@ -908,6 +917,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
    عوض می‌کنند و باید حرفِ آخر را بزنند. */
 {{PART:kthemecss}}
 {{PART:mobilecss}}
+/* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
+{{PART:pwacss}}
 </style>
 </head>
 <body>
@@ -2027,11 +2038,27 @@ function requestNotifyPermission(){
     }
   }catch(e){ /* Notification API not available — banner-only fallback */ }
 }
+/* اعلانِ خودِ سیستم. روی اندروید «new Notification(...)» اجازه ندارد و
+   همان‌جا خطا می‌دهد (Illegal constructor): اعلان باید از راهِ
+   سرویس‌ورکر برود. حالا که کارتابل سرویس‌ورکر دارد، اول همان راه
+   امتحان می‌شود و رویِ دسکتاپ همان راهِ قبلی می‌ماند. */
 function fireBrowserNotification(title, body){
   try{
-    if(typeof Notification !== "undefined" && Notification.permission === "granted"){
-      new Notification(title, { body, icon:undefined });
+    if(typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const opt = { body, icon:"/app-icon-192.1.png", badge:"/app-icon-192.1.png",
+                  lang:"fa", dir:"rtl", tag:"kartabl-reminder" };
+    const plain = ()=>{ try{ new Notification(title, opt); }catch(e){} };
+    /* «controller» و نه فقط «serviceWorker»: جایی که سرویس‌ورکری ثبت
+       نشده (نسخهٔ پشتیبانِ آفلاین، یا http غیرِ localhost)، «ready»
+       هیچ‌وقت جواب نمی‌دهد و اعلان بی‌صدا گم می‌شد. */
+    if(navigator.serviceWorker && navigator.serviceWorker.controller){
+      navigator.serviceWorker.ready.then(reg=>{
+        if(reg && reg.showNotification) reg.showNotification(title, opt);
+        else plain();
+      }).catch(plain);
+      return;
     }
+    plain();
   }catch(e){ /* ignore */ }
 }
 
@@ -4753,6 +4780,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dayjump}}
 {{PART:daycal}}
 {{PART:ktheme}}
+{{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
 
