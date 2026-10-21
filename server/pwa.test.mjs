@@ -124,8 +124,51 @@ const panelGet = path => new Promise((ok2, bad2) => {
     (home.body.match(/\/sltech\.apk/g) || []).length + ' جا');
 }
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+/* sltech.ir به همین سرورِ محلی نگاشته می‌شود تا صفحهٔ اصلیِ دامنهٔ
+   پنل را هم بشود در مرورگر باز کرد؛ آدرسِ ۱۲۷.۰.۰.۱ خودش دستِ‌نخورده
+   می‌ماند و بقیهٔ آزمون‌ها با همان کار می‌کنند. */
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
+  args: ['--host-resolver-rules=MAP sltech.ir 127.0.0.1'] });
 const errs = [];
+
+/* ---------- بخشِ «روی گوشی» در صفحهٔ اصلی ---------- */
+{
+  const port = new URL(BASE).port;
+  const ctx = await b.newContext({ viewport: { width: 412, height: 880 }, isMobile: true, hasTouch: true });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+  await p.goto('http://sltech.ir:' + port + '/', { waitUntil: 'networkidle' });
+  await p.waitForTimeout(1200);
+  const sec = await p.evaluate(() => {
+    const s = document.getElementById('app');
+    if (!s) return null;
+    const txt = s.textContent.replace(/\s+/g, ' ');
+    return {
+      cards: s.querySelectorAll('.card').length,
+      apk: !!s.querySelector('a[href$=".apk"][download]'),
+      ios: /Add to Home Screen/.test(txt) && /Safari/.test(txt),
+      chrome: /Install app/.test(txt),
+      steps: s.querySelectorAll('.howto li').length,
+      nav: !!document.querySelector('.topnav a[href="#app"]'),
+      /* نوارِ بالا روی صفحهٔ باریک دو ردیف است؛ پرشِ لنگر باید از
+         زیرش رد شود، وگرنه عنوانِ بخش پنهان می‌ماند. */
+      bar: Math.round(document.querySelector('.top').getBoundingClientRect().height),
+      sm: parseFloat(getComputedStyle(s).scrollMarginTop) || 0
+    };
+  });
+  t(!!sec && sec.cards === 3, 'صفحهٔ اصلی بخشِ «روی گوشی» دارد، با سه راه',
+    sec && sec.cards);
+  t(sec && sec.apk, 'راهِ اول: فایلِ نصبِ اندروید');
+  t(sec && sec.chrome, 'راهِ دوم: افزودن از خودِ کروم');
+  t(sec && sec.ios, 'راهِ سوم: آیفون و سافاری — بی‌دانلود');
+  t(sec && sec.steps >= 10, 'و هر کدام گام‌به‌گام نوشته شده', sec && sec.steps + ' گام');
+  t(sec && sec.nav, 'از منوی بالای صفحه هم به آن می‌شود رسید');
+  t(sec && sec.sm >= sec.bar, 'پرشِ لنگر از زیرِ نوارِ بالا رد می‌شود',
+    sec && ('نوار ' + sec.bar + ' / حاشیه ' + sec.sm));
+  t(errs.length === 0, 'و صفحهٔ اصلی خطای جاوااسکریپتی ندارد', errs.join(' | ') || 'نداشت');
+  await ctx.close();
+}
 
 for (const w of WHO) {
   console.log('===== ' + w.name + ' =====');

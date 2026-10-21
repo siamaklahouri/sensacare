@@ -189,6 +189,10 @@ html:not(.hasdot) .topnav a.on{ background:var(--brand-soft); }
 /* نوارِ بالا چسبان است، پس پرش به یک بخش عنوانش را زیرِ نوار پنهان
    می‌کرد. این حاشیه فقط برای پرشِ لنگر است، نه برای چیدمان. */
 section{ padding:52px 0; scroll-margin-top:86px; }
+/* روی صفحهٔ باریک، نوارِ بالا دو ردیف می‌شود و ۱۲۶ پیکسل می‌گیرد — با
+   همان ۸۶، عنوانِ هر بخش بعد از پرش زیرِ نوار می‌ماند و آدم فکر می‌کند
+   وسطِ متن افتاده. */
+@media (max-width:760px){ section{ scroll-margin-top:134px; } }
 .sec-head{ margin-bottom:28px; }
 /* هر بخش یک نشانِ رنگی می‌گیرد. تا پیش از این همهٔ تیترها یک‌جور
    سرمه‌ای بودند و صفحه از بالا تا پایین یک رنگ به نظر می‌رسید. */
@@ -308,6 +312,20 @@ section{ padding:52px 0; scroll-margin-top:86px; }
   box-shadow:var(--sh-1); }
 .step h3{ margin:9px 0 6px; font-size:16px; }
 .step p{ margin:0; color:var(--ink-soft); font-size:13.8px; }
+
+/* ---------- گام‌های نصب روی گوشی ----------
+   شماره‌ها را خودِ <ol> می‌دهد، پس در راست‌به‌چپ هم سرِ جای خودشان‌اند
+   و لازم نیست دستی نوشته شوند. */
+.howto{ margin:11px 0 0; padding-inline-start:20px; padding-inline-end:0;
+  color:var(--ink-soft); font-size:13.5px; line-height:2.05; }
+.howto li{ margin-bottom:1px; }
+.howto b{ color:var(--ink); font-weight:600; }
+#app .card{ display:flex; flex-direction:column; }
+/* دکمه ته کارت می‌چسبد تا سه کارت هم‌قد دیده شوند، هرچند متنشان
+   هم‌اندازه نیست. */
+#app .card .btn{ margin-top:auto; align-self:stretch; margin-block-start:15px; }
+.app-note{ margin:18px auto 0; max-width:640px; text-align:center;
+  font-size:12.5px; line-height:1.9; color:var(--ink-faint); }
 
 /* ---------- امنیت ---------- */
 .safe{ background:var(--white); border:1px solid var(--line); border-radius:var(--r-lg);
@@ -625,6 +643,7 @@ html.anim details[open] summary::after{
     <a href="#jobs">شغل‌ها</a>
     <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
     <a href="#how">شروع</a>
+    <a href="#app">روی گوشی</a>
     <a href="#faq">پرسش‌ها</a>
   </nav>
   <div class="sp"></div>
@@ -903,6 +922,59 @@ html.anim details[open] summary::after{
         <p>از همین سایت، با نام کاربری و رمز. از همان روزِ اول پر است و آماده.</p>
       </div>
     </div>
+  </section>
+
+  <!-- کارتابل روی گوشی. سه راه، و هر سه به یک جا می‌رسند — پس به‌جای
+       یک «دانلود» تنها، هر سه با گام‌هایشان نوشته شده‌اند تا کسی دنبالِ
+       راهی که ندارد نگردد. -->
+  <section id="app">
+    <div class="sec-head">
+      <h2>روی گوشی، مثلِ یک برنامه</h2>
+      <p>کارتابل همان صفحهٔ وب است و چیزِ تازه‌ای یاد نمی‌گیرید؛ ولی می‌تواند روی صفحهٔ
+         خانهٔ گوشی بنشیند و بی‌نوارِ آدرس باز شود — با نوارِ دکمه‌های پایینی، و بعد از
+         اولین باز شدن، بی‌اینترنت هم.</p>
+    </div>
+    <div class="grid g3">
+
+      <div class="card">
+        <h3><span class="ic">📦</span> اندروید — با فایلِ نصب</h3>
+        <p>اگر دوست دارید مثلِ هر برنامهٔ دیگری یک فایل بگیرید و نصب کنید:</p>
+        <ol class="howto">
+          <li>دکمهٔ پایین را بزنید تا فایل دانلود شود.</li>
+          <li>روی فایلِ دانلودشده بزنید؛ اندروید یک بار اجازهٔ نصب می‌خواهد — بدهید.</li>
+          <li>نشانهٔ <b>SLTech</b> روی صفحهٔ خانه می‌نشیند؛ از همان‌جا باز کنید.</li>
+        </ol>
+        <a class="btn btn-apk" href="/sltech.apk" download>
+          <span aria-hidden="true">⬇</span> دانلودِ فایلِ نصب
+        </a>
+      </div>
+
+      <div class="card">
+        <h3><span class="ic">🌐</span> اندروید — بی‌دانلود</h3>
+        <p>اگر نمی‌خواهید فایلی دانلود کنید، خودِ کروم همین کار را می‌کند:</p>
+        <ol class="howto">
+          <li>با <b>Chrome</b> وارد <b>sltech.ir</b> شوید.</li>
+          <li>منوی سه‌نقطهٔ بالای مرورگر را باز کنید.</li>
+          <li><b>Install app</b> یا <b>افزودن به صفحهٔ اصلی</b> را بزنید.</li>
+          <li>یک بار دیگر <b>نصب</b> را تأیید کنید.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3><span class="ic">📱</span> آیفون</h3>
+        <p>برای آیفون نیازی به دانلود یا نصبِ برنامه نیست؛ فقط کافی است کارتابل را به
+           صفحهٔ اصلیِ گوشی اضافه کنید:</p>
+        <ol class="howto">
+          <li>مرورگر <b>Safari</b> را باز کنید و وارد <b>sltech.ir</b> شوید.</li>
+          <li>روی دکمهٔ <b>Share</b> (اشتراک‌گذاری) بزنید.</li>
+          <li>گزینهٔ <b>Add to Home Screen</b> (افزودن به صفحهٔ اصلی) را انتخاب کنید.</li>
+          <li>در آخر، روی <b>Add</b> (افزودن) بزنید.</li>
+        </ol>
+      </div>
+    </div>
+    <p class="app-note">هر سه راه به یک جا می‌رسند: همان کارتابل و همان داده. چیزی جدا
+      نصب نمی‌شود که بخواهد به‌روز شود — هر تغییری که در سایت بدهیم، همان لحظه داخلِ
+      برنامه هم هست.</p>
   </section>
 
   <section id="faq">
