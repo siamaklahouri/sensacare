@@ -651,6 +651,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
      «flex:0 0 216px» که در چیدمانِ ستونیِ گوشی به‌جای عرض، قدِ نوار
      را ۲۱۶ پیکسل قفل می‌کرد و منو را به آن شکل درمی‌آورد.
      مدیا-کوئری باید حرفِ آخر را بزند. */
+/* تم‌های کارتابل بعد از پوستهٔ مشترک، چون همان متغیرها را
+   عوض می‌کنند و باید حرفِ آخر را بزنند. */
+{{PART:kthemecss}}
 {{PART:mobilecss}}
 </style>
 </head>
@@ -4309,6 +4312,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:navmobile}}
 {{PART:dayjump}}
 {{PART:daycal}}
+{{PART:ktheme}}
 {{PART:bell}}
 {{PART:rowdrag}}
 
