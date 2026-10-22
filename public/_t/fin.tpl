@@ -675,6 +675,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:kthemecss}}
 {{PART:mobilecss}}
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
+{{PART:findcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -709,6 +710,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
        نامِ ماهِ جاری را نشان می‌دهد و با زدنش پنجرهٔ ماه‌ها باز می‌شود.
        نوارِ بالا جای تصمیم گرفتن نیست، جای دیدن است. -->
   <div class="period">
+    <!-- جست‌وجوی سراسری: بینِ همهٔ ماه‌ها و جدول‌ها. Ctrl+K هم همین را باز می‌کند. -->
+    <button type="button" class="find-btn" id="findBtn" title="جست‌وجو (Ctrl+K)" aria-label="جست‌وجو">🔍</button>
     <button type="button" class="month-btn" id="monthBtn" title="ماه‌ها">
       <span class="ic">🗓</span><span id="monthBtnLabel">—</span><span class="caret">▾</span>
     </button>
@@ -4364,6 +4367,18 @@ Object.keys(XSAMPLE).forEach(id=>{
 {{PART:dayjump}}
 {{PART:daycal}}
 {{PART:ktheme}}
+/* جدول‌های غیرماهانه‌ای که جست‌وجوی سراسری باید ببیند. */
+window.SEARCH_MAP = [
+  { key:"parties",          label:"طرف‌حساب‌ها",     view:"parties",          body:"partiesBody",          title:"name" },
+  { key:"invoices",         label:"فاکتورها",        view:"invoices",         body:"invoicesBody",         title:"party" },
+  { key:"payables",         label:"پرداختنی‌ها",     view:"payables",         body:"payablesBody",         title:"party" },
+  { key:"payableNotes",     label:"اسناد پرداختنی",  view:"payablenotes",     body:"payableNotesBody",     title:"party" },
+  { key:"receivableNotes",  label:"اسناد دریافتنی",  view:"receivablenotes",  body:"receivableNotesBody",  title:"party" },
+  { key:"expenses",         label:"هزینه‌ها",        view:"expenses",         body:"expensesBody",         title:"title" },
+  { key:"bank",             label:"بانک",            view:"bank",             body:"bankBody",             title:"bank" },
+  { key:"budget",           label:"بودجه",           view:"budget",           body:"budgetBody",           title:"category" }
+];
+{{PART:find}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}

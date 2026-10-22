@@ -36,6 +36,8 @@ import p_daycal from '../public/_t/p/daycal.tpl';
 import p_daycalcss from '../public/_t/p/daycalcss.tpl';
 import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
+import p_find from '../public/_t/p/find.tpl';
+import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_gatecss from '../public/_t/p/gatecss.tpl';
 import p_gatejs from '../public/_t/p/gatejs.tpl';
@@ -88,6 +90,8 @@ export const PARTS = new Map([
   ['daycalcss', p_daycalcss],
   ['ktheme', p_ktheme],
   ['kthemecss', p_kthemecss],
+  ['find', p_find],
+  ['findcss', p_findcss],
   ['fadigits', p_fadigits],
   ['gatecss', p_gatecss],
   ['gatejs', p_gatejs],
