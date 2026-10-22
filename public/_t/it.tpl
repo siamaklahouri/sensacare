@@ -946,7 +946,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
-{{PART:attachcss}}
+{{PART:attachcss}} {{PART:calcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1024,6 +1024,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <button class="navbtn active" data-view="dashboard"><span class="ic">📊</span> داشبورد</button>
       <button class="navbtn" data-view="checklist"><span class="ic">✅</span> چک‌لیست ماهانه</button>
       <button class="navbtn" data-view="daily"><span class="ic">🗓️</span> برنامه روزانه</button>
+    <button class="navbtn" data-view="cal"><span class="ic">📆</span> تقویم</button>
       <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
@@ -1179,6 +1180,38 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <button class="btn btn-brass btn-sm" id="addDayRowBtn">＋ افزودن روز/وظیفه</button>
       </div>
       <datalist id="dailyCompanyOptions"></datalist>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="view" id="view-cal">
+      <div class="section-title">تقویم</div>
+      <div class="section-sub">کارهای هر روز، تعطیلی‌ها، و یادداشتِ خودتان</div>
+      <div class="c2-bar">
+        <button type="button" class="c2-nav" data-cal-step="-1" title="ماهِ قبل">‹</button>
+        <span class="c2-ttl" id="calTtl"></span>
+        <button type="button" class="c2-nav" data-cal-step="1" title="ماهِ بعد">›</button>
+        <button type="button" class="c2-today-btn" id="calToday">امروز</button>
+        <span class="c2-shift">تعطیلی‌های قمری:
+          <select id="calShift" title="اگر اعلامِ رسمی یک روز جلوتر یا عقب‌تر بود، از همین‌جا جابه‌جا کنید">
+            <option value="-1">یک روز عقب</option>
+            <option value="0">بدون جابه‌جایی</option>
+            <option value="1">یک روز جلو</option>
+          </select></span>
+      </div>
+      <div class="c2-main">
+        <div class="c2-box">
+          <div class="c2-wd"><span>شنبه</span><span>یک‌شنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><span>چهارشنبه</span><span>پنج‌شنبه</span><span>جمعه</span></div>
+          <div class="c2-grid" id="calGrid"></div>
+        </div>
+        <div class="c2-side" id="calSide"></div>
+      </div>
+      <div class="c2-legend">
+        <span><span class="sw" style="background:var(--red-bg);border:1px solid var(--red-ink);"></span> تعطیل</span>
+        <span><span class="sw" style="border:2px solid var(--c2);"></span> امروز</span>
+        <span>📝 یادداشت دارد</span>
+        <span><b>*</b> تعطیلیِ قمری — روزش را هلال تعیین می‌کند و ممکن است یک روز جابه‌جا باشد؛
+          با «تعطیلی‌های قمری» بالا یا با تعطیل/کاری کردنِ خودِ روز درستش کنید.</span>
+      </div>
     </section>
 
     <!-- SERVERS & BACKUP -->
@@ -1417,6 +1450,14 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <div class="guide-item">
           <div class="ic">🗓️</div>
           <div><h4>برنامه روزانه</h4><p>برای هر روز ماه، وظایف اصلی، جلسات و وضعیت پیشرفت را ثبت کنید. تا کاری «انجام شد» بخورد، تاریخِ انجامش خودش می‌افتد.</p></div>
+        </div>
+        <div class="guide-item">
+          <div class="ic">📆</div>
+          <div><h4>تقویم</h4><p>همان کارها، این بار روی تقویمِ ماه: هر روز با وظیفه‌ها و مهلت‌های خودش.
+            تعطیلی‌ها به‌رنگ‌اند — جمعه‌ها، تعطیلیِ رسمیِ شمسی، و قمری‌ها که کنارشان <b>*</b> دارد چون
+            روزِ دقیقشان را هلال تعیین می‌کند؛ اگر اعلامِ رسمی یک روز آن‌طرف‌تر بود، از بالای همان صفحه
+            یا با تعطیل/کاری کردنِ خودِ روز درستش کنید. برای هر روز هم می‌شود یادداشت گذاشت و هر ماه
+            رنگِ خودش را دارد.</p></div>
         </div>
 <!--IT-->
         <div class="guide-item">
@@ -4566,6 +4607,7 @@ function setupNav(){
       if(view==="companies") renderCompanies();
       if(view==="mvpn") renderMvpn();
       if(view==="personal") renderPersonalView();
+      if(view==="cal"){ try{ CAL.init(); CAL.render(); }catch(e){} }
       /* هر بار که باز می‌شود از نو می‌پرسد: گزارش هر ساعت عوض می‌شود و
          یک‌بار خواندن سرِ بارِ صفحه یعنی تا رفرشِ بعدی کهنه می‌ماند. */
       if(view==="veeam") loadVeeam();
@@ -4868,6 +4910,7 @@ window.SEARCH_MAP = [
 {{PART:find}}
 {{PART:rowsheet}}
 {{PART:attach}}
+{{PART:cal}}
 {{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}
@@ -4922,7 +4965,8 @@ async function init(){
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
      renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders,
      ()=>{ try{ ATTACH.refresh(); }catch(e){} },
-     ()=>{ try{ REMIND.init(); }catch(e){} }
+     ()=>{ try{ REMIND.init(); }catch(e){} },
+     ()=>{ try{ CAL.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

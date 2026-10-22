@@ -75,6 +75,8 @@
                '<path d="M3.6 5.4l1.2 1.2 2.2-2.6M3.6 11.9l1.2 1.2 2.2-2.6M3.6 18.4l1.2 1.2 2.2-2.6"/>',
     daily:     '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 2.8v4M16 2.8v4M3 10h18"/>' +
                '<path d="M7.6 14.3h.01M12 14.3h.01M16.4 14.3h.01M7.6 17.8h.01M12 17.8h.01"/>',
+    cal:       '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 2.8v4M16 2.8v4M3 10h18"/>' +
+               '<rect x="6.6" y="13" width="4" height="3.6" rx="1"/>',
     personal:  '<rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>' +
                '<path d="M12 14.6v2.8"/>',
     settings:  '<path d="M3.5 7.5h9M16.5 7.5h4M3.5 16.5h4M11.5 16.5h9"/>' +
