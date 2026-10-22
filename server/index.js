@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { openDB } from './d1.js';
 import { makeAssets } from './assets.js';
+import { makeFiles } from './files-fs.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -53,7 +54,9 @@ mkdirSync(dirname(DB_FILE), { recursive: true });
 /* ---------- بایندینگ‌ها ----------
    همان نام‌هایی که کد انتظار دارد: DB، ASSETS و بقیهٔ کلیدها. */
 const DB = openDB(DB_FILE);
-const env = { ...cfg, DB, ASSETS: makeAssets(PUBLIC) };
+/* پیوست‌ها کنارِ دیتابیس می‌نشینند، نه داخلش — چرایش در src/files.js */
+const FILES_DIR = cfg.FILES_DIR || join(dirname(DB_FILE), 'files');
+const env = { ...cfg, DB, ASSETS: makeAssets(PUBLIC), FILES: makeFiles(FILES_DIR) };
 
 /* env.AI فقط روی کلادفلر وجود دارد. این‌جا نیست، و کد خودش برای
    نبودنش پیام روشن دارد؛ پس چیزی نمی‌شکند، فقط دستیار خاموش است. */
@@ -159,7 +162,28 @@ function cronTick() {
   fireScheduled(d);
 }
 
+/* ---------- یادآورها ----------
+   جدا از کرونِ ساعتی: یادآور اگر یک ساعت دیر بیاید، یادآور نیست. */
+const { tick: pushTick } = await import('../src/push.js');
+let pushBusy = false;
+async function remindTick() {
+  if (pushBusy || cfg.PUSH_OFF === '1') return;
+  pushBusy = true;
+  try { await pushTick(env); }
+  catch (e) { console.error('[یادآور]', e?.stack || e?.message || e); }
+  finally { pushBusy = false; }
+}
+
 /* ---------- راه‌اندازی ---------- */
+/* یک نوبتِ یادآور با دست — برای وقتی که باید دید چه می‌رود، بی
+   انتظارِ شصت ثانیه */
+if (process.argv.includes('--remind-now')) {
+  const r = await (await import('../src/push.js')).tick(env);
+  console.log('[یادآور] کارتابل‌های سررسیده: ' + r.planners);
+  DB.close();
+  process.exit(0);
+}
+
 if (process.argv.includes('--cron-now')) {
   await fireScheduled();
   DB.close();
@@ -181,6 +205,7 @@ server.listen(PORT, BIND, () => {
   }
   console.log(`تلگرام از راهِ: ${tgWhere}`);
   setInterval(cronTick, 20000);
+  if (cfg.PUSH_OFF !== '1') setInterval(remindTick, 60000);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT']) {

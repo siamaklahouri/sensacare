@@ -30,6 +30,7 @@ import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 import { viewShareRows, saveViewShare, dropViewShare, shareableFor, specOf } from './viewshare.js';
 import { SECTION_PRESETS } from './sections.js';
 import { dropPlannerFiles } from './files.js';
+import { dropPlannerPush } from './push.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -759,6 +760,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       /* پیوست‌ها هم می‌روند: بایتشان روی دیسک می‌ماند و هیچ‌کس دیگر
          نمی‌داند مالِ چه بوده. */
       try { await dropPlannerFiles(env, slug); } catch (e) { }
+      try { await dropPlannerPush(env, slug); } catch (e) { }
       await log(env, 'delete', slug, '');
       return json({ ok: true });
     }

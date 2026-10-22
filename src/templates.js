@@ -54,6 +54,7 @@ import p_attach from '../public/_t/p/attach.tpl';
 import p_attachcss from '../public/_t/p/attachcss.tpl';
 import p_rowsheet from '../public/_t/p/rowsheet.tpl';
 import p_rowsheetcss from '../public/_t/p/rowsheetcss.tpl';
+import p_remind from '../public/_t/p/remind.tpl';
 import p_report from '../public/_t/p/report.tpl';
 import p_reportjs from '../public/_t/p/reportjs.tpl';
 import p_settings from '../public/_t/p/settings.tpl';
@@ -115,6 +116,7 @@ export const PARTS = new Map([
   ['attachcss', p_attachcss],
   ['rowsheet', p_rowsheet],
   ['rowsheetcss', p_rowsheetcss],
+  ['remind', p_remind],
   ['report', p_report],
   ['reportjs', p_reportjs],
   ['settings', p_settings],

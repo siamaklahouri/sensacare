@@ -58,9 +58,92 @@ self.addEventListener("activate", function (e) {
 });
 
 /* پیامِ صفحه: «همین حالا جایت را بده» — وقتی کاربر روی «به‌روزرسانی»
-   می‌زند. بی این، نسخهٔ تازه تا بستنِ همهٔ پنجره‌ها منتظر می‌ماند. */
+   می‌زند. بی این، نسخهٔ تازه تا بستنِ همهٔ پنجره‌ها منتظر می‌ماند.
+
+   پیامِ دوم آدرسِ api همان کارتابل است. سرویس‌ورکر خودش نمی‌تواند
+   حدسش بزند: دامنهٔ صفحه «/siamak/» است و api ممکن است «/api/kartabl»
+   باشد — اسمِ یکی از دیگری درنمی‌آید. پس صفحه هر بار که باز می‌شود
+   آدرس را می‌گوید و این‌جا در حافظه می‌نشیند، نه در یک متغیر: خودِ
+   سرویس‌ورکر بینِ دو اعلان خوابانده می‌شود و متغیرهایش می‌پرند. */
+var API_SLOT = "/__kartabl-api";
+
+function saveApi(base) {
+  return caches.open(V).then(function (c) {
+    return c.put(new Request(API_SLOT), new Response(String(base || "")));
+  }).catch(function () { });
+}
+
+function loadApi() {
+  return caches.match(new Request(API_SLOT))
+    .then(function (r) { return r ? r.text() : ""; })
+    .catch(function () { return ""; });
+}
+
 self.addEventListener("message", function (e) {
-  if (e.data === "skip-waiting") self.skipWaiting();
+  var d = e.data;
+  if (d === "skip-waiting") { self.skipWaiting(); return; }
+  if (d && d.t === "api" && d.base) e.waitUntil(saveApi(d.base));
+});
+
+/* ---------- اعلان، وقتی برنامه بسته است ----------
+   بسته‌ای که از سرور می‌رسد خالی است: فقط «بیدار شو». متنِ یادآورها
+   را خودِ این‌جا از سرور می‌گیرد. دلیلش این است که محتوای Web Push
+   باید با کلیدِ مرورگر رمز شود و رمزنگاریِ دست‌ساز روی سرور بدترین
+   جایی است که می‌شود نوشت؛ این راه همان نتیجه را بی آن می‌دهد.
+
+   یک قاعدهٔ کروم: بعد از هر بسته باید *چیزی* نشان داده شود، وگرنه
+   خودش «این سایت در پس‌زمینه کار کرد» را نشان می‌دهد. پس اگر صف
+   خالی بود یا شبکه نرسید، یک اعلانِ کلی می‌آید. */
+function genericNote() {
+  return self.registration.showNotification("یادآور کارتابل", {
+    body: "یک یادآور سررسیده — برای دیدنش کارتابل را باز کنید.",
+    tag: "kartabl-generic", icon: "/app-icon-192.1.png", badge: "/icon-sl.3.png",
+    dir: "rtl", lang: "fa"
+  });
+}
+
+self.addEventListener("push", function (e) {
+  e.waitUntil(
+    loadApi().then(function (base) {
+      if (!base) return genericNote();
+      return fetch(base + "/reminders/due", {
+        credentials: "include", headers: { "Accept": "application/json" }
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          var due = (d && d.due) || [];
+          if (!due.length) return genericNote();
+          /* بیش از پنج تا، پنج اعلان نیست: صفِ پنج‌تایی روی گوشی یعنی
+             کاربر همه را یک‌جا پاک می‌کند و هیچ‌کدام را نمی‌خواند. */
+          if (due.length > 5) {
+            return self.registration.showNotification("یادآور کارتابل", {
+              body: due.length + " یادآور سررسیده است.",
+              tag: "kartabl-many", icon: "/app-icon-192.1.png",
+              badge: "/icon-sl.3.png", dir: "rtl", lang: "fa"
+            });
+          }
+          return Promise.all(due.map(function (it) {
+            return self.registration.showNotification(
+              it.title || "یادآور کارتابل", {
+                body: it.body || "", tag: it.tag || it.id,
+                icon: "/app-icon-192.1.png", badge: "/icon-sl.3.png",
+                dir: "rtl", lang: "fa", renotify: true
+              });
+          }));
+        })
+        .catch(function () { return genericNote(); });
+    })
+  );
+});
+
+/* مرورگر که اشتراک را عوض کرد، صفحه باید دوباره ثبتش کند. خودِ
+   این‌جا کلید عمومی را ندارد، پس فقط به صفحه خبر می‌دهد. */
+self.addEventListener("pushsubscriptionchange", function (e) {
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      .then(function (list) {
+        list.forEach(function (c) { c.postMessage({ t: "resubscribe" }); });
+      })
+  );
 });
 
 /* زدنِ روی اعلان: اگر کارتابل باز است همان پنجره جلو می‌آید، وگرنه
@@ -80,6 +163,7 @@ self.addEventListener("notificationclick", function (e) {
 });
 
 function isShell(url) {
+  if (url.pathname === API_SLOT) return false;
   return url.pathname.indexOf("/f/") === 0 ||
     /\.(?:png|svg|ico|woff2?|css|js)$/i.test(url.pathname);
 }

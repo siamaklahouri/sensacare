@@ -4390,6 +4390,7 @@ window.SEARCH_MAP = [
 {{PART:find}}
 {{PART:rowsheet}}
 {{PART:attach}}
+{{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
@@ -4443,7 +4444,8 @@ async function init(){
      ()=>{ const cf = document.getElementById("connectFolderBtn");
            if(cf) cf.addEventListener("click", connectFolder); },
      renderEverything, setupShared, setupNoAutofill,
-     ()=>{ try{ ATTACH.refresh(); }catch(e){} }
+     ()=>{ try{ ATTACH.refresh(); }catch(e){} },
+     ()=>{ try{ REMIND.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+(fn.name||"")+":", e); } });
   }catch(e){
     console.error("خطا در راه‌اندازی کارتابل مالی:", e);

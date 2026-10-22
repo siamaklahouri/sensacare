@@ -4842,6 +4842,7 @@ window.SEARCH_MAP = [
 {{PART:find}}
 {{PART:rowsheet}}
 {{PART:attach}}
+{{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
@@ -4894,7 +4895,8 @@ async function init(){
      setupMvpn, setupRemote, setupChartModal, setupDateTools, setupConvert, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
      renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders,
-     ()=>{ try{ ATTACH.refresh(); }catch(e){} }
+     ()=>{ try{ ATTACH.refresh(); }catch(e){} },
+     ()=>{ try{ REMIND.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

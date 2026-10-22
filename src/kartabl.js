@@ -27,6 +27,7 @@ import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
          editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
 import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner,
          FILE_LIMITS } from './files.js';
+import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1880,6 +1881,27 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     if (r.error) return bad(r.error, r.status || 400);
     return json(r);
   }
+
+  /* ---------- یادآورِ وقتی برنامه بسته است ----------
+     صفحه صف را می‌سازد (فقط خودش می‌تواند تاریخ‌های شمسی و صندوقِ
+     رمزشده را بخواند) و سرور هر دقیقه سررسیده‌ها را می‌فرستد. */
+  if (p === '/push/key' && m === 'GET')
+    return json({ key: await pushKey(env), subs: await subCount(env, panel.slug) });
+
+  if (p === '/push/subscribe' && m === 'POST') {
+    const r = await addSub(env, panel.slug, body.sub || body);
+    if (r.error) return bad(r.error, 400);
+    return json(r);
+  }
+
+  if (p === '/push/unsubscribe' && m === 'POST')
+    return json(await dropSub(env, panel.slug, body.endpoint));
+
+  if (p === '/reminders' && (m === 'PUT' || m === 'POST'))
+    return json(await setQueue(env, panel.slug, body.items));
+
+  if (p === '/reminders/due' && m === 'GET')
+    return json({ due: await dueFor(env, panel.slug) });
 
   if (p === '/state' && (m === 'PUT' || m === 'POST')) {
     if (body.state === undefined && body.db === undefined) return bad('داده‌ای نیامد.');
