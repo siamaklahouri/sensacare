@@ -104,14 +104,53 @@
        ولی ۵۸ پیکسل است، یعنی کمتر از نصفِ آن سه ردیفی که برداشته. */
     html[data-app="1"] .topbar{
       position:sticky; top:0; z-index:60;
-      min-height:58px; height:auto; padding:9px 14px; row-gap:0;
+      min-height:0; height:auto; padding:8px 13px 9px;
+      display:flex; flex-wrap:wrap; align-items:center; gap:8px;
       border-bottom:1px solid var(--card-border);
     }
-    html[data-app="1"] .topbar-clock{ display:none; }
-    html[data-app="1"] .brand{ gap:10px; min-width:0; }
-    html[data-app="1"] .brand .mark{ height:34px; width:34px; }
-    html[data-app="1"] .brand h1{ font-size:14.5px; }
+    html[data-app="1"] .topbar-clock,
+    html[data-app="1"] .topbar-date{ display:none; }
+    /* ردیفِ اول فقط «این‌جا کجاست»: نشان و نام. هرچه فشار بیاید، نام
+       کوتاه می‌شود و دکمه‌ها جابه‌جا نمی‌شوند. */
+    html[data-app="1"] .brand{ flex:1 1 auto; min-width:0; gap:9px; }
+    html[data-app="1"] .brand .mark{ height:30px; width:30px; }
+    html[data-app="1"] .brand h1{
+      font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
     html[data-app="1"] .brand .titles{ min-width:0; }
+
+    /* ردیفِ دوم، کلِ پهنا: ماه که کشیده می‌شود و سه دکمهٔ هم‌اندازه.
+       پیش از این همین چیزها بودند ولی هیچ‌کدام جای معینی نداشتند —
+       نوار می‌شکست و دکمه‌ها هرجا که جا بود می‌نشستند، و نتیجه‌اش
+       چیزی بود که به‌نظر می‌آمد کسی نچیده باشدش. */
+    html[data-app="1"] .period{
+      flex:1 1 100%; display:flex; align-items:center; gap:7px; min-width:0;
+    }
+    /* ماه اول می‌آید و کشیده می‌شود، سه دکمه بعدش: «این‌جا کدام ماه
+       است» چیزی است که آدم اول می‌خواهد بداند، و دکمه‌ها ابزارند. */
+    html[data-app="1"] .period .month-btn{
+      order:1; flex:1 1 auto; min-width:0; justify-content:space-between;
+      height:35px; padding:0 12px; border-radius:11px;
+      font-size:13.5px; font-weight:700; gap:8px;
+      background:var(--paper); border-color:var(--line);
+    }
+    html[data-app="1"] .period .month-btn .caret{ margin-inline-start:auto; }
+    html[data-app="1"] .period .find-btn{ order:2; }
+    html[data-app="1"] .period .bellw{ order:3; }
+    html[data-app="1"] .period .theme-btn{ order:4; }
+    html[data-app="1"] .period .month-btn:active{ background:var(--brass-bg); }
+    /* سه دکمه، یک اندازه و یک شکل: ذره‌بین و زنگوله و شب/روز پیش از
+       این سه قالبِ متفاوت داشتند (مربع، مربعِ گرد، دایره) و همین
+       بی‌نظمی بیشتر از جایشان به چشم می‌آمد. */
+    html[data-app="1"] .period .find-btn,
+    html[data-app="1"] .period .bellb,
+    html[data-app="1"] .period .theme-btn{
+      width:35px; height:35px; flex:none; border-radius:11px;
+      background:var(--paper); border:1px solid var(--line);
+      font-size:15px; color:var(--ink-soft);
+    }
+    html[data-app="1"] .period .bellw{ flex:none; }
+    html[data-app="1"] .period .bellb .nd{ box-shadow:0 0 0 2px var(--paper); }
     /* «✓ ذخیره شد» زیرِ نام، به جای زیرنویسِ ثابتِ برند */
     html[data-app="1"] .brand .titles .save-hint{
       display:block; min-height:0; margin:1px 0 0; padding:0;
@@ -123,7 +162,7 @@
        کلیک می‌پذیرد — چون نوارِ پایینی همان‌ها را صدا می‌زند، نه کارِ
        تازه‌ای. */
     html[data-app="1"] .sidebar{ display:none; }
-    html[data-app="1"] .content{ padding:15px 13px 12px; }
+    html[data-app="1"] .content{ padding:13px 13px 12px; }
     /* عنوانِ بخش روی گوشی یک پله کوچک‌تر: جدولِ زیرش مهم‌تر است. */
     html[data-app="1"] .section-title{ font-size:18px; }
     html[data-app="1"] .section-sub{ font-size:12px; margin-bottom:11px; }

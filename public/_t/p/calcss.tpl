@@ -122,8 +122,20 @@
   @media (max-width:900px){
     .c2-main{ grid-template-columns:1fr; }
     .c2-side{ position:static; }
-    .c2-cell{ min-height:70px; padding:4px; }
-    .c2-items{ display:none; }
+    .c2-cell{ min-height:62px; padding:4px 4px 5px; }
     .c2-hol{ font-size:9px; }
     .c2-ttl{ min-width:0; font-size:15px; }
+    /* نامِ روزها روی گوشی یک حرف می‌شود: «چهارشنبه» در ستونی به پهنای
+       انگشت جا نمی‌شد و ستون‌ها را به هم می‌چسباند. */
+    .c2-wd span{ font-size:0; padding:7px 0; }
+    .c2-wd span::after{ content:attr(data-s); font-size:12px; }
+    /* و خودِ کارها نقطه می‌شوند: متنِ سه‌حرفیِ بریده به درد نمی‌خورد،
+       ولی «این روز کار دارد» همان چیزی است که از یک نگاه می‌خواهی. */
+    .c2-items{ flex-direction:row; flex-wrap:wrap; gap:3px; margin-top:4px; }
+    .c2-it{
+      width:6px; height:6px; padding:0; border:none; border-radius:50%;
+      background:var(--c2); font-size:0; line-height:0; overflow:hidden;
+    }
+    .c2-it.tsk{ background:var(--amber); }
+    .c2-more{ font-size:9px; padding:0; line-height:6px; }
   }

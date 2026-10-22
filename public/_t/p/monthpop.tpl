@@ -114,7 +114,12 @@ function renameMonth(oldKey, monthName, year){
 let MP_EDIT = null;
 function renderMonthSelector(){
   const lab = document.getElementById("monthBtnLabel");
-  if(lab) lab.textContent = state.currentMonthKey ? monthLabelOf(state.currentMonthKey) : "—";
+  /* سالِ کلید با رقمِ لاتین ذخیره می‌شود (برای مرتب‌سازی)، ولی روی
+     دکمه باید فارسی دیده شود — بقیهٔ عددهای صفحه همه فارسی‌اند. */
+  if(lab){
+    const txt = state.currentMonthKey ? monthLabelOf(state.currentMonthKey) : "—";
+    lab.textContent = (typeof fa === "function") ? fa(txt) : txt;
+  }
   const list = document.getElementById("monthPopList");
   if(!list) return;
   const keys = Object.keys(state.monthsData||{});

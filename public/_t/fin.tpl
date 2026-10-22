@@ -937,7 +937,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       </div>
       <div class="c2-main">
         <div class="c2-box">
-          <div class="c2-wd"><span>شنبه</span><span>یک‌شنبه</span><span>دوشنبه</span><span>سه‌شنبه</span><span>چهارشنبه</span><span>پنج‌شنبه</span><span>جمعه</span></div>
+          <div class="c2-wd"><span data-s="ش">شنبه</span><span data-s="ی">یک‌شنبه</span><span data-s="د">دوشنبه</span><span data-s="س">سه‌شنبه</span><span data-s="چ">چهارشنبه</span><span data-s="پ">پنج‌شنبه</span><span data-s="ج">جمعه</span></div>
           <div class="c2-grid" id="calGrid"></div>
         </div>
         <div class="c2-side" id="calSide"></div>
