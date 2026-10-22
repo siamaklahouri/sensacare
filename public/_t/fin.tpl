@@ -577,6 +577,23 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .save-hint{ color:var(--ink-faint); }
 
   .badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+  /* وضعیت، به‌شکلِ قرص. رنگ همان سه رنگی است که در داشبورد هم
+     برای وضعیت به‌کار می‌رود، پس چیزِ تازه‌ای به صفحه اضافه نمی‌کند —
+     فقط همان را سرِ جای خودش می‌آورد: با یک نگاه روی جدول معلوم است
+     کدام ردیف مانده. data-st با خودِ select تازه می‌شود. */
+  select.st-select{
+    font-weight:700; border-radius:999px; text-align:center;
+    font-size:12.2px; padding:6px 2px; border:1px solid var(--line); background:var(--paper);
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  select.st-select:hover{ border-color:var(--brass); }
+  select.st-select[data-st="انجام شد"]{
+    background:var(--green-bg); color:var(--green-ink); border-color:transparent; }
+  select.st-select[data-st="در حال انجام"]{
+    background:var(--amber-bg); color:var(--amber-ink); border-color:transparent; }
+  select.st-select[data-st="انجام نشده"]{
+    background:var(--red-bg); color:var(--red-ink); border-color:transparent; }
   .badge.done{ background:var(--green-bg); color:var(--green-ink); }
   .badge.doing{ background:var(--teal-bg); color:var(--teal-ink); }
   .badge.todo{ background:var(--red-bg); color:var(--red-ink); }
@@ -882,7 +899,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:40px;"></th></tr>
+          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th style="width:18%;">📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:196px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:40px;"></th></tr>
           <tr class="filter-row">
             <th></th>
             <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
@@ -3243,6 +3260,16 @@ function setupBudget(){
 const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
   || ["صورت‌های مالی","مطالبات و وصول","پرداخت به تامین‌کنندگان","حقوق و دستمزد","مالیات و بیمه","بودجه و گزارش‌گیری","بانک و نقدینگی","سایر"];
 const STATUS = ["انجام نشده","در حال انجام","انجام شد"];
+
+/* قرصِ وضعیت: رنگش از data-st می‌آید و این‌جا همان لحظه تازه می‌شود.
+   یک شنوندهٔ واحد روی document، نه یکی به‌ازای هر ردیف: جدول‌ها از نو
+   ساخته می‌شوند و شنونده‌های ردیفی هر بار باید دوباره بسته می‌شدند. */
+document.addEventListener("change", function(e){
+  const el = e.target;
+  if(el && el.classList && el.classList.contains("st-select"))
+    el.setAttribute("data-st", el.value || "");
+});
+
 const PRIORITY = ["بالا","متوسط","پایین"];
 
 const DEFAULT_STATE = {
@@ -3592,7 +3619,7 @@ function renderChecklist(){
       <td class="editable-text"><input type="text" data-field="owner" value="${escapeHtml(t.owner)}"></td>
       <td class="editable-text"><input type="number" data-field="deadline" value="${t.deadline!=null?t.deadline:''}" placeholder="روز"></td>
       <td>
-        <select data-field="status">
+        <select data-field="status" class="st-select" data-st="${escapeHtml(t.status||'')}">
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
@@ -3710,7 +3737,7 @@ function renderDaily(){
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="توضیحات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام طرف‌حساب" list="dailyPartyOptions"></td>
       <td>
-        <select data-field="status">
+        <select data-field="status" class="st-select" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>

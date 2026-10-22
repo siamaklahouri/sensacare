@@ -749,7 +749,23 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .badge.done{ background:var(--green-bg); color:var(--green-ink); }
   .badge.doing{ background:var(--amber-bg); color:var(--amber-ink); }
   .badge.todo{ background:var(--red-bg); color:var(--red-ink); }
-  select.st-select{ font-weight:700; border-radius:20px; }
+  /* وضعیت، به‌شکلِ قرص. رنگ همان سه رنگی است که در داشبورد هم
+     برای وضعیت به‌کار می‌رود، پس چیزِ تازه‌ای به صفحه اضافه نمی‌کند —
+     فقط همان را سرِ جای خودش می‌آورد: با یک نگاه روی جدول معلوم است
+     کدام ردیف مانده. data-st با خودِ select تازه می‌شود. */
+  select.st-select{
+    font-weight:700; border-radius:999px; text-align:center;
+    font-size:12.2px; padding:6px 2px; border:1px solid var(--line); background:var(--paper);
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  select.st-select:hover{ border-color:var(--brass); }
+  select.st-select[data-st="انجام شد"]{
+    background:var(--green-bg); color:var(--green-ink); border-color:transparent; }
+  select.st-select[data-st="در حال انجام"]{
+    background:var(--amber-bg); color:var(--amber-ink); border-color:transparent; }
+  select.st-select[data-st="انجام نشده"]{
+    background:var(--red-bg); color:var(--red-ink); border-color:transparent; }
   .pr-high{ color:var(--red-ink); font-weight:800; }
   .pr-mid{ color:var(--amber-ink); font-weight:800; }
   .pr-low{ color:var(--green-ink); font-weight:800; }
@@ -1143,7 +1159,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:16%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:196px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:34px;"></th></tr>
           <tr class="filter-row">
             <th></th>
             <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
@@ -1458,6 +1474,16 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:gatejs}}
 <script>
 const STATUS = ["انجام نشده","در حال انجام","انجام شد"];
+
+/* قرصِ وضعیت: رنگش از data-st می‌آید و این‌جا همان لحظه تازه می‌شود.
+   یک شنوندهٔ واحد روی document، نه یکی به‌ازای هر ردیف: جدول‌ها از نو
+   ساخته می‌شوند و شنونده‌های ردیفی هر بار باید دوباره بسته می‌شدند. */
+document.addEventListener("change", function(e){
+  const el = e.target;
+  if(el && el.classList && el.classList.contains("st-select"))
+    el.setAttribute("data-st", el.value || "");
+});
+
 const PRIORITY = ["بالا","متوسط","پایین"];
 const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
   || ["بکاپ‌گیری","سرورها و زیرساخت","امنیت سایبری","شبکه","پشتیبانی کاربران","لایسنس و تمدیدها","مانیتورینگ","مستندسازی","سایر"];
@@ -2516,7 +2542,7 @@ function renderChecklist(){
         </button>
       </td>
       <td>
-        <select data-field="status" class="st-select">
+        <select data-field="status" class="st-select" data-st="${escapeHtml(t.status||'')}">
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
@@ -2680,7 +2706,7 @@ function renderDaily(){
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
       <td>
-        <select data-field="status">
+        <select data-field="status" class="st-select" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
