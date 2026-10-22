@@ -207,6 +207,16 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:rowdragcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
+  .mpop-carry{
+    display:flex; align-items:center; gap:7px; margin:9px 2px 2px;
+    font-size:12px; color:var(--ink-soft); cursor:pointer;
+  }
+  .mpop-carry input{ margin:0; }
+  /* خانهٔ تیکِ تکرار در چک‌لیست: وسطِ ستون، و بزرگ‌تر از پیش‌فرض تا
+     روی گوشی با شست هم زده شود. */
+  .rep-cell{ text-align:center; }
+  .rep-box{ width:17px; height:17px; cursor:pointer; accent-color:var(--brass); }
+
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
 
 
@@ -974,6 +984,13 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <input id="newMonthYear" type="text" placeholder="سال، مثلاً ۱۴۰۴">
         <button type="button" class="btn btn-brass btn-sm" id="confirmNewMonthBtn">بساز و برو</button>
       </div>
+      <!-- ماهِ تازه با فهرستِ خالی شروع می‌شد و کاربر باید همه را دوباره
+           تایپ می‌کرد. حالا وظیفه‌های تکرارشونده می‌آیند — و چون ممکن
+           است کسی واقعاً ماهِ خالی بخواهد، تیکش برداشتنی است. -->
+      <label class="mpop-carry">
+        <input type="checkbox" id="newMonthCarry" checked>
+        وظیفه‌های تکرارشوندهٔ ماهِ قبل را بیاور
+      </label>
       <div class="mpop-note" id="monthPopNote"></div>
     </div>
   </div>
@@ -1095,7 +1112,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
           <thead><tr>
             <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th style="width:120px;">مسئول</th>
             <th style="width:104px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
-            <th>یادداشت</th><th style="width:40px;" title="حذف">🗑</th>
+            <th>یادداشت</th>
+            <th style="width:46px;" title="وظیفه‌ای که تیک دارد، ماهِ بعد هم می‌آید">🔁</th>
+            <th style="width:40px;" title="حذف">🗑</th>
           </tr></thead>
           <tbody id="checklistBody"></tbody>
         </table>
@@ -1647,7 +1666,7 @@ function allMonthsSnapshot(){
   if(state.currentMonthKey) snap[state.currentMonthKey] = { tasks: state.tasks, days: state.days };
   return snap;
 }
-function switchToMonth(monthName, year){
+function switchToMonth(monthName, year, opts){
   monthName = String(monthName||"").trim();
   year = String(year||"").trim();
   if(!monthName || !year){ alert("نام ماه و سال را کامل وارد کنید."); return; }
@@ -1664,7 +1683,12 @@ function switchToMonth(monthName, year){
     const carried = (prevDays||[])
       .filter(d=> d.status==="در حال انجام" || d.status==="انجام نشده")
       .map((d,i)=>({ day:i+1, createdDate:d.createdDate||"", main:d.main||"", meet:d.meet||"", company:d.company||"", status:d.status }));
-    state.tasks = [];
+    /* چک‌لیست دیگر از صفر شروع نمی‌شود: وظیفه‌های تکرارشوندهٔ ماهِ
+       قبل می‌آیند با وضعیتِ صفرشده. اگر کاربر در پنجرهٔ ماه‌ها تیکش را
+       برداشته باشد، هیچ‌کدام نمی‌آیند. */
+    const prevTasks = state.currentMonthKey && state.monthsData[state.currentMonthKey]
+      ? state.monthsData[state.currentMonthKey].tasks : [];
+    state.tasks = monthlyCarry(prevTasks, !opts || opts.carryTasks !== false);
     state.days = carried.length ? carried : deepClone(DEFAULT_STATE.days);
     state.monthsData[key] = { tasks: state.tasks, days: state.days };
   }
@@ -2495,6 +2519,10 @@ function renderChecklist(){
         </select>
       </td>
       <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
+      <td class="rep-cell" data-nocp>
+        <input type="checkbox" class="rep-box" data-rep="${i}" ${t.repeat === false ? "" : "checked"}
+               title="${t.repeat === false ? "فقط همین ماه" : "ماهِ بعد هم می‌آید"}">
+      </td>
       <td><button class="btn-del" data-del="${i}" title="حذف">✕</button></td>
     </tr>
   `).join("");
@@ -2507,6 +2535,16 @@ function renderChecklist(){
     box.addEventListener("click", ()=>{
       const idx = parseInt(box.getAttribute("data-idx"));
       openDayPicker(box, idx);
+    });
+  });
+  /* تیکِ تکرار: بی‌رسمِ دوبارهٔ جدول. رسمِ دوباره یعنی پرشِ فهرست —
+     همان چیزی که یک بار گرفته شد و درست شد. */
+  body.querySelectorAll(".rep-box").forEach(cb=>{
+    cb.addEventListener("change", ()=>{
+      const i = parseInt(cb.getAttribute("data-rep"));
+      state.tasks[i].repeat = cb.checked;
+      cb.title = cb.checked ? "ماهِ بعد هم می‌آید" : "فقط همین ماه";
+      scheduleSave();
     });
   });
   /* تنها جدولی بود که بی‌پرسش حذف می‌کرد: یک کلیکِ ناخواسته و ردیف
@@ -4568,7 +4606,8 @@ function setupMeta(){
     const name = (nameEl.value||"").trim(), year = (yearEl.value||"").trim();
     if(!name || !year){ note("نام ماه و سال را کامل وارد کنید."); return; }
     /* ماهی که از قبل هست دوباره ساخته نمی‌شود؛ فقط می‌رویم سراغش */
-    switchToMonth(name, year);
+    const carryEl = document.getElementById("newMonthCarry");
+    switchToMonth(name, year, { carryTasks: !carryEl || carryEl.checked });
     close();
   });
   [nameEl, yearEl].forEach(el=> el && el.addEventListener("keydown", e=>{
