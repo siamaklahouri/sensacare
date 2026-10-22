@@ -929,6 +929,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 {{PART:mobilecss}}
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
+{{PART:rowsheetcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -4830,6 +4831,7 @@ window.SEARCH_MAP = [
   { key:"lines",     label:"سرویس MVPN",    view:"mvpn",      body:"mvpnBody",    title:"phone" }
 ];
 {{PART:find}}
+{{PART:rowsheet}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
