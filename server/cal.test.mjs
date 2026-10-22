@@ -40,22 +40,30 @@ for (const w of WHO) {
     String(there.feat));
   t(there.grid && there.side, 'شبکهٔ روزها و کنارهٔ روز هر دو ساخته شده‌اند');
 
-  /* ---------- تعطیلی‌ها ---------- */
+  /* ---------- تعطیلی‌ها ----------
+     سالِ داخلِ جدول باید مو‌به‌مو همان تقویمِ رسمی باشد: اول این‌ها
+     حساب می‌شدند و قمری‌هایش یک روز جابه‌جا درمی‌آمد. */
   const hol = await p.evaluate(() => {
     const H = (y, m, d) => CAL.holiday(y, m, d);
     const fri = (() => { for (let d = 1; d <= 30; d++) {
       const g = DatePick.toG(1405, 7, d);
       if (new Date(g.gy, g.gm - 1, g.gd).getDay() === 5) return d; } return 0; })();
-    /* یک قمریِ تنها: نه جمعه، نه هم‌زمان با تعطیلیِ شمسی — وگرنه
-       جابه‌جا شدنش زیرِ آن یکی گم می‌شد و آزمون چیزی ثابت نمی‌کرد. */
-    const lunar = (() => { for (let m = 1; m <= 12; m++) for (let d = 1; d <= 28; d++) {
-      const h = H(1405, m, d);
+    /* سالی که در جدول نیست: تعطیلیِ قمری‌اش حساب می‌شود و باید
+       «تقریبی» علامت بخورد — و تنها یکی باشد، نه کنارِ جمعه یا
+       تعطیلیِ شمسی، وگرنه جابه‌جا شدنش زیرِ آن یکی گم می‌شود. */
+    const far = (() => { for (let m = 1; m <= 12; m++) for (let d = 1; d <= 28; d++) {
+      const h = H(1412, m, d);
       if (h.approx && h.name.indexOf('·') < 0) return { m, d, name: h.name }; } return null; })();
     return {
       noruz: [1, 2, 3, 4].map(d => H(1405, 1, d).off),
       nature: H(1405, 1, 13).off, rev: H(1405, 11, 22).off, oil: H(1405, 12, 29).off,
-      plain: H(1405, 5, 2).off || H(1405, 5, 3).off || H(1405, 5, 4).off,
-      friday: fri ? H(1405, 7, fri) : null, fri: fri, lunar
+      plain: [1, 2, 5, 9, 18].map(d => H(1405, 7, d).off),
+      friday: fri ? H(1405, 7, fri) : null, fri: fri, far,
+      /* چهار قمریِ ۱۴۰۵، همان‌طور که در تقویمِ رسمی آمده */
+      tasua: H(1405, 4, 3), arbaeen: H(1405, 5, 13),
+      fatemi: H(1405, 7, 22), fitr: H(1405, 12, 19),
+      /* و روزهای کنارشان که نباید تعطیل باشند */
+      near: [H(1405, 4, 2).off, H(1405, 5, 12).off, H(1405, 12, 18).off]
     };
   });
   t(hol.noruz.every(Boolean), 'چهار روزِ نوروز تعطیل است');
@@ -63,22 +71,45 @@ for (const w of WHO) {
     '۱۳ فروردین، ۲۲ بهمن و ۲۹ اسفند هم', JSON.stringify([hol.nature, hol.rev, hol.oil]));
   t(hol.friday && hol.friday.off && /جمعه/.test(hol.friday.name),
     'جمعه‌ها خودبه‌خود تعطیل‌اند', hol.fri + ' مهر');
-  t(!!hol.lunar && hol.lunar.approx !== false,
-    'تعطیلی‌های قمری هم پیدا می‌شوند', hol.lunar && (hol.lunar.name + ' — ' + hol.lunar.d + '/' + hol.lunar.m));
+  t(hol.plain.every(x => x === false), 'و روزِ کاری تعطیل نیست');
 
-  /* جابه‌جاییِ یک‌روزه: همان مناسبت باید یک روز آن‌طرف‌تر بنشیند */
+  t(hol.tasua.off && /تاسوعا/.test(hol.tasua.name) && hol.tasua.exact && !hol.tasua.approx,
+    '۳ تیر ۱۴۰۵ تاسوعا است — از جدولِ تقویمِ رسمی، نه حساب‌شده', hol.tasua.name);
+  t(hol.arbaeen.off && /اربعین/.test(hol.arbaeen.name),
+    'و ۱۳ مرداد اربعین', hol.arbaeen.name);
+  t(hol.fatemi.off && /فاطمه/.test(hol.fatemi.name),
+    'و ۲۲ مهر شهادت حضرت فاطمه — همانی که حسابِ قبلی اصلاً پیدایش نمی‌کرد',
+    hol.fatemi.name);
+  t(hol.fitr.off && /فطر/.test(hol.fitr.name), 'و ۱۹ اسفند عید فطر', hol.fitr.name);
+  t(hol.near.every(x => x === false),
+    'و روزِ کنارشان تعطیل نیست: یک روز جابه‌جایی یعنی یک روزِ کاریِ از دست رفته',
+    JSON.stringify(hol.near));
+
+  const yr = await p.evaluate(() => {
+    const h = document.getElementById('view-cal');
+    CAL.render();
+    const a = h.getAttribute('data-exact');
+    return { a };
+  });
+  t(yr.a === '1', 'و صفحه می‌داند که تاریخ‌های امسال از جدول آمده‌اند، نه از حساب', yr.a);
+
+  t(!!hol.far && hol.far.name.indexOf('·') < 0,
+    'سالی که هنوز در جدول نیست، قمری‌اش حساب می‌شود و «تقریبی» است',
+    hol.far && (hol.far.name + ' — ' + hol.far.d + '/' + hol.far.m));
+
+  /* جابه‌جاییِ یک‌روزه، فقط برای همان سالِ بیرونِ جدول */
   const moved = await p.evaluate(src => {
     const sel = document.getElementById('calShift');
     const set = v => { sel.value = String(v); sel.dispatchEvent(new Event('change', { bubbles: true })); };
     set(1);
-    const here = CAL.holiday(1405, src.m, src.d).name;
-    const next = CAL.holiday(1405, src.m, src.d + 1).name;
+    const here = CAL.holiday(1412, src.m, src.d).name;
+    const next = CAL.holiday(1412, src.m, src.d + 1).name;
     set(0);
-    return { was: src.name, here, next, kept: CAL.holiday(1405, src.m, src.d).name };
-  }, hol.lunar);
+    return { was: src.name, here, next, kept: CAL.holiday(1412, src.m, src.d).name };
+  }, hol.far);
   t(moved.next === moved.was && moved.here !== moved.was,
     'با «یک روز جلو»، همان مناسبت یک روز جابه‌جا می‌شود — هلال را فرمول قطعی نمی‌گوید',
-    moved.was + ': ' + src(hol.lunar) + ' → ' + (hol.lunar.d + 1) + '/' + hol.lunar.m);
+    moved.was + ': ' + src(hol.far) + ' → ' + (hol.far.d + 1) + '/' + hol.far.m);
   t(moved.kept === moved.was, 'و با برگرداندنِ تنظیم، سرِ جای اولش می‌نشیند');
 
   /* حرفِ خودِ کاربر بر همه می‌چربد */

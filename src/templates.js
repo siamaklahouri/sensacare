@@ -56,6 +56,8 @@ import p_rowsheet from '../public/_t/p/rowsheet.tpl';
 import p_rowsheetcss from '../public/_t/p/rowsheetcss.tpl';
 import p_remind from '../public/_t/p/remind.tpl';
 import p_cal from '../public/_t/p/cal.tpl';
+import p_news from '../public/_t/p/news.tpl';
+import p_newscss from '../public/_t/p/newscss.tpl';
 import p_calcss from '../public/_t/p/calcss.tpl';
 import p_report from '../public/_t/p/report.tpl';
 import p_reportjs from '../public/_t/p/reportjs.tpl';
@@ -120,6 +122,8 @@ export const PARTS = new Map([
   ['rowsheetcss', p_rowsheetcss],
   ['remind', p_remind],
   ['cal', p_cal],
+  ['news', p_news],
+  ['newscss', p_newscss],
   ['calcss', p_calcss],
   ['report', p_report],
   ['reportjs', p_reportjs],

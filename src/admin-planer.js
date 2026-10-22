@@ -30,7 +30,8 @@ import { orgList, saveOrg, dropOrg, pathOf, isOrgId } from './orgs.js';
 import { viewShareRows, saveViewShare, dropViewShare, shareableFor, specOf } from './viewshare.js';
 import { SECTION_PRESETS } from './sections.js';
 import { dropPlannerFiles } from './files.js';
-import { dropPlannerPush } from './push.js';
+import { dropPlannerPush, pushToAll } from './push.js';
+import { listNews, saveNews, publishNews, unpublishNews, dropNews } from './news.js';
 
 export const ADMIN_PAGE = '/login';
 /* نشانیِ قبلی. با ۳۰۱ به «/login» می‌رود تا بوکمارک‌ها و لینک‌هایی که
@@ -1093,6 +1094,51 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       presets: Object.entries(SECTION_PRESETS).map(([id, p]) => ({
         id, label: p.label, hint: p.hint || '',
         cols: p.cols.map(c => ({ t: c.t, kind: c.kind, opts: c.opts || [] })) })) });
+  }
+
+  /* ---------- خبرِ تغییرها ----------
+     تغییرهای تازهٔ خودِ کارتابل این‌جا به‌شکلِ پیش‌نویس می‌آیند. تا
+     ادمین «ارسال» نزند، هیچ کاربری نمی‌بیندشان. */
+  if (p === '/news' && m === 'GET')
+    return json({ ok: true, items: await listNews(env) });
+
+  if (p === '/news' && m === 'POST') {
+    const r = await saveNews(env, String(body.id || ''), body);
+    if (r.error) return bad(r.error);
+    await log(env, r.created ? 'news-new' : 'news-edit', r.id, String(body.title || ''));
+    return json(r);
+  }
+
+  const mNews = p.match(/^\/news\/([^/]+)\/(send|unsend)$/);
+  if (mNews && m === 'POST') {
+    const id = decodeURIComponent(mNews[1]);
+    if (mNews[2] === 'unsend') {
+      await unpublishNews(env, id);
+      await log(env, 'news-unsend', id, '');
+      return json({ ok: true });
+    }
+    const r = await publishNews(env, id);
+    if (r.error) return bad(r.error);
+    let pushed = 0;
+    /* اعلانِ گوشی تیکِ جداگانه دارد: هر تغییرِ کوچکی ارزشِ لرزاندنِ
+       گوشیِ کسی را ندارد. */
+    if (body.push) {
+      const row = (await listNews(env)).find(x => x.id === id);
+      if (row) {
+        const pr = await pushToAll(env, { id: id, title: (row.icon ? row.icon + ' ' : '') + row.title,
+                                          body: row.body });
+        pushed = pr.n || 0;
+      }
+    }
+    await log(env, 'news-send', id, body.push ? 'با اعلان' : '');
+    return json({ ok: true, already: !!r.already, pushed });
+  }
+
+  const mNewsDel = p.match(/^\/news\/([^/]+)$/);
+  if (mNewsDel && m === 'DELETE') {
+    await dropNews(env, decodeURIComponent(mNewsDel[1]));
+    await log(env, 'news-del', decodeURIComponent(mNewsDel[1]), '');
+    return json({ ok: true });
   }
 
   /* ---------- گروه‌های سازمانی ----------

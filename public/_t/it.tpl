@@ -946,7 +946,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
-{{PART:attachcss}} {{PART:calcss}}
+{{PART:attachcss}} {{PART:calcss}} {{PART:newscss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1209,8 +1209,11 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <span><span class="sw" style="background:var(--red-bg);border:1px solid var(--red-ink);"></span> تعطیل</span>
         <span><span class="sw" style="border:2px solid var(--c2);"></span> امروز</span>
         <span>📝 یادداشت دارد</span>
-        <span><b>*</b> تعطیلیِ قمری — روزش را هلال تعیین می‌کند و ممکن است یک روز جابه‌جا باشد؛
-          با «تعطیلی‌های قمری» بالا یا با تعطیل/کاری کردنِ خودِ روز درستش کنید.</span>
+        <span class="c2-exact">تاریخ‌ها از تقویمِ رسمیِ همین سال‌اند، نه حساب‌شده.
+          اگر روزی را جور دیگری می‌خواهید، خودِ آن روز را تعطیل یا کاری کنید.</span>
+        <span class="c2-approx"><b>*</b> تقویمِ رسمیِ این سال هنوز وارد نشده، پس تعطیلی‌های
+          قمری‌اش حساب‌شده و تقریبی‌اند — روزشان را هلال تعیین می‌کند. با «تعطیلی‌های قمری»
+          بالا یا با تعطیل/کاری کردنِ خودِ روز درستش کنید.</span>
       </div>
     </section>
 
@@ -4911,6 +4914,7 @@ window.SEARCH_MAP = [
 {{PART:rowsheet}}
 {{PART:attach}}
 {{PART:cal}}
+{{PART:news}}
 {{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}
@@ -4966,7 +4970,8 @@ async function init(){
      renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders,
      ()=>{ try{ ATTACH.refresh(); }catch(e){} },
      ()=>{ try{ REMIND.init(); }catch(e){} },
-     ()=>{ try{ CAL.init(); }catch(e){} }
+     ()=>{ try{ CAL.init(); }catch(e){} },
+     ()=>{ try{ NEWS.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

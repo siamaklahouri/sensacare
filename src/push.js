@@ -196,6 +196,25 @@ export async function tick(env) {
   return { planners: due.length };
 }
 
+/* یک خبر برای همهٔ کسانی که اعلانِ گوشی را روشن کرده‌اند. ردیف در
+   همان صفِ یادآورها می‌نشیند و تیکِ هر دقیقه‌ای خودش می‌فرستدش — نه
+   مسیرِ تازه‌ای، همان مسیرِ آزموده. کسی که اعلان را روشن نکرده، چیزی
+   نمی‌گیرد؛ خبر را در خودِ کارتابل می‌بیند. */
+export async function pushToAll(env, { id, title, body }) {
+  await ensurePush(env);
+  const who = await all(env, 'SELECT DISTINCT planner FROM push_subs');
+  let n = 0;
+  for (const w of who) {
+    await run(env,
+      'INSERT OR REPLACE INTO reminders(id,planner,at,title,body,tag,sent,shown) VALUES(?,?,?,?,?,?,0,0)',
+      w.planner + ':news-' + String(id || '').slice(0, 60), w.planner, Date.now(),
+      String(title || 'خبرِ تازه').slice(0, 120), String(body || '').slice(0, 300),
+      'news');
+    n++;
+  }
+  return { ok: true, n };
+}
+
 export async function dropPlannerPush(env, planner) {
   await ensurePush(env);
   await run(env, 'DELETE FROM push_subs WHERE planner=?', planner);

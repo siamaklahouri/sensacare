@@ -117,6 +117,11 @@
   .c2-hint{ font-size:11px; color:var(--ink-faint); min-height:15px; margin-top:4px; }
   .c2-legend{ display:flex; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-faint); margin-top:10px; }
   .c2-legend b{ font-weight:700; color:var(--ink-soft); }
+  /* سالی که تاریخ‌هایش از جدولِ رسمی آمده، نه جابه‌جایی می‌خواهد نه
+     ستاره؛ و سالی که نیامده، باید همین را بگوید. */
+  #view-cal[data-exact="1"] .c2-shift,
+  #view-cal[data-exact="1"] .c2-approx{ display:none; }
+  #view-cal[data-exact="0"] .c2-exact{ display:none; }
   .c2-legend .sw{ display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:-1px; margin-left:4px; }
 
   @media (max-width:900px){

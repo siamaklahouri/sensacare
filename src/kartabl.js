@@ -28,6 +28,7 @@ import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
 import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner,
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
+import { newsFor as releaseNews } from './news.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1902,6 +1903,11 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
   if (p === '/reminders/due' && m === 'GET')
     return json({ due: await dueFor(env, panel.slug) });
+
+  /* خبرِ تغییرها — فقط آن‌هایی که ادمین فرستاده. متنش یکی است برای
+     همه و هیچ‌چیزِ این کارتابل در آن نیست. */
+  if (p === '/news' && m === 'GET')
+    return json({ news: await releaseNews(env) });
 
   if (p === '/state' && (m === 'PUT' || m === 'POST')) {
     if (body.state === undefined && body.db === undefined) return bad('داده‌ای نیامد.');

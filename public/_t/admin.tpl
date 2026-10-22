@@ -853,6 +853,7 @@ table.inv-tab td.desc{ text-align:right; }
     <button data-tab="new">کارتابل تازه</button>
     <button data-tab="orders">سفارش‌ها</button>
     <button data-tab="msgs">پیام‌ها</button>
+    <button data-tab="news">خبرها</button>
     <button data-tab="orgs">سازمان</button>
     <button data-tab="shared">بخش‌های مشترک</button>
     <button data-tab="site">تنظیمات سایت</button>
@@ -950,6 +951,41 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">هر پیامی که به ربات‌ها یا فرمِ سایت برسد این‌جاست. جواب از همین‌جا
         هم می‌رود، هم می‌توانید در خودِ ربات روی پیام ریپلای کنید.</p>
       <div id="msgBody" class="hint">…</div>
+    </div>
+  </section>
+
+  <style>
+  .nwrow{ border:1px solid var(--line); border-radius:var(--r); padding:12px 14px;
+    margin-bottom:9px; background:var(--paper-2); }
+  .nwrow.sent{ border-color:var(--ok, #2E7D5B); }
+  .nwrow .top{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:8px; }
+  .nwrow .st{ font-size:11px; padding:2px 10px; border-radius:999px;
+    border:1px solid var(--line); color:var(--ink-soft); background:var(--white); }
+  .nwrow .st.sent{ border-color:var(--ok, #2E7D5B); color:var(--ok, #2E7D5B); font-weight:700; }
+  .nwrow .when{ font-size:11px; color:var(--ink-faint); margin-right:auto; }
+  .nwrow input.ic{ width:52px; text-align:center; }
+  .nwrow input.ti{ flex:1 1 220px; min-width:0; }
+  .nwrow textarea{ width:100%; box-sizing:border-box; min-height:58px; margin-bottom:8px; }
+  .nwrow .acts{ display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+  .nwrow .acts label{ font-size:11.5px; color:var(--ink-soft); display:flex;
+    align-items:center; gap:5px; }
+  </style>
+  <section id="tab-news" hidden>
+    <div class="panel">
+      <h2>خبرهای کارتابل</h2>
+      <p class="sub">هر بخش یا کارِ تازه‌ای که روی کارتابل‌ها می‌آید، اول این‌جا به‌شکلِ
+        <b>پیش‌نویس</b> می‌نشیند. متنش را هرطور خواستید عوض کنید؛ تا «ارسال به همه» را
+        نزنید هیچ کاربری نمی‌بیندش. بعد از ارسال، خبر در زنگولهٔ همهٔ کارتابل‌ها و یک
+        پنجرهٔ «تازه چه خبر؟» دیده می‌شود.</p>
+      <div class="nwrow">
+        <div class="top">
+          <input class="ic" id="nwIcon" maxlength="4" placeholder="📣">
+          <input class="ti" id="nwTitle" placeholder="عنوانِ خبرِ تازه">
+        </div>
+        <textarea id="nwBody" placeholder="متنِ خبر — یکی دو جمله، به زبانِ خودِ کاربر."></textarea>
+        <div class="acts"><button class="btn btn-sm" id="nwAdd">بنویس (پیش‌نویس)</button></div>
+      </div>
+      <div id="nwList" class="hint">…</div>
     </div>
   </section>
 
@@ -1572,6 +1608,78 @@ function setupTheme(){
 }
 
 function setupTabs(){
+/* ---------- خبرهای کارتابل ----------
+   تغییرهای تازهٔ خودِ کارتابل این‌جا به‌شکلِ پیش‌نویس می‌آیند و تا
+   ادمین نفرستدشان، هیچ کاربری نمی‌بیندشان. */
+async function loadNews(){
+  const box = document.getElementById("nwList");
+  if(!box) return;
+  box.textContent = "…";
+  const r = await api("/news");
+  if(!r.ok){ box.textContent = "نشد خواند."; return; }
+  const items = r.data.items || [];
+  if(!items.length){ box.textContent = "خبری نیست."; return; }
+  box.innerHTML = items.map(n=>`
+    <div class="nwrow ${n.status === "sent" ? "sent" : ""}" data-id="${esc(n.id)}">
+      <div class="top">
+        <input class="ic" data-f="icon" maxlength="4" value="${esc(n.icon||"")}">
+        <input class="ti" data-f="title" value="${esc(n.title||"")}">
+        <span class="st ${n.status === "sent" ? "sent" : ""}">${n.status === "sent" ? "فرستاده شد" : "پیش‌نویس"}</span>
+        <span class="when">${n.sent_at ? faDateTime(n.sent_at) : ""}</span>
+      </div>
+      <textarea data-f="body">${esc(n.body||"")}</textarea>
+      <div class="acts">
+        <button class="btn btn-sm" data-save="1">ذخیره</button>
+        ${n.status === "sent"
+          ? '<button class="btn btn-sm btn-ghost" data-unsend="1">پس بگیر</button>'
+          : '<label><input type="checkbox" data-push="1"> اعلانِ گوشی هم بفرست</label>' +
+            '<button class="btn btn-sm" data-send="1">ارسال به همه</button>'}
+        <button class="btn btn-sm btn-ghost" data-del="1">پاک کن</button>
+      </div>
+    </div>`).join("");
+}
+
+function nwRowData(row){
+  const g = f => (row.querySelector('[data-f="'+f+'"]')||{}).value || "";
+  return { id: row.dataset.id, icon: g("icon"), title: g("title"), body: g("body") };
+}
+
+document.addEventListener("click", async e=>{
+  const row = e.target.closest ? e.target.closest(".nwrow[data-id]") : null;
+  if(!row) return;
+  const id = row.dataset.id;
+  if(e.target.closest("[data-save]")){
+    const r = await api("/news", { method:"POST", body: JSON.stringify(nwRowData(row)) });
+    say(r.ok ? "متنِ خبر ذخیره شد." : (r.data.error || "نشد."), !r.ok);
+    return;
+  }
+  if(e.target.closest("[data-send]")){
+    if(!confirm("این خبر برای همهٔ کارتابل‌ها فرستاده شود؟")) return;
+    /* اول متنِ همین لحظه ذخیره می‌شود، بعد می‌رود: وگرنه ادمین متن را
+       عوض می‌کرد و نسخهٔ قبلی می‌رفت. */
+    await api("/news", { method:"POST", body: JSON.stringify(nwRowData(row)) });
+    const push = !!(row.querySelector('[data-push]')||{}).checked;
+    const r = await api("/news/" + encodeURIComponent(id) + "/send",
+      { method:"POST", body: JSON.stringify({ push }) });
+    say(r.ok ? ("فرستاده شد." + (r.data.pushed ? " اعلانِ گوشی برای " + fa(r.data.pushed) + " کارتابل." : ""))
+             : (r.data.error || "نشد."), !r.ok);
+    loadNews();
+    return;
+  }
+  if(e.target.closest("[data-unsend]")){
+    const r = await api("/news/" + encodeURIComponent(id) + "/unsend", { method:"POST", body:"{}" });
+    say(r.ok ? "پس گرفته شد — از این به بعد کسی نمی‌بیندش." : "نشد.", !r.ok);
+    loadNews();
+    return;
+  }
+  if(e.target.closest("[data-del]")){
+    if(!confirm("این خبر پاک شود؟")) return;
+    const r = await api("/news/" + encodeURIComponent(id), { method:"DELETE" });
+    say(r.ok ? "پاک شد." : "نشد.", !r.ok);
+    loadNews();
+  }
+});
+
   document.querySelectorAll(".tabs button").forEach(b=>{
     b.addEventListener("click", ()=>{
       document.querySelectorAll(".tabs button").forEach(x=> x.classList.toggle("active", x===b));
@@ -1583,11 +1691,22 @@ function setupTabs(){
       });
       if(b.dataset.tab === "log") loadLog();
       if(b.dataset.tab === "msgs") loadMessages();
+      if(b.dataset.tab === "news") loadNews();
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
       if(b.dataset.tab === "shared"){ loadShared(); loadChat(); loadVShares(); }
       if(b.dataset.tab === "orgs") loadOrgs();
     });
+  });
+  const nwa = document.getElementById("nwAdd");
+  if(nwa) nwa.addEventListener("click", async ()=>{
+    const g = id => (document.getElementById(id)||{}).value || "";
+    const r = await api("/news", { method:"POST", body: JSON.stringify(
+      { icon: g("nwIcon"), title: g("nwTitle"), body: g("nwBody") }) });
+    if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+    ["nwIcon","nwTitle","nwBody"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
+    say("پیش‌نویس ساخته شد — تا نفرستیدش کسی نمی‌بیندش.");
+    loadNews();
   });
   const shn = document.getElementById("shNew");
   if(shn) shn.addEventListener("click", ()=> shForm(null));
