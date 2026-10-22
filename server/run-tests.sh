@@ -23,7 +23,7 @@ for f in theme.test.mjs serversize.test.mjs vshare.test.mjs vshare-ui.test.mjs \
          mobile-shared.test.mjs chat.test.mjs views.test.mjs \
          veeam-match.test.mjs sendcreds.test.mjs sendcreds-ui.test.mjs \
          dayjump.test.mjs vaultexp.test.mjs lastseen.test.mjs \
-         daydone.test.mjs bell.test.mjs badpass.test.mjs instplus.test.mjs bellgo.test.mjs until.test.mjs noscroll.test.mjs daycal.test.mjs ktheme.test.mjs datefill.test.mjs pwa.test.mjs repeat.test.mjs find.test.mjs rowsheet.test.mjs; do
+         daydone.test.mjs bell.test.mjs badpass.test.mjs instplus.test.mjs bellgo.test.mjs until.test.mjs noscroll.test.mjs daycal.test.mjs ktheme.test.mjs datefill.test.mjs pwa.test.mjs repeat.test.mjs find.test.mjs rowsheet.test.mjs attach.test.mjs; do
   [ -f "$f" ] || continue
   printf '%-24s ' "$f"
   # پیش از هر فایل، نه فقط یک بار سرِ شروع: مجموعه که بزرگ شد، سقفِ

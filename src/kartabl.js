@@ -25,6 +25,8 @@ import { withSessionResults } from './veeam.js';
 import { orgsOf, orgList, pathOf } from './orgs.js';
 import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
          editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
+import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner,
+         FILE_LIMITS } from './files.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1836,6 +1838,47 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   if (p === '/state' && m === 'GET') {
     const d = await loadKartabl(env, panel);
     return json({ state: d.state, db: d.db, rev: d.rev, updated: d.updated });
+  }
+
+  /* ---------- پیوستِ فایل ----------
+     «ref» شناسهٔ همان ردیفِ چک‌لیست یا برنامهٔ روزانه است که خودِ
+     صفحه می‌سازد — شمارهٔ ردیف به‌کار نمی‌آید، چون با افزودن و حذف
+     جابه‌جا می‌شود و پیوست می‌افتاد روی ردیفِ دیگری. */
+  if (p === '/files' && m === 'GET') {
+    const ref = new URL(req.url).searchParams.get('ref') || '';
+    if (ref) return json({ files: await listFiles(env, panel.slug, ref) });
+    /* بی‌ref: فقط شمارشِ هر ردیف، برای نشانِ 📎 روی جدول */
+    const rows = await filesOfPlanner(env, panel.slug);
+    const counts = {};
+    rows.forEach(r => { counts[r.ref] = Number(r.n) || 0; });
+    return json({ counts, used: await usedBytes(env, panel.slug), limits: FILE_LIMITS });
+  }
+
+  if (p === '/files' && m === 'POST') {
+    const r = await putFile(env, panel.slug, {
+      ref: body.ref, name: body.name, type: body.type, data: body.data });
+    if (r.error) return bad(r.error, 400);
+    return json(r);
+  }
+
+  if (p.startsWith('/files/') && m === 'GET') {
+    const f = await getFile(env, panel.slug, p.slice(7));
+    if (!f) return bad('پیدا نشد.', 404);
+    /* همیشه «پیوست»: هیچ فایلی روی این دامنه باز نمی‌شود، حتی اگر
+       نوعش بازشدنی باشد. */
+    return new Response(f.bytes, { headers: {
+      'Content-Type': f.type || 'application/octet-stream',
+      'Content-Length': String(f.size),
+      'Content-Disposition': 'attachment; filename*=UTF-8\'\'' + encodeURIComponent(f.name),
+      'Cache-Control': 'private, max-age=600',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Robots-Tag': 'noindex' } });
+  }
+
+  if (p.startsWith('/files/') && m === 'DELETE') {
+    const r = await delFile(env, panel.slug, p.slice(7));
+    if (r.error) return bad(r.error, r.status || 400);
+    return json(r);
   }
 
   if (p === '/state' && (m === 'PUT' || m === 'POST')) {

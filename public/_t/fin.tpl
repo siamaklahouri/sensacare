@@ -677,6 +677,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
+{{PART:attachcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -855,6 +856,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
             <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th>مسئول</th>
             <th style="width:80px;">مهلت (روز)</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
             <th>یادداشت</th><th style="width:36px;" title="یادآور">⏰</th>
+            <th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th>
             <th style="width:46px;" title="وظیفه‌ای که تیک دارد، ماهِ بعد هم می‌آید">🔁</th>
             <th style="width:40px;" title="حذف">🗑</th>
           </tr></thead>
@@ -880,14 +882,14 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:40px;"></th></tr>
+          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th>📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:40px;"></th></tr>
           <tr class="filter-row">
             <th></th>
             <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
             <th></th><th></th>
             <th><div class="msf" id="msfDailyParty" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
-            <th></th><th></th><th></th>
+            <th></th><th></th><th></th><th></th>
           </tr>
           </thead>
           <tbody id="dailyBody"></tbody>
@@ -3601,13 +3603,16 @@ function renderChecklist(){
       </td>
       <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
       <td><button class="star-btn ${t.reminder && !t.reminder.fired ? 'active':''}" data-star="${i}" title="${t.reminder && !t.reminder.fired ? 'یادآور تنظیم‌شده — برای تغییر کلیک کنید':'تنظیم یادآور'}">${t.reminder && !t.reminder.fired ? '⭐':'☆'}</button></td>
+      <td class="clip-cell" data-kind="task" data-i="${i}" data-nocp>
+        <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
+      </td>
       <td class="rep-cell" data-nocp>
         <input type="checkbox" class="rep-box" data-rep="${i}" ${t.repeat === false ? "" : "checked"}
                title="${t.repeat === false ? "فقط همین ماه" : "ماهِ بعد هم می‌آید"}">
       </td>
       <td><button class="btn-del" data-del="${i}" title="حذف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="11" style="color:var(--ink-faint);">وظیفه‌ای ثبت نشده — با دکمه‌ی «افزودن وظیفه» شروع کنید.</td></tr>`;
+  `).join("") || `<tr><td colspan="12" style="color:var(--ink-faint);">وظیفه‌ای ثبت نشده — با دکمه‌ی «افزودن وظیفه» شروع کنید.</td></tr>`;
 
   /* تیکِ تکرار: بی‌رسمِ دوبارهٔ جدول، تا فهرست بالا و پایین نپرد. */
   body.querySelectorAll(".rep-box").forEach(cb=>{
@@ -3712,9 +3717,12 @@ function renderDaily(){
       </td>
       <td class="daily-date-cell daily-done-cell${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
       <td><button class="star-btn ${d.reminder && !d.reminder.fired ? 'active':''}" data-day-star="${d.idx}" title="${d.reminder && !d.reminder.fired ? 'یادآور تنظیم‌شده — برای تغییر کلیک کنید':'تنظیم یادآور'}">${d.reminder && !d.reminder.fired ? '⭐':'☆'}</button></td>
+      <td class="clip-cell" data-kind="day" data-i="${d.idx}" data-nocp>
+        <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
+      </td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
+  `).join("") || `<tr><td colspan="10" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
 
   const partyNames = partiesData.map(p=>p.name);
   const dl = document.getElementById("dailyPartyOptions");
@@ -4381,6 +4389,7 @@ window.SEARCH_MAP = [
 ];
 {{PART:find}}
 {{PART:rowsheet}}
+{{PART:attach}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
@@ -4433,7 +4442,8 @@ async function init(){
      setupAiSettings, showLastLogin, showExpiryWarning, renderPersonalView,
      ()=>{ const cf = document.getElementById("connectFolderBtn");
            if(cf) cf.addEventListener("click", connectFolder); },
-     renderEverything, setupShared, setupNoAutofill
+     renderEverything, setupShared, setupNoAutofill,
+     ()=>{ try{ ATTACH.refresh(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+(fn.name||"")+":", e); } });
   }catch(e){
     console.error("خطا در راه‌اندازی کارتابل مالی:", e);

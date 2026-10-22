@@ -20,6 +20,13 @@ DB="${DB_FILE:-/var/lib/sltech/sltech.db}"
 OUT="${BACKUP_DIR:-/var/backups/sltech}"
 KEEP="${BACKUP_KEEP_HOURLY_DAYS:-7}"
 KEEPD="${BACKUP_KEEP_DAYS:-30}"
+# پیوست‌ها کنارِ دیتابیس‌اند، نه داخلش (چرایش در src/files.js). پس
+# پشتیبانشان هم جداست: یک آینه، نه یک نسخه در هر ساعت — فایل‌ها
+# عوض نمی‌شوند، فقط اضافه و کم می‌شوند. «--delete» عمداً نیست: اگر
+# کسی فایلی را پاک کند، نسخهٔ آینه می‌ماند.
+FILES="${FILES_DIR:-/var/lib/sltech/files}"
+MIRROR="${BACKUP_FILES_DIR:-$OUT/files}"
+
 STAMP=$(date +%Y-%m-%d_%H%M)
 DAY=$(date +%Y-%m-%d)
 # شمارهٔ پروسه در نامِ فایلِ موقت: اگر کسی دستی اجرا کند درست وقتی
@@ -63,7 +70,20 @@ chmod 600 "$FINAL"
 find "$OUT" -maxdepth 1 -name 'sltech-*.db.gz' -type f -mtime "+$KEEP" -delete 2>/dev/null
 find "$OUT/daily" -name 'sltech-*.db.gz' -type f -mtime "+$KEEPD" -delete 2>/dev/null
 
+# آینهٔ پیوست‌ها. rsync اگر نبود، cp -a همان کار را می‌کند (کندتر).
+if [ -d "$FILES" ]; then
+  mkdir -p "$MIRROR"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a "$FILES/" "$MIRROR/" 2>/dev/null
+  else
+    cp -a "$FILES/." "$MIRROR/" 2>/dev/null
+  fi
+  NF=$(find "$MIRROR" -type f | wc -l)
+else
+  NF=0
+fi
+
 SIZE=$(du -h "$FINAL" | cut -f1)
 NH=$(find "$OUT" -maxdepth 1 -name 'sltech-*.db.gz' -type f | wc -l)
 ND=$(find "$OUT/daily" -name 'sltech-*.db.gz' -type f | wc -l)
-echo "پشتیبان: $FINAL ($SIZE) — $NH نسخهٔ ساعتی، $ND نسخهٔ روزانه"
+echo "پشتیبان: $FINAL ($SIZE) — $NH نسخهٔ ساعتی، $ND نسخهٔ روزانه، $NF پیوست"

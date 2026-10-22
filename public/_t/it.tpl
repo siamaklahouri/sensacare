@@ -930,6 +930,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
+{{PART:attachcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1117,6 +1118,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
             <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th style="width:120px;">مسئول</th>
             <th style="width:104px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
             <th>یادداشت</th>
+            <th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th>
             <th style="width:46px;" title="وظیفه‌ای که تیک دارد، ماهِ بعد هم می‌آید">🔁</th>
             <th style="width:40px;" title="حذف">🗑</th>
           </tr></thead>
@@ -1141,13 +1143,14 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:21%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:128px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:34px;"></th></tr>
           <tr class="filter-row">
             <th></th>
             <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
             <th></th><th></th>
             <th><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
+            <th></th>
             <th></th>
             <th></th>
             <th></th>
@@ -2523,6 +2526,9 @@ function renderChecklist(){
         </select>
       </td>
       <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
+      <td class="clip-cell" data-kind="task" data-i="${i}" data-nocp>
+        <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
+      </td>
       <td class="rep-cell" data-nocp>
         <input type="checkbox" class="rep-box" data-rep="${i}" ${t.repeat === false ? "" : "checked"}
                title="${t.repeat === false ? "فقط همین ماه" : "ماهِ بعد هم می‌آید"}">
@@ -2684,9 +2690,12 @@ function renderDaily(){
         <button type="button" class="star-btn ${d.important?'is-important':''}" data-star-idx="${d.idx}"
           title="${d.important && d.reminderAt ? 'یادآوری: '+formatReminderAtFa(d.reminderAt) : 'علامت‌گذاری به‌عنوان مهم برای یادآوری'}">${d.important?'⭐':'☆'}</button>
       </td>
+      <td class="clip-cell" data-kind="day" data-i="${d.idx}" data-nocp>
+        <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
+      </td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="9" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
+  `).join("") || `<tr><td colspan="10" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
   const companyNames = companiesData ? Object.keys(companiesData.companies) : [];
   const dl = document.getElementById("dailyCompanyOptions");
   if(dl) dl.innerHTML = companyNames.map(n=>`<option value="${escapeHtml(n)}">`).join("");
@@ -4832,6 +4841,7 @@ window.SEARCH_MAP = [
 ];
 {{PART:find}}
 {{PART:rowsheet}}
+{{PART:attach}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
@@ -4883,7 +4893,8 @@ async function init(){
      setupAiSettings, showLastLogin, showExpiryWarning, setupBackup, setupServers, setupCompanies,
      setupMvpn, setupRemote, setupChartModal, setupDateTools, setupConvert, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,
-     renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders
+     renderPersonalView, setupShared, setupNoAutofill, requestNotifyPermission, checkAndFireReminders,
+     ()=>{ try{ ATTACH.refresh(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

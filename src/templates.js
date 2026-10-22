@@ -50,6 +50,8 @@ import p_navcss from '../public/_t/p/navcss.tpl';
 import p_noautofill from '../public/_t/p/noautofill.tpl';
 import p_pwa from '../public/_t/p/pwa.tpl';
 import p_pwacss from '../public/_t/p/pwacss.tpl';
+import p_attach from '../public/_t/p/attach.tpl';
+import p_attachcss from '../public/_t/p/attachcss.tpl';
 import p_rowsheet from '../public/_t/p/rowsheet.tpl';
 import p_rowsheetcss from '../public/_t/p/rowsheetcss.tpl';
 import p_report from '../public/_t/p/report.tpl';
@@ -109,6 +111,8 @@ export const PARTS = new Map([
   ['noautofill', p_noautofill],
   ['pwa', p_pwa],
   ['pwacss', p_pwacss],
+  ['attach', p_attach],
+  ['attachcss', p_attachcss],
   ['rowsheet', p_rowsheet],
   ['rowsheetcss', p_rowsheetcss],
   ['report', p_report],
