@@ -845,6 +845,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .btn-sm{ padding:5px 12px !important; font-size:12px !important; }
   /* نوارِ خروجیِ برنامهٔ ماه — بالای جدول، چسبیده به سمتِ شروع */
   .day-ex{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 10px; }
+  /* یک ردیف برای همهٔ دکمه‌های بالای جدول */
+  .day-bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 10px; }
+  .day-bar .day-ex{ margin:0; }
   @media (max-width:560px){ .day-ex .btn{ flex:1 1 auto; } }
   @media print{ .day-ex{ display:none !important; } }
   .visit-add-bar{ display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:var(--paper); border:1px solid var(--line); border-radius:8px; }

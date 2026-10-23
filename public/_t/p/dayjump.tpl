@@ -53,7 +53,18 @@
     var down = mk("↓ پایینِ لیست", "برو تهِ جدول، جایی که دکمهٔ افزودن است");
     down.addEventListener("click", function () { go(endOf(), "end"); });
     bar.appendChild(down);
-    head.insertAdjacentElement("afterend", bar);
+
+    /* هر چهار دکمه در یک خط: «پایینِ لیست» و «تقویم» این‌جا بودند و
+       خروجی‌ها یک ردیف پایین‌تر، و دو نوارِ نیمه‌خالی روی هم خوب
+       به‌نظر نمی‌رسید. نوارِ خروجی داخلِ همین ردیف می‌آید، نه برعکس:
+       اگر ادمین خروجی‌ها را نداده باشد آن نوار اصلاً نیست، و دکمهٔ
+       پرش نباید با آن برود. */
+    var row = document.createElement("div");
+    row.className = "day-bar";
+    head.insertAdjacentElement("afterend", row);
+    row.appendChild(bar);
+    var ex = v.querySelector('.day-ex[data-feat="export"]');
+    if (ex) row.appendChild(ex);
 
     /* و برگشت: از ته، سرِ جدول. همان‌جا کنارِ دکمهٔ افزودن می‌نشیند
        چون همان‌جاست که آدم تمام می‌کند.
