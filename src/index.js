@@ -1226,6 +1226,36 @@ const SEC_HEADERS = {
   ].join('; ')
 };
 
+/* ---------------- نشانِ نسخهٔ صفحه (ETag) ----------------
+   صفحهٔ کارتابل یک فایلِ هشتصدکیلوبایتی است: همهٔ اسکریپت و استایل
+   داخلِ خودش. تا حالا با no-store می‌رفت، یعنی هر بار باز کردنِ
+   برنامه روی گوشی همان هشتصد کیلوبایت را دوباره می‌گرفت — روی
+   اینترنتِ موبایل چند ثانیه مکث، هر بار.
+
+   حالا نشانِ نسخه دارد: مرورگر نسخه‌اش را نگه می‌دارد و دفعهٔ بعد
+   فقط می‌پرسد «همان است؟» و اگر بود، سرور ۳۰۴ می‌دهد — چند صد بایت
+   به‌جای هشتصد کیلوبایت.
+
+   «private, no-cache» است نه «max-age»: هیچ‌وقت بی‌پرسیدن به‌کار
+   نمی‌رود، پس استقرارِ تازه همان لحظه به همه می‌رسد؛ و «private»
+   یعنی در هیچ کشِ مشترکی نمی‌نشیند. دادهٔ کارتابل هم اصلاً در این
+   فایل نیست — آن از /api می‌آید و همچنان no-store است. */
+async function etagOf(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return 'W/"' + [...new Uint8Array(d)].slice(0, 12)
+    .map(b => b.toString(16).padStart(2, '0')).join('') + '"';
+}
+
+const PAGE_CACHE = 'private, no-cache';
+
+function notModified(req, tag) {
+  const inm = req.headers.get('if-none-match') || '';
+  if (!inm) return null;
+  if (!inm.split(',').some(x => x.trim() === tag)) return null;
+  return new Response(null, { status: 304, headers: {
+    'ETag': tag, 'Cache-Control': PAGE_CACHE, 'X-Robots-Tag': 'noindex, nofollow' } });
+}
+
 function withSecurity(res, extra) {
   const h = new Headers(res.headers);
   for (const [k, v] of Object.entries(SEC_HEADERS)) h.set(k, v);
@@ -1991,10 +2021,16 @@ export default {
       /* پنلِ مدیریت هم از همان پاره‌قالب‌ها استفاده می‌کند — فعلاً فقط
          ارقامِ فارسی — پس مثلِ صفحهٔ کارتابل از withParts رد می‌شود. */
       const adminHtml = res.ok ? await withParts(env, req, await res.text()) : null;
-      if (adminHtml) return withSecurity(new Response(adminHtml, { headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'X-Robots-Tag': 'noindex, nofollow' } }));
+      if (adminHtml) {
+        const tag = await etagOf(adminHtml);
+        const same = notModified(req, tag);
+        if (same) return withSecurity(same);
+        return withSecurity(new Response(adminHtml, { headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': PAGE_CACHE,
+          'ETag': tag,
+          'X-Robots-Tag': 'noindex, nofollow' } }));
+      }
     }
 
     /* ---------------- مانیفستِ برنامهٔ اندروید ----------------
@@ -2037,10 +2073,16 @@ export default {
                        'Cache-Control': 'no-store',
                        'X-Robots-Tag': 'noindex, nofollow' } }));
           const html = await renderPanelPage(env, req, panel);
-          if (html) return withSecurity(new Response(html, { headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-            'X-Robots-Tag': 'noindex, nofollow' } }));
+          if (html) {
+            const tag = await etagOf(html);
+            const same = notModified(req, tag);
+            if (same) return withSecurity(same);
+            return withSecurity(new Response(html, { headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': PAGE_CACHE,
+              'ETag': tag,
+              'X-Robots-Tag': 'noindex, nofollow' } }));
+          }
         }
       }
     }

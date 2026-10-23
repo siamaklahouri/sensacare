@@ -34,7 +34,21 @@ try{
 <meta property="og:type" content="website">
 <meta property="og:title" content="کارتابل ماهانه SLTech">
 <meta property="og:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
-<meta property="og:image" content="/icon-sl.3.png">
+<!-- کارتِ هم‌رسانی: نشانِ ۵۱۲×۵۱۲ در تلگرام و واتساپ یک مربعِ کوچک
+     می‌شد، نه کارت. og.png همان ۱۲۰۰×۶۳۰ است که فروشگاه هم به‌کار
+     می‌برد؛ ابعاد هم نوشته شده تا پیش از دانلودِ عکس جا باز شود. -->
+<meta property="og:image" content="https://sltech.ir/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="کارتابل ماهانه SLTech">
+<meta property="og:url" content="https://sltech.ir/">
+<meta property="og:site_name" content="SLTech">
+<meta property="og:locale" content="fa_IR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="کارتابل ماهانه SLTech">
+<meta name="twitter:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
+<meta name="twitter:image" content="https://sltech.ir/og.png">
+<link rel="canonical" href="https://sltech.ir/">
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
   src:url(/f/Vazirmatn-Regular.2.woff2) format("woff2")}

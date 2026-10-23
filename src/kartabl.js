@@ -25,7 +25,7 @@ import { withSessionResults } from './veeam.js';
 import { orgsOf, orgList, pathOf } from './orgs.js';
 import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
          editViewCell, addViewRow, killViewRow, moveViewRow } from './viewshare.js';
-import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner,
+import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNames,
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { newsFor as releaseNews } from './news.js';
@@ -1847,8 +1847,12 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      صفحه می‌سازد — شمارهٔ ردیف به‌کار نمی‌آید، چون با افزودن و حذف
      جابه‌جا می‌شود و پیوست می‌افتاد روی ردیفِ دیگری. */
   if (p === '/files' && m === 'GET') {
-    const ref = new URL(req.url).searchParams.get('ref') || '';
+    const qs = new URL(req.url).searchParams;
+    const ref = qs.get('ref') || '';
     if (ref) return json({ files: await listFiles(env, panel.slug, ref) });
+    /* فقط نام‌ها: جست‌وجوی سراسری با همین یک درخواست پیوست‌ها را هم
+       می‌گردد، بی‌آنکه خودِ فایل‌ها جابه‌جا شوند. */
+    if (qs.get('names')) return json({ items: await fileNames(env, panel.slug) });
     /* بی‌ref: فقط شمارشِ هر ردیف، برای نشانِ 📎 روی جدول */
     const rows = await filesOfPlanner(env, panel.slug);
     const counts = {};

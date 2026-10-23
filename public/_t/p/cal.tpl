@@ -31,6 +31,7 @@
   var view = null;         /* ماهی که دیده می‌شود: {jy, jm} */
   var sel = "";            /* روزِ انتخاب‌شده، به‌شکلِ کلید */
   var noteTimer = null;
+  var mode = "month";      /* ماه یا هفته */
 
   /* ---------- رنگِ هر ماه ----------
      از بهار تا زمستان. فقط یک رنگ گرفته می‌شود و بقیه (پس‌زمینهٔ کم‌رنگ
@@ -308,6 +309,50 @@
     return parts[0] || "";
   }
 
+  /* یک هفته، از شنبهٔ همان هفته. ماه که عوض شود، هفته هم با آن
+     می‌رود — وگرنه آدم نمی‌دانست کجاست. */
+  function weekDays(){
+    var p = (sel || keyOf(view.jy, view.jm, 1)).split("/");
+    var jy = +p[0], jm = +p[1], jd = +p[2];
+    var ms = utcOf(jy, jm, jd);
+    if(!ms) return [];
+    var w = wdOf(jy, jm, jd);
+    var out = [];
+    for(var i = 0; i < 7; i++){
+      var d = new Date(ms - (w - i) * 86400000);
+      var j = null;
+      try{ j = DatePick.parse(DatePick.fromStamp(Date.UTC(d.getUTCFullYear(),
+        d.getUTCMonth(), d.getUTCDate()))); }catch(e){ j = null; }
+      if(j) out.push(j);
+    }
+    return out;
+  }
+
+  function cellHtml(jy, jm, jd, long){
+    var k = keyOf(jy, jm, jd);
+    var hol = holiday(jy, jm, jd);
+    var it = dayItems(jy, jm, jd);
+    var note = notes()[k] || "";
+    var t2 = today();
+    var isToday = (t2.jy === jy && t2.jm === jm && t2.jd === jd);
+    var cap = long ? 8 : 3;
+    return '<div class="c2-cell' + (hol.off ? " off" : "") + (isToday ? " today" : "") +
+      (sel === k ? " sel" : "") + (long ? " wide" : "") +
+      '" data-cal-day="' + jd + '" data-cal-key="' + k + '" role="button" tabindex="0"' +
+      (hol.name ? ' title="' + esc(hol.name) + (hol.approx ? " (تقریبی)" : "") + '"' : "") + '>' +
+      '<div class="c2-top"><span class="c2-num">' + faN(jd) +
+        (long ? ' <i>' + esc(WD[wdOf(jy, jm, jd)]) + "</i>" : "") + '</span>' +
+        (note ? '<span class="c2-note" title="یادداشت دارد">📝</span>' : "") + '</div>' +
+      (hol.name ? '<div class="c2-hol">' + esc(label(hol.name)) +
+         (hol.approx ? "<i>*</i>" : "") + '</div>' : "") +
+      (it.length ? '<div class="c2-items">' + it.slice(0, cap).map(function (x) {
+          return '<span class="c2-it' + (x.t === "task" ? " tsk" : "") + '">' + esc(x.text) + '</span>';
+        }).join("") + (it.length > cap ? '<span class="c2-more">+' + faN(it.length - cap) + '</span>' : "") +
+        '</div>' : "") +
+      (long && note ? '<div class="c2-cnote">' + esc(note) + '</div>' : "") +
+      '</div>';
+  }
+
   function render() {
     var h = host();
     if (!h) return;
@@ -316,30 +361,19 @@
     /* سالِ داخلِ جدول با سالِ بیرونِ جدول دو چیزِ متفاوت‌اند و صفحه
        باید همین را بگوید، نه اینکه هر دو را یک‌جور نشان بدهد. */
     h.setAttribute("data-exact", exact(view.jy) ? "1" : "0");
-    var t2 = today();
+    h.setAttribute("data-mode", mode);
     var ttl = document.getElementById("calTtl");
     if (ttl) ttl.innerHTML = SEASON[(view.jm - 1) % 12] + " " + mName(view.jm) + " " + faN(view.jy);
+    var sw = document.getElementById("calMode");
+    if (sw) sw.textContent = mode === "month" ? "نمای هفته" : "نمای ماه";
 
-    var n = mLen(view.jy, view.jm), lead = wdOf(view.jy, view.jm, 1), html = "";
-    for (var i = 0; i < lead; i++) html += '<div class="c2-cell c2-blank"></div>';
-    for (var d = 1; d <= n; d++) {
-      var k = keyOf(view.jy, view.jm, d);
-      var hol = holiday(view.jy, view.jm, d);
-      var it = dayItems(view.jy, view.jm, d);
-      var note = notes()[k] || "";
-      var isToday = (t2.jy === view.jy && t2.jm === view.jm && t2.jd === d);
-      html += '<div class="c2-cell' + (hol.off ? " off" : "") + (isToday ? " today" : "") +
-        (sel === k ? " sel" : "") + '" data-cal-day="' + d + '" role="button" tabindex="0"' +
-        (hol.name ? ' title="' + esc(hol.name) + (hol.approx ? " (تقریبی)" : "") + '"' : "") + '>' +
-        '<div class="c2-top"><span class="c2-num">' + faN(d) + '</span>' +
-          (note ? '<span class="c2-note" title="یادداشت دارد">📝</span>' : "") + '</div>' +
-        (hol.name ? '<div class="c2-hol">' + esc(label(hol.name)) +
-           (hol.approx ? "<i>*</i>" : "") + '</div>' : "") +
-        (it.length ? '<div class="c2-items">' + it.slice(0, 3).map(function (x) {
-            return '<span class="c2-it' + (x.t === "task" ? " tsk" : "") + '">' + esc(x.text) + '</span>';
-          }).join("") + (it.length > 3 ? '<span class="c2-more">+' + faN(it.length - 3) + '</span>' : "") +
-          '</div>' : "") +
-        '</div>';
+    var html = "";
+    if (mode === "week") {
+      weekDays().forEach(function (j) { html += cellHtml(j.jy, j.jm, j.jd, true); });
+    } else {
+      var n = mLen(view.jy, view.jm), lead = wdOf(view.jy, view.jm, 1);
+      for (var i = 0; i < lead; i++) html += '<div class="c2-cell c2-blank"></div>';
+      for (var d = 1; d <= n; d++) html += cellHtml(view.jy, view.jm, d, false);
     }
     var grid = document.getElementById("calGrid");
     if (grid) grid.innerHTML = html;
@@ -472,9 +506,17 @@
         render();
         return;
       }
+      if (e.target.closest && e.target.closest("#calMode")) {
+        mode = (mode === "month") ? "week" : "month";
+        if (mode === "week" && !sel) sel = keyOf(view.jy, view.jm, 1);
+        render();
+        return;
+      }
+      if (e.target.closest && e.target.closest("#calPrint")) { window.print(); return; }
       var c = e.target.closest ? e.target.closest("[data-cal-day]") : null;
       if (c) {
-        sel = keyOf(view.jy, view.jm, Number(c.getAttribute("data-cal-day")));
+        sel = c.getAttribute("data-cal-key") ||
+              keyOf(view.jy, view.jm, Number(c.getAttribute("data-cal-day")));
         render();
       }
     });
@@ -483,7 +525,8 @@
       var c = e.target.closest ? e.target.closest("[data-cal-day]") : null;
       if (!c) return;
       e.preventDefault();
-      sel = keyOf(view.jy, view.jm, Number(c.getAttribute("data-cal-day")));
+      sel = c.getAttribute("data-cal-key") ||
+            keyOf(view.jy, view.jm, Number(c.getAttribute("data-cal-day")));
       render();
     });
     var sh = document.getElementById("calShift");
@@ -498,6 +541,20 @@
     render();
   }
 
-  window.CAL = { init: init, render: render, go: goDaily,
+  /* بردن تقویم روی یک روزِ معین — جست‌وجو از همین‌جا به یادداشتِ
+     همان روز می‌رسد. */
+  function show(jy, jm, jd){
+    init();
+    if(!jy || !jm) return;
+    view = { jy: jy, jm: jm };
+    if(jd) sel = keyOf(jy, jm, jd);
+    mode = "month";
+    render();
+    var box = document.getElementById("calSide");
+    if(box){ try{ box.scrollIntoView({ behavior: "smooth", block: "nearest" }); }catch(e){} }
+  }
+
+  window.CAL = { init: init, render: render, go: goDaily, show: show,
+                 mode: function (m) { if (m) { mode = m; render(); } return mode; },
                  holiday: holiday, items: dayItems };
 })();

@@ -67,13 +67,18 @@ for (const w of WHO) {
   /* ---------- ستونِ تیک ---------- */
   const col = await p.evaluate(() => {
     const boxes = [...document.querySelectorAll('#checklistBody .rep-box')];
-    return { n: boxes.length, checked: boxes.map(x => x.checked) };
+    return { n: boxes.length, tag: boxes[0] ? boxes[0].tagName : '',
+             val: boxes.map(x => x.value),
+             opts: boxes[0] ? [...boxes[0].options].map(o => o.value).join(',') : '' };
   });
-  t(col.n === 3, 'هر وظیفه یک تیکِ «تکرار» دارد', 'n=' + col.n);
-  t(col.checked[0] === true && col.checked[1] === false,
-    'آنچه تکرارشونده است تیک دارد، یک‌باره نه', JSON.stringify(col.checked));
-  t(col.checked[2] === true,
-    'ردیفِ قدیمی (بی‌کلیدِ repeat) تکرارشونده حساب می‌شود — وگرنه ایرادِ قبلی برای دادهٔ موجود می‌ماند');
+  t(col.n === 3 && col.tag === 'SELECT',
+    'هر وظیفه دورهٔ تکرارِ خودش را دارد — از تیکِ دوحالته به یک فهرست', col.tag);
+  t(col.opts === '0,1,3,6,12',
+    'هرگز / هر ماه / هر ۳ ماه / هر ۶ ماه / سالانه', col.opts);
+  t(col.val[0] === '1' && col.val[1] === '0',
+    'آنچه تکرارشونده بود «هر ماه» است و یک‌باره «هرگز»', JSON.stringify(col.val));
+  t(col.val[2] === '1',
+    'ردیفِ قدیمی (بی‌کلیدِ repeat) هر ماه حساب می‌شود — دادهٔ موجود همان‌طور می‌ماند');
 
   /* ---------- ماهِ تازه، با آوردن ---------- */
   const carried = await p.evaluate(() => {
@@ -125,12 +130,52 @@ for (const w of WHO) {
     renderChecklist();
     await new Promise(r => setTimeout(r, 200));
     const cb = document.querySelector('#checklistBody .rep-box[data-rep="0"]');
-    cb.checked = false;
+    cb.value = '0';
     cb.dispatchEvent(new Event('change', { bubbles: true }));
-    return { v: state.tasks[0].repeat, title: cb.title };
+    const off = { v: state.tasks[0].every, r: state.tasks[0].repeat, title: cb.title };
+    cb.value = '3';
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+    return { off, ev: state.tasks[0].every, since: state.tasks[0].since,
+             rid: !!state.tasks[0].rid, title: cb.title };
   });
-  t(toggled.v === false, 'برداشتنِ تیک در خودِ داده می‌نشیند');
-  t(/فقط همین ماه/.test(toggled.title), 'و راهنمای دکمه هم عوض می‌شود', toggled.title);
+  t(toggled.off.v === 0 && toggled.off.r === false, '«هرگز» در خودِ داده می‌نشیند');
+  t(/فقط همین ماه/.test(toggled.off.title), 'و راهنمای خانه هم عوض می‌شود', toggled.off.title);
+  t(toggled.ev === 3 && /۳ ماه/.test(toggled.title),
+    'و دورهٔ سه‌ماهه هم', toggled.ev + ' — ' + toggled.title);
+  t(toggled.since === '1405|مهر' && toggled.rid,
+    'وظیفه ماهِ شروع و شناسهٔ خودش را می‌گیرد — شمردنِ دوره از همین‌جاست',
+    toggled.since);
+
+  /* ---------- دوره‌های بلندتر ---------- */
+  const cycle = await p.evaluate(() => {
+    state.monthsData = {};
+    state.currentMonthKey = '1405|مهر';
+    state.meta = { month: 'مهر', year: '1405' };
+    state.monthsData['1405|مهر'] = { tasks: [
+      { rid: 'a', category: 'شبکه', task: 'ماهانه', deadline: 1, status: 'انجام شد',
+        every: 1, since: '1405|مهر' },
+      { rid: 'b', category: 'بکاپ', task: 'سه‌ماهه', deadline: 2, status: 'انجام شد',
+        every: 3, since: '1405|مهر' },
+      { rid: 'c', category: 'لایسنس', task: 'سالانه', deadline: 3, status: 'انجام شد',
+        every: 12, since: '1405|مهر' }
+    ], days: [] };
+    state.tasks = state.monthsData['1405|مهر'].tasks;
+    state.days = [];
+    const out = {};
+    ['آبان', 'آذر', 'دی'].forEach(m => {
+      switchToMonth(m, '1405');
+      out[m] = state.tasks.map(x => x.task).join(',');
+    });
+    switchToMonth('مهر', '1406');
+    out.next = state.tasks.map(x => x.task).join(',');
+    return out;
+  });
+  t(cycle['آبان'] === 'ماهانه' && cycle['آذر'] === 'ماهانه',
+    'کارِ سه‌ماهه در دو ماهِ میانی نمی‌آید', cycle['آبان'] + ' / ' + cycle['آذر']);
+  t(/سه‌ماهه/.test(cycle['دی']),
+    'و سرِ ماهِ سوم می‌آید — شمارش از ماهِ شروع است، نه از ماهِ قبل', cycle['دی']);
+  t(/سالانه/.test(cycle.next) && /سه‌ماهه/.test(cycle.next),
+    'سالانه یک سال بعد می‌آید، و سه‌ماهه هم همان‌جا هست', cycle.next);
 
   await p.close();
 }

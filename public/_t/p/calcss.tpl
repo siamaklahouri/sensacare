@@ -144,3 +144,36 @@
     .c2-it.tsk{ background:var(--amber); }
     .c2-more{ font-size:9px; padding:0; line-height:6px; }
   }
+
+  /* ---------- نمای هفته ----------
+     هفت ستونِ باریکِ ماه به هفت ردیفِ پهن تبدیل می‌شود: جایی که
+     واقعاً می‌شود کارهای روز را خواند، نه شمردن. */
+  #view-cal[data-mode="week"] .c2-grid{ grid-template-columns:1fr; }
+  #view-cal[data-mode="week"] .c2-wd{ display:none; }
+  .c2-cell.wide{ min-height:0; padding:9px 12px; border-left:none; }
+  .c2-cell.wide .c2-num i{ font-style:normal; font-weight:600; font-size:12px;
+    color:var(--ink-soft); margin-inline-start:6px; }
+  .c2-cell.wide .c2-items{ flex-direction:row; flex-wrap:wrap; gap:5px; }
+  .c2-cell.wide .c2-it{ font-size:11.5px; padding:2px 8px; }
+  .c2-cnote{ margin-top:5px; font-size:11.5px; color:var(--ink-soft);
+    background:var(--paper); border-radius:7px; padding:4px 8px; }
+
+  /* ---------- چاپ ----------
+     کاغذ نه نوارِ کنار می‌خواهد، نه دکمه، نه رنگِ پس‌زمینه. فقط همان
+     شبکه، با خطوطی که روی کاغذِ سفید هم دیده شوند. */
+  @media print{
+    body{ background:#fff; }
+    .sidebar, .topbar, .appbar, .c2-bar, .c2-side, .chat-fab,
+    .reminders-banner, .section-sub{ display:none !important; }
+    .content{ padding:0 !important; }
+    .view{ display:none !important; }
+    .view#view-cal{ display:block !important; }
+    .c2-box{ box-shadow:none; border-color:#999; }
+    .c2-cell{ border-color:#bbb; min-height:86px; }
+    .c2-cell.off{ background:#f3f3f3 !important; }
+    .c2-cell.off .c2-num, .c2-hol{ color:#000 !important; }
+    .c2-it{ background:#fff; border-right:2px solid #666; color:#000; }
+    .c2-legend{ font-size:10px; color:#444; }
+    .c2-items{ display:flex !important; }
+    @page{ size:A4 landscape; margin:10mm; }
+  }

@@ -61,3 +61,6 @@
   @media (max-width:760px){
     .dcal-pop{ inset-inline:12px; width:auto; }
   }
+  /* جمعه و تعطیلِ رسمی، هم‌رنگِ بقیهٔ تقویم‌های صفحه */
+  .dcal-d.off{ background:var(--red-bg); color:var(--red-ink); }
+  .dcal-d.off.on{ background:var(--brass); color:#fff; }

@@ -274,6 +274,11 @@
       var n = c[d] || 0;
       var cls = "dcal-d" + (n ? " has" : "") + (on.indexOf(k) >= 0 ? " on" : "") +
         (t && t.jy === view.jy && t.jm === view.jm && t.jd === d ? " now" : "");
+      /* تعطیلی از همان جدولِ بخشِ تقویم: سه تقویمِ این صفحه باید یک
+         حرف بزنند، وگرنه آدم نمی‌داند کدام را باور کند. */
+      try{
+        if (window.CAL && CAL.holiday(view.jy, view.jm, d).off) cls += " off";
+      }catch(e){}
       /* روزی که کاری ندارد زدنی نیست: زدنش یک جدولِ خالی می‌داد و آدم
          خیال می‌کرد چیزی خراب شده. */
       html += '<button type="button" class="' + cls + '" data-dcal-day="' + d + '"' +

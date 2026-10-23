@@ -176,10 +176,20 @@
     var html = "";
     for(var i = 0; i < wd; i++) html += '<span class="dp-pad"></span>';
     for(var d = 1; d <= len; d++){
-      var cls = "dp-d";
+      var cls = "dp-d", tip = "";
       if(cur && cur.jy === view.jy && cur.jm === view.jm && cur.jd === d) cls += " on";
       if(t && t.jy === view.jy && t.jm === view.jm && t.jd === d) cls += " now";
-      html += '<button type="button" class="' + cls + '" data-d="' + d + '">' + faN(d) + '</button>';
+      /* تعطیلی از همان جدولی می‌آید که بخشِ تقویم به‌کار می‌برد — دو
+         تقویم روی یک صفحه نباید دو حرف بزنند. اگر آن بخش نبود (پنلِ
+         ادمین)، فقط جمعه رنگ می‌گیرد. */
+      try{
+        if(window.CAL){
+          var h = CAL.holiday(view.jy, view.jm, d);
+          if(h && h.off){ cls += " off"; tip = h.name || ""; }
+        } else if((wd + d - 1) % 7 === 6) cls += " off";
+      }catch(e){}
+      html += '<button type="button" class="' + cls + '" data-d="' + d + '"' +
+        (tip ? ' title="' + tip.replace(/"/g, "") + '"' : "") + '>' + faN(d) + '</button>';
     }
     pop.querySelector(".dp-grid").innerHTML = html;
   }

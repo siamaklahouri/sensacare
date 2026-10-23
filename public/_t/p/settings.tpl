@@ -51,6 +51,11 @@
           <button type="button" class="btn btn-brass" id="remindBtn">روشن کن</button>
           <span class="set-state" id="remindState"></span>
         </div>
+        <div class="set-row">
+          <label class="set-chk"><input type="checkbox" id="remindDigest" checked>
+            خلاصهٔ صبحگاهی — هر روز ساعت ۸، یک اعلان که می‌گوید امروز چند کار و چند مهلت دارید
+            (روزهای خالی خبری نمی‌آید).</label>
+        </div>
       </div>
 
       <div class="panel">

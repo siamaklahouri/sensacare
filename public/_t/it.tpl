@@ -139,6 +139,10 @@ window.KARTABL_UNTIL = {{UNTIL}};
   }
   .set-grid input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
   .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  /* تیکِ کنارِ توضیح: متن کنارِ خودِ تیک بماند، نه زیرش */
+  .set-chk{ display:flex; align-items:flex-start; gap:8px; font-size:12.5px;
+    color:var(--ink-soft); line-height:1.9; cursor:pointer; }
+  .set-chk input{ margin-top:5px; accent-color:var(--brass); flex:none; }
   .set-state{ font-size:12px; color:var(--ink-faint); }
   .set-state.ok{ color:var(--green-ink); font-weight:600; }
   .set-state.err{ color:var(--red-ink); font-weight:600; }
@@ -215,7 +219,15 @@ window.KARTABL_UNTIL = {{UNTIL}};
   /* خانهٔ تیکِ تکرار در چک‌لیست: وسطِ ستون، و بزرگ‌تر از پیش‌فرض تا
      روی گوشی با شست هم زده شود. */
   .rep-cell{ text-align:center; }
-  .rep-box{ width:17px; height:17px; cursor:pointer; accent-color:var(--brass); }
+  /* دوره‌های تکرار. کادرِ باریک، چون ستونش باریک است و متنش کوتاه. */
+  .rep-box{
+    width:100%; max-width:92px; cursor:pointer; font-family:var(--font-body);
+    font-size:11.5px; font-weight:700; text-align:center; color:var(--ink-soft);
+    background:var(--paper); border:1px solid var(--line); border-radius:999px;
+    padding:4px 2px;
+  }
+  .rep-box:hover{ border-color:var(--brass); color:var(--brass-ink); }
+  .rep-cell{ min-width:96px; }
 
   .mpop-note{ font-size:11.5px; color:var(--red-ink,#A6222B); line-height:1.9; min-height:19px; }
 
@@ -653,42 +665,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .cm-item-title{ font-weight:700; font-size:13px; color:var(--ink); margin-bottom:3px; }
   .cm-item-meta{ display:flex; flex-wrap:wrap; gap:8px; font-size:11px; color:var(--ink-faint); }
   .cm-item-meta span{ display:inline-flex; align-items:center; gap:3px; }
-  /* این خانه یک <input> بود با width:100% داخلِ یک قابِ ۵۸ پیکسلی: متن
-     ۳۰ پیکسل می‌خواست و ۲۲ پیکسل جا داشت، پس «۲۰ ام» می‌شد «٬۰». بدتر
-     اینکه «خانه‌های بلند» همان بیرون‌زدگی را می‌دید و یک پیکانِ ⌄ هم
-     گوشه‌اش می‌گذاشت که به‌جای تقویم، پنجرهٔ متن باز می‌کرد.
-     حالا خودِ خانه یک دکمه است: به‌اندازهٔ متنش، بی‌شکستن، بی‌پیکان. */
-  .date-box{
-    display:inline-flex; align-items:center; justify-content:center; gap:5px;
-    width:100%; box-sizing:border-box; min-width:0;
-    border:1px solid var(--card-border); border-radius:7px;
-    padding:5px 6px; cursor:pointer; background:var(--white);
-    font-family:var(--font-body); font-size:12.6px; color:var(--ink);
-    white-space:nowrap; transition:border-color .15s, background .15s, color .15s;
-  }
-  .date-box:hover{ border-color:var(--brass); background:var(--brass-bg); color:var(--brass-ink); }
-  .date-box:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
-  .date-box .cal-ic{ font-size:11.5px; flex:0 0 auto; line-height:1; }
-  .date-box .dv{ font-weight:700; }
-  /* بی‌مهلت: خط‌چین و کم‌رنگ، تا از یک روزِ ثبت‌شده فرق کند */
-  .date-box.empty{ color:var(--ink-faint); border-style:dashed; }
-  .date-box.empty .dv{ font-weight:600; font-size:11.5px; }
-  .day-picker-popup{
-    position:fixed; z-index:200; background:var(--white); border:1px solid var(--card-border); border-radius:10px;
-    box-shadow:0 10px 30px rgba(11,37,69,.25); padding:10px; display:none;
-  }
-  .day-picker-popup.open{ display:block; }
-  .day-picker-popup .dp-grid{ display:grid; grid-template-columns:repeat(7,28px); gap:4px; }
-  .day-picker-popup button{
-    width:28px; height:28px; border:none; border-radius:6px; background:var(--paper); color:var(--ink);
-    font-family:var(--font-body); font-size:11.5px; cursor:pointer;
-  }
-  .day-picker-popup button:hover{ background:var(--brass); color:#fff; }
-  .day-picker-popup button.selected{ background:var(--deep); color:#fff; }
-  .day-picker-popup .dp-clear{
-    width:100%; margin-top:8px; height:26px; border-radius:6px; background:transparent; color:var(--red-ink);
-    border:1px solid var(--card-border); font-size:11px;
-  }
+{{PART:daypickcss}}
   .remote-grid-wrap{ overflow-x:auto; border-radius:14px; }
   .remote-grid{ border-collapse:separate; border-spacing:0; font-size:12px; width:100%; }
   .remote-grid th, .remote-grid td{ border-bottom:1px solid var(--line); border-inline-start:1px solid var(--line); padding:10px 8px; text-align:center; }
@@ -844,6 +821,9 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .daily-plan-table td:nth-child(5), .daily-plan-table th:nth-child(5){ padding-right:14px; padding-left:14px; }
   .daily-plan-table td.editable-text input, .daily-plan-table td select{ width:100%; box-sizing:border-box; }
   .daily-date-cell{ color:var(--ink-faint); font-size:11.5px; white-space:nowrap; text-align:center; }
+  /* خانهٔ تاریخ زدنی است، پس باید زدنی به نظر برسد */
+  .day-when{ cursor:pointer; border-radius:7px; }
+  .day-when:hover{ background:var(--brass-bg); color:var(--brass-ink); }
   /* تاریخِ انجام: تا وقتی کار تمام نشده «—» است و کم‌رنگ می‌ماند؛
      تمام که شد، سبز می‌شود تا با یک نگاه معلوم باشد. */
   .daily-done-cell.on{ color:var(--green-ink); font-weight:600; }
@@ -1191,6 +1171,8 @@ window.KARTABL_UNTIL = {{UNTIL}};
         <span class="c2-ttl" id="calTtl"></span>
         <button type="button" class="c2-nav" data-cal-step="1" title="ماهِ بعد">›</button>
         <button type="button" class="c2-today-btn" id="calToday">امروز</button>
+        <button type="button" class="c2-today-btn" id="calMode">نمای هفته</button>
+        <button type="button" class="c2-today-btn c2-print" id="calPrint" title="چاپ یا PDF">🖨 چاپ</button>
         <span class="c2-shift">تعطیلی‌های قمری:
           <select id="calShift" title="اگر اعلامِ رسمی یک روز جلوتر یا عقب‌تر بود، از همین‌جا جابه‌جا کنید">
             <option value="-1">یک روز عقب</option>
@@ -1519,6 +1501,15 @@ window.KARTABL_UNTIL = {{UNTIL}};
 <script>
 const STATUS = ["انجام نشده","در حال انجام","انجام شد"];
 
+/* دوره‌های تکرار — عدد همان «هر چند ماه یک بار» است */
+const REPEATS = [[0,"هرگز"],[1,"هر ماه"],[3,"هر ۳ ماه"],[6,"هر ۶ ماه"],[12,"سالانه"]];
+function repeatLabel(t){
+  const ev = repeatEvery(t);
+  const row = REPEATS.find(r=> r[0] === ev);
+  return ev ? (row ? row[1] : "هر " + fa(ev) + " ماه") + " تکرار می‌شود" : "فقط همین ماه";
+}
+
+
 /* قرصِ وضعیت: رنگش از data-st می‌آید و این‌جا همان لحظه تازه می‌شود.
    یک شنوندهٔ واحد روی document، نه یکی به‌ازای هر ردیف: جدول‌ها از نو
    ساخته می‌شوند و شنونده‌های ردیفی هر بار باید دوباره بسته می‌شدند. */
@@ -1765,7 +1756,11 @@ function switchToMonth(monthName, year, opts){
        برداشته باشد، هیچ‌کدام نمی‌آیند. */
     const prevTasks = state.currentMonthKey && state.monthsData[state.currentMonthKey]
       ? state.monthsData[state.currentMonthKey].tasks : [];
-    state.tasks = monthlyCarry(prevTasks, !opts || opts.carryTasks !== false);
+    /* همهٔ ماه‌ها نگاه می‌شوند، نه فقط ماهِ قبل: وظیفهٔ سه‌ماهه در
+       ماهِ میانی نمی‌آید و اگر فقط ماهِ قبل ملاک بود، زنجیره‌اش پاره
+       می‌شد. */
+    state.tasks = monthlyCarry(state.monthsData, state.currentMonthKey, key,
+                               !opts || opts.carryTasks !== false);
     state.days = carried.length ? carried : deepClone(DEFAULT_STATE.days);
     state.monthsData[key] = { tasks: state.tasks, days: state.days };
   }
@@ -2600,8 +2595,9 @@ function renderChecklist(){
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
       </td>
       <td class="rep-cell" data-nocp>
-        <input type="checkbox" class="rep-box" data-rep="${i}" ${t.repeat === false ? "" : "checked"}
-               title="${t.repeat === false ? "فقط همین ماه" : "ماهِ بعد هم می‌آید"}">
+        <select class="rep-box" data-rep="${i}" title="${repeatLabel(t)}">
+          ${REPEATS.map(r=>`<option value="${r[0]}" ${repeatEvery(t)===r[0]?"selected":""}>${r[1]}</option>`).join("")}
+        </select>
       </td>
       <td><button class="btn-del" data-del="${i}" title="حذف">✕</button></td>
     </tr>
@@ -2614,7 +2610,10 @@ function renderChecklist(){
   body.querySelectorAll(".date-box").forEach(box=>{
     box.addEventListener("click", ()=>{
       const idx = parseInt(box.getAttribute("data-idx"));
-      openDayPicker(box, idx);
+      openDayPicker(box, state.tasks[idx].deadline, day=>{
+        state.tasks[idx].deadline = day;
+        renderChecklist(); renderCards(); renderDeadlines(); renderCharts(); scheduleSave();
+      });
     });
   });
   /* تیکِ تکرار: بی‌رسمِ دوبارهٔ جدول. رسمِ دوباره یعنی پرشِ فهرست —
@@ -2622,8 +2621,14 @@ function renderChecklist(){
   body.querySelectorAll(".rep-box").forEach(cb=>{
     cb.addEventListener("change", ()=>{
       const i = parseInt(cb.getAttribute("data-rep"));
-      state.tasks[i].repeat = cb.checked;
-      cb.title = cb.checked ? "ماهِ بعد هم می‌آید" : "فقط همین ماه";
+      const ev = parseInt(cb.value, 10) || 0;
+      const t = state.tasks[i];
+      t.every = ev;
+      t.repeat = ev > 0;                 /* دادهٔ قدیمی را هم هم‌خوان نگه می‌دارد */
+      if(!t.rid) t.rid = "t-" + Math.random().toString(36).slice(2, 10);
+      /* شمارشِ دوره از همین ماه شروع می‌شود، نه از ماهِ ناپیدا */
+      if(!t.since) t.since = state.currentMonthKey || "";
+      cb.title = repeatLabel(t);
       scheduleSave();
     });
   });
@@ -2641,67 +2646,7 @@ function renderChecklist(){
   });
 }
 
-let dayPickerEl = null;
-function ensureDayPicker(){
-  if(dayPickerEl) return dayPickerEl;
-  dayPickerEl = document.createElement("div");
-  dayPickerEl.className = "day-picker-popup";
-  const grid = document.createElement("div");
-  grid.className = "dp-grid";
-  for(let d=1; d<=31; d++){
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = fa(d);
-    btn.setAttribute("data-day", d);
-    grid.appendChild(btn);
-  }
-  const clearBtn = document.createElement("button");
-  clearBtn.type = "button";
-  clearBtn.className = "dp-clear";
-  clearBtn.textContent = "پاک کردن";
-  dayPickerEl.appendChild(grid);
-  dayPickerEl.appendChild(clearBtn);
-  document.body.appendChild(dayPickerEl);
-
-  grid.addEventListener("click", (e)=>{
-    const btn = e.target.closest("button[data-day]");
-    if(!btn) return;
-    const day = parseInt(btn.getAttribute("data-day"));
-    const idx = parseInt(dayPickerEl.getAttribute("data-target-idx"));
-    state.tasks[idx].deadline = day;
-    renderChecklist(); renderCards(); renderDeadlines(); renderCharts(); scheduleSave();
-    closeDayPicker();
-  });
-  clearBtn.addEventListener("click", ()=>{
-    const idx = parseInt(dayPickerEl.getAttribute("data-target-idx"));
-    state.tasks[idx].deadline = "";
-    renderChecklist(); renderCards(); renderDeadlines(); renderCharts(); scheduleSave();
-    closeDayPicker();
-  });
-  document.addEventListener("click", (e)=>{
-    if(!dayPickerEl.classList.contains("open")) return;
-    if(dayPickerEl.contains(e.target) || e.target.closest(".date-box")) return;
-    closeDayPicker();
-  });
-  return dayPickerEl;
-}
-
-function closeDayPicker(){
-  if(dayPickerEl) dayPickerEl.classList.remove("open");
-}
-
-function openDayPicker(anchorEl, idx){
-  const popup = ensureDayPicker();
-  popup.setAttribute("data-target-idx", idx);
-  const current = state.tasks[idx].deadline;
-  popup.querySelectorAll("button[data-day]").forEach(b=>{
-    b.classList.toggle("selected", current && parseInt(b.getAttribute("data-day"))===parseInt(current));
-  });
-  const rect = anchorEl.getBoundingClientRect();
-  popup.style.top = (rect.bottom + 4) + "px";
-  popup.style.left = Math.max(8, rect.left - 150) + "px";
-  popup.classList.add("open");
-}
+{{PART:daypick}}
 
 function onTaskFieldChange(e){
   const tr = e.target.closest("tr");
@@ -2745,7 +2690,8 @@ function renderDaily(){
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
     <tr data-idx="${d.idx}">
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell">${escapeHtml(fa(d.createdDate||"—"))}</td>
+      <td class="daily-date-cell day-when" data-date="1" data-dayd="${d.idx}"
+          title="تاریخِ این ردیف — برای عوض کردن بزنید">${escapeHtml(fa(d.createdDate||"—"))}</td>
       <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
@@ -2769,6 +2715,27 @@ function renderDaily(){
   const companyNames = companiesData ? Object.keys(companiesData.companies) : [];
   const dl = document.getElementById("dailyCompanyOptions");
   if(dl) dl.innerHTML = companyNames.map(n=>`<option value="${escapeHtml(n)}">`).join("");
+  /* تاریخِ ردیف: تا حالا متنِ ساده بود و برای عوض کردنش باید ردیف را
+     پاک می‌کردی و از نو می‌ساختی. حالا خودِ خانه تقویم باز می‌کند —
+     همان تقویمِ مشترکِ صفحه، با روزهای هفته و تعطیلی‌ها. */
+  body.querySelectorAll("[data-dayd]").forEach(td=>{
+    td.addEventListener("input", ()=>{
+      const i = parseInt(td.getAttribute("data-dayd"));
+      const row = state.days[i];
+      if(!row) return;
+      let v = "";
+      try{
+        const q = DatePick.parse(td.textContent);
+        if(q) v = q.jy + "/" + ("0"+q.jm).slice(-2) + "/" + ("0"+q.jd).slice(-2);
+      }catch(e){}
+      row.createdDate = v;
+      /* کشیدنِ دوبارهٔ جدول داخلِ خودِ رویداد، گرهی را که رویش
+         ایستاده‌ایم برمی‌دارد؛ یک تیک صبر می‌کنیم. */
+      setTimeout(()=>{ renderDaily(); scheduleSave();
+        try{ if(window.DAYCAL) DAYCAL.refresh(); }catch(e){}
+        try{ if(window.CAL) CAL.render(); }catch(e){} }, 0);
+    });
+  });
   body.querySelectorAll("[data-field]").forEach(el=>{
     el.addEventListener("change", onDayFieldChange);
     if(el.tagName==="INPUT") el.addEventListener("input", onDayFieldChange);
@@ -4701,7 +4668,10 @@ function setupMeta(){
 
 function setupToolbar(){
   document.getElementById("addTaskBtn").addEventListener("click", ()=>{
-    state.tasks.push({category:CATEGORIES[0], task:"وظیفه جدید", owner:"", deadline:1, status:"انجام نشده", priority:"متوسط", note:""});
+    state.tasks.push({category:CATEGORIES[0], task:"وظیفه جدید", owner:"", deadline:1,
+      status:"انجام نشده", priority:"متوسط", note:"",
+      /* شناسه و ماهِ شروع، برای شمردنِ دوره‌های تکرار */
+      rid:"t-"+Math.random().toString(36).slice(2,10), since: state.currentMonthKey || "", every:1});
     renderAll(); scheduleSave();
   });
   document.getElementById("resetTasksBtn").addEventListener("click", ()=>{

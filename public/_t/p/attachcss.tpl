@@ -41,3 +41,30 @@
       width:min(520px, 92vw); border-radius:18px; max-height:74vh;
     }
   }
+
+  /* ---------- نمایشِ عکسِ پیوست ---------- */
+  .at-eye{
+    background:none; border:none; cursor:pointer; font-size:13px; line-height:1;
+    padding:2px 4px; border-radius:6px; color:var(--ink-faint); flex:none;
+  }
+  .at-eye:hover{ background:var(--brass-bg); color:var(--brass-ink); }
+  .at-light{ position:fixed; inset:0; z-index:220; }
+  .at-light[hidden]{ display:none; }
+  .at-lscrim{ position:absolute; inset:0; background:rgba(8,18,30,.72); }
+  .at-lbox{
+    position:absolute; inset:0; margin:auto; width:fit-content; height:fit-content;
+    max-width:min(92vw,900px); max-height:88vh; display:flex; flex-direction:column;
+    gap:8px; padding:10px; background:var(--white); border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .at-lbox img{
+    max-width:100%; max-height:calc(88vh - 60px); border-radius:10px;
+    object-fit:contain; background:var(--paper);
+  }
+  .at-lbox figcaption{ font-size:12px; color:var(--ink-soft); text-align:center; }
+  .at-lx{
+    position:absolute; top:-12px; inset-inline-start:-12px; width:30px; height:30px;
+    border-radius:50%; border:1px solid var(--card-border); background:var(--white);
+    color:var(--ink); cursor:pointer; font-size:13px; line-height:1;
+    box-shadow:0 4px 14px rgba(0,0,0,.22);
+  }

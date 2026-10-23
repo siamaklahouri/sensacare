@@ -30,7 +30,40 @@
       .trim().toLowerCase();
   }
 
-  var SKIP = { id: 1, idx: 1, day: 1, rev: 1, repeat: 1, reminderFired: 1 };
+  var SKIP = { id: 1, idx: 1, day: 1, rev: 1, repeat: 1, reminderFired: 1,
+               rid: 1, since: 1, every: 1, fid: 1 };
+
+  var FILES = [];              /* نام پیوست‌ها، یک بار از سرور */
+  async function loadFiles() {
+    try {
+      var r = await apiCall("/files?names=1");
+      if (r.ok) FILES = (r.data && r.data.items) || [];
+    } catch (e) { }
+  }
+
+  function faDate(k) {
+    try { return fa(String(k)); } catch (e) { return String(k); }
+  }
+
+  /* پیوست به شناسهٔ ردیف بسته است، نه به شمارهٔ ردیف. پس باید در
+     همهٔ ماه‌ها دنبالِ ردیفی گشت که آن شناسه را دارد. */
+  function rowOfRef(ref) {
+    var found = null;
+    monthly().forEach(function (m) {
+      if (found) return;
+      m.tasks.forEach(function (t, i) {
+        if (!found && t && t.fid === ref)
+          found = { view: "checklist", body: "checklistBody", idx: i,
+                    month: m.key, monthLabel: m.label, title: titleOf(t, "task") };
+      });
+      m.days.forEach(function (d, i) {
+        if (!found && d && d.fid === ref)
+          found = { view: "daily", body: "dailyBody", idx: i,
+                    month: m.key, monthLabel: m.label, title: titleOf(d, "main") };
+      });
+    });
+    return found;
+  }
 
   function rowText(row) {
     if (!row || typeof row !== "object") return "";
@@ -102,6 +135,29 @@
       });
     });
 
+    /* یادداشت‌های تقویم: از همان state می‌آیند و زدنشان همان روز را
+       در بخشِ تقویم باز می‌کند. */
+    var notes = {};
+    try { notes = (state.calNotes && typeof state.calNotes === "object") ? state.calNotes : {}; }
+    catch (e) { notes = {}; }
+    Object.keys(notes).forEach(function (k) {
+      var txt = String(notes[k] || "");
+      if (!txt || norm(txt).indexOf(n) < 0) return;
+      push({ where: "یادداشتِ تقویم", view: "cal", calDay: k,
+             title: faDate(k), text: txt });
+    });
+
+    /* نامِ پیوست‌ها. فهرست یک بار از سرور گرفته می‌شود و در حافظه
+       می‌ماند؛ خودِ فایل‌ها جابه‌جا نمی‌شوند. */
+    FILES.forEach(function (f) {
+      if (norm(f.name || "").indexOf(n) < 0) return;
+      var at = rowOfRef(f.ref);
+      push({ where: "پیوست", view: at ? at.view : "checklist",
+             body: at ? at.body : "", idx: at ? at.idx : -1,
+             month: at ? at.month : "", monthLabel: at ? at.monthLabel : "",
+             title: f.name, text: at ? at.title : "" });
+    });
+
     dbRows().forEach(function (src) {
       src.rows.forEach(function (r, i) {
         var txt = rowText(r);
@@ -116,6 +172,21 @@
   /* ---------- رفتن سرِ نتیجه ---------- */
   function jump(h) {
     close();
+    /* یادداشتِ تقویم: بخشِ تقویم، همان ماه، همان روز */
+    if (h.calDay) {
+      try {
+        var q = String(h.calDay).split("/");
+        var nav2 = document.querySelector('.navbtn[data-view="cal"]');
+        if (nav2) nav2.click();
+        if (window.CAL && CAL.go) { /* فقط برای اطمینان از ساخته شدن */ }
+        setTimeout(function () {
+          try {
+            CAL.show(+q[0], +q[1], +q[2]);
+          } catch (e) { }
+        }, 120);
+      } catch (e) { }
+      return;
+    }
     var go = function () {
       var nav = document.querySelector('.nav-list .navbtn[data-view="' + h.view + '"]');
       if (nav) nav.click();
@@ -222,17 +293,26 @@
     /* Ctrl+K همان میان‌بُری است که آدم از بقیهٔ برنامه‌ها عادت دارد */
     if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
       e.preventDefault();
-      if (box && !box.hidden) close(); else open();
+      if (box && !box.hidden) close(); else openPlus();
     }
   });
 
   function setup() {
     var btn = document.getElementById("findBtn");
-    if (btn) btn.addEventListener("click", open);
+    if (btn) btn.addEventListener("click", openPlus);
   }
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", setup);
   else setup();
 
-  window.FIND = { open: open, close: close, search: search };
+  /* فهرستِ نام‌ها را همان بارِ اولِ باز شدنِ جست‌وجو می‌گیریم: نه سرِ
+     بارِ صفحه (که یک درخواستِ اضافه بود)، نه هر بار. */
+  var filesOnce = false;
+  function openPlus() {
+    if (!filesOnce) { filesOnce = true; loadFiles(); }
+    open();
+  }
+
+  window.FIND = { open: openPlus, close: close, search: search,
+                  files: function () { return FILES; }, reload: loadFiles };
 })();

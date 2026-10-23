@@ -23,8 +23,13 @@
                 "مهر","آبان","آذر","دی","بهمن","اسفند"];
   var DAY = 86400000;
   var LS = "sltechPushOn";
+  var LSD = "sltechDigest";       /* خلاصهٔ صبحگاهی */
   var VAULT_AHEAD = 2;      /* سررسیدِ شخصی: دو روز قبل */
   var HOUR = 9;             /* ساعتِ یادآورهای روزانه‌نشده */
+
+  function faNum(n){
+    try{ return fa(String(n)); }catch(e){ return String(n); }
+  }
 
   function toEn(s){
     return String(s == null ? "" : s).replace(/[۰-۹]/g,
@@ -32,6 +37,10 @@
   }
 
   function on(){ try{ return localStorage.getItem(LS) === "1"; }catch(e){ return false; } }
+  /* پیش‌فرض روشن است: کسی که یادآور را خواسته، معمولاً خلاصهٔ صبح را
+     هم می‌خواهد — و خاموش کردنش یک تیک است. */
+  function digestOn(){ try{ return localStorage.getItem(LSD) !== "0"; }catch(e){ return true; } }
+  function setDigest(v){ try{ localStorage.setItem(LSD, v ? "1" : "0"); }catch(e){} }
   function setOn(v){ try{ localStorage.setItem(LS, v ? "1" : "0"); }catch(e){} }
 
   function can(){
@@ -120,6 +129,40 @@
                  title: "🔔 سررسیدِ نزدیک",
                  body: "یک سررسید در دیتای شخصی نزدیک است. برای دیدنش کارتابل را باز کنید." });
     });
+
+    /* ---------- خلاصهٔ صبحگاهی ----------
+       یک اعلان سرِ صبح: «امروز سه کار داری». تک‌تکِ کارها اعلان
+       نمی‌خواهند — چیزی که آدم صبح می‌خواهد بداند، حجمِ روز است.
+       شمارش از همان جایی می‌آید که بخشِ تقویم به‌کار می‌برد، پس با
+       آنچه روی صفحه می‌بیند یکی است. */
+    if(digestOn()){
+      for(var n = 0; n <= 7; n++){
+        var ms = Date.now() + n * DAY;
+        var j = null;
+        try{ j = DatePick.parse(DatePick.fromStamp(ms)); }catch(e){ j = null; }
+        if(!j) continue;
+        var at2 = stampAt(j.jy, j.jm, j.jd, 8);
+        if(!at2 || at2 <= now || at2 > cap) continue;
+        var list = [];
+        try{ list = window.CAL ? CAL.items(j.jy, j.jm, j.jd) : []; }catch(e){ list = []; }
+        var nDay = list.filter(function(x){ return x.t === "day"; }).length;
+        var nTask = list.filter(function(x){ return x.t === "task"; }).length;
+        var key = String(j.jy) + "/" + ("0" + j.jm).slice(-2) + "/" + ("0" + j.jd).slice(-2);
+        var nDue = 0;
+        try{
+          nDue = (Array.isArray(state.personalDue) ? state.personalDue : [])
+            .filter(function(k){ return k === key; }).length;
+        }catch(e){}
+        if(!nDay && !nTask && !nDue) continue;
+        var say = [];
+        if(nDay) say.push(faNum(nDay) + " کار");
+        if(nTask) say.push(faNum(nTask) + " مهلت");
+        if(nDue) say.push(faNum(nDue) + " سررسیدِ شخصی");
+        out.push({ id: "m|" + key, at: at2, tag: "digest",
+                   title: "☀️ برنامهٔ امروز",
+                   body: say.join(" و ") + " برای امروز." });
+      }
+    }
 
     out.sort(function(a, b){ return a.at - b.at; });
     return out.slice(0, 200);
@@ -222,6 +265,8 @@
       return;
     }
     var is = on();
+    var dg = document.getElementById("remindDigest");
+    if(dg){ dg.checked = digestOn(); dg.disabled = !is; }
     if(btn){ btn.disabled = false; btn.textContent = is ? "خاموش کن" : "روشن کن"; }
     if(st) st.textContent = msg || (is
       ? "روشن است — یادآورها حتی وقتی کارتابل بسته است می‌آیند."
@@ -234,6 +279,12 @@
     var btn = document.getElementById("remindBtn");
     if(!btn || btn.dataset.wired) return;
     btn.dataset.wired = "1";
+    var dg = document.getElementById("remindDigest");
+    if(dg) dg.addEventListener("change", function(){
+      setDigest(dg.checked);
+      lastSig = "";          /* صف باید از نو ساخته شود */
+      sync(true);
+    });
     btn.addEventListener("click", async function(){
       btn.disabled = true;
       paint("…");

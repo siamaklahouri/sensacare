@@ -80,6 +80,14 @@ export async function filesOfPlanner(env, planner) {
     'SELECT ref, COUNT(*) AS n FROM attachments WHERE planner=? GROUP BY ref', planner);
 }
 
+/* نامِ پیوست‌ها، برای جست‌وجوی سراسری. فقط نام و شناسهٔ ردیف —
+   خودِ فایل این‌جا جایی ندارد. */
+export async function fileNames(env, planner) {
+  await ensureFiles(env);
+  return await all(env,
+    'SELECT id, ref, name FROM attachments WHERE planner=? ORDER BY created DESC LIMIT 500', planner);
+}
+
 export async function usedBytes(env, planner) {
   await ensureFiles(env);
   const r = await one(env, 'SELECT COALESCE(SUM(size),0) AS s FROM attachments WHERE planner=?', planner);

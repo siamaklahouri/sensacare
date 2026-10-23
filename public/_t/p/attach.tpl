@@ -118,6 +118,8 @@
     }
     list.innerHTML = files.map(function (f) {
       return '<div class="at-row">' +
+        (isPic(f) ? '<button type="button" class="at-eye" data-see="' + escapeHtml(f.id) +
+            '" data-nm="' + escapeHtml(f.name) + '" title="نمایش">👁</button>' : "") +
         '<a class="at-name" href="' + escapeHtml(KARTABL_API + "/files/" + f.id) + '" download>' +
         escapeHtml(f.name) + '</a>' +
         '<span class="at-size">' + escapeHtml(fmtSize(f.size)) + '</span>' +
@@ -126,7 +128,60 @@
     }).join("");
   }
 
+  /* ---------- دیدنِ عکس ----------
+     عکسِ فاکتور همیشه دانلود می‌شد و برای یک نگاه باید از پوشهٔ
+     دانلودها بازش می‌کردی. حالا همان‌جا باز می‌شود.
+
+     فایل با fetch گرفته می‌شود و از blob نشان داده می‌شود، نه با
+     آدرسِ مستقیم: مسیرِ دانلود عمداً «پیوست» می‌فرستد تا هیچ فایلی
+     روی این دامنه اجرا نشود، و این قاعده سرِ جایش می‌ماند. */
+  function isPic(f) {
+    return /^image\//.test(String((f && f.type) || "")) &&
+      !/svg/i.test(String(f.type));
+  }
+
+  async function showPic(id, name) {
+    var box = document.getElementById("atLight");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "atLight";
+      box.className = "at-light";
+      box.innerHTML = '<div class="at-lscrim"></div>' +
+        '<figure class="at-lbox"><img alt=""><figcaption></figcaption>' +
+        '<button type="button" class="at-lx" title="بستن">✕</button></figure>';
+      document.body.appendChild(box);
+      box.addEventListener("click", function (e) {
+        if (e.target.closest(".at-lx") || e.target.classList.contains("at-lscrim")) hidePic();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") hidePic();
+      });
+    }
+    var img = box.querySelector("img");
+    box.querySelector("figcaption").textContent = name || "";
+    img.removeAttribute("src");
+    box.hidden = false;
+    try {
+      var r = await fetch(KARTABL_API + "/files/" + id, { credentials: "same-origin" });
+      if (!r.ok) throw new Error("نشد");
+      var blob = await r.blob();
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = URL.createObjectURL(blob);
+      img.src = lastUrl;
+    } catch (e) {
+      box.querySelector("figcaption").textContent = "فایل باز نشد.";
+    }
+  }
+  var lastUrl = "";
+  function hidePic() {
+    var box = document.getElementById("atLight");
+    if (box) box.hidden = true;
+    if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = ""; }
+  }
+
   async function onListClick(e) {
+    var eye = e.target.closest ? e.target.closest(".at-eye") : null;
+    if (eye) { showPic(eye.getAttribute("data-see"), eye.getAttribute("data-nm")); return; }
     var btn = e.target.closest ? e.target.closest(".at-del") : null;
     if (!btn) return;
     if (!confirm("این فایل پاک شود؟")) return;

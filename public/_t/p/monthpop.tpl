@@ -65,18 +65,74 @@ function syncWorkingMonth(){
    «repeat !== false» و نه «repeat === true»: دادهٔ قدیمی این کلید را
    ندارد، و وظیفه‌ای که کاربر خودش تیکش را برنداشته باید تکرار شود —
    وگرنه همان ایرادِ قبلی برای همهٔ کارتابل‌های موجود سرِ جایش می‌ماند. */
-function monthlyCarry(prevTasks, want){
+/* ---------- تکرارِ وظیفه ----------
+   اول فقط یک تیک بود: «ماهِ بعد هم بیاید» یا نه. ولی کارهای یک مدیرِ
+   فنی همه ماهانه نیستند — تمدیدِ گواهی سالانه است، تستِ بازیابی هر سه
+   ماه. آن‌ها را یا آدم فراموش می‌کرد، یا هر ماه می‌آمدند و هر ماه
+   دست‌نخورده می‌ماندند تا معنی‌شان را از دست بدهند.
+
+   حالا هر وظیفه دوره دارد: هر ماه، هر سه ماه، هر شش ماه، سالانه.
+   شمارش از «since» است — ماهی که وظیفه اولین بار ساخته شده — نه از
+   ماهِ قبل؛ وگرنه وظیفهٔ سه‌ماهه که در ماهِ میانی نمی‌آید، در ماهِ
+   بعدی هم چیزی برای کپی شدن نداشت و زنجیره پاره می‌شد. به همین دلیل
+   هم همهٔ ماه‌ها نگاه می‌شوند، نه فقط ماهِ قبل. */
+var JMONTHS = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
+               "مهر","آبان","آذر","دی","بهمن","اسفند"];
+
+function repeatEvery(t){
+  if(!t) return 0;
+  if(t.every != null && t.every !== ""){
+    var n = parseInt(String(t.every).replace(/[۰-۹]/g, function(d){
+      return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)); }), 10);
+    return isNaN(n) ? 1 : Math.max(0, n);
+  }
+  return t.repeat === false ? 0 : 1;   /* دادهٔ قدیمی: تیک = هر ماه */
+}
+
+/* کلیدِ ماه → یک عددِ پشت‌سرِ هم، تا فاصلهٔ دو ماه یک تفریق باشد */
+function monthIdxOf(key){
+  var p = String(key || "").split("|");
+  var y = parseInt(String(p[0] || "").replace(/[۰-۹]/g, function(d){
+    return String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)); }), 10);
+  var m = JMONTHS.indexOf(String(p[1] || "").trim()) + 1;
+  return (y && m) ? y * 12 + m : 0;
+}
+
+function taskKeyOf(t){
+  return t.rid || ((t.category || "") + "|" + (t.task || ""));
+}
+
+function monthlyCarry(allMonths, prevKey, newKey, want){
   if(want === false) return [];
-  return (prevTasks || [])
-    .filter(function(t){ return t && t.repeat !== false; })
-    .map(function(t){
-      var c = Object.assign({}, t);
-      c.status = "انجام نشده";
-      /* یادآور و تاریخِ انجام مالِ همان ماهِ گذشته بودند */
-      delete c.reminder;
-      delete c.doneDate;
-      return c;
+  var target = monthIdxOf(newKey);
+  var seen = {}, out = [];
+  /* از تازه‌ترین ماه به عقب: اگر یک وظیفه در چند ماه هست، متنِ
+     تازه‌ترینش ملاک است. */
+  Object.keys(allMonths || {})
+    .map(function(k){ return [monthIdxOf(k), k]; })
+    .filter(function(x){ return x[0] && (!target || x[0] < target); })
+    .sort(function(a, b){ return b[0] - a[0]; })
+    .forEach(function(pair){
+      ((allMonths[pair[1]] || {}).tasks || []).forEach(function(t){
+        if(!t) return;
+        var ev = repeatEvery(t);
+        if(!ev) return;
+        var id = taskKeyOf(t);
+        if(seen[id]) return;
+        seen[id] = 1;
+        var anchor = monthIdxOf(t.since) || pair[0];
+        if(target && anchor && ((target - anchor) % ev !== 0)) return;
+        var c = Object.assign({}, t);
+        c.status = "انجام نشده";
+        c.since = t.since || pair[1];
+        c.every = ev;
+        /* یادآور و تاریخِ انجام مالِ همان ماهِ گذشته بودند */
+        delete c.reminder;
+        delete c.doneDate;
+        out.push(c);
+      });
     });
+  return out;
 }
 
 /* نامِ یک ماه را درست می‌کند. کلیدِ ماه خودش از نام و سال ساخته می‌شود،

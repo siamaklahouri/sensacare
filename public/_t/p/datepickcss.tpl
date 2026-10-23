@@ -48,3 +48,7 @@
   }
   .dp-foot .dp-today:hover{ border-color:var(--brass); color:var(--brass-ink); background:var(--brass-bg); }
   .dp-foot .dp-clear:hover{ border-color:var(--red); color:var(--red-ink); background:var(--red-bg); }
+  /* جمعه و تعطیلِ رسمی، همان‌رنگی که در بخشِ تقویم دارند */
+  .dp-pop .dp-d.off{ background:var(--red-bg); color:var(--red-ink); font-weight:700; }
+  .dp-pop .dp-d.off:hover{ background:var(--red-bg); filter:brightness(.97); }
+  .dp-pop .dp-d.on.off{ background:var(--brass); color:#fff; }

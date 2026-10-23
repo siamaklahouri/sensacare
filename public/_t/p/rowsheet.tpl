@@ -90,8 +90,10 @@
         escapeHtml(c.textContent.replace(/\s+/g, " ").trim() || "انتخاب") + '</button></label>';
     }
     if (c.classList.contains("rep-box")) {
-      return '<label class="rs-f rs-check"><input type="checkbox" data-rep="1"' +
-        (c.checked ? " checked" : "") + '><span>ماهِ بعد هم بیاید</span></label>';
+      /* از تیک به دوره رسید: «هر ماه / هر سه ماه / سالانه». همان
+         گزینه‌های خودِ جدول این‌جا هم می‌آیند تا دو جا دو چیز نباشد. */
+      return '<label class="rs-f"><span>تکرار</span>' +
+        '<select data-rep="1">' + c.innerHTML + '</select></label>';
     }
     if (c.tagName === "SELECT") {
       return '<label class="rs-f"><span>' + escapeHtml(label) + '</span>' +
@@ -127,7 +129,7 @@
     if (rep) rep.addEventListener("change", function () {
       var tr2 = rowOf(cur.body, cur.idx);
       var el = tr2 && tr2.querySelector(".rep-box");
-      if (el) { el.checked = rep.checked; el.dispatchEvent(new Event("change", { bubbles: true })); }
+      if (el) { el.value = rep.value; el.dispatchEvent(new Event("change", { bubbles: true })); }
     });
     var dateBtn = list.querySelector("[data-open-date]");
     if (dateBtn) dateBtn.addEventListener("click", function () {
