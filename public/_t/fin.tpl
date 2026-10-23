@@ -626,14 +626,17 @@ window.KARTABL_UNTIL = {{UNTIL}};
   .editable-text input{ width:100%; box-sizing:border-box; border:1px solid transparent; background:transparent; font-family:inherit; font-size:12px; padding:4px 5px; border-radius:5px; }
   .editable-text input:hover{ border-color:var(--card-border); }
   .editable-text input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
+  /* ستون‌ها پهنای خودشان را دارند و زیرِ یک حد فشرده نمی‌شوند؛
+     صفحهٔ باریک‌تر خودِ جدول را می‌لغزاند. */
+  .daily-plan-table{ min-width:1180px; }
   .daily-plan-table td, .daily-plan-table th{ padding-left:10px; padding-right:10px; }
   .daily-plan-table td:nth-child(5), .daily-plan-table th:nth-child(5){ border-right:1px solid var(--line); padding-right:14px; }
   .daily-plan-table td:nth-child(6), .daily-plan-table th:nth-child(6){ padding-right:14px; padding-left:14px; }
   .daily-plan-table td.editable-text input, .daily-plan-table td select{ width:100%; box-sizing:border-box; }
+  /* «✅ تاریخ انجام» در دو خط می‌شکست و سرِ ستون را دو برابر
+     می‌کرد. ستون کمی پهن‌تر شد و عنوان دیگر نمی‌شکند. */
+  .daily-plan-table th.nowrap{ white-space:nowrap; }
   .daily-date-cell{ color:var(--ink-faint); font-size:11.5px; white-space:nowrap; text-align:center; }
-  /* خانهٔ تاریخ زدنی است، پس باید زدنی به نظر برسد */
-  .day-when{ cursor:pointer; border-radius:7px; }
-  .day-when:hover{ background:var(--brass-bg); color:var(--brass-ink); }
   /* تاریخِ انجام: تا وقتی کار تمام نشده «—» است و کم‌رنگ می‌ماند؛
      تمام که شد، سبز می‌شود تا با یک نگاه معلوم باشد. */
   .daily-done-cell.on{ color:var(--green-ink); font-weight:600; }
@@ -915,7 +918,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th style="width:18%;">📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:196px;">وضعیت</th><th style="width:92px;">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:40px;"></th></tr>
+          <tr><th style="width:44px;">ردیف</th><th style="width:100px;">📅 تاریخ</th><th style="width:18%;">📌 وظایف اصلی</th><th>🤝 توضیحات</th><th style="width:140px;">👥 طرف‌حساب</th><th style="width:172px;">وضعیت</th><th style="width:108px;" class="nowrap">✅ تاریخ انجام</th><th style="width:36px;" title="یادآور">⏰</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:40px;"></th></tr>
           <tr class="filter-row">
             <th></th>
             <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
@@ -3832,8 +3835,7 @@ function renderDaily(){
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
     <tr data-idx="${d.idx}">
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell day-when" data-date="1" data-dayd="${d.idx}"
-          title="تاریخِ این ردیف — برای عوض کردن بزنید">${escapeHtml(fa(d.createdDate||"—"))}</td>
+      <td class="daily-date-cell" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}</td>
       <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="توضیحات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام طرف‌حساب" list="dailyPartyOptions"></td>
@@ -3860,27 +3862,6 @@ function renderDaily(){
     btn.addEventListener("click", ()=> openReminderSetter("day", parseInt(btn.getAttribute("data-day-star"))));
   });
 
-  /* تاریخِ ردیف: تا حالا متنِ ساده بود و برای عوض کردنش باید ردیف را
-     پاک می‌کردی و از نو می‌ساختی. حالا خودِ خانه تقویم باز می‌کند —
-     همان تقویمِ مشترکِ صفحه، با روزهای هفته و تعطیلی‌ها. */
-  body.querySelectorAll("[data-dayd]").forEach(td=>{
-    td.addEventListener("input", ()=>{
-      const i = parseInt(td.getAttribute("data-dayd"));
-      const row = state.days[i];
-      if(!row) return;
-      let v = "";
-      try{
-        const q = DatePick.parse(td.textContent);
-        if(q) v = q.jy + "/" + ("0"+q.jm).slice(-2) + "/" + ("0"+q.jd).slice(-2);
-      }catch(e){}
-      row.createdDate = v;
-      /* کشیدنِ دوبارهٔ جدول داخلِ خودِ رویداد، گرهی را که رویش
-         ایستاده‌ایم برمی‌دارد؛ یک تیک صبر می‌کنیم. */
-      setTimeout(()=>{ renderDaily(); scheduleSave();
-        try{ if(window.DAYCAL) DAYCAL.refresh(); }catch(e){}
-        try{ if(window.CAL) CAL.render(); }catch(e){} }, 0);
-    });
-  });
   body.querySelectorAll("[data-field]").forEach(el=>{
     el.addEventListener("change", onDayFieldChange);
     if(el.tagName==="INPUT") el.addEventListener("input", onDayFieldChange);

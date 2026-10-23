@@ -52,13 +52,26 @@ for (const w of WHO) {
      ماه که ایرادشان گزارش شده بود. */
   const seed = await p.evaluate(() => {
     const t0 = DatePick.today();
+    /* ماهِ کاریِ کارتابل روی همین ماهِ واقعی گذاشته می‌شود: «همهٔ این
+       ماه» ماهی را می‌گیرد که تقویم نشان می‌دهد، و اگر آن با ماهِ
+       تاریخ‌های آزمون یکی نباشد، آزمون سرِ اولِ ماه می‌افتاد — ایرادِ
+       خودِ آزمون بود، نه کارتابل. */
+    try {
+      const names = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
+                     "مهر","آبان","آذر","دی","بهمن","اسفند"];
+      state.meta = { month: names[t0.jm - 1], year: String(t0.jy) };
+      state.currentMonthKey = String(t0.jy) + "|" + names[t0.jm - 1];
+      if (!state.monthsData[state.currentMonthKey])
+        state.monthsData[state.currentMonthKey] = { tasks: state.tasks, days: state.days };
+      renderMeta();
+    } catch (e) { }
     const k = (y, m, d) => y + '/' + ('0' + m).slice(-2) + '/' + ('0' + d).slice(-2);
     const mk2 = (dd, main, status) => ({ createdDate: dd, main, meet: '', company: '',
       status: status || '', doneDate: '' });
     state.days = [
-      mk2(k(t0.jy, t0.jm, Math.min(26, t0.jd)), 'کارِ میانی', 'در حال انجام'),
+      mk2(k(t0.jy, t0.jm, t0.jd === 14 ? 15 : 14), 'کارِ میانی', 'در حال انجام'),
       mk2(k(t0.jy, t0.jm, 2), 'کارِ دومِ ماه', 'انجام شد'),
-      mk2(k(t0.jy, t0.jm, Math.min(26, t0.jd)), 'کارِ میانیِ دوم', 'انجام نشده'),
+      mk2(k(t0.jy, t0.jm, t0.jd === 14 ? 15 : 14), 'کارِ میانیِ دوم', 'انجام نشده'),
       mk2(k(t0.jy, t0.jm === 12 ? 1 : t0.jm + 1, 3), 'کارِ ماهِ بعد', ''),
       mk2('', '', '')
     ];
@@ -66,7 +79,10 @@ for (const w of WHO) {
     document.querySelector('.navbtn[data-view="daily"]').click();
     if (window.DAYCAL) DAYCAL.refresh();
     renderDaily();
-    return { mid: ('0' + Math.min(26, t0.jd)).slice(-2), jy: t0.jy, jm: t0.jm, jd: t0.jd };
+    /* روزِ «میانی» نباید خودِ امروز باشد: ردیفِ بی‌تاریخِ آزمون بعداً
+       تاریخِ امروز را می‌گیرد و شمارش را به‌هم می‌ریخت. */
+    return { mid: ('0' + (t0.jd === 14 ? 15 : 14)).slice(-2),
+             jy: t0.jy, jm: t0.jm, jd: t0.jd };
   });
   await p.waitForTimeout(900);
 
@@ -100,13 +116,17 @@ for (const w of WHO) {
   /* یک تاریخ را تیک می‌زنیم */
   await p.evaluate(d => {
     const panel = document.querySelector('.msf-panel, [class*=msf][class*=panel]');
-    const row = [...panel.querySelectorAll('.msf-opt')].find(x => x.textContent.indexOf(d) >= 0);
+    /* با خودِ تاریخِ کامل، نه فقط روز: «۱۴» در «۱۴۰۵/۰۸/۰۲» هم هست
+       و آزمون ردیفِ اشتباه را تیک می‌زد. */
+    const row = [...panel.querySelectorAll('.msf-opt')]
+      .find(x => x.textContent.replace(/\s+/g, ' ').trim().indexOf(d) >= 0);
     const cb = row.querySelector('input');
     cb.checked = true;
     cb.dispatchEvent(new Event('change', { bubbles: true }));
   }, (function () {
     const f = '۰۱۲۳۴۵۶۷۸۹';
-    return String(seed.mid).split('').map(c => f[+c]).join('');
+    const en = String(seed.jy) + '/' + ('0' + seed.jm).slice(-2) + '/' + seed.mid;
+    return en.split('').map(c => (c >= '0' && c <= '9') ? f[+c] : c).join('');
   })());
   await p.waitForTimeout(700);
   const filtered = await dates();
