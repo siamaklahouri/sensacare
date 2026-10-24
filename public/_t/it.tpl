@@ -932,7 +932,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
-{{PART:attachcss}} {{PART:calcss}} {{PART:newscss}}
+{{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1282,6 +1282,19 @@ window.KARTABL_UNTIL = {{UNTIL}};
           <span class="save-hint" id="remoteSyncStatus" style="font-size:11.5px;"></span>
         </div>
         <div id="remoteChecklistWrap"></div>
+      </div>
+
+      <!-- جدول‌ها جای عدد و وضعیت‌اند، نه جای «چرا». این‌جا همان
+           «چرا»ها می‌نشینند: چرا بکاپِ فلان سرور هفتگی است، شمارهٔ
+           پشتیبانِ استوریج، قرارِ ماهِ بعد. -->
+      <div class="panel">
+        <h3>📝 توضیحات</h3>
+        <p style="font-size:12.5px; color:var(--ink-soft); line-height:1.9; margin:0 0 12px;">
+          هر نکته‌ای دربارهٔ سرورها و بکاپ که در جدول جا نمی‌شود — خودش ذخیره می‌شود و
+          روی همهٔ دستگاه‌هایتان هست.
+        </p>
+        <div class="nt-wrap" data-notes="servers"></div>
+        <button type="button" class="btn btn-brass btn-sm" data-notes-add="servers">＋ افزودن توضیح</button>
       </div>
     </section>
 
@@ -4867,6 +4880,7 @@ window.SEARCH_MAP = [
 {{PART:find}}
 {{PART:rowsheet}}
 {{PART:attach}}
+{{PART:notes}}
 {{PART:cal}}
 {{PART:news}}
 {{PART:remind}}
@@ -4925,7 +4939,8 @@ async function init(){
      ()=>{ try{ ATTACH.refresh(); }catch(e){} },
      ()=>{ try{ REMIND.init(); }catch(e){} },
      ()=>{ try{ CAL.init(); }catch(e){} },
-     ()=>{ try{ NEWS.init(); }catch(e){} }
+     ()=>{ try{ NEWS.init(); }catch(e){} },
+     ()=>{ try{ NOTES.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

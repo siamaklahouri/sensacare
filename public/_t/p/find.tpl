@@ -147,6 +147,21 @@
              title: faDate(k), text: txt });
     });
 
+    /* توضیحاتِ بخش‌ها (سرورها و بکاپ، و هر بخشی که بعداً اضافه شود) */
+    var NOTE_VIEW = { servers: ["سرورها و بکاپ", "servers"] };
+    var secNotes = {};
+    try { secNotes = (state.notes && typeof state.notes === "object") ? state.notes : {}; }
+    catch (e) { secNotes = {}; }
+    Object.keys(secNotes).forEach(function (k) {
+      var meta = NOTE_VIEW[k] || [k, k];
+      (Array.isArray(secNotes[k]) ? secNotes[k] : []).forEach(function (nt) {
+        var txt = String((nt && nt.text) || "");
+        if (!txt || norm(txt).indexOf(n) < 0) return;
+        push({ where: "توضیحاتِ " + meta[0], view: meta[1],
+               title: txt.slice(0, 40), text: txt });
+      });
+    });
+
     /* نامِ پیوست‌ها. فهرست یک بار از سرور گرفته می‌شود و در حافظه
        می‌ماند؛ خودِ فایل‌ها جابه‌جا نمی‌شوند. */
     FILES.forEach(function (f) {

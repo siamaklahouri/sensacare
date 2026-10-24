@@ -57,6 +57,8 @@ import p_rowsheetcss from '../public/_t/p/rowsheetcss.tpl';
 import p_remind from '../public/_t/p/remind.tpl';
 import p_cal from '../public/_t/p/cal.tpl';
 import p_news from '../public/_t/p/news.tpl';
+import p_notes from '../public/_t/p/notes.tpl';
+import p_notescss from '../public/_t/p/notescss.tpl';
 import p_daypick from '../public/_t/p/daypick.tpl';
 import p_daypickcss from '../public/_t/p/daypickcss.tpl';
 import p_newscss from '../public/_t/p/newscss.tpl';
@@ -125,6 +127,8 @@ export const PARTS = new Map([
   ['remind', p_remind],
   ['cal', p_cal],
   ['news', p_news],
+  ['notes', p_notes],
+  ['notescss', p_notescss],
   ['daypick', p_daypick],
   ['daypickcss', p_daypickcss],
   ['newscss', p_newscss],
