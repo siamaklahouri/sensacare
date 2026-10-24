@@ -66,12 +66,17 @@ for (const w of WHO) {
       renderMeta();
     } catch (e) { }
     const k = (y, m, d) => y + '/' + ('0' + m).slice(-2) + '/' + ('0' + d).slice(-2);
+    /* دو روزِ ثابت که هیچ‌کدام «امروز» نباشند: ردیفِ بی‌تاریخِ آزمون
+       بعداً تاریخِ امروز را می‌گیرد و اگر یکی از این دو همان روز بود،
+       شمارشِ ردیف‌ها به‌هم می‌ریخت — آزمون سرِ دوم و چهاردهمِ ماه
+       می‌افتاد و بقیهٔ روزها پاس می‌شد. */
+    const pick = [2, 3, 14, 15, 20].filter(d => d !== t0.jd);
     const mk2 = (dd, main, status) => ({ createdDate: dd, main, meet: '', company: '',
       status: status || '', doneDate: '' });
     state.days = [
-      mk2(k(t0.jy, t0.jm, t0.jd === 14 ? 15 : 14), 'کارِ میانی', 'در حال انجام'),
-      mk2(k(t0.jy, t0.jm, 2), 'کارِ دومِ ماه', 'انجام شد'),
-      mk2(k(t0.jy, t0.jm, t0.jd === 14 ? 15 : 14), 'کارِ میانیِ دوم', 'انجام نشده'),
+      mk2(k(t0.jy, t0.jm, pick[1]), 'کارِ میانی', 'در حال انجام'),
+      mk2(k(t0.jy, t0.jm, pick[0]), 'کارِ دومِ ماه', 'انجام شد'),
+      mk2(k(t0.jy, t0.jm, pick[1]), 'کارِ میانیِ دوم', 'انجام نشده'),
       mk2(k(t0.jy, t0.jm === 12 ? 1 : t0.jm + 1, 3), 'کارِ ماهِ بعد', ''),
       mk2('', '', '')
     ];
@@ -81,7 +86,7 @@ for (const w of WHO) {
     renderDaily();
     /* روزِ «میانی» نباید خودِ امروز باشد: ردیفِ بی‌تاریخِ آزمون بعداً
        تاریخِ امروز را می‌گیرد و شمارش را به‌هم می‌ریخت. */
-    return { mid: ('0' + (t0.jd === 14 ? 15 : 14)).slice(-2),
+    return { mid: ('0' + pick[1]).slice(-2), d2: pick[0],
              jy: t0.jy, jm: t0.jm, jd: t0.jd };
   });
   await p.waitForTimeout(900);
@@ -258,21 +263,21 @@ for (const w of WHO) {
 
   await p.evaluate(() => document.getElementById('dayCalBtn').click());
   await p.waitForTimeout(500);
-  await dayBtn(2); await p.waitForTimeout(500);
+  await dayBtn(seed.d2); await p.waitForTimeout(500);
   const one = await calState();
   t(one.open, 'تقویم با اولین انتخاب بسته نمی‌شود — پیش از این می‌بست');
-  t(one.on.join() === '2', 'روزِ اول انتخاب شد', one.on.join(','));
+  t(one.on.join() === String(seed.d2), 'روزِ اول انتخاب شد', one.on.join(','));
 
   await dayBtn(Number(seed.mid)); await p.waitForTimeout(500);
   const two = await calState();
-  t(two.on.length === 2 && two.on.indexOf(2) >= 0,
+  t(two.on.length === 2 && two.on.indexOf(seed.d2) >= 0,
     'روزِ دوم به انتخاب اضافه می‌شود، نه اینکه جایش را بگیرد', two.on.join(','));
   t(two.rows === 3, 'و جدول کارهای هر دو روز را نشان می‌دهد', String(two.rows));
   t(/۲ روز/.test(two.chip) && /۳/.test(two.chip),
     'نشانِ بالای جدول می‌گوید چند روز و چند کار', two.chip.replace(/\s+/g, ' ').trim());
   t(/۲ روز/.test(two.ttl), 'سرستونِ تقویم هم شمارِ روزها را می‌گوید', two.ttl);
 
-  await dayBtn(2); await p.waitForTimeout(500);
+  await dayBtn(seed.d2); await p.waitForTimeout(500);
   const back = await calState();
   t(back.on.length === 1 && back.on[0] === Number(seed.mid),
     'و زدنِ دوبارهٔ یک روز فقط همان را برمی‌دارد', back.on.join(','));
@@ -301,18 +306,21 @@ for (const w of WHO) {
 
   /* بازه با Shift: از روزِ دوم تا روزِ میانی — هر روزی که در این
      بازه کاری داشته باشد. */
-  const want = await p.evaluate(mid => {
+  const want = await p.evaluate(a => {
     const t0 = DatePick.today();
     const pre = t0.jy + '/' + ('0' + t0.jm).slice(-2) + '/';
     const inRange = state.days.filter(d => {
       const v = String(d.createdDate || '');
       if (v.indexOf(pre) !== 0) return false;
       const dd = Number(v.slice(-2));
-      return dd >= 2 && dd <= mid;
+      /* بازه از همان روزی است که آزمون زده، نه از عددِ دستی: وگرنه
+         روزی که ردیفِ بی‌تاریخ تاریخِ امروز را گرفته هم داخلِ انتظار
+         می‌افتاد و فقط چند روزِ سال پاس می‌شد. */
+      return dd >= a.lo && dd <= a.hi;
     });
     return { days: new Set(inRange.map(d => d.createdDate)).size, rows: inRange.length };
-  }, Number(seed.mid));
-  await dayBtn(2); await p.waitForTimeout(400);
+  }, { lo: Number(seed.d2), hi: Number(seed.mid) });
+  await dayBtn(seed.d2); await p.waitForTimeout(400);
   await dayBtn(Number(seed.mid), true); await p.waitForTimeout(600);
   const range = await calState();
   t(range.on.length === want.days && range.rows === want.rows,
