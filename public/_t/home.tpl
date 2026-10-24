@@ -166,6 +166,10 @@ html:not(.hasdot) .topnav a.on{ background:var(--brand-soft); }
 /* دکمهٔ فایلِ نصب: هم‌وزنِ بقیه، ولی با رنگِ فیروزه‌ایِ خودِ پالت تا از
    دکمه‌های راهنما جدا دیده شود. رنگ از متغیر می‌آید، پس حالتِ شب هم
    خودش درست است. */
+  /* دکمهٔ دمو: مثلِ دکمهٔ اصلی خوانده شود ولی جای آن را نگیرد */
+  .btn-demo{ border-color:var(--brass); color:var(--brass-ink); font-weight:700; }
+  .btn-demo:hover{ background:var(--brass-bg); }
+
 .btn-apk{ border-color:var(--s-it); color:var(--s-it); }
 .btn-apk:hover{ border-color:var(--s-it); }
 
@@ -655,6 +659,7 @@ html.anim details[open] summary::after{
     <a href="#why">چرا؟</a>
     <a href="#kinds">انواع</a>
     <a href="#jobs">شغل‌ها</a>
+    <a href="/demo/">دمو</a>
     <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
     <a href="#how">شروع</a>
     <a href="#app">روی گوشی</a>
@@ -676,6 +681,9 @@ html.anim details[open] summary::after{
     </p>
     <div class="cta">
       <a class="btn btn-main" href="#jobs">شغل‌ها را ببینم</a>
+      <!-- دیدن از خواندن بهتر است: کارتابلِ نمایشی بی‌رمز باز می‌شود و
+           هرچه در آن بنویسند روی سرور نمی‌نشیند. -->
+      <a class="btn btn-demo" href="/demo/">کارتابل را همین حالا ببینم</a>
       <a class="btn buyLink" href="#buy" hidden>پلن‌ها و قیمت</a>
       <a class="btn" href="#how">چطور شروع کنم؟</a>
       <!-- فایلِ نصبِ اندروید. «download» لازم است، وگرنه بعضی مرورگرها

@@ -433,6 +433,18 @@ export function appManifest(panel) {
   };
 }
 
+/* ---------- کارتابلِ نمایشی ----------
+   کسی که می‌خواهد ببیند این کارتابل چیست، تا امروز باید می‌پرسید یا
+   می‌خرید. حالا یک کارتابل می‌تواند «نمایشی» باشد: بی‌رمز باز می‌شود،
+   هرچه داخلش نوشته شود روی سرور نمی‌نشیند (فقط در همان مرورگر
+   می‌ماند) و دفعهٔ بعد همان دادهٔ نمونه سرِ جایش است.
+
+   نمایشی بودن یا از cfg می‌آید یا از خودِ نامِ کارتابل: هر کارتابلی
+   که آدرسش «demo» باشد، نمایشی است. این‌طور ساختنش در پنلِ ادمین یک
+   کارِ معمولی است، نه یک تنظیمِ پنهان. */
+export const isDemo = panel =>
+  !!(panel && (panel.demo === true || panel.slug === 'demo' || panel.id === 'demo'));
+
 export async function renderPanelPage(env, req, panel) {
   /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
      ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */
@@ -462,6 +474,7 @@ export async function renderPanelPage(env, req, panel) {
   html = html.replaceAll('{{VAULTSECS}}', vaultSeed(panel.vault));
   html = html.replaceAll('{{FEATOFF}}', JSON.stringify(panel.off || []).replace(/</g, '\\u003c'));
   html = html.replaceAll('{{UNTIL}}', String(Number(panel.until) || 0));
+  html = html.replaceAll('{{DEMO}}', isDemo(panel) ? '1' : '0');
   /* نامِ خودِ کارتابل، برای ستونِ «آخرین تغییر» در بخش‌های مشترک:
      صفحه باید بفهمد کدام ردیف را خودش عوض کرده و کدام را آن یکی. */
   html = html.replaceAll('{{SLUG}}', esc(panel.id));
@@ -1532,6 +1545,12 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   if (p === '/login' && m === 'POST') {
     const rl = await rateLimit(env, `${panel.id}-login:` + clientIp(req), 10, 900);
     if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    /* نمایشی: رمز ندارد. سقفِ تلاش بالاست و می‌ماند — یک آدرسِ بی‌رمز
+       نباید راهی برای خسته کردنِ سرور باشد. */
+    if (isDemo(panel)) {
+      return json({ ok: true, demo: true, lastLogin: 0 }, 200,
+        { 'Set-Cookie': cookieHeader(panel, await makeSession(env, panel, 1, req), 1) });
+    }
     const stored = await getSetting(env, panel.keys.pass, '');
     const check = await checkPassword(String(body.password || ''), stored);
     if (!check.ok) {
@@ -1971,6 +1990,11 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
   if (p === '/state' && (m === 'PUT' || m === 'POST')) {
     if (body.state === undefined && body.db === undefined) return bad('داده‌ای نیامد.');
+    /* نمایشی: وانمود می‌کنیم ذخیره شد. رد کردنش یعنی صفحه مدام
+       «ذخیره نشد» بدهد و دمو شکسته به‌نظر برسد؛ این‌طور هرکس داخلش
+       کار می‌کند و چیزی هم جایی نمی‌ماند. */
+    if (isDemo(panel))
+      return json({ ok: true, demo: true, rev: (Number(body.baseRev) || 0) + 1, updated: Date.now() });
     const r = await saveKartabl(env, panel, { state: body.state, db: body.db,
                                               baseRev: body.baseRev, force: !!body.force });
     if (r.conflict) return json({ conflict: true, rev: r.rev, updated: r.updated }, REV_CONFLICT);

@@ -15,7 +15,7 @@
 import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
-  PANELS, kartablBot, tgMessage, botMessage, botsReady, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
+  PANELS, kartablBot, tgMessage, botMessage, botsReady, siteBots, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
   handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
@@ -429,6 +429,64 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
      نشستی هم که این‌جا ساخته می‌شود دقیقاً همان نشستِ خودِ کارتابل
      است (همان کوکی، همان نسلِ رمز)، پس عوض‌شدنِ رمز از هر جایی که
      باشد این ورود را هم باطل می‌کند. */
+  /* کدِ گامِ دوم: شش رقم، ده دقیقه، پنج تلاش. خودِ کد ذخیره نمی‌شود —
+     درهم‌سازی‌اش می‌نشیند، مثل هر رمزِ دیگری. */
+  async function startAdminCode(env2, req2) {
+    const bots = await siteBots(env2);
+    if (!bots.length)
+      return { error: 'ورودِ دومرحله‌ای روشن است ولی هیچ رباتی تنظیم نشده. ' +
+                      'از روی سرور خاموشش کنید: node server/index.js --admin-2fa off', status: 503 };
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await setSetting(env2, 'admin2fa:pending', {
+      hash: await hashPassword(code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
+    const r = await botMessage(env2,
+      'کدِ ورود به پنلِ SLTech: <b>' + code + '</b>\nده دقیقه اعتبار دارد.' +
+      '\nاگر خودتان وارد نشده‌اید، همین حالا رمزِ ادمین را عوض کنید.');
+    if (!r.ok) return { error: 'کد فرستاده نشد: ' + (r.error || 'نامعلوم'), status: 502 };
+    return { ok: true, to: r.to || [] };
+  }
+
+  /* گامِ دومِ ورودِ ادمین */
+  if (p === '/signin/code' && m === 'POST') {
+    const rl = await rateLimit(env, 'adminplaner-code:' + clientIp(req), 20, 900);
+    if (!rl.ok) return bad('تلاش زیاد بود. چند دقیقه صبر کنید.', 429);
+    const pend = await getSetting(env, 'admin2fa:pending', null);
+    if (!pend || !pend.hash) return bad('کدی در جریان نیست. از اول وارد شوید.', 409);
+    if (Date.now() > Number(pend.exp || 0)) {
+      await setSetting(env, 'admin2fa:pending', null);
+      return bad('کد منقضی شده. از اول وارد شوید.', 409);
+    }
+    if (Number(pend.tries || 0) >= 5) {
+      await setSetting(env, 'admin2fa:pending', null);
+      return bad('پنج بار اشتباه شد. از اول وارد شوید.', 429);
+    }
+    const code = String(body.code || '').replace(/[^0-9]/g, '');
+    const okCode = code && (await checkPassword(code, pend.hash)).ok;
+    if (!okCode) {
+      await setSetting(env, 'admin2fa:pending',
+        Object.assign({}, pend, { tries: Number(pend.tries || 0) + 1 }));
+      return bad('کد درست نیست.', 401);
+    }
+    await setSetting(env, 'admin2fa:pending', null);
+    const days = body.remember ? 7 : 1;
+    const prev = await getSetting(env, 'login:admin.planer', 0);
+    await setSetting(env, 'login:admin.planer', Date.now());
+    await log(env, 'login', '', 'ورودِ مشترک (با کد)');
+    return json({ ok: true, admin: true, name: 'ادمین', lastLogin: prev || 0 }, 200,
+      { 'Set-Cookie': cookieHeader(ADMIN, await makeSession(env, ADMIN, days), days) });
+  }
+
+  /* روشن و خاموش کردنِ گامِ دوم — فقط از داخلِ پنل، یعنی کسی که همین
+     حالا وارد است. */
+  if (p === '/admin2fa' && m === 'POST') {
+    const want = !!body.on;
+    if (want && !(await siteBots(env)).length)
+      return bad('اول در «تنظیمات سایت» رباتی تنظیم کنید؛ کد باید جایی برود.');
+    await setSetting(env, 'admin2fa', want);
+    await log(env, 'admin2fa', '', want ? 'روشن' : 'خاموش');
+    return json({ ok: true, on: want });
+  }
+
   if (p === '/signin' && m === 'POST') {
     /* سقف را دست‌ودل‌بازتر از یک کارتابلِ تنها گرفته‌ایم: این‌جا همهٔ
        کاربرها از یک فرم وارد می‌شوند و چند نفرشان می‌توانند پشتِ یک
@@ -449,6 +507,22 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
       if (!check.ok) {
         if (check.status === 401) await noteBadPass(env, 'admin.planer', clientIp(req));
         return check.status === 429 ? bad(check.error, 429) : nope();
+      }
+      /* ---------- گامِ دوم ----------
+         پنلِ ادمین تا امروز فقط رمز داشت: هرکس رمز را می‌دانست —
+         از روی یک مرورگرِ باز، یک کی‌لاگر، یا یک رمزِ تکراری — همه‌چیز
+         را داشت. حالا اگر صاحبش خواسته باشد، یک کدِ شش‌رقمی هم به
+         همان گفتگوی تلگرامی می‌رود که پشتیبان‌ها می‌روند.
+
+         عمداً اختیاری است و پیش‌فرض خاموش: اگر ربات روزی از کار
+         بیفتد، نباید صاحبِ سایت پشتِ درِ خودش بماند. راهِ خاموش کردنش
+         هم از خودِ سرور هست (node server/index.js --admin-2fa off)،
+         که دستِ کسی است که به سرور دسترسی دارد — یعنی همان کسی که
+         اصلاً این قفل برای او نیست. */
+      if (await getSetting(env, 'admin2fa', false)) {
+        const r2 = await startAdminCode(env, req);
+        if (r2.error) return bad(r2.error, r2.status || 503);
+        return json({ needCode: true, to: r2.to });
       }
       const prev = await getSetting(env, 'login:admin.planer', 0);
       await setSetting(env, 'login:admin.planer', Date.now());
@@ -1101,11 +1175,12 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
      فقط خوانده می‌شود. «آخرین پشتیبان: دو ساعت پیش» یک خط است و جای
      یک نگرانیِ همیشگی را می‌گیرد. */
   if (p === '/ops' && m === 'GET') {
-    const [bk, hc] = await Promise.all([
+    const [bk, hc, tf] = await Promise.all([
       getSetting(env, 'ops:backup', null),
-      getSetting(env, 'ops:health', null)
+      getSetting(env, 'ops:health', null),
+      getSetting(env, 'admin2fa', false)
     ]);
-    return json({ ok: true, backup: bk, health: hc, now: Date.now() });
+    return json({ ok: true, backup: bk, health: hc, twofa: !!tf, now: Date.now() });
   }
 
   /* ---------- خبرِ تغییرها ----------

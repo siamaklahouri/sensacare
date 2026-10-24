@@ -58,6 +58,10 @@ import p_remind from '../public/_t/p/remind.tpl';
 import p_cal from '../public/_t/p/cal.tpl';
 import p_news from '../public/_t/p/news.tpl';
 import p_a11y from '../public/_t/p/a11y.tpl';
+import p_demo from '../public/_t/p/demo.tpl';
+import p_democss from '../public/_t/p/democss.tpl';
+import p_tour from '../public/_t/p/tour.tpl';
+import p_tourcss from '../public/_t/p/tourcss.tpl';
 import p_notes from '../public/_t/p/notes.tpl';
 import p_notescss from '../public/_t/p/notescss.tpl';
 import p_daypick from '../public/_t/p/daypick.tpl';
@@ -129,6 +133,10 @@ export const PARTS = new Map([
   ['cal', p_cal],
   ['news', p_news],
   ['a11y', p_a11y],
+  ['demo', p_demo],
+  ['democss', p_democss],
+  ['tour', p_tour],
+  ['tourcss', p_tourcss],
   ['notes', p_notes],
   ['notescss', p_notescss],
   ['daypick', p_daypick],

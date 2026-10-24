@@ -89,7 +89,7 @@ function disabledPanelPage(panel) {
 
 import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
          renderPanelPage, withParts, assetReq, useBundledTemplates,
-         appManifest } from './kartabl.js';
+         appManifest, isDemo, readSession, makeSession, cookieHeader } from './kartabl.js';
 /* ==========================================================
    سِنسا — نسخهٔ Cloudflare Workers + D1
    ========================================================== */
@@ -2088,14 +2088,25 @@ export default {
                        'X-Robots-Tag': 'noindex, nofollow' } }));
           const html = await renderPanelPage(env, req, panel);
           if (html) {
+            /* کارتابلِ نمایشی: نشست را همین‌جا می‌دهیم، نه با یک ورودِ
+               جداگانه از داخلِ صفحه. آن راه یعنی صفحه یک بار بی‌نشست
+               بالا می‌آمد، وارد می‌شد و خودش را دوباره باز می‌کرد —
+               دو بار بارگذاری و یک پرشِ دیدنی، برای کسی که فقط آمده
+               ببیند. این‌طور در همان درخواستِ اول باز است. */
+            let demoCookie = null;
+            if (isDemo(panel) && !(await readSession(env, panel, req)))
+              demoCookie = cookieHeader(panel, await makeSession(env, panel, 1, req), 1);
+
             const tag = await etagOf(html);
-            const same = notModified(req, tag);
+            const same = demoCookie ? null : notModified(req, tag);
             if (same) return withSecurity(same);
-            return withSecurity(new Response(html, { headers: {
+            const h = {
               'Content-Type': 'text/html; charset=utf-8',
               'Cache-Control': PAGE_CACHE,
               'ETag': tag,
-              'X-Robots-Tag': 'noindex, nofollow' } }));
+              'X-Robots-Tag': 'noindex, nofollow' };
+            if (demoCookie) h['Set-Cookie'] = demoCookie;
+            return withSecurity(new Response(html, { headers: h }));
           }
         }
       }

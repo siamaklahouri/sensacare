@@ -31,6 +31,9 @@ window.KARTABL_SLUG  = "{{SLUG}}";
 window.KARTABL_OFF = {{FEATOFF}};
 /* تاریخِ پایانِ مهلت. صفر یعنی بی‌مهلت. */
 window.KARTABL_UNTIL = {{UNTIL}};
+/* کارتابلِ نمایشی: بی‌رمز باز می‌شود و هرچه داخلش نوشته شود روی سرور
+   نمی‌نشیند — فقط در همین مرورگر. */
+window.KARTABL_DEMO = {{DEMO}} === 1;
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -932,7 +935,7 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* ظاهرِ برنامهٔ گوشی، آخر از همه: حرفِ آخر را باید بزند. */
 {{PART:findcss}}
 {{PART:rowsheetcss}}
-{{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}}
+{{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1442,6 +1445,12 @@ window.KARTABL_UNTIL = {{UNTIL}};
     <section class="view" id="view-guide">
       <div class="section-title">راهنمای استفاده</div>
       <div class="section-sub">این کارتابل جایگزین دیجیتال پلنر اکسل شماست</div>
+      <!-- کسی که گشتِ اول را رد کرده و بعد پشیمان شده، نباید دنبالِ
+           پاک کردنِ چیزی بگردد. -->
+      <div class="set-row" style="margin:0 0 14px;">
+        <button type="button" class="btn btn-ghost btn-sm"
+                onclick="try{TOUR.start(true)}catch(e){}">↻ گشتِ کوتاهِ کارتابل را دوباره نشانم بده</button>
+      </div>
       <div class="panel">
         <div class="guide-item">
           <div class="ic">📊</div>
@@ -4884,6 +4893,8 @@ window.SEARCH_MAP = [
 {{PART:cal}}
 {{PART:news}}
 {{PART:a11y}}
+{{PART:tour}}
+{{PART:demo}}
 {{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}
@@ -4941,7 +4952,8 @@ async function init(){
      ()=>{ try{ REMIND.init(); }catch(e){} },
      ()=>{ try{ CAL.init(); }catch(e){} },
      ()=>{ try{ NEWS.init(); }catch(e){} },
-     ()=>{ try{ NOTES.init(); }catch(e){} }
+     ()=>{ try{ NOTES.init(); }catch(e){} },
+     ()=>{ try{ TOUR.init(); }catch(e){} }
     ].forEach(fn=>{ try{ fn(); }catch(e){ console.error("راه‌اندازی "+fn.name+":", e); } });
     setInterval(checkAndFireReminders, 20*1000);
   }catch(e){

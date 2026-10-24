@@ -175,6 +175,28 @@ async function remindTick() {
 }
 
 /* ---------- راه‌اندازی ---------- */
+/* ---------- کلیدِ گامِ دومِ ادمین ----------
+   اگر ربات از کار بیفتد، صاحبِ سایت نباید پشتِ درِ خودش بماند:
+
+     node server/index.js --admin-2fa off
+     node server/index.js --admin-2fa on
+
+   دستش به سرور می‌رسد، یعنی این قفل اصلاً برای او نبوده. */
+if (process.argv.includes('--admin-2fa')) {
+  const i = process.argv.indexOf('--admin-2fa');
+  const want = String(process.argv[i + 1] || '').toLowerCase();
+  if (want !== 'on' && want !== 'off') {
+    console.error('[ادمین] on یا off؟');
+    DB.close(); process.exit(2);
+  }
+  const { setSetting } = await import('../src/kartabl.js');
+  await setSetting(env, 'admin2fa', want === 'on');
+  await setSetting(env, 'admin2fa:pending', null);
+  console.log('[ادمین] ورودِ دومرحله‌ای ' + (want === 'on' ? 'روشن شد' : 'خاموش شد'));
+  DB.close();
+  process.exit(0);
+}
+
 /* ---------- یادداشتِ نگهداری ----------
    اسکریپت‌های پشتیبان و نگهبان نتیجه‌شان را این‌جا می‌گذارند تا پنلِ
    ادمین بتواند نشانش بدهد:

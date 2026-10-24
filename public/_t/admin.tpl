@@ -1230,6 +1230,21 @@ table.inv-tab td.desc{ text-align:right; }
   </section>
 
   <section id="tab-keys" hidden>
+    <!-- ورودِ دومرحله‌ای. عمداً اختیاری و پیش‌فرض خاموش: اگر ربات روزی
+         از کار بیفتد، صاحبِ سایت نباید پشتِ درِ خودش بماند. -->
+    <div class="panel">
+      <h2>ورود دومرحله‌ای</h2>
+      <p class="sub">تا امروز ورود به این پنل فقط رمز بود — هرکس رمز را می‌دانست، همه‌چیز را
+        داشت. با روشن کردنِ این، بعد از رمز یک کدِ شش‌رقمی به همان گفتگوی تلگرامی می‌رود که
+        پشتیبان‌ها می‌روند؛ بی آن کد، ورود انجام نمی‌شود.</p>
+      <p class="sub">اگر روزی ربات از کار افتاد و کد نرسید، از روی خودِ سرور خاموشش کنید:
+        <b dir="ltr">node server/index.js --admin-2fa off</b></p>
+      <div class="row">
+        <div><button class="btn" id="a2faGo">…</button></div>
+        <span class="n" id="a2faState"></span>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>نام کاربری ادمین</h2>
       <p class="sub">با همین نام از صفحهٔ ورودِ مشترک (<b dir="ltr" class="host-here">/login</b>)
@@ -1484,6 +1499,10 @@ let ADMIN_USER = "admin";
   });
 })();
 
+/* گامِ دومِ ورودِ ادمین: رمز که درست بود، سرور کدی به تلگرام می‌فرستد
+   و همین فرم تبدیل می‌شود به کادرِ کد. */
+let twoStep = false;
+
 document.getElementById("gateForm").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const user = document.getElementById("gateUser").value.trim();
@@ -1491,6 +1510,19 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
   const btn = document.getElementById("gateBtn");
   const err = document.getElementById("gateErr");
   err.textContent = "";
+
+  if(twoStep){
+    const code = document.getElementById("gateCode").value.trim();
+    if(!code){ err.textContent = "کد را بزنید."; return; }
+    btn.disabled = true; btn.textContent = "…";
+    const rc = await api("/signin/code",
+      { method:"POST", body: JSON.stringify({ code: code, remember: true }) });
+    if(rc.ok){ btn.textContent = "در حال باز کردن…"; setTimeout(()=> location.reload(), 600); return; }
+    err.textContent = rc.data.error || "نشد.";
+    btn.disabled = false; btn.textContent = "تأیید کد";
+    return;
+  }
+
   if(!pass) return;
   if(needsSetup){
     if(pass.length < 10){ err.textContent = "رمز ادمین دست‌کم ۱۰ حرف باشد."; return; }
@@ -1506,6 +1538,21 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
   const r = await api(needsSetup ? "/setup" : "/signin",
     { method:"POST", body: JSON.stringify({ user: user, password: pass, remember: true,
       code: document.getElementById("gateCode").value.trim() }) });
+  /* رمز درست بود ولی هنوز وارد نشده‌ایم: کد لازم است. */
+  if(r.data && r.data.needCode){
+    twoStep = true;
+    const codeEl = document.getElementById("gateCode");
+    codeEl.hidden = false;
+    codeEl.placeholder = "کدِ شش‌رقمی";
+    codeEl.focus();
+    document.getElementById("gatePass").hidden = true;
+    document.getElementById("gateUser").hidden = true;
+    document.getElementById("gateNote").innerHTML =
+      "کدِ ورود به " + esc((r.data.to || []).join(" و ") || "تلگرام") +
+      " فرستاده شد.<br>ده دقیقه اعتبار دارد.";
+    btn.disabled = false; btn.textContent = "تأیید کد";
+    return;
+  }
   if(r.ok){
     const prev = Number(r.data.lastLogin || 0);
     const note = document.getElementById("gateNote");
@@ -1609,6 +1656,28 @@ function setupTheme(){
 }
 
 function setupTabs(){
+/* ---------- ورودِ دومرحله‌ای ---------- */
+async function loadA2fa(){
+  const btn = document.getElementById("a2faGo");
+  const st  = document.getElementById("a2faState");
+  if(!btn) return;
+  const r = await api("/ops");       /* همان‌جا وضعیتش هم می‌آید */
+  const on = !!(r.ok && r.data.twofa);
+  btn.textContent = on ? "خاموش کن" : "روشن کن";
+  btn.className = on ? "btn" : "btn btn-main";
+  if(st) st.innerHTML = on
+    ? "<b>روشن است</b> — بعد از رمز، کد هم لازم است."
+    : "خاموش است — ورود فقط با رمز.";
+  btn.onclick = async ()=>{
+    btn.disabled = true;
+    const rr = await api("/admin2fa", { method:"POST", body: JSON.stringify({ on: !on }) });
+    btn.disabled = false;
+    if(!rr.ok){ say(rr.data.error || "نشد.", true); return; }
+    say(rr.data.on ? "روشن شد. از این به بعد کد هم لازم است." : "خاموش شد.");
+    loadA2fa();
+  };
+}
+
 /* ---------- حالِ نگهداری ----------
    «آخرین پشتیبان» جایی در پنل نبود و تنها راهِ فهمیدنش رفتن روی
    سرور بود. حالا همین‌جا نوشته می‌شود، و اگر کهنه باشد قرمز. */
@@ -1720,6 +1789,7 @@ document.addEventListener("click", async e=>{
     });
   });
   loadOps();
+  loadA2fa();
   const nwa = document.getElementById("nwAdd");
   if(nwa) nwa.addEventListener("click", async ()=>{
     const g = id => (document.getElementById(id)||{}).value || "";
