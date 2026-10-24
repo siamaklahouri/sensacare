@@ -20,6 +20,14 @@
   .hist-row .hw{ font-weight:700; color:var(--ink-soft); min-width:90px; }
   .hist-row .ht{ color:var(--ink-faint); white-space:nowrap; }
   .hist-row .hs{ color:var(--ink-soft); flex:1; min-width:140px; line-height:1.8; }
+  /* انتخابِ «همهٔ کارتابل» یا «فقط فلان ماه» — کنارِ خودِ دکمه، چون
+     همان‌جا تصمیم گرفته می‌شود. */
+  .hist-row .hm{
+    font-family:var(--font-body); font-size:11.5px; color:var(--ink-soft);
+    background:var(--white); border:1px solid var(--line); border-radius:8px;
+    padding:4px 7px; cursor:pointer; max-width:160px;
+  }
+  .hist-row .hm:hover{ border-color:var(--brass); }
   /* دکمهٔ ماه — سه کنترلِ پیشین (انتخاب، ساختن، تغییرِ نام) در یکی.
      نوار بالا جای دیدن است نه جای تصمیم‌گیری، پس دکمه فقط نامِ ماهِ
      جاری را می‌گوید و بقیهٔ کارها داخلِ پنجره‌اش می‌افتد. */

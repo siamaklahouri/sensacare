@@ -4527,6 +4527,7 @@ window.SEARCH_MAP = [
 {{PART:daypick}}
 {{PART:cal}}
 {{PART:news}}
+{{PART:a11y}}
 {{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}

@@ -4883,6 +4883,7 @@ window.SEARCH_MAP = [
 {{PART:notes}}
 {{PART:cal}}
 {{PART:news}}
+{{PART:a11y}}
 {{PART:remind}}
 {{PART:pwa}}
 {{PART:bell}}

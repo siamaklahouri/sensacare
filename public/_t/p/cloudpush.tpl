@@ -32,6 +32,18 @@
       rev = r.data.rev;
       online = true;
       setHint("✓ ذخیره شد");
+      /* حجمِ داده که از آستانه گذشت، یک بار گفته می‌شود — نه هر ذخیره.
+         جلوی کار گرفته نمی‌شود؛ فقط آدم باید بداند که دارد بزرگ
+         می‌شود و ماه‌های خیلی قدیمی را می‌تواند بیرون ببرد (پشتیبان
+         بگیرد و پاکشان کند). */
+      if(r.data.big && !window.__bigWarned){
+        window.__bigWarned = true;
+        var mb = Math.round(r.data.big / 1048576 * 10) / 10;
+        setCloudStatus("⚠️ دادهٔ این کارتابل حدود " +
+          (typeof fa === "function" ? fa(String(mb)) : mb) +
+          " مگابایت شده. هنوز کار می‌کند، ولی هر ذخیره همین حجم را بالا می‌برد؛" +
+          " اگر کند شد، از «نسخه‌های پیشین» یک پشتیبان بگیرید و ماه‌های خیلی قدیمی را پاک کنید.");
+      }
       setCloudStatus("آخرین همگام‌سازی: " + new Date(r.data.updated).toLocaleString("fa-IR"));
     }catch(e){
       /* نسخهٔ محلی از قبل نوشته شده، پس چیزی گم نمی‌شود */
@@ -115,13 +127,32 @@ async function loadHistory(){
       '<span class="hw">' + (it.which === "db" ? "دیتابیس" : "کارها و ماه‌ها") + '</span>' +
       '<span class="ht">' + escapeHtml(histFa(it.at)) + '</span>' +
       '<span class="hs">' + histSum(it.sum) + '</span>' +
+      /* برگرداندنِ یک ماه: آدم معمولاً یک ماه را خراب می‌کند نه یک سال
+         را، و تا امروز برای همان یک ماه مجبور بود کلِ کارِ بعدش را هم
+         قربانی کند. */
+      ((it.months && it.months.length)
+        ? '<select class="hm" data-hmonth="' + it.id + '">' +
+            '<option value="">همهٔ کارتابل</option>' +
+            it.months.map(function(k){
+              return '<option value="' + escapeHtml(k) + '">فقط ' +
+                escapeHtml(toPersianDigits(String(k).split("|").reverse().join(" "))) +
+                '</option>'; }).join("") +
+          '</select>'
+        : "") +
       '<button type="button" class="btn btn-ghost btn-sm" data-hist="' + it.id + '">برگردان</button>' +
     '</div>').join("");
   box.querySelectorAll("[data-hist]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      if(!confirm("این نسخه جای وضعیت فعلی بنشیند؟\n\nاز وضعیت فعلی هم عکس گرفته می‌شود، پس اگر پشیمان شدید برمی‌گردد.")) return;
+      const id = Number(btn.getAttribute("data-hist"));
+      const sel = box.querySelector('[data-hmonth="' + id + '"]');
+      const month = sel ? sel.value : "";
+      const what = month
+        ? "فقط ماهِ «" + toPersianDigits(String(month).split("|").reverse().join(" ")) + "»"
+        : "کلِ کارتابل";
+      if(!confirm(what + " از این نسخه برگردد؟\n\nاز وضعیت فعلی هم عکس گرفته می‌شود، پس اگر پشیمان شدید برمی‌گردد.")) return;
       btn.disabled = true;
-      const rr = await apiCall("/state/restore", { method:"POST", body: JSON.stringify({ id: Number(btn.getAttribute("data-hist")) }) });
+      const rr = await apiCall("/state/restore", { method:"POST",
+        body: JSON.stringify({ id: id, month: month }) });
       if(!rr.ok){ btn.disabled = false; st.textContent = "نشد: " + ((rr.data&&rr.data.error)||"خطا"); return; }
       st.textContent = "✓ برگشت. صفحه دوباره باز می‌شود…";
       setTimeout(()=> location.reload(), 900);

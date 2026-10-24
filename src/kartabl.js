@@ -822,12 +822,19 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
   const rev = current.rev + 1;
   const now = Date.now();
   const stmts = [];
+  /* حجمِ داده: کلِ کارتابل یک بلابِ JSON است و هر ذخیره همه‌اش را بالا
+     می‌فرستد. الان کوچک است، ولی با چند سال بایگانی و یادداشت بزرگ
+     می‌شود و روزی می‌رسد که هر تایپ یک مِگ رفت‌وآمد است. جلویش گرفته
+     نمی‌شود — جلوی ذخیرهٔ کاربر ایستادن یعنی از دست رفتنِ کار — ولی
+     عدد برمی‌گردد تا هم صفحه بتواند بگوید و هم پنلِ ادمین ببیند. */
+  let bytes = 0;
   for (const [k, v] of [[panel.keys.state, state], [panel.keys.db, db]]) {
     if (v === undefined) continue;
     stmts.push(env.DB.prepare(
       `INSERT INTO kartabl(k,v,rev,updated) VALUES(?,?,?,?)
        ON CONFLICT(k) DO UPDATE SET v=excluded.v, rev=excluded.rev, updated=excluded.updated`
     ).bind(k, JSON.stringify(v ?? null), rev, now));
+    if (k === panel.keys.state) bytes = JSON.stringify(v ?? null).length;
   }
   if (stmts.length) {
     /* عکسِ نسخهٔ قبلی را پیش از بازنویسی نگه می‌داریم — ولی جدا، نه در
@@ -844,7 +851,11 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
     } catch (e) { console.log('kartabl-hist', e.message); }
     await env.DB.batch(stmts);
   }
-  return { rev, updated: now };
+  if (bytes) {
+    /* برای پنلِ ادمین. نوشتنش نباید ذخیره را زمین بزند. */
+    try { await setSetting(env, 'size:' + panel.slug, { at: now, bytes: bytes }); } catch (e) { }
+  }
+  return { rev, updated: now, bytes: bytes || undefined };
 }
 
 /* ---------- تاریخچه ----------
@@ -855,6 +866,10 @@ async function saveKartabl(env, panel, { state, db, baseRev, force }) {
    هر ذخیره عکس نمی‌گیرد: تایپ کردن در جدول هر چند ثانیه یک ذخیره
    می‌سازد و جدول را پر می‌کرد. پس فاصلهٔ حداقلی می‌گذاریم و در عوض
    عمقِ تاریخچه را بیشتر نگه می‌داریم. */
+/* از این حجم به بعد، صفحه به کاربر می‌گوید. چهار مگابایت جایی است که
+   هر ذخیره روی اینترنتِ موبایل محسوس می‌شود. */
+export const STATE_WARN = 4 * 1024 * 1024;
+
 const HIST_GAP  = 10 * 60 * 1000;   /* دست‌کم ده دقیقه بین دو عکس */
 const HIST_KEEP = 120;              /* آخرین صد و بیست عکسِ هر کلید */
 
@@ -906,11 +921,21 @@ async function historyRows(env, panel) {
                      if (d.per[k]) o[label] = d.per[k];
                    return o; })();
     } catch (e) { /* عکسِ ناخوانا: بی‌خلاصه، ولی در فهرست می‌ماند */ }
-    return { id: r.id, which, rev: r.rev, at: r.at, size: r.size, sum };
+    /* نامِ ماه‌های داخلِ عکس: برای برگرداندنِ یک ماه، صفحه باید بداند
+       در هر نسخه چه ماه‌هایی هست. */
+    let months = null;
+    if (which === 'state') {
+      try {
+        const v = JSON.parse(r.v);
+        const md = (v && v.monthsData) || {};
+        months = Object.keys(md).sort().reverse().slice(0, 24);
+      } catch (e) { months = null; }
+    }
+    return { id: r.id, which, rev: r.rev, at: r.at, size: r.size, sum, months };
   });
 }
 
-export async function restoreKartablSnapshot(env, panel, id) {
+export async function restoreKartablSnapshot(env, panel, id, month) {
   const row = await one(env, 'SELECT k, v FROM kartabl_hist WHERE id=?', id);
   if (!row) return { ok: false, error: 'این نسخه پیدا نشد.' };
   if (row.k !== panel.keys.state && row.k !== panel.keys.db)
@@ -931,6 +956,37 @@ export async function restoreKartablSnapshot(env, panel, id) {
      force این‌جا بی‌احتیاطی نیست: کاربر خودش نسخه را از فهرست انتخاب
      کرده، و عکسِ وضعِ فعلی هم پیش از نوشتن گرفته می‌شود. */
   const which = row.k === panel.keys.state ? 'state' : 'db';
+
+  /* ---------- برگرداندنِ یک ماه ----------
+     تا امروز بازیابی یعنی «همه‌چیز». ولی آدم معمولاً یک ماه را خراب
+     می‌کند، نه یک سال را — و برای برگرداندنِ آن یک ماه مجبور بود کلِ
+     کارِ بعدش را هم قربانی کند. حالا اگر نامِ ماه بیاید، فقط همان ماه
+     از نسخهٔ قدیمی برمی‌گردد و بقیهٔ کارتابل دست نمی‌خورد.
+
+     ماهی که در نسخهٔ قدیمی نبوده، پاک نمی‌شود: برگرداندنِ یک ماه
+     نباید ماهِ دیگری را ببرد. */
+  if (month && which === 'state') {
+    const cur = await loadKartabl(env, panel);
+    const live = cur.state && typeof cur.state === 'object' ? cur.state : null;
+    if (!live) return { ok: false, error: 'دادهٔ فعلی خوانا نیست.' };
+    const oldMonths = (value && value.monthsData) || {};
+    if (!oldMonths[month])
+      return { ok: false, error: 'این ماه در آن نسخه نیست.' };
+    const next = JSON.parse(JSON.stringify(live));
+    if (!next.monthsData || typeof next.monthsData !== 'object') next.monthsData = {};
+    next.monthsData[month] = JSON.parse(JSON.stringify(oldMonths[month]));
+    /* اگر همان ماهِ باز است، نسخهٔ در دستِ کار هم باید همان شود —
+       وگرنه صفحه با نسخهٔ قدیمیِ حافظه‌اش رویش می‌نویسد. */
+    if (String(next.currentMonthKey || '') === month) {
+      next.tasks = next.monthsData[month].tasks || [];
+      next.days  = next.monthsData[month].days || [];
+    }
+    const rm = await saveKartabl(env, panel, { state: next, force: true });
+    if (rm.loss)  return { ok: false, error: rm.loss };
+    if (!rm.rev)  return { ok: false, error: 'نوشتن انجام نشد.' };
+    return { ok: true, which, month, rev: rm.rev };
+  }
+
   const r = await saveKartabl(env, panel, { [which]: value, force: true });
   if (r.broken)   return { ok: false, error: 'دادهٔ روی سرور خوانا نیست؛ تا روشن نشدنش نوشتنی انجام نمی‌شود.' };
   if (r.conflict) return { ok: false, error: 'همین حالا از جای دیگری ذخیره شد. دوباره امتحان کنید.' };
@@ -1922,7 +1978,10 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     if (r.broken) return json({ broken: r.broken, rev: r.rev, updated: r.updated }, REV_CONFLICT);
     /* نوشتنِ ویرانگر: رد نمی‌شود، ولی بی‌صدا هم انجام نمی‌شود */
     if (r.loss) return json({ loss: r.loss, kind: r.kind, rev: r.rev, updated: r.updated }, REV_CONFLICT);
-    return json({ ok: true, rev: r.rev, updated: r.updated });
+    /* حجم فقط وقتی برمی‌گردد که از آستانه گذشته باشد: جوابِ هر ذخیره
+       نباید یک عددِ بی‌مصرف با خودش ببرد. */
+    return json({ ok: true, rev: r.rev, updated: r.updated,
+                  big: (r.bytes && r.bytes > STATE_WARN) ? r.bytes : undefined });
   }
 
   /* ---------- دستیار هوشمند ----------
@@ -1954,7 +2013,8 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   if (p === '/state/restore' && m === 'POST') {
     const id = parseInt(body.id, 10);
     if (!id) return bad('کدام نسخه؟');
-    const r = await restoreKartablSnapshot(env, panel, id);
+    const r = await restoreKartablSnapshot(env, panel, id,
+      String(body.month || '').slice(0, 40));
     return r.ok ? json(r) : bad(r.error, 400);
   }
 
