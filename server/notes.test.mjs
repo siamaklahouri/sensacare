@@ -1,12 +1,12 @@
 /* توضیحاتِ بخشِ سرورها و بکاپ: نوشتن، ماندن، پاک شدن، و پیدا شدن
    در جست‌وجو. سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 const p = await b.newPage({ viewport: { width: 1400, height: 950 } });
 p.on('pageerror', e => errs.push(String(e).slice(0, 160)));

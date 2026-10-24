@@ -1,7 +1,7 @@
 /* یادآور وقتی برنامه بسته است: صفِ سمتِ سرور، یک نوبتِ فرستادن، و
    صف‌ساختنِ سمتِ صفحه. سرورِ محلی را مثل server/vshare.setup.md بالا
    بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -177,7 +177,7 @@ console.log('===== sw.js =====');
 }
 
 /* ---------- داخلِ صفحه ---------- */
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 for (const w of WHO) {
   console.log('===== ' + w.name + ' =====');

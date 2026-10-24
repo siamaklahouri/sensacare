@@ -1,7 +1,7 @@
 /* ستونِ حجم در «سرورها و بکاپ» دو تا شد: vbk و vib.
    این آزمون هر سه جایی را می‌بیند که یک ستونِ تازه معمولاً از قلم
    می‌افتد: خودِ جدول، فرمِ ردیفِ تازه، و راهِ رفت‌وبرگشتِ اکسل. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const API  = process.env.VS_API  || 'kartabl';
@@ -10,7 +10,7 @@ const PASS = process.env.VS_PASS || 'siamaksiamak';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const p = await b.newPage({ viewport: { width: 1600, height: 1000 } });
 const errs = [];
 p.on('pageerror', e => errs.push(String(e).slice(0, 200)));

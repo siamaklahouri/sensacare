@@ -1,7 +1,7 @@
 /* کارتابل به شکلِ برنامهٔ اندروید: مانیفست، سرویس‌ورکر، و نوارِ
    دکمه‌های پایینی که فقط در حالتِ نصب‌شده می‌آید.
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 import http from 'node:http';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
@@ -127,8 +127,7 @@ const panelGet = path => new Promise((ok2, bad2) => {
 /* sltech.ir به همین سرورِ محلی نگاشته می‌شود تا صفحهٔ اصلیِ دامنهٔ
    پنل را هم بشود در مرورگر باز کرد؛ آدرسِ ۱۲۷.۰.۰.۱ خودش دستِ‌نخورده
    می‌ماند و بقیهٔ آزمون‌ها با همان کار می‌کنند. */
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium',
-  args: ['--host-resolver-rules=MAP sltech.ir 127.0.0.1'] });
+const b = await launch({ args: ['--host-resolver-rules=MAP sltech.ir 127.0.0.1'] });
 const errs = [];
 
 /* ---------- بخشِ «روی گوشی» در صفحهٔ اصلی ---------- */

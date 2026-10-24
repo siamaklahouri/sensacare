@@ -9,10 +9,10 @@
 
    در ردیفِ افزودن اصلاً به این پیکان نیازی نیست: آن‌جا جای نوشتن است،
    نه خواندنِ یک متنِ بلندِ ذخیره‌شده. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 const LONG = 'یادداشتِ بسیار بلندی که در هیچ خانهٔ باریکی جا نمی‌شود و باید از قابش بیرون بزند';
 

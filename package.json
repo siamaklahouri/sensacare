@@ -9,10 +9,13 @@
     "sms": "node sms.js",
     "backup": "node backup.js",
     "dev": "wrangler dev",
-    "bots": "node bots.js"
+    "bots": "node bots.js",
+    "test": "bash server/run-tests.sh",
+    "test:setup": "bash server/ci-setup.sh /tmp/vs 8911"
   },
   "devDependencies": {
-    "wrangler": "^4.20.0"
+    "wrangler": "^4.20.0",
+    "playwright": "1.49.1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0"

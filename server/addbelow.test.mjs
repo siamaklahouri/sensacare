@@ -4,10 +4,10 @@
    هر چیزی که ردیف اضافه می‌کند — چه یک دکمهٔ «＋ افزودن» باشد، چه
    ردیفِ افزودنِ داخلِ خودِ جدول — باید پایین‌تر از آخرین ردیفِ داده
    بنشیند. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0; const found = [];
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; if (!c) found.push(m); };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 for (const [tag, port] of [['IT', 8894], ['مالی', 8893]]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });

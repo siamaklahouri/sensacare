@@ -1,6 +1,6 @@
 /* تقویم: تعطیلی‌ها، یادداشتِ روز، رنگِ هر ماه، و رفتن به برنامهٔ
    روزانه. سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const WHO = [
@@ -11,7 +11,7 @@ const src = x => x ? (x.d + '/' + x.m) : '—';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 for (const w of WHO) {
   console.log('===== ' + w.name + ' =====');
@@ -137,7 +137,10 @@ for (const w of WHO) {
     state.tasks = state.monthsData['1405|مهر'].tasks;
     state.days = state.monthsData['1405|مهر'].days;
     document.querySelector('.navbtn[data-view="cal"]').click();
-    CAL.render();
+    /* تقویم با ماهِ *واقعیِ* امروز باز می‌شود، نه با ماهی که آزمون
+       ساخته. پس صریح می‌بریمش همان‌جا — وگرنه آزمون فقط در مهر پاس
+       می‌شد. */
+    CAL.show(1405, 7, 1);
     const cell = document.querySelector('[data-cal-day="12"]');
     return { n: CAL.items(1405, 7, 12).length,
              kinds: CAL.items(1405, 7, 12).map(x => x.t).join(','),
@@ -180,7 +183,7 @@ for (const w of WHO) {
   const tone = await p.evaluate(() => {
     const h = document.getElementById('view-cal');
     const read = () => h.style.getPropertyValue('--c2').trim();
-    CAL.render();
+    CAL.show(1405, 7, 1);
     const a = read(), ttlA = document.getElementById('calTtl').textContent;
     document.querySelector('[data-cal-step="1"]').click();
     const b2 = read(), ttlB = document.getElementById('calTtl').textContent;

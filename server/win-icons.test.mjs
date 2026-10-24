@@ -10,11 +10,11 @@
 
    این آزمون صفحه را بی هیچ قلمی بار می‌کند: هر چیزی که با قلم کشیده
    می‌شد ناپدید می‌شود و فقط آنچه واقعاً مستقل است می‌ماند. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const RISKY = ['\u{1F5C2}', '⏸', '⧉', '⌄', '\u{1F5C4}'];
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 /* ---------- پنل ادمین ---------- */
 const p = await b.newPage({ viewport: { width: 1280, height: 860 } });

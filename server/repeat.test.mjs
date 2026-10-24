@@ -1,6 +1,6 @@
 /* وظیفه‌های تکرارشونده: ماهِ تازه دیگر از صفر شروع نمی‌شود.
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -29,7 +29,7 @@ for (const w of WHO)
   await adm('/api/admin.planer/planners/' + w.slug + '/password',
     { method: 'POST', body: JSON.stringify({ password: w.pass }) });
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 
 for (const w of WHO) {

@@ -87,3 +87,16 @@ SIZE=$(du -h "$FINAL" | cut -f1)
 NH=$(find "$OUT" -maxdepth 1 -name 'sltech-*.db.gz' -type f | wc -l)
 ND=$(find "$OUT/daily" -name 'sltech-*.db.gz' -type f | wc -l)
 echo "پشتیبان: $FINAL ($SIZE) — $NH نسخهٔ ساعتی، $ND نسخهٔ روزانه، $NF پیوست"
+
+# ---------- گزارش ----------
+# تا حالا همین‌جا تمام می‌شد: یک خط چاپ می‌شد و کرون آن را جایی
+# می‌ریخت که کسی نمی‌خواند. حالا نتیجه در خودِ پنل دیده می‌شود، و
+# اگر نسخه‌ای ساخته نشده باشد خبرش می‌رود.
+APP="${APP:-/opt/sltech/app}"
+BYTES=$(stat -c %s "$FINAL" 2>/dev/null || echo 0)
+if [ "${BYTES:-0}" -lt 1024 ]; then
+  node "$APP/server/index.js" --notify "⚠️ پشتیبانِ SLTech ساخته نشد یا خالی است — $FINAL" >/dev/null 2>&1
+  node "$APP/server/index.js" --ops-note backup "{\"ok\":false,\"size\":\"$SIZE\",\"hourly\":$NH,\"daily\":$ND,\"files\":$NF}" >/dev/null 2>&1
+  exit 1
+fi
+node "$APP/server/index.js" --ops-note backup "{\"ok\":true,\"size\":\"$SIZE\",\"hourly\":$NH,\"daily\":$ND,\"files\":$NF}" >/dev/null 2>&1

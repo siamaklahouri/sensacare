@@ -4,7 +4,7 @@
 
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید، با:
      BALE_BASE=http://127.0.0.1:8913 */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 import { createServer } from 'node:http';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
@@ -48,7 +48,7 @@ await new Promise(r => stub.listen(PORT, '127.0.0.1', r));
     { method: 'POST', body: JSON.stringify({ password: PASS }) });
 }
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 p.on('pageerror', e => errs.push(String(e).slice(0, 160)));

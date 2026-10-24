@@ -8,11 +8,11 @@
      یک) ردیف با متنِ بلند هم کوتاه می‌ماند،
      دو) متنِ کامل از راهِ پنجره در دسترس است،
      سه) و مهم‌تر از همه: نشانهٔ «⌄» وارد خودِ داده نمی‌شود. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const LONG = 'این یک موضوعِ بسیار بلند است که کاربر در خانهٔ موضوع می‌نویسد و شرح کاملی از بابتِ چک و قرارداد و توافقِ طرفین را در خود دارد و هیچ جوره در یک خط جا نمی‌شود';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 for (const [tag, port, view, fields, store] of [
   ['مالی', 8893, 'payablenotes',

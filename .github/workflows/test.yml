@@ -1,0 +1,55 @@
+# ==================== آزمون‌ها، روی هر پوش ====================
+# سی‌وهفت فایل آزمون داشتیم که فقط وقتی کسی دستی اجرایشان می‌کرد
+# می‌دویدند. دو باری که همین هفته ایرادی گرفته شد، اگر اجرا نشده بود
+# روی سایت می‌رفت.
+#
+# این‌جا سرورِ آزمون از صفر بالا می‌آید (همان ci-setup.sh که روی هر
+# ماشینِ دیگری هم کار می‌کند) و کلِ مجموعه رویش می‌دود. هیچ رازی لازم
+# ندارد: نه توکن، نه دیتابیسِ واقعی — همه‌چیز ساختگی و موقت است.
+
+name: آزمون‌ها
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# اگر پوشِ تازه‌ای آمد، اجرای قبلیِ همان شاخه لغو می‌شود: نتیجهٔ
+# کدِ قدیمی به درد کسی نمی‌خورد.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: نصب وابستگی‌ها
+        run: npm install --no-audit --no-fund
+
+      # فقط کرومیوم: بقیهٔ مرورگرها در این مجموعه به‌کار نمی‌آیند و
+      # هر کدام چند صد مگابایت‌اند.
+      - name: نصب کرومیوم
+        run: npx playwright install --with-deps chromium
+
+      - name: سرورِ آزمون
+        run: bash server/ci-setup.sh /tmp/vs 8911
+
+      - name: اجرای مجموعه
+        env:
+          DB_FILE: /tmp/vs/t.db
+          VS_BASE: http://127.0.0.1:8911
+        run: bash server/run-tests.sh
+
+      # اگر افتاد، لاگِ سرور بیشتر از خودِ خطا می‌گوید
+      - name: لاگِ سرور (وقتی افتاد)
+        if: failure()
+        run: tail -200 /tmp/vs/log || true

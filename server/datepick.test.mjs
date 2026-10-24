@@ -1,10 +1,10 @@
 /* تقویمِ شمسی کنارِ خانه‌های تاریخ. نشانه یک ::after است، پس زدنش یعنی
    کلیک روی نوارِ باریکِ لبهٔ خانه — همان کاری که کاربر می‌کند. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 const OUT = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 /* وسطِ خانه را می‌زند، نه لبه‌اش: کاربر گفت «بارِ اول که تاریخ را
    می‌زنم باید تقویم را ببینم»، پس هر جای خانه باید بازش کند. */

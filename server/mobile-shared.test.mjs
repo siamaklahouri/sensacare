@@ -2,7 +2,7 @@
    منوی گوشی، و رنگِ ردیفِ کارِ تمام‌شده در بخش‌های مشترک.
 
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const PAGE = '/siamak/';
@@ -49,7 +49,7 @@ const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d 
   if (r1.error || r2.error) { console.log('   BAD  ردیف‌های آزمون ساخته نشدند — ' + (r1.error || r2.error)); process.exit(1); }
 }
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 
 /* ======================= منوی گوشی ======================= */

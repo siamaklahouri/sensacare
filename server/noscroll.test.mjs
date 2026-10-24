@@ -1,7 +1,7 @@
 /* فهرست نباید بالا و پایین بپرد: نه با عوض شدنِ وضعیت، نه با افزودن،
    نه وقتی پیامِ «انجام شد» می‌آید.
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -26,7 +26,7 @@ await adm('/api/admin.planer/signin',
 await adm('/api/admin.planer/planners/' + P1.slug + '/password',
   { method: 'POST', body: JSON.stringify({ password: P1.pass }) });
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 
 /* ======================= پنلِ ادمین ======================= */

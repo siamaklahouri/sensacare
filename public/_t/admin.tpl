@@ -874,6 +874,7 @@ table.inv-tab td.desc{ text-align:right; }
       <button class="btn btn-sm" id="bkAll" title="یک زیپ با یک پوشه برای هر کارتابل">
         🗂 پشتیبان همه، همین حالا</button>
       <button class="btn btn-sm" id="bkAllDl" title="همان زیپ، روی همین دستگاه">⬇</button>
+      <span class="n" id="opsLine" title="از گزارشِ خودِ سرور">…</span>
     </div>
     <div class="bk-note" id="bkAllNote"></div>
     <div class="plist" id="plist"></div>
@@ -1608,6 +1609,26 @@ function setupTheme(){
 }
 
 function setupTabs(){
+/* ---------- حالِ نگهداری ----------
+   «آخرین پشتیبان» جایی در پنل نبود و تنها راهِ فهمیدنش رفتن روی
+   سرور بود. حالا همین‌جا نوشته می‌شود، و اگر کهنه باشد قرمز. */
+async function loadOps(){
+  const el = document.getElementById("opsLine");
+  if(!el) return;
+  const r = await api("/ops");
+  if(!r.ok){ el.textContent = ""; return; }
+  const b = r.data.backup;
+  if(!b || !b.at){ el.innerHTML = '<b style="color:var(--bad,#A6222B)">پشتیبانِ خودکار: خبری نیست</b>'; return; }
+  const mins = Math.round((r.data.now - b.at) / 60000);
+  const late = mins > 200 || b.ok === false;
+  el.innerHTML = (late ? '<b style="color:var(--bad,#A6222B)">' : '<b>') +
+    "آخرین پشتیبانِ خودکار: " + faDateTime(b.at) + "</b>" +
+    (b.size ? " — " + esc(b.size) : "") +
+    (b.hourly != null ? "، " + fa(b.hourly) + " نسخهٔ ساعتی" : "") +
+    (b.files ? "، " + fa(b.files) + " پیوست" : "") +
+    (late ? " ⚠️" : "");
+}
+
 /* ---------- خبرهای کارتابل ----------
    تغییرهای تازهٔ خودِ کارتابل این‌جا به‌شکلِ پیش‌نویس می‌آیند و تا
    ادمین نفرستدشان، هیچ کاربری نمی‌بیندشان. */
@@ -1698,6 +1719,7 @@ document.addEventListener("click", async e=>{
       if(b.dataset.tab === "orgs") loadOrgs();
     });
   });
+  loadOps();
   const nwa = document.getElementById("nwAdd");
   if(nwa) nwa.addEventListener("click", async ()=>{
     const g = id => (document.getElementById(id)||{}).value || "";

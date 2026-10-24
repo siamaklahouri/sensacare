@@ -1,10 +1,10 @@
 /* جابه‌جا کردنِ ردیف‌ها با کشیدن — فقط وقتی کلیدِ «حذف/تغییر» باز است. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const AB = 'الفبپتثجچحخدذرزژسشصضطظعغ';
 const rnd = () => 'ردیفِ' + Array.from({length:5}, () => AB[Math.floor(Math.random()*AB.length)]).join('');
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 /* یک کشیدنِ واقعی: dragstart روی دسته، dragover و drop روی ردیفِ مقصد */
 const dragTo = (p, view, fromIdx, toIdx, after) => p.evaluate(({ x, f, to, af }) => {

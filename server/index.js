@@ -175,6 +175,49 @@ async function remindTick() {
 }
 
 /* ---------- راه‌اندازی ---------- */
+/* ---------- یادداشتِ نگهداری ----------
+   اسکریپت‌های پشتیبان و نگهبان نتیجه‌شان را این‌جا می‌گذارند تا پنلِ
+   ادمین بتواند نشانش بدهد:
+
+     node server/index.js --ops-note backup '{"at":1700,"size":"18M"}'
+
+   چرا در جدولِ تنظیمات و نه یک فایل: پنل از همان دیتابیس می‌خواند و
+   لازم نیست کدِ سایت به فایل‌سیستم دست بزند — همان کد روی ورکر هم
+   باید کار کند. */
+if (process.argv.includes('--ops-note')) {
+  const i = process.argv.indexOf('--ops-note');
+  const key = String(process.argv[i + 1] || '').replace(/[^a-z0-9_-]/gi, '');
+  let val = null;
+  try { val = JSON.parse(process.argv.slice(i + 2).join(' ') || 'null'); } catch (e) { val = null; }
+  if (!key || val === null) { console.error('[نگهداری] ورودی درست نبود.'); DB.close(); process.exit(2); }
+  const { setSetting } = await import('../src/kartabl.js');
+  await setSetting(env, 'ops:' + key, Object.assign({ at: Date.now() }, val));
+  console.log('[نگهداری] ثبت شد: ' + key);
+  DB.close();
+  process.exit(0);
+}
+
+/* ---------- پیام از خطِ فرمان ----------
+   اسکریپت‌های نگهداری (پشتیبان، چکِ سلامت) باید بتوانند خبر بدهند.
+   به‌جای اینکه هر کدام توکن را از env دربیاورد و خودش به تلگرام وصل
+   شود — یعنی چهار جا که باید درست بمانند — همین‌جا از همان راهی
+   می‌رود که بقیهٔ پیام‌های سایت می‌روند:
+
+     node server/index.js --notify "متنِ پیام"
+
+   توکن همان‌جایی می‌ماند که هست و در هیچ اسکریپتی تکرار نمی‌شود. */
+if (process.argv.includes('--notify')) {
+  const i = process.argv.indexOf('--notify');
+  const text = process.argv.slice(i + 1).join(' ').trim();
+  if (!text) { console.error('[خبر] متنی نیامد.'); DB.close(); process.exit(2); }
+  const { botMessage } = await import('../src/kartabl.js');
+  const r = await botMessage(env, text);
+  console.log(r.ok ? '[خبر] رفت' + (r.to ? ' به ' + r.to.join(' و ') : '')
+                   : '[خبر] نرفت — ' + (r.error || 'نامعلوم'));
+  DB.close();
+  process.exit(r.ok ? 0 : 1);
+}
+
 /* یک نوبتِ یادآور با دست — برای وقتی که باید دید چه می‌رود، بی
    انتظارِ شصت ثانیه */
 if (process.argv.includes('--remind-now')) {

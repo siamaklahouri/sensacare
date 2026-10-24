@@ -9,10 +9,10 @@
    این آزمون همان راهِ کاربر را می‌رود: روی خانهٔ تاریخ کلیک، یک روز
    از تقویم انتخاب، و بعد دیدن اینکه تاریخ هم روی صفحه مانده هم در
    ردیفِ ساخته‌شده نشسته. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
 p.on('dialog', d => d.accept());

@@ -1,6 +1,6 @@
 /* زدنِ خبر باید آدم را ببرد همان‌جا — در کارتابل و در پنلِ ادمین.
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -30,7 +30,7 @@ for (const x of [P1, P2])
   await adm(A + '/planners/' + x.slug + '/password',
     { method: 'POST', body: JSON.stringify({ password: x.pass }) });
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 const errs = [];
 
 /* ======================= کارتابل ======================= */

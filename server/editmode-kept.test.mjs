@@ -3,10 +3,10 @@
    بعدیِ جدول خانه‌ها را دوباره با contenteditable="false" می‌ساخت.
    پس کاربر کلید را می‌زد، یک ردیف می‌افزود، و از آن به بعد هیچ خانه‌ای
    را نمی‌توانست ویرایش کند — بی‌آنکه چیزی به او بگوید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 for (const [tag, port, view, addId, addVal] of [
   ['IT', 8894, 'servers', 'newServerName', 'سرورِ آزمون'],

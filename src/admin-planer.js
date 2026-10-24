@@ -1096,6 +1096,18 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         cols: p.cols.map(c => ({ t: c.t, kind: c.kind, opts: c.opts || [] })) })) });
   }
 
+  /* ---------- حالِ نگهداری ----------
+     پشتیبان و نگهبانِ سرور نتیجه‌شان را در تنظیمات می‌گذارند؛ این‌جا
+     فقط خوانده می‌شود. «آخرین پشتیبان: دو ساعت پیش» یک خط است و جای
+     یک نگرانیِ همیشگی را می‌گیرد. */
+  if (p === '/ops' && m === 'GET') {
+    const [bk, hc] = await Promise.all([
+      getSetting(env, 'ops:backup', null),
+      getSetting(env, 'ops:health', null)
+    ]);
+    return json({ ok: true, backup: bk, health: hc, now: Date.now() });
+  }
+
   /* ---------- خبرِ تغییرها ----------
      تغییرهای تازهٔ خودِ کارتابل این‌جا به‌شکلِ پیش‌نویس می‌آیند. تا
      ادمین «ارسال» نزند، هیچ کاربری نمی‌بیندشان. */

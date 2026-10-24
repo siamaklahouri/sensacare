@@ -1,12 +1,12 @@
 /* نمونهٔ اکسل: دانلود می‌شود، و همان فایل با خواندنِ خودِ کارتابل
    برمی‌گردد — یعنی حلقه واقعاً بسته است، نه اینکه فقط فایلی ساخته شود. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 import fs from 'node:fs';
 const DIR = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/dl/';
 fs.rmSync(DIR, { recursive: true, force: true }); fs.mkdirSync(DIR, { recursive: true });
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 async function open(port) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 }, acceptDownloads: true });

@@ -10,7 +10,7 @@
    «عمومی» هم لازم است — قالبی که کارتابل‌های تازه از آن ساخته می‌شوند.
 
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
-import { chromium } from '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/node_modules/playwright/index.mjs';
+import { launch } from './pw.mjs';
 
 const BASE  = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -47,7 +47,7 @@ const kinds = [...new Set(planners.map(p => p.kind))];
 t(kinds.length >= 3 && kinds.includes('it') && kinds.includes('fin') && kinds.includes('gen'),
   'هر سه قالب در این بررسی هستند: فنی، مالی و عمومی', kinds.join(', '));
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const b = await launch();
 
 /* یک ورود برای هر کارتابل، نه یکی برای هر حالتِ رنگ. حالت را روی همان
    صفحه عوض می‌کنیم: هم سریع‌تر است، هم آزمون را به سقفِ تعدادِ ورود
