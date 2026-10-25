@@ -30,6 +30,17 @@ BEFORE=$(git -C "$APP" rev-parse --short HEAD 2>/dev/null)
 BRANCH=$(git -C "$APP" rev-parse --abbrev-ref HEAD 2>/dev/null)
 echo "   شاخه: $BRANCH"
 
+# قدمِ ۲ همین اسکریپت «npm install» می‌زند و npm خودش package-lock.json
+# را بازنویسی می‌کند. نتیجه این بود که هر به‌روزرسانی، به‌روزرسانیِ
+# بعدی را می‌بست — با پیامی که مثلِ یک دست‌کاریِ مشکوک به نظر می‌رسید.
+# این فایل ساختهٔ npm است، نه کارِ کسی؛ پس اگر تنها همین دست‌خورده
+# باشد، برمی‌گردانیمش و رد می‌شویم. هر فایلِ دیگری همان‌طور که بود
+# جلوی به‌روزرسانی را می‌گیرد.
+if [ "$(git -C "$APP" status --porcelain)" = " M package-lock.json" ]; then
+  git -C "$APP" checkout -- package-lock.json \
+    && ok "package-lock.json که npm عوضش کرده بود، برگشت"
+fi
+
 # هر تغییرِ دست‌نخورده‌ای روی سرور، pull را می‌شکند. بهتر است همین‌جا
 # با پیامِ روشن بایستد تا نصفه‌کاره جلو برود.
 if [ -n "$(git -C "$APP" status --porcelain)" ]; then
