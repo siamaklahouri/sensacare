@@ -96,6 +96,47 @@ check(){
   else
     bad service "سرویس جواب نمی‌دهد (کدِ $code) — systemctl status sltech"
   fi
+
+  # ۴) خطاهای برنامه در شبانه‌روزِ گذشته. خودِ سرویس سرِ هر خطا پیام
+  #    می‌دهد (ساعتی یک بار برای هر امضا)؛ این‌جا جمعش را می‌بینیم،
+  #    تا خطایی که پیامش رفته و فراموش شده هم دیده شود.
+  local errs
+  errs=$(node -e "
+const {DatabaseSync}=require('node:sqlite');
+try{
+  const db=new DatabaseSync(process.argv[1]);
+  const since=Date.now()-86400000;
+  const r=db.prepare('SELECT COUNT(*) k, COALESCE(SUM(n),0) n FROM app_errors WHERE last>=?').get(since);
+  const top=db.prepare('SELECT method,path,msg,n FROM app_errors WHERE last>=? ORDER BY n DESC LIMIT 3').all(since);
+  console.log(JSON.stringify({k:r.k, n:r.n, top}));
+}catch(e){ console.log(JSON.stringify({k:0,n:0,top:[]})); }
+" "$DB" 2>/dev/null)
+  local kinds
+  kinds=$(echo "$errs" | sed 's/.*"k":\([0-9]*\).*/\1/')
+  if [ "${kinds:-0}" -gt 0 ]; then
+    local total
+    total=$(echo "$errs" | sed 's/.*"n":\([0-9]*\).*/\1/')
+    bad apperrors "$kinds جور خطا در ۲۴ ساعت گذشته ($total بار) — ops.sh errors"
+  else
+    good apperrors "خطای برنامه‌ای در ۲۴ ساعت گذشته نبوده"
+  fi
+}
+
+# ---------- فهرستِ خطاها ----------
+# برای وقتی که پیام آمده و باید دید دقیقاً چه بوده.
+errors(){
+  say "— خطاهای برنامه —"
+  node -e "
+const {DatabaseSync}=require('node:sqlite');
+const db=new DatabaseSync(process.argv[1]);
+const rows=db.prepare('SELECT method,path,msg,n,first,last FROM app_errors ORDER BY last DESC LIMIT 40').all();
+if(!rows.length){ console.log('  چیزی ثبت نشده.'); }
+for(const r of rows){
+  const d=new Date(r.last).toISOString().slice(0,16).replace('T',' ');
+  console.log('  ['+d+'] x'+r.n+'  '+r.method+' '+r.path);
+  console.log('      '+r.msg);
+}
+" "$DB" 2>/dev/null || say "  خوانده نشد."
 }
 
 # ---------- آزمونِ بازیابی ----------
@@ -169,10 +210,11 @@ env_backup(){
 
 case "${1:-check}" in
   check)   check;;
+  errors)  errors;;
   restore) restore;;
   env)     env_backup;;
   all)     check; restore;;
-  *) echo "استفاده: bash server/ops.sh [check|restore|env|all]"; exit 2;;
+  *) echo "استفاده: bash server/ops.sh [check|errors|restore|env|all]"; exit 2;;
 esac
 
 [ "$fails" -eq 0 ] && say "— همه‌چیز سرِ جایش —" || say "— $fails مورد ایراد داشت —"

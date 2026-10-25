@@ -116,12 +116,59 @@ async function send(nres, wres) {
   await pipeline(Readable.fromWeb(wres.body), nres);
 }
 
+/* ---------- خطاهای سرور ----------
+   تا امروز خطای ۵۰۰ فقط در journald می‌نشست. یعنی اگر یک مسیر برای
+   یک کاربر می‌شکست، تنها راهِ فهمیدنش این بود که خودش شکایت کند —
+   و تا آن موقع، چند نفرِ دیگر هم خورده بودند.
+
+   این‌جا هر دو جورِ خطا از یک نقطه رد می‌شود: استثنایی که ورکر
+   می‌اندازد، و پاسخی که خودش با کدِ ۵۰۰ یا بالاتر برمی‌گردد.
+
+   هر خطا با امضایش یک ردیف است، نه یک ردیف در هر بار: یک حلقهٔ خراب
+   می‌تواند هزاران بار بیفتد. پیام هم ساعتی یک بار می‌رود، وگرنه
+   همان حلقه، ربات را هم خفه می‌کند.
+
+   در پیام نه پرسمان (query) می‌آید نه بدنهٔ درخواست: آن‌ها همان‌جایی
+   هستند که رمز و شمارهٔ کاربر رد می‌شود. فقط روش، مسیر و متنِ خطا. */
+const ERR_QUIET = 60 * 60 * 1000;
+
+async function noteError(method, rawPath, msg) {
+  try {
+    let path = String(rawPath || '').split('?')[0].slice(0, 120);
+    const text = String(msg || '').split('\n')[0].slice(0, 200);
+    const sig = method + ' ' + path + ' | ' + text;
+    const now = Date.now();
+    const { all, run } = await import('../src/kartabl.js');
+    const row = (await all(env,
+      'SELECT last, n, notified FROM app_errors WHERE sig=?', sig))[0];
+    if (row) {
+      await run(env, 'UPDATE app_errors SET last=?, n=n+1 WHERE sig=?', now, sig);
+    } else {
+      await run(env, `INSERT INTO app_errors(sig,first,last,n,method,path,msg,notified)
+        VALUES(?,?,?,1,?,?,?,0)`, sig, now, now, method, path, text);
+    }
+    const quiet = row ? now - (row.notified || 0) < ERR_QUIET : false;
+    if (quiet) return;
+    await run(env, 'UPDATE app_errors SET notified=? WHERE sig=?', now, sig);
+    const n = row ? row.n + 1 : 1;
+    const { botMessage } = await import('../src/kartabl.js');
+    await botMessage(env, '⚠️ خطای سرور SLTech\n' +
+      method + ' ' + path + '\n' + text + (n > 1 ? `\n(${n} بار)` : ''));
+  } catch (e) {
+    /* خودِ گزارشِ خطا نباید درخواست را بخواباند */
+    console.error('[noteError]', e?.message || e);
+  }
+}
+
 const server = createServer(async (nreq, nres) => {
   try {
     const wres = await worker.fetch(toRequest(nreq), env, ctx);
+    if (wres.status >= 500)
+      ctx.waitUntil(noteError(nreq.method, nreq.url, 'پاسخ ' + wres.status));
     await send(nres, wres);
   } catch (e) {
     console.error('[fetch]', nreq.method, nreq.url, e?.stack || e?.message || e);
+    ctx.waitUntil(noteError(nreq.method, nreq.url, e?.message || String(e)));
     if (!nres.headersSent) {
       nres.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
       nres.end('خطای داخلی سرور');

@@ -838,3 +838,22 @@ CREATE TABLE IF NOT EXISTS org_mgrs (
   PRIMARY KEY (org, slug)
 );
 CREATE INDEX IF NOT EXISTS org_mgrs_slug ON org_mgrs(slug);
+
+-- ۳۷ | خطاهای سرور
+-- تا امروز خطای ۵۰۰ فقط در journald می‌نشست: نه شمرده می‌شد، نه کسی
+-- خبردار می‌شد. یعنی اگر یک مسیر برای یک کاربر می‌شکست، تنها راهِ
+-- فهمیدنش شکایتِ خودش بود.
+-- هر خطا با «امضا»یش (روش + مسیر + پیام) یک ردیف است، نه یک ردیف در
+-- هر بار: یک حلقهٔ خراب می‌تواند هزاران بار بیفتد و جدول نباید از آن
+-- پر شود. «notified» جلوی پیامِ تکراری را می‌گیرد.
+CREATE TABLE IF NOT EXISTS app_errors (
+  sig      TEXT PRIMARY KEY,
+  first    INTEGER NOT NULL,
+  last     INTEGER NOT NULL,
+  n        INTEGER NOT NULL DEFAULT 1,
+  method   TEXT,
+  path     TEXT,
+  msg      TEXT,
+  notified INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS app_errors_last ON app_errors(last DESC);
