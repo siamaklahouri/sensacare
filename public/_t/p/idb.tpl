@@ -2,7 +2,7 @@
 /* ---- tiny IndexedDB helper to remember the chosen folder handle across visits ---- */
 function idbOpen(){
   return new Promise((resolve,reject)=>{
-    const req = indexedDB.open("{{IDB}}", 1);
+    const req = indexedDB.open(window.KARTABL_IDB, 1);
     req.onupgradeneeded = ()=> req.result.createObjectStore("handles");
     req.onsuccess = ()=> resolve(req.result);
     req.onerror = ()=> reject(req.error);

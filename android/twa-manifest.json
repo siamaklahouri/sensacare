@@ -23,7 +23,7 @@
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://sltech.ir/siamak/app.webmanifest",
+  "webManifestUrl": "https://sltech.ir/app.webmanifest",
   "fallbackType": "customtabs",
   "features": {},
   "alphaDependencies": {

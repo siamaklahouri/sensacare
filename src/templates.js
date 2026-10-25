@@ -80,6 +80,12 @@ import p_themecss from '../public/_t/p/themecss.tpl';
 import p_veeam from '../public/_t/p/veeam.tpl';
 import p_veeamcss from '../public/_t/p/veeamcss.tpl';
 import p_veeamjs from '../public/_t/p/veeamjs.tpl';
+import p_monthpopjs from '../public/_t/p/monthpopjs.tpl';
+import p_datetools from '../public/_t/p/datetools.tpl';
+import p_untilwarn from '../public/_t/p/untilwarn.tpl';
+import p_multifilter from '../public/_t/p/multifilter.tpl';
+import p_chartboxcss from '../public/_t/p/chartboxcss.tpl';
+import p_multifiltercss from '../public/_t/p/multifiltercss.tpl';
 
 import t_it from '../public/_t/it.tpl';
 import t_fin from '../public/_t/fin.tpl';
@@ -88,6 +94,12 @@ import t_home from '../public/_t/home.tpl';
 
 /* نامِ پاره → متنش. همان نامی که در {{PART:...}} می‌آید. */
 export const PARTS = new Map([
+  ['monthpopjs', p_monthpopjs],
+  ['datetools', p_datetools],
+  ['untilwarn', p_untilwarn],
+  ['multifilter', p_multifilter],
+  ['chartboxcss', p_chartboxcss],
+  ['multifiltercss', p_multifiltercss],
   ['aiassist', p_aiassist],
   ['cellpop', p_cellpop],
   ['colorcss', p_colorcss],

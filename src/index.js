@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { JOBS } from './kartabl-jobs.js';
+import { jobPage, jobTiles, jobCount, hasJobPage, jobList } from './jobpage.js';
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb, slContact,
          slLoginOptions, SL_NONCE } from './sltech-bot.js';
@@ -105,7 +106,8 @@ function disabledPanelPage(panel) {
 </div></body></html>`;
 }
 
-import { handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
+import { siteManifest, CSS_BLOBS, JS_BLOBS,
+  handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
          renderPanelPage, withParts, assetReq, useBundledTemplates,
          appManifest, isDemo, readSession, makeSession, cookieHeader } from './kartabl.js';
 /* ==========================================================
@@ -1802,9 +1804,15 @@ export default {
            قاعدهٔ پیش‌فرضِ مرورگر قوی‌تر است و دکمه دیده می‌ماند. پس
            وقتی دمو نیست، خودِ نشانه‌ها از صفحه برداشته می‌شوند — هیچ
            قاعدهٔ CSS نمی‌تواند چیزی را که در صفحه نیست برگرداند. */
-        const html = hasDemo
+        let html = hasDemo
           ? raw.split('{{DEMO}}').join('').split('{{/DEMO}}').join('')
           : raw.replace(/\{\{DEMO\}\}[\s\S]*?\{\{\/DEMO\}\}/g, '');
+        /* کاشی‌های شغل دستی در قالب نوشته شده بودند: شانزده‌تا، در
+           حالی که بیست‌ودو شغل هست — و عنوان هم «شانزده شغل» مانده
+           بود. حالا از خودِ داده می‌آیند، پس نمی‌توانند عقب بمانند،
+           و هرکدام لینکِ صفحهٔ خودش است. */
+        html = html.split('{{JOBTILES}}').join(jobTiles())
+                   .split('{{JOBCOUNT}}').join(faNum(jobCount()));
         return withSecurity(new Response(html, { headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'public, max-age=300' } }));
@@ -2022,8 +2030,12 @@ export default {
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
       const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
-      /* دامنهٔ پنل فقط یک صفحهٔ عمومی دارد: خودِ صفحهٔ معرفی. کارتابل‌ها
-         و صفحهٔ ورود noindex‌اند و جایی در نقشه ندارند. */
+      /* دامنهٔ پنل: خودِ صفحهٔ معرفی و صفحهٔ هر شغل. کارتابل‌ها و
+         صفحهٔ ورود noindex‌اند و جایی در نقشه ندارند. */
+      if (site === 'panel' || site === 'both')
+        for (const j of jobList())
+          urls.push(`<url><loc>${base}/kar/${j.id}/</loc><changefreq>monthly</changefreq>` +
+                    `<priority>0.8</priority></url>`);
       if (site !== 'panel') try {
         const enc = t => encodeURIComponent(String(t));
         for (const pr of await all(env, 'SELECT id FROM products WHERE active=1'))
@@ -2081,6 +2093,43 @@ export default {
        /siamak/app.webmanifest — چون پسوند دارد، از شاخهٔ صفحهٔ کارتابل
        (که فقط آدرسِ بی‌پسوند را می‌گیرد) رد می‌شود و باید پیش از
        فایل‌های ثابت بیاید، وگرنه ۴۰۴ می‌گیرد. */
+    /* ---------------- CSSِ بیرون‌کشیده ----------------
+       نامِ فایل از روی محتوایش ساخته شده، پس اگر محتوا عوض شود نام هم
+       عوض می‌شود و مرورگر خودش نسخهٔ تازه را می‌گیرد. به همین دلیل
+       «immutable» و یک‌ساله است: هیچ‌وقت لازم نیست دوباره بپرسد.
+
+       اگر سرور تازه بالا آمده و هنوز هیچ کارتابلی باز نشده، نقشه خالی
+       است؛ یک بار صفحه را می‌سازیم تا پر شود. بی این، رفرشِ کسی که
+       صفحه‌اش از قبل باز بوده، CSS نمی‌گرفت. */
+    if ((m === 'GET' || m === 'HEAD') && /^\/_a\/[A-Za-z0-9._-]+\.(css|js)$/.test(p)) {
+      const name = p.slice(4);
+      const store = name.endsWith('.css') ? CSS_BLOBS : JS_BLOBS;
+      let body = store.get(name);
+      if (body === undefined && env.DB) {
+        for (const pn of await allPanels(env).catch(() => [])) {
+          await renderPanelPage(env, req, pn).catch(() => null);
+          body = store.get(name);
+          if (body !== undefined) break;
+        }
+      }
+      if (body === undefined) return new Response('نیست', { status: 404,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      const tag = await etagOf(body);
+      const same = notModified(req, tag);
+      if (same) return withSecurity(same);
+      return withSecurity(new Response(body, { headers: {
+        'Content-Type': (name.endsWith('.css') ? 'text/css' : 'text/javascript') + '; charset=utf-8',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'ETag': tag } }));
+    }
+
+    /* مانیفستِ خودِ برنامه، بی‌بند به هیچ کارتابلی — پوستهٔ اندروید از
+       همین ساخته می‌شود. چرایش در siteManifest توضیح داده شده. */
+    if (req.method === 'GET' && p === '/app.webmanifest' && site !== 'shop')
+      return withSecurity(new Response(JSON.stringify(siteManifest()), {
+        headers: { 'Content-Type': 'application/manifest+json; charset=utf-8',
+                   'Cache-Control': 'public, max-age=3600' } }));
+
     if (req.method === 'GET' && /^\/[A-Za-z0-9_-]+\/app\.webmanifest$/.test(p) && env.DB) {
       const panel = await panelBySlug(env, p.split('/')[1]).catch(() => null);
       if (panel && !panel.disabled)
@@ -2088,6 +2137,28 @@ export default {
           headers: { 'Content-Type': 'application/manifest+json; charset=utf-8',
                      'Cache-Control': 'no-cache',
                      'X-Robots-Tag': 'noindex, nofollow' } }));
+    }
+
+    /* ---------------- صفحهٔ شغل ----------------
+       چک‌لیستِ هر شغل از قبل در kartabl-jobs.js بود ولی هیچ صفحه‌ای
+       نداشت، پس گوگل از کلِ این دامنه فقط یک صفحه می‌دید. حالا هر
+       شغل صفحهٔ خودش را دارد، ساخته‌شده از همان داده. */
+    const jobRoute = /^\/kar\/([a-z]+)\/?$/.exec(p);
+    if (jobRoute && m === 'GET' && site !== 'shop') {
+      const id = jobRoute[1];
+      if (!hasJobPage(id)) return withSecurity(new Response(panelNotFoundPage(), {
+        status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8',
+                                'X-Robots-Tag': 'noindex, nofollow' } }));
+      /* بی اسلشِ آخر، همان صفحه با دو نشانی در فهرستِ گوگل می‌نشیند */
+      if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
+      const html = jobPage(id, siteBase(env, url, site));
+      const tag = await etagOf(html);
+      const same = notModified(req, tag);
+      if (same) return withSecurity(same);
+      return withSecurity(new Response(html, { headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=900',
+        'ETag': tag } }));
     }
 
     /* ---------------- صفحهٔ کارتابل ----------------

@@ -14,6 +14,7 @@ const t = (category, task, owner, deadline, priority) =>
 export const JOBS = {
   hr: {
     label: 'منابع انسانی',
+    icon: '👥',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'training', 'meetings', 'feedback'],
@@ -40,6 +41,7 @@ export const JOBS = {
 
   sales: {
     label: 'فروش و بازاریابی',
+    icon: '📈',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'meetings', 'feedback'],
@@ -65,6 +67,7 @@ export const JOBS = {
 
   wh: {
     label: 'انبار و تدارکات',
+    icon: '📦',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['vendors', 'assets'],
@@ -90,6 +93,7 @@ export const JOBS = {
 
   ceo: {
     label: 'مدیرعامل / مدیریت کلان',
+    icon: '🏢',
     kind: 'gen',
     views: ['companies', 'servers', 'datetools', 'report'],
     extras: ['contracts', 'meetings', 'assets'],
@@ -115,6 +119,7 @@ export const JOBS = {
 
   acc: {
     label: 'حسابداری',
+    icon: '🧾',
     kind: 'fin',
     views: ['invoices', 'payables', 'payablenotes', 'receivablenotes', 'expenses', 'bank', 'budget', 'parties', 'datetools', 'report'],
     extras: ['contracts', 'vendors'],
@@ -141,6 +146,7 @@ export const JOBS = {
 
   support: {
     label: 'پشتیبانی فنی و هلپ‌دسک',
+    icon: '🛠️',
     kind: 'gen',
     views: ['servers', 'companies', 'mvpn', 'datetools', 'report'],
     extras: ['assets', 'feedback', 'vendors'],
@@ -165,6 +171,7 @@ export const JOBS = {
 
   marketing: {
     label: 'بازاریابی دیجیتال و محتوا',
+    icon: '📣',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'meetings', 'feedback'],
@@ -190,6 +197,7 @@ export const JOBS = {
 
   pm: {
     label: 'مدیریت پروژه',
+    icon: '📋',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'meetings', 'vendors'],
@@ -215,6 +223,7 @@ export const JOBS = {
 
   prod: {
     label: 'تولید و کارخانه',
+    icon: '🏭',
     kind: 'gen',
     views: ['servers', 'companies', 'datetools', 'report'],
     extras: ['assets', 'vendors', 'training'],
@@ -240,6 +249,7 @@ export const JOBS = {
 
   qc: {
     label: 'کنترل کیفیت',
+    icon: '🔬',
     kind: 'gen',
     views: ['servers', 'companies', 'datetools', 'report'],
     extras: ['assets', 'feedback', 'training'],
@@ -264,6 +274,7 @@ export const JOBS = {
 
   logistics: {
     label: 'حمل‌ونقل و توزیع',
+    icon: '🚚',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['vendors', 'assets', 'contracts'],
@@ -287,6 +298,7 @@ export const JOBS = {
 
   procure: {
     label: 'خرید خارجی و ترخیص',
+    icon: '🌍',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['vendors', 'contracts', 'assets'],
@@ -310,6 +322,7 @@ export const JOBS = {
 
   clinic: {
     label: 'مطب و کلینیک',
+    icon: '🩺',
     kind: 'fin',
     views: ['invoices', 'receivablenotes', 'expenses', 'bank', 'parties', 'datetools', 'report'],
     extras: ['assets', 'feedback', 'training'],
@@ -334,6 +347,7 @@ export const JOBS = {
 
   retail: {
     label: 'فروشگاه و خرده‌فروشی',
+    icon: '🛒',
     kind: 'fin',
     views: ['invoices', 'expenses', 'bank', 'budget', 'parties', 'datetools', 'report'],
     extras: ['vendors', 'feedback', 'assets'],
@@ -357,6 +371,7 @@ export const JOBS = {
 
   legal: {
     label: 'حقوقی و قراردادها',
+    icon: '⚖️',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'meetings'],
@@ -380,6 +395,7 @@ export const JOBS = {
 
   office: {
     label: 'امور اداری و دفتری',
+    icon: '🗂️',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['contracts', 'assets', 'meetings'],
@@ -403,6 +419,7 @@ export const JOBS = {
 
   it: {
     label: 'مدیر IT و زیرساخت',
+    icon: '🖥️',
     kind: 'gen',
     views: ['servers', 'companies', 'mvpn', 'datetools', 'report'],
     extras: ['assets', 'vendors', 'contracts'],
@@ -424,6 +441,7 @@ export const JOBS = {
 
   edu: {
     label: 'آموزشگاه و مدرسه',
+    icon: '🎓',
     kind: 'gen',
     views: ['companies', 'datetools', 'report'],
     extras: ['training', 'meetings', 'feedback', 'contracts'],
@@ -441,6 +459,7 @@ export const JOBS = {
 
   estate: {
     label: 'املاک و مستغلات',
+    icon: '🏘️',
     kind: 'fin',
     views: ['invoices', 'receivablenotes', 'parties', 'bank', 'datetools', 'report'],
     extras: ['contracts', 'meetings', 'feedback'],
@@ -458,6 +477,7 @@ export const JOBS = {
 
   rest: {
     label: 'رستوران و کافه',
+    icon: '🍽️',
     kind: 'fin',
     views: ['expenses', 'bank', 'parties', 'budget', 'datetools', 'report'],
     extras: ['vendors', 'assets', 'feedback'],
@@ -476,6 +496,7 @@ export const JOBS = {
 
   build: {
     label: 'پیمانکاری و ساختمان',
+    icon: '🏗️',
     kind: 'fin',
     views: ['payables', 'payablenotes', 'parties', 'budget', 'expenses',
             'datetools', 'report'],
@@ -494,6 +515,7 @@ export const JOBS = {
 
   freelance: {
     label: 'فریلنسر و کسب‌وکار تک‌نفره',
+    icon: '💻',
     kind: 'fin',
     views: ['invoices', 'receivablenotes', 'expenses', 'parties',
             'datetools', 'report'],
@@ -512,6 +534,7 @@ export const JOBS = {
 
   blank: {
     label: 'بدون چک‌لیست آماده',
+    icon: '⬜',
     kind: 'gen',
     views: ['datetools', 'report'],
     extras: ['contracts', 'assets', 'vendors', 'meetings', 'feedback', 'training'],

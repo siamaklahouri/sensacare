@@ -34,6 +34,17 @@ window.KARTABL_UNTIL = {{UNTIL}};
 /* کارتابلِ نمایشی: بی‌رمز باز می‌شود و هرچه داخلش نوشته شود روی سرور
    نمی‌نشیند — فقط در همین مرورگر. */
 window.KARTABL_DEMO = {{DEMO}} === 1;
+/* نام‌هایی که بدنهٔ اصلیِ اسکریپت لازم دارد. پیش از این مستقیم داخلِ
+   خودِ آن بدنه نوشته می‌شدند ({{STORE}} و امثالش) — یعنی آن بدنه برای
+   هر کارتابل متنِ متفاوتی بود و نمی‌شد یک بار فرستاد و یک سال در
+   مرورگر نگه داشت. حالا فقط همین چند خط فرق می‌کند. */
+window.KARTABL_STORE    = "{{STORE}}";
+window.KARTABL_FILEJSON = "{{FILEJSON}}";
+window.KARTABL_FILEXLSX = "{{FILEXLSX}}";
+window.KARTABL_DBCACHE  = "{{DBCACHE}}";
+window.KARTABL_NAME     = "{{NAME}}";
+window.KARTABL_API      = "{{API}}";
+window.KARTABL_IDB      = "{{IDB}}";
 </script>
 <title>{{TITLE}}</title>
 <style>
@@ -113,55 +124,7 @@ window.KARTABL_DEMO = {{DEMO}} === 1;
   ::selection{ background:var(--brass); color:#fff; }
 
 
-
-/* ---------- هشدارِ پایانِ مهلت ----------
-   وقتی یک هفته بیشتر نمانده، بعد از هر ورود یک بار گفته می‌شود. */
-.exp-ov{ position:fixed; inset:0; z-index:88; display:flex; align-items:center;
-  justify-content:center; padding:20px; background:rgba(11,37,69,.55); }
-.exp-ov[hidden]{ display:none; }
-.exp-box{ background:var(--white); border:1px solid var(--line);
-  border-radius:var(--radius); box-shadow:var(--shadow-lg); padding:28px 24px;
-  width:100%; max-width:390px; text-align:center; }
-.exp-ic{ font-size:38px; line-height:1; margin-bottom:10px; }
-.exp-box h3{ font-family:var(--font-display); font-size:16.5px; margin:0 0 8px; color:var(--ink); }
-.exp-n{ font-size:30px; font-weight:800; color:var(--amber-ink); line-height:1.4;
-  letter-spacing:-.02em; }
-.exp-box p{ font-size:12.5px; color:var(--ink-soft); line-height:2.05; margin:6px 0 18px; }
-.exp-box button{ width:100%; padding:11px; border:0; border-radius:var(--radius-sm);
-  background:var(--brass); color:#fff; font-family:var(--font-body); font-size:13.5px;
-  font-weight:600; cursor:pointer; }
-.exp-box button:hover{ background:var(--brass-deep); }
-  /* ---------- بخش تنظیمات و نوار تداخل نسخه ---------- */
-  .set-h{ font-family:var(--font-display); font-size:15px; margin:0 0 6px; color:var(--ink); }
-  .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
-  .set-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; }
-  .set-grid label{ display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--ink-soft); }
-  .set-grid input{
-    font-family:var(--font-body); font-size:13px; padding:9px 11px;
-    border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink);
-  }
-  .set-grid input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
-  .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  /* تیکِ کنارِ توضیح: متن کنارِ خودِ تیک بماند، نه زیرش */
-  .set-chk{ display:flex; align-items:flex-start; gap:8px; font-size:12.5px;
-    color:var(--ink-soft); line-height:1.9; cursor:pointer; }
-  .set-chk input{ margin-top:5px; accent-color:var(--brass); flex:none; }
-  .set-state{ font-size:12px; color:var(--ink-faint); }
-  .set-state.ok{ color:var(--green-ink); font-weight:600; }
-  .set-state.err{ color:var(--red-ink); font-weight:600; }
-  .set-hr{ border:0; border-top:1px solid var(--line); margin:16px 0; }
-
-  #syncConflict{
-    position:fixed; inset-inline:0; bottom:0; z-index:9000;
-    background:var(--amber-bg); border-top:1px solid var(--amber);
-    padding:12px 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    font-size:12.5px; color:var(--ink); box-shadow:0 -4px 18px rgba(11,37,69,.10);
-  }
-  #syncConflict button{
-    font-family:var(--font-body); font-size:12px; font-weight:600; cursor:pointer;
-    padding:7px 14px; border:1px solid var(--amber); border-radius:8px;
-    background:var(--white); color:var(--ink);
-  }
+{{PART:untilwarn}}
 
   /* ---------- Top bar ----------
      نوار بالا یک تختهٔ سرمه‌ایِ پررنگ بود و از تمامِ صفحه سنگین‌تر می‌زد؛
@@ -541,41 +504,7 @@ window.KARTABL_DEMO = {{DEMO}} === 1;
   .panel:hover{ box-shadow:var(--shadow-lg); transform:translateY(-1px); }
   .panel h3{
     font-family:var(--font-display); font-size:14.5px; margin:0 0 14px; color:var(--ink); font-weight:700;
-    display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:1px solid var(--paper-deep);
-  }
-  /* دکمهٔ «کد بازیابی دارم» روی صفحهٔ قفل — نباید به چشمِ دکمهٔ خطرناک
-     (پاک‌سازی) بیاید، پس رنگِ خنثی دارد. */
-  .lock-screen .ls-recover{
-    margin-top:10px; background:transparent; border:1px solid var(--line);
-    border-radius:9px; padding:8px 14px; cursor:pointer;
-    font-family:var(--font-body); font-size:12px; color:var(--ink-soft);
-  }
-  .lock-screen .ls-recover:hover{ border-color:var(--brass); color:var(--ink); }
-
-  /* ---------- قابِ نمودارها ----------
-     قبلاً بوم مستقیم توی کارت بود و فقط یک max-height داشت. Chart.js بوم را
-     به اندازهٔ عرضِ کارت مربع می‌کرد، بعد CSS ارتفاعش را می‌بُرید و کتابخانه
-     دوباره از روی ارتفاعِ بریده حساب می‌کرد؛ نتیجه این می‌شد که نمودار کوچک
-     می‌ماند، می‌چسبید بالای کارت و زیرش جای خالی می‌افتاد — و چون این
-     رفت‌وبرگشت در هر کارت به عددِ دیگری می‌رسید، سه نمودارِ کنار هم سه
-     اندازهٔ مختلف داشتند.
-
-     حالا بوم داخل قابی با ارتفاعِ مشخص می‌نشیند و کاملاً پُرش می‌کند، و
-     Chart.js با maintainAspectRatio:false همان قاب را مبنا می‌گیرد. پس
-     نمودار همیشه وسطِ قاب است و هر سه یک اندازه. */
-  /* قابِ نمودارهای داشبورد. ۲۵۰ پیکسل برای یک دونات با راهنمای زیرش
-     کم بود: خودِ دایره کمتر از نصفِ قاب می‌شد. حالا قاب بلندتر است و
-     روی گوشی کوتاه‌تر می‌شود تا کارت از صفحه نزند بیرون. */
-  .chart-box{ position:relative; width:100%; height:312px; margin-top:4px; }
-  @media (max-width:760px){ .chart-box{ height:268px; } }
-  .chart-box > canvas{ position:absolute; inset:0; width:100% !important; height:100% !important; }
-  /* وقتی داده‌ای نیست یا کتابخانه نیامده، جای بوم یک پیام می‌نشیند؛
-     آن هم باید وسطِ همین قاب بایستد. */
-  .chart-box > div{
-    position:absolute; inset:0; display:flex; align-items:center;
-    justify-content:center; box-sizing:border-box;
-  }
-
+    {{PART:chartboxcss}}
   /* signature stamp */
   .stamp-wrap{ display:flex; align-items:center; justify-content:center; padding:10px 0 4px; }
   .stamp{
@@ -609,36 +538,7 @@ window.KARTABL_DEMO = {{DEMO}} === 1;
   tbody tr:nth-child(even){ background:var(--paper); }
   tbody tr:hover{ background:var(--brass-bg); }
   .filter-row th{ background:var(--paper-deep); padding:4px 5px; position:sticky; top:34px; }
-  .filter-row input, .filter-row select{
-    width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
-  }
-  .filter-row input:focus, .filter-row select:focus{ outline:none; border-color:var(--brass); }
-
-  /* ---------- Multi-select filter dropdown ---------- */
-  .msf{ position:relative; width:100%; }
-  .msf-btn{
-    width:100%; box-sizing:border-box; font-family:var(--font-body); font-size:11px;
-    padding:4px 8px 4px 5px; border:1px solid var(--card-border); border-radius:6px; color:var(--ink); background:var(--white);
-    cursor:pointer; text-align:right; display:flex; align-items:center; justify-content:space-between; gap:4px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  }
-  .msf-btn:hover, .msf-btn.open{ border-color:var(--brass); }
-  .msf-btn .arrow{ font-size:9px; color:var(--ink-faint); flex:none; transition:transform .12s; }
-  .msf-btn.open .arrow{ transform:rotate(180deg); }
-  .msf-count{ background:var(--brass); color:#fff; border-radius:999px; font-size:9.5px; padding:0px 5px; flex:none; }
-  .msf-panel{
-    position:fixed; z-index:250; background:var(--white); border:1px solid var(--card-border); border-radius:8px;
-    box-shadow:0 10px 30px rgba(11,37,69,.25); padding:6px; display:none; max-height:220px; overflow-y:auto;
-    min-width:150px;
-  }
-  .msf-panel.open{ display:block; }
-  .msf-opt{ display:flex; align-items:center; gap:7px; padding:5px 6px; border-radius:5px; cursor:pointer; font-size:12px; white-space:nowrap; }
-  .msf-opt:hover{ background:var(--brass-bg); }
-  .msf-opt input{ margin:0; flex:none; accent-color:var(--brass); width:14px; height:14px; }
-  .msf-clear{ font-size:10.5px; color:var(--brass-ink); text-align:center; padding:4px; cursor:pointer; border-top:1px solid var(--line); margin-top:3px; }
-  .msf-clear:hover{ text-decoration:underline; }
-
+  {{PART:multifiltercss}}
   /* ---------- Chart drill-down modal ---------- */
   .cm-overlay{
     position:fixed; inset:0; background:rgba(11,37,69,.45); z-index:400; display:none;
@@ -1366,60 +1266,7 @@ window.KARTABL_DEMO = {{DEMO}} === 1;
       <div id="personalWrap"></div>
     </section>
 
-    <!-- DATE TOOLS -->
-    <section class="view" id="view-datetools" data-feat="view:datetools">
-      <div class="section-title">🧮 تبدیل</div>
-      <div class="section-sub">واحدها و تاریخ — وزن، طول، مساحت، حجم، دما، داده، زمان، واحد پولی، و تبدیل تاریخ</div>
-
-      <!-- تبدیلِ واحدها و ماه؛ محتوایش را پارهٔ convert می‌سازد تا یک
-           نسخه باشد نه دو تا. -->
-      <div id="convBox"></div>
-
-      <div class="grid2">
-        <div class="panel">
-          <h3>📅 شمسی ← میلادی</h3>
-          <div class="dt-row">
-            <select id="dtJY"></select>
-            <select id="dtJM"></select>
-            <select id="dtJD"></select>
-          </div>
-          <div class="dt-result" id="dtJ2GResult">—</div>
-        </div>
-        <div class="panel">
-          <h3>📅 میلادی ← شمسی</h3>
-          <div class="dt-row">
-            <input type="date" id="dtGDate">
-          </div>
-          <div class="dt-result" id="dtG2JResult">—</div>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:16px;">
-        <h3>⏳ محاسبه‌ی فاصله‌ی بین دو تاریخ (شمسی)</h3>
-        <div class="dt-diff-grid">
-          <div>
-            <label>تاریخ شروع</label>
-            <div class="dt-row">
-              <select id="dtStartY"></select>
-              <select id="dtStartM"></select>
-              <select id="dtStartD"></select>
-            </div>
-          </div>
-          <div>
-            <label>تاریخ پایان</label>
-            <div class="dt-row">
-              <select id="dtEndY"></select>
-              <select id="dtEndM"></select>
-              <select id="dtEndD"></select>
-            </div>
-          </div>
-        </div>
-        <button type="button" class="btn btn-brass btn-sm" id="dtDiffBtn" style="margin-top:10px;">محاسبه‌ی فاصله</button>
-        <div class="dt-result dt-diff-result" id="dtDiffResult"></div>
-      </div>
-    </section>
-
-    <!-- GUIDE -->
+    {{PART:datetools}}
 {{PART:settings}}
     <!-- ASSISTANT -->
 {{PART:report}}
@@ -1634,8 +1481,8 @@ const DEFAULT_STATE = {
 
 let state = null;
 let charts = {};
-const STORE_KEY = "{{STORE}}";
-const FILE_NAME = "{{FILEJSON}}";
+const STORE_KEY = window.KARTABL_STORE;
+const FILE_NAME = window.KARTABL_FILEJSON;
 let saveTimer = null;
 let dirHandle = null;
 
@@ -2075,7 +1922,7 @@ function renderDashHero(){
   const monthName = parts[1] ? monthNames[parseInt(parts[1],10)-1] : "";
   el.innerHTML = `
     <div>
-      <div class="dh-greet">👋 ${greet}، {{NAME}}</div>
+      <div class="dh-greet">👋 ${greet}، ${window.KARTABL_NAME}</div>
       <div class="dh-sub">خلاصه‌ی وضعیت امروز و این ماه، همه‌جا یک نگاه</div>
     </div>
     <div class="dh-date">امروز<b>${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</b></div>
@@ -3050,12 +2897,12 @@ function onDayFieldChange(e){
 
 /* =========================================================================
    یک‌پارچه‌سازی: به‌جای ۴ فایل اکسل، همه‌چیز در یک فایل واحد ذخیره می‌شود:
-   «{{FILEXLSX}}» — با ۵ برگ: Servers، DailyBackupLog، Companies،
+   فایلِ اکسلِ کارتابل — با ۵ برگ: Servers، DailyBackupLog، Companies،
    MVPN، RemoteChecklist. هر تغییری که در همین صفحه بدهید (افزودن/ویرایش/تیک
    زدن) بلافاصله روی همین یک فایل نوشته می‌شود.
    ========================================================================= */
-const DB_FILE_NAME = "{{FILEXLSX}}";
-const DB_CACHE_KEY = "{{DBCACHE}}";
+const DB_FILE_NAME = window.KARTABL_FILEXLSX;
+const DB_CACHE_KEY = window.KARTABL_DBCACHE;
 
 let dbWorkbook = null;      // SheetJS workbook currently loaded/edited in memory
 let dbFileName = null;      // actual file name found in the folder (defaults to DB_FILE_NAME)
@@ -3849,54 +3696,7 @@ function closeMsfPanel(){
   document.querySelectorAll(".msf-btn.open").forEach(b=>b.classList.remove("open"));
 }
 
-function renderMultiFilter(containerEl, values, filtersObj, key, onChange){
-  const unique = [...new Set(values.filter(v=>v!=null && v!==""))];
-  const selected = filtersObj[key] || [];
-  const label = selected.length===0 ? "همه" : (selected.length===1 ? selected[0] : `${fa(selected.length)} مورد`);
-  containerEl.innerHTML = `
-    <button type="button" class="msf-btn">
-      <span class="lbl">${escapeHtml(label)}</span>
-      ${selected.length>0 ? `<span class="msf-count">${fa(selected.length)}</span>` : ""}
-      <span class="arrow">▾</span>
-    </button>`;
-  const btn = containerEl.querySelector(".msf-btn");
-  btn.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    const panel = ensureMsfPanel();
-    const alreadyOpenForThis = panel.classList.contains("open") && panel.getAttribute("data-owner")===containerEl.id;
-    closeMsfPanel();
-    if(alreadyOpenForThis) return;
-    panel.setAttribute("data-owner", containerEl.id);
-    panel.innerHTML = unique.map(v=>`
-      <label class="msf-opt">
-        <input type="checkbox" value="${escapeHtml(v)}" ${selected.includes(v)?"checked":""}>
-        <span>${escapeHtml(v)}</span>
-      </label>`).join("") + (selected.length>0 ? `<div class="msf-clear">پاک‌کردن انتخاب</div>` : "");
-    panel.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-      cb.addEventListener("change", ()=>{
-        const vals = Array.from(panel.querySelectorAll('input[type="checkbox"]:checked')).map(c=>c.value);
-        filtersObj[key] = vals;
-        onChange();
-      });
-    });
-    const clearBtn = panel.querySelector(".msf-clear");
-    if(clearBtn) clearBtn.addEventListener("click", ()=>{
-      filtersObj[key] = [];
-      onChange();
-      closeMsfPanel();
-    });
-    const rect = btn.getBoundingClientRect();
-    panel.style.minWidth = rect.width+"px";
-    panel.classList.add("open");
-    btn.classList.add("open");
-    const panelRect = panel.getBoundingClientRect();
-    let top = rect.bottom + 4;
-    if(top + panelRect.height > window.innerHeight) top = Math.max(8, rect.top - panelRect.height - 4);
-    panel.style.top = top + "px";
-    panel.style.left = Math.max(8, rect.left) + "px";
-  });
-}
-
+{{PART:multifilter}}
 function updateEditableMode(section){
   const enabled = editMode[section];
   document.querySelectorAll(`[data-section="${section}"]`).forEach(td=>{
@@ -4591,87 +4391,7 @@ function setupNav(){
   });
 }
 
-function setupMeta(){
-  const btn = document.getElementById("monthBtn");
-  const pop = document.getElementById("monthPop");
-  if(!btn || !pop) return;
-  const list = document.getElementById("monthPopList");
-  const nameEl = document.getElementById("newMonthName");
-  const yearEl = document.getElementById("newMonthYear");
-  const okEl = document.getElementById("confirmNewMonthBtn");
-  const noteEl = document.getElementById("monthPopNote");
-  const xEl = document.getElementById("monthPopX");
-
-  const note = t=>{ if(noteEl) noteEl.textContent = t||""; };
-  const open = ()=>{
-    MP_EDIT = null;
-    renderMonthSelector();
-    pop.hidden = false; btn.classList.add("on"); note("");
-    if(nameEl) nameEl.value = "";
-    /* سالِ ماهِ جاری از قبل پُر است، چون ماهِ تازه تقریباً همیشه در
-       همان سال است و دوباره تایپ کردنش کارِ اضافه است. */
-    if(yearEl) yearEl.value = (state.meta && state.meta.year) || "";
-  };
-  const close = ()=>{ pop.hidden = true; btn.classList.remove("on"); MP_EDIT = null; note(""); };
-
-  btn.addEventListener("click", ()=>{ if(pop.hidden) open(); else close(); });
-  if(xEl) xEl.addEventListener("click", close);
-  /* زدن روی زمینهٔ تاریک یعنی «بستن» — ولی فقط خودِ زمینه، نه کارت */
-  pop.addEventListener("click", e=>{ if(e.target === pop) close(); });
-  document.addEventListener("keydown", e=>{ if(e.key === "Escape" && !pop.hidden) close(); });
-
-  const commitRename = (key, row)=>{
-    const n = row.querySelector(".me-n"), y = row.querySelector(".me-y");
-    if(!n || !y) return;
-    MP_EDIT = null;
-    if(!renameMonth(key, n.value, y.value)) MP_EDIT = key;
-    renderMonthSelector();
-  };
-
-  if(list){
-    list.addEventListener("click", e=>{
-      const go = e.target.closest("[data-go]");
-      if(go){
-        const parts = go.getAttribute("data-go").split("|");
-        switchToMonth(parts[1], parts[0]);
-        close();
-        return;
-      }
-      const ren = e.target.closest("[data-ren]");
-      if(ren){
-        MP_EDIT = ren.getAttribute("data-ren");
-        renderMonthSelector();
-        const el = list.querySelector(".me-n");
-        if(el){ el.focus(); el.select(); }
-        return;
-      }
-      if(e.target.closest("[data-cancel]")){ MP_EDIT = null; renderMonthSelector(); return; }
-      const ok = e.target.closest("[data-ok]");
-      if(ok) commitRename(ok.getAttribute("data-ok"), ok.closest(".mrow"));
-    });
-    /* Enter ثبت می‌کند و Escape بی‌خیال می‌شود — بدون اینکه Escape تا
-       خودِ پنجره بالا برود و ببنددش. */
-    list.addEventListener("keydown", e=>{
-      const row = e.target.closest(".mrow");
-      if(!row || !MP_EDIT) return;
-      if(e.key === "Enter"){ e.preventDefault(); commitRename(MP_EDIT, row); }
-      else if(e.key === "Escape"){ e.stopPropagation(); MP_EDIT = null; renderMonthSelector(); }
-    });
-  }
-
-  if(okEl) okEl.addEventListener("click", ()=>{
-    const name = (nameEl.value||"").trim(), year = (yearEl.value||"").trim();
-    if(!name || !year){ note("نام ماه و سال را کامل وارد کنید."); return; }
-    /* ماهی که از قبل هست دوباره ساخته نمی‌شود؛ فقط می‌رویم سراغش */
-    const carryEl = document.getElementById("newMonthCarry");
-    switchToMonth(name, year, { carryTasks: !carryEl || carryEl.checked });
-    close();
-  });
-  [nameEl, yearEl].forEach(el=> el && el.addEventListener("keydown", e=>{
-    if(e.key === "Enter"){ e.preventDefault(); okEl.click(); }
-  }));
-}
-
+{{PART:monthpopjs}}
 function setupToolbar(){
   document.getElementById("addTaskBtn").addEventListener("click", ()=>{
     state.tasks.push({category:CATEGORIES[0], task:"وظیفه جدید", owner:"", deadline:1,

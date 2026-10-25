@@ -401,6 +401,40 @@ export async function withParts(env, req, html) {
    نشانه سه‌تاست و عمدی: ۱۹۲ و ۵۱۲ برای خودِ اندروید، و یکی maskable
    که زمینهٔ سرمه‌ای دارد — گوشی‌هایی که نشانه را گرد یا شش‌ضلعی
    می‌بُرند، لبهٔ لوگو را نمی‌خورند. */
+/* مانیفستِ خودِ برنامه (نه یک کارتابلِ مشخص).
+   پوستهٔ اندروید (TWA) از روی یک مانیفست ساخته می‌شود، و تا امروز آن
+   مانیفست «/siamak/app.webmanifest» بود: scope‌اش «/siamak/» و
+   start_url‌اش هم همان. ولی برنامه از «/login» باز می‌شود — یعنی
+   بیرونِ scope. اندروید در آن حالت برنامه را «بیرونِ محدوده» می‌بیند و
+   نوارِ آدرس را بالای صفحه می‌گذارد؛ یعنی برای هر کسی جز صاحبِ همان
+   یک کارتابل، برنامه شبیهِ مرورگر می‌شد.
+
+   این مانیفست به هیچ کارتابلی بند نیست: از ورود شروع می‌شود و
+   محدوده‌اش کلِ دامنه است، پس هر کاربری بعد از ورود داخلِ برنامه
+   می‌ماند. */
+export function siteManifest() {
+  const icons = [
+    { src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-sl.3.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/app-icon-mask.1.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+  ];
+  return {
+    id: '/',
+    name: 'SLTech',
+    short_name: 'SLTech',
+    description: 'کارتابل ماهانه',
+    lang: 'fa', dir: 'rtl',
+    start_url: '/login', scope: '/',
+    display: 'standalone',
+    display_override: ['standalone', 'minimal-ui'],
+    orientation: 'any',
+    background_color: '#EEF2F6',
+    theme_color: '#EEF2F6',
+    categories: ['productivity', 'business'],
+    icons
+  };
+}
+
 export function appManifest(panel) {
   const base = panel.page || ('/' + panel.id + '/');
   const icons = [
@@ -445,6 +479,92 @@ export function appManifest(panel) {
 export const isDemo = panel =>
   !!(panel && (panel.demo === true || panel.slug === 'demo' || panel.id === 'demo'));
 
+/* ==================== بیرون بردنِ CSS از خودِ صفحه ====================
+   صفحهٔ کارتابل ۷۷۴ کیلوبایت است و ۱۷۹ کیلوبایتش CSS است که داخلِ خودِ
+   HTML نشسته. با ETag، بازدیدِ دومِ همان نسخه ۳۰۴ می‌گیرد و تقریباً
+   مجانی است — ولی هر استقرار همه‌اش را باطل می‌کند، و روی موبایل
+   یعنی هر بار از نو.
+
+   این CSS هیچ جایگاهِ سروری ندارد (نه {{SLUG}} نه چیزِ دیگر) و برای
+   همهٔ کارتابل‌های یک نوع عینِ هم است. پس یک بار ساخته می‌شود، نامش
+   از روی محتوایش می‌آید و یک سال در مرورگر می‌ماند؛ استقرارِ بعدی
+   اگر CSS را دست نزده باشد، همان فایل را دوباره نمی‌فرستد.
+
+   «<style» داخلِ رشته‌های جاوااسکریپت هم هست (سندِ چاپ خودش یکی
+   می‌سازد). آن‌ها نباید برداشته شوند، پس اول ناحیه‌های <script> در
+   می‌آیند و هر بلوکی که داخلشان باشد دست‌نخورده می‌ماند. */
+export const CSS_BLOBS = new Map();
+export const JS_BLOBS = new Map();
+
+async function sha8(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].slice(0, 5)
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* قاعده‌ای که خودش جلوی خطا را می‌گیرد: هر بلوکی که هنوز جایگاهِ
+   سروری دارد ({{...}}) سرِ جای خودش می‌ماند، چون متنش برای هر کارتابل
+   فرق می‌کند. بقیه بیرون می‌روند. یعنی اگر فردا کسی جایگاهِ تازه‌ای
+   داخلِ بدنهٔ اصلی بگذارد، آن بدنه خودبه‌خود دوباره درون‌خطی می‌شود و
+   چیزی خراب نمی‌شود — فقط صفحه بزرگ‌تر. */
+const hasPlaceholder = t => /\{\{[A-Z][A-Z0-9_]*\}\}/.test(t);
+
+async function lift(html, kind, tag, ext, store, makeRef) {
+  /* «<style» و «<script» داخلِ رشته‌های جاوااسکریپت هم هست (سندِ چاپ
+     خودش یکی می‌سازد). آن‌ها نباید برداشته شوند، پس ناحیه‌های اسکریپت
+     در می‌آیند و بلوک‌های داخلشان کنار گذاشته می‌شوند. */
+  const skip = [];
+  if (tag === 'style')
+    for (const m of html.matchAll(/<script[\s\S]*?<\/script>/g))
+      skip.push([m.index, m.index + m[0].length]);
+
+  const re = new RegExp('<' + tag + '(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'g');
+  const picked = [];
+  for (const m of html.matchAll(re)) {
+    if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
+    if (hasPlaceholder(m[0])) continue;
+    picked.push(m);
+  }
+  if (!picked.length) return html;
+
+  /* بینِ دو تکه جاوااسکریپت یک «;» لازم است تا اگر تکهٔ اول بی‌نقطه‌ویرگول
+     تمام شده باشد، به تکهٔ بعدی نچسبد. CSS چنین چیزی نمی‌خواهد. */
+  const body = picked.map(m => m[1]).join(tag === 'style' ? '\n' : '\n;\n');
+  const name = `k-${kind}-${await sha8(body)}.${ext}`;
+  store.set(name, body);
+
+  /* اولی جایش ارجاع می‌گیرد و بقیه برداشته می‌شوند. ترتیبِ خودِ متن
+     نگه داشته شده، پس هم آبشارِ CSS و هم ترتیبِ اجرای اسکریپت همان
+     است که بود. */
+  let out = '', last = 0;
+  picked.forEach((m, i) => {
+    out += html.slice(last, m.index);
+    if (i === 0) out += makeRef(name);
+    last = m.index + m[0].length;
+  });
+  return out + html.slice(last);
+}
+
+/* ==================== بیرون بردنِ CSS و JS از خودِ صفحه ====================
+   صفحهٔ کارتابل حدودِ ۷۷۰ کیلوبایت بود و فقط ۴۵ کیلوبایتش خودِ HTML؛
+   بقیه CSS و جاوااسکریپتی بود که داخلِ همان صفحه نشسته بود. با ETag،
+   بازدیدِ دومِ همان نسخه ۳۰۴ می‌گرفت و تقریباً مجانی بود — ولی هر
+   استقرار همه‌اش را باطل می‌کرد، و روی موبایل یعنی هر بار از نو.
+
+   حالا نامِ هر فایل از روی محتوایش ساخته می‌شود و یک سال در مرورگر
+   می‌ماند. استقراری که CSS را دست نزده باشد، همان فایل را دوباره
+   نمی‌فرستد؛ و استقراری که دست زده باشد، نامِ تازه می‌دهد و مرورگر
+   خودش می‌فهمد. */
+async function liftAssets(html, kind) {
+  html = await lift(html, kind, 'style', 'css', CSS_BLOBS,
+    n => `<link rel="stylesheet" href="/_a/${n}">`);
+  /* defer تا ترتیب حفظ شود و اجرا بعد از ساخته شدنِ صفحه باشد —
+     همان‌جایی که اسکریپتِ درون‌خطیِ تهِ صفحه اجرا می‌شد. */
+  html = await lift(html, kind, 'script', 'js', JS_BLOBS,
+    n => `<script src="/_a/${n}" defer></script>`);
+  return html;
+}
+
 export async function renderPanelPage(env, req, panel) {
   /* پسوندِ .tpl عمدی است: با .html تنظیمِ auto-trailing-slash آدرس را
      ریدایرکت می‌کرد و خواندنش از داخلِ ورکر ۳۰۷ می‌گرفت. */
@@ -459,6 +579,7 @@ export async function renderPanelPage(env, req, panel) {
     }
     html = await withParts(env, req, raw);
     if (html === null) return null;
+    html = await liftAssets(html, panel.kind || 'gen');
     TPL_CACHE.set(file, html);
   }
   /* <!--IT-->…<!--/IT--> فقط برای کارتابلِ IT می‌ماند و <!--GEN-->…<!--/GEN-->

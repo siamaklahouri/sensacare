@@ -298,7 +298,10 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 .jobs{ display:grid; gap:9px; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
 .job{ display:flex; align-items:center; gap:10px; background:var(--white);
   border:1px solid var(--line); border-radius:var(--r); padding:12px 14px;
-  transition:border-color .15s, box-shadow .15s; }
+  transition:border-color .15s, box-shadow .15s;
+  /* کاشی حالا لینکِ صفحهٔ همان شغل است، نه یک div؛ ولی باید دقیقاً
+     مثلِ قبل دیده شود. */
+  color:inherit; text-decoration:none; }
 .job:hover{ border-color:color-mix(in srgb, var(--tone, var(--brand)) 45%, var(--line));
   box-shadow:var(--sh-1); }
 .job .n{ font-weight:600; font-size:14px; flex:1; min-width:0; }
@@ -800,30 +803,15 @@ html.anim details[open] summary::after{
 
   <section id="jobs">
     <div class="sec-head">
-      <h2>چک‌لیستِ آمادهٔ شانزده شغل</h2>
+      <h2>چک‌لیستِ آمادهٔ {{JOBCOUNT}} شغل</h2>
       <p>با انتخابِ شغل، کارتابل از روزِ اول پر است — نه یک جدولِ خالی. هر وظیفه دسته و
          مسئول و روزِ مهلت دارد، و همه‌شان از همان لحظه قابل ویرایش‌اند.</p>
     </div>
     <div class="jobs">
-      <div class="job"><span class="e">👥</span><span class="n">منابع انسانی</span><span class="c">۱۵ وظیفه</span></div>
-      <div class="job"><span class="e">📈</span><span class="n">فروش و بازاریابی</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">🧾</span><span class="n">حسابداری</span><span class="c">۱۵ وظیفه</span></div>
-      <div class="job"><span class="e">🛠️</span><span class="n">پشتیبانی فنی و هلپ‌دسک</span><span class="c">۱۳ وظیفه</span></div>
-      <div class="job"><span class="e">🏢</span><span class="n">مدیرعامل و مدیریت کلان</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">📦</span><span class="n">انبار و تدارکات</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">📋</span><span class="n">مدیریت پروژه</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">🏭</span><span class="n">تولید و کارخانه</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">📣</span><span class="n">بازاریابی دیجیتال و محتوا</span><span class="c">۱۴ وظیفه</span></div>
-      <div class="job"><span class="e">🔬</span><span class="n">کنترل کیفیت</span><span class="c">۱۳ وظیفه</span></div>
-      <div class="job"><span class="e">🩺</span><span class="n">مطب و کلینیک</span><span class="c">۱۳ وظیفه</span></div>
-      <div class="job"><span class="e">🚚</span><span class="n">حمل‌ونقل و توزیع</span><span class="c">۱۲ وظیفه</span></div>
-      <div class="job"><span class="e">🌍</span><span class="n">خرید خارجی و ترخیص</span><span class="c">۱۲ وظیفه</span></div>
-      <div class="job"><span class="e">🛒</span><span class="n">فروشگاه و خرده‌فروشی</span><span class="c">۱۲ وظیفه</span></div>
-      <div class="job"><span class="e">⚖️</span><span class="n">حقوقی و قراردادها</span><span class="c">۱۲ وظیفه</span></div>
-      <div class="job"><span class="e">🗂️</span><span class="n">امور اداری و دفتری</span><span class="c">۱۲ وظیفه</span></div>
+      {{JOBTILES}}
     </div>
     <p style="color:var(--ink-faint); font-size:13px; margin-top:14px;">
-      شغلتان این‌جا نیست؟ کارتابلِ خالی هم هست — خودتان دسته‌ها و کارها را می‌نویسید.
+      روی هر کدام بزنید، کلِ چک‌لیستش را می‌بینید. شغلتان این‌جا نیست؟ کارتابلِ خالی هم هست — خودتان دسته‌ها و کارها را می‌نویسید.
       یا بگویید چه کاری می‌کنید تا چک‌لیستش را برایتان بسازیم.
     </p>
   </section>
