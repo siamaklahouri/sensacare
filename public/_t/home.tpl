@@ -659,7 +659,7 @@ html.anim details[open] summary::after{
     <a href="#why">چرا؟</a>
     <a href="#kinds">انواع</a>
     <a href="#jobs">شغل‌ها</a>
-    <a href="/demo/">دمو</a>
+    <a href="/demo/" class="demoLink" {{DEMOHIDE}}>دمو</a>
     <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
     <a href="#how">شروع</a>
     <a href="#app">روی گوشی</a>
@@ -683,7 +683,7 @@ html.anim details[open] summary::after{
       <a class="btn btn-main" href="#jobs">شغل‌ها را ببینم</a>
       <!-- دیدن از خواندن بهتر است: کارتابلِ نمایشی بی‌رمز باز می‌شود و
            هرچه در آن بنویسند روی سرور نمی‌نشیند. -->
-      <a class="btn btn-demo" href="/demo/">کارتابل را همین حالا ببینم</a>
+      <a class="btn btn-demo demoLink" href="/demo/" {{DEMOHIDE}}>کارتابل را همین حالا ببینم</a>
       <a class="btn buyLink" href="#buy" hidden>پلن‌ها و قیمت</a>
       <a class="btn" href="#how">چطور شروع کنم؟</a>
       <!-- فایلِ نصبِ اندروید. «download» لازم است، وگرنه بعضی مرورگرها

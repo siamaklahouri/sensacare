@@ -37,17 +37,6 @@ function siteOf(env, host) {
   return 'both';
 }
 
-/* ۳۰۱ به همان مسیر روی دامنهٔ دیگر. اگر آن دامنه تنظیم نشده باشد
-   جابه‌جایی انجام نمی‌شود و درخواست مسیرِ عادی‌اش را می‌رود — یعنی
-   نبودنِ یک متغیر سایت را از کار نمی‌اندازد. */
-function toHost(host, url) {
-  if (!host) return null;
-  const next = new URL(url);
-  next.host = host;
-  next.protocol = 'https:';
-  return Response.redirect(next.toString(), 301);
-}
-
 /* دامنهٔ خودِ همین سایت. پیش از این هر جا آدرسِ مطلق لازم بود
    PUBLIC_HOST نوشته می‌شد — یعنی درخواستی که به sltech.ir آمده بود
    آدرسِ sensacare.ir می‌گرفت: robots و sitemap دامنهٔ آن یکی را
@@ -60,6 +49,35 @@ function siteBase(env, url, site) {
              : site === 'shop' ? env.PUBLIC_HOST
              : '';
   return host ? `https://${host}` : `${url.protocol}//${url.host}`;
+}
+
+/* ۴۰۴ِ خودِ دامنهٔ پنل. پیش از این هر آدرسِ ناموجود روی sltech.ir
+   صفحهٔ فروشگاه را نشان می‌داد — یعنی بازدیدکنندهٔ پنل یک‌دفعه وسطِ
+   سِنسا می‌افتاد. این دو سایت هیچ‌جا نباید به هم برسند، پس این‌جا
+   صفحهٔ سادهٔ خودِ پنل می‌آید با یک راهِ برگشت به خانهٔ همین سایت. */
+function panelNotFoundPage() {
+  return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow"><title>صفحه پیدا نشد</title>
+<style>
+ body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+   background:#EEF2F6;color:#0B2545;font-family:Vazirmatn,Tahoma,Arial,sans-serif;padding:20px}
+ @media (prefers-color-scheme:dark){body{background:#0D1620;color:#E6EDF3}
+   .c{background:#131F2B!important;border-color:#22303E!important}}
+ .c{background:#fff;border:1px solid #DCE3E9;border-radius:14px;padding:30px 26px;
+   max-width:400px;text-align:center;box-shadow:0 6px 18px rgba(11,37,69,.06)}
+ h1{font-size:17px;margin:0 0 10px} p{font-size:13px;line-height:2.1;margin:0 0 18px;color:#3E5164}
+ @media (prefers-color-scheme:dark){p{color:#A9B7C6}}
+ .i{font-size:34px;margin-bottom:10px}
+ a{display:inline-block;background:#0B2545;color:#fff;text-decoration:none;
+   border-radius:10px;padding:9px 20px;font-size:13px}
+ @media (prefers-color-scheme:dark){a{background:#2B7FFF}}
+</style></head><body><div class="c">
+<div class="i">🔍</div>
+<h1>این صفحه پیدا نشد</h1>
+<p>نشانی را اشتباه زده‌اید یا این صفحه دیگر نیست.</p>
+<a href="/">خانهٔ اس‌ال‌تک</a>
+</div></body></html>`;
 }
 
 /* صفحه‌ای که به‌جای کارتابلِ غیرفعال نشان داده می‌شود. عمداً ساده و
@@ -1774,9 +1792,16 @@ export default {
        این مسیر را به این‌جا می‌رساند. */
     if (site === 'panel' && m === 'GET' && (p === '/' || p === '/index.html')) {
       const res = await env.ASSETS.fetch(assetReq(req, '/_t/home.tpl'));
-      if (res.ok) return withSecurity(new Response(await res.text(), { headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=300' } }));
+      if (res.ok) {
+        /* دکمهٔ «کارتابل را همین حالا ببینم» تا وقتی کارتابلِ نمایشی
+           ساخته نشده باشد نباید دیده شود: آدرسش ۴۰۴ می‌داد و بازدیدکننده
+           به‌جای دمو، صفحهٔ خطا می‌دید. */
+        const hasDemo = env.DB ? !!(await panelBySlug(env, 'demo').catch(() => null)) : false;
+        const html = (await res.text()).split('{{DEMOHIDE}}').join(hasDemo ? '' : 'hidden');
+        return withSecurity(new Response(html, { headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=300' } }));
+      }
       /* اگر قالب نیامد، دستِ‌کم کاربر را به صفحهٔ ورود برسان */
       return Response.redirect(new URL(ADMIN_PAGE, req.url).toString(), 302);
     }
@@ -2015,22 +2040,20 @@ export default {
     /* ---------------- صفحهٔ پنل ادمین ----------------
        با و بی اسلشِ آخر، هر دو. آدرسش نقطه دارد تا با هیچ کارتابلی
        اشتباه نشود و هیچ‌وقت هم در فهرستِ گوگل نمی‌رود. */
-    /* نشانیِ قبلیِ همین صفحه — هرجا که باشد، به «/login» می‌رود. */
-    if ((p === ADMIN_PAGE_OLD || p === ADMIN_PAGE_OLD + '/') && req.method === 'GET') {
+    /* نشانیِ قبلیِ همین صفحه — روی دامنهٔ پنل به «/login» می‌رود.
+       روی دامنهٔ فروشگاه هیچ‌کاری نمی‌کند: ورودِ پنل آن‌جا وجود ندارد و
+       نباید کسی را به دامنهٔ دیگر ببرد. */
+    if ((p === ADMIN_PAGE_OLD || p === ADMIN_PAGE_OLD + '/') && req.method === 'GET'
+        && site !== 'shop') {
       const next = new URL(req.url);
       next.pathname = ADMIN_PAGE;
-      if (site === 'shop' && env.PANEL_HOST) {
-        next.host = env.PANEL_HOST;
-        next.protocol = 'https:';
-      }
       return Response.redirect(next.toString(), 301);
     }
 
-    if ((p === ADMIN_PAGE || p === ADMIN_PAGE + '/') && req.method === 'GET') {
-      if (site === 'shop') {
-        const r = toHost(env.PANEL_HOST, req.url);
-        if (r) return r;
-      }
+    /* ورودِ پنل فقط روی دامنهٔ پنل. پیش از این روی دامنهٔ فروشگاه ۳۰۱
+       می‌خورد به sltech.ir — یک پرشِ بین دو سایت که نباید باشد. */
+    if ((p === ADMIN_PAGE || p === ADMIN_PAGE + '/') && req.method === 'GET'
+        && site !== 'shop') {
       const res = await env.ASSETS.fetch(assetReq(req, '/_t/admin.tpl'));
       /* پنلِ مدیریت هم از همان پاره‌قالب‌ها استفاده می‌کند — فعلاً فقط
          ارقامِ فارسی — پس مثلِ صفحهٔ کارتابل از withParts رد می‌شود. */
@@ -2068,14 +2091,11 @@ export default {
       const slug = p.replace(/^\/+|\/+$/g, '');
       if (slug && !slug.includes('/') && env.DB) {
         const panel = await panelBySlug(env, slug).catch(() => null);
-        if (panel) {
-          /* نشانیِ قبلیِ کارتابل روی دامنهٔ فروشگاه هنوز در مرورگرها و
-             پیام‌ها هست؛ با ۳۰۱ به دامنهٔ تازه می‌رود تا کسی به دیوار
-             نخورد. */
-          if (site === 'shop') {
-            const r = toHost(env.PANEL_HOST, req.url);
-            if (r) return r;
-          }
+        /* فقط روی دامنهٔ پنل. تا پیش از این، همین نشانی روی دامنهٔ
+           فروشگاه با ۳۰۱ به sltech.ir می‌رفت؛ حالا نمی‌رود — این دو
+           سایت از هیچ مسیری به هم وصل نمی‌شوند. روی فروشگاه این آدرس
+           مثل هر نشانیِ ناموجودِ دیگرِ فروشگاه رفتار می‌کند. */
+        if (panel && site !== 'shop') {
           /* بدون اسلشِ آخر، آدرس‌های نسبی داخل صفحه یک پله بالاتر می‌افتند */
           if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
           /* غیرفعال: داده سرِ جایش است، ولی در باز نمی‌شود. یک صفحهٔ
@@ -2119,12 +2139,24 @@ export default {
         'فایل‌های سایت به ورکر وصل نشده‌اند (ASSETS). خط assets در wrangler.toml ' +
         'باید بالاتر از همهٔ [بخش]ها باشد، وگرنه داخل بخش قبلی حساب می‌شود.',
         { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+      /* روی دامنهٔ پنل حتی یک قلم از فروشگاه هم نباید سرو شود. تنها
+         فایل‌های ثابتِ مشترک (نشان، فونت، اسکریپت، آیکن) اجازه دارند؛
+         هر مسیرِ صفحه‌مانندی که به این‌جا رسیده یعنی وجود ندارد. */
+      if (site === 'panel' && !/\.[a-z0-9]{2,5}$/i.test(p))
+        return withSecurity(new Response(panelNotFoundPage(), { status: 404,
+          headers: { 'Content-Type': 'text/html; charset=utf-8',
+                     'X-Robots-Tag': 'noindex, nofollow' } }));
       try {
         const res = withSecurity(await env.ASSETS.fetch(req));
         /* آدرس اشتباه یا لینک خراب، صفحهٔ سفید کلادفلر را نشان می‌داد.
            به‌جایش خودِ فروشگاه باز می‌شود تا بازدیدکننده گم نشود — ولی
-           با کد ۴۰۴، تا گوگل آن را صفحهٔ واقعی حساب نکند. */
+           با کد ۴۰۴، تا گوگل آن را صفحهٔ واقعی حساب نکند. روی دامنهٔ
+           پنل این اتفاق نمی‌افتد (شرطِ بالا)، چون صفحهٔ آن یکی سایت
+           است. */
         if (res.status === 404 && req.method === 'GET' && !/\.[a-z0-9]{2,5}$/i.test(p)) {
+          if (site === 'panel') return withSecurity(new Response(panelNotFoundPage(),
+            { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8',
+                                      'X-Robots-Tag': 'noindex, nofollow' } }));
           const home = await env.ASSETS.fetch(assetReq(req, '/'));
           if (home.ok) return withSecurity(new Response(await home.text(), { status: 404,
             headers: { 'Content-Type': 'text/html; charset=utf-8' } }));

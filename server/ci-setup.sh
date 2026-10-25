@@ -22,6 +22,7 @@ ADMIN_USER=admin
 ADMIN_PASS=adminadminadmin
 JWT_SECRET=testsecrettestsecrettestsecret12
 PANEL_HOST=sltech.ir
+SHOP_HOST=sensacare.ir
 PUSH_OFF=1
 BALE_BASE=http://127.0.0.1:8913
 EOT
