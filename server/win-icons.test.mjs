@@ -11,6 +11,7 @@
    این آزمون صفحه را بی هیچ قلمی بار می‌کند: هر چیزی که با قلم کشیده
    می‌شد ناپدید می‌شود و فقط آنچه واقعاً مستقل است می‌ماند. */
 import { launch } from './pw.mjs';
+import { ADMIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const RISKY = ['\u{1F5C2}', '⏸', '⧉', '⌄', '\u{1F5C4}'];
@@ -19,7 +20,7 @@ const b = await launch();
 /* ---------- پنل ادمین ---------- */
 const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
-await p.goto('http://127.0.0.1:8892/', { waitUntil: 'networkidle' });
+await p.goto(ADMIN, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1200);
 await p.evaluate(() => {
   const g = document.getElementById('gate'); if (g) { g.hidden = true; g.innerHTML = ''; }
@@ -63,13 +64,13 @@ await p.close();
 
 /* ---------- پیکانِ خانه‌های بلند در کارتابل‌ها ---------- */
 const LONG = 'این یک موضوعِ بسیار بلند است که در هیچ خانه‌ای جا نمی‌شود و باید بریده شود و پیکان بگیرد';
-for (const [tag, port, view, fields] of [
-  ['IT', 8894, 'servers', [['newServerName', 'سرورِ آزمون'], ['newServerLocation', LONG]]]
+for (const [tag, url, view, fields] of [
+  ['IT', IT, 'servers', [['newServerName', 'سرورِ آزمون'], ['newServerLocation', LONG]]]
 ]) {
   const q = await b.newPage({ viewport: { width: 1440, height: 950 } });
   const e2 = []; q.on('pageerror', e => e2.push(String(e).slice(0, 180)));
   q.on('dialog', d => d.accept());
-  await q.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await q.goto(url, { waitUntil: 'networkidle' });
   await q.waitForTimeout(1500);
   await q.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await q.waitForTimeout(300);

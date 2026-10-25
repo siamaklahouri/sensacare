@@ -1,6 +1,7 @@
 /* تقویمِ شمسی کنارِ خانه‌های تاریخ. نشانه یک ::after است، پس زدنش یعنی
    کلیک روی نوارِ باریکِ لبهٔ خانه — همان کاری که کاربر می‌کند. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 const OUT = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -31,11 +32,11 @@ const pickDay = async (p, fa) => {
     .find(x => x.textContent === d).click(), fa);
   await p.waitForTimeout(600);
 };
-async function open(port) {
+async function open(url) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
   p.__errs = []; p.on('pageerror', e => p.__errs.push(String(e).slice(0, 200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   return p;
@@ -44,7 +45,7 @@ async function open(port) {
 /* ---------- تبدیل ---------- */
 console.log('— درستیِ تبدیل —');
 {
-  const p = await open(8894);
+  const p = await open(IT);
   const r = await p.evaluate(() => ({
     fa: DatePick.parse('۱۴۰۴/۰۷/۰۹'), dash: DatePick.parse('1404-7-9'),
     junk: DatePick.parse('سلام'), fmt: DatePick.fmt(1404, 7, 9), today: DatePick.today()
@@ -65,7 +66,7 @@ console.log('— درستیِ تبدیل —');
 /* ---------- کارتابل IT ---------- */
 console.log('— کارتابل IT —');
 {
-  const p = await open(8894);
+  const p = await open(IT);
   await p.evaluate(() => {
     companiesData = { companies: { 'شرکت نمونه': [
       { dateStr: '۱۴۰۴/۰۶/۰۲', time: '۲ ساعت', type: 'Person' }] } };
@@ -156,7 +157,7 @@ console.log('— کارتابل IT —');
 /* ---------- کارتابل مالی ---------- */
 console.log('— کارتابل مالی —');
 {
-  const p = await open(8893);
+  const p = await open(FIN);
   await p.evaluate(() => {
     invoicesData = [{ invoiceNo:'۱۰۰۱', customer:'شرکت الف', date:'۱۴۰۴/۰۶/۰۱',
                       dueDate:'۱۴۰۴/۰۷/۰۱', amount:5000000, paid:0, status:'باز', enteredBy:'' }];

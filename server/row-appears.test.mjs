@@ -2,6 +2,7 @@
    نمی‌شینه». این آزمون دقیقاً همان را می‌سنجد: بعد از افزودن، بی‌آنکه
    جایی برویم، ردیف باید همان لحظه روی صفحه باشد. */
 import { launch } from './pw.mjs';
+import { IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
@@ -12,7 +13,7 @@ p.on('dialog', d => d.accept());
    تازه وارد شده و هنوز سراغ اکسل نرفته. */
 await p.route('**/v/xlsx.full.min.js', r => r.abort());
 await p.route('**cdnjs**', r => r.abort());
-await p.goto('http://127.0.0.1:8894/', { waitUntil: 'networkidle' });
+await p.goto(IT, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1500);
 await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
 t(await p.evaluate(() => typeof XLSX === 'undefined'), 'کتابخانهٔ اکسل بار نشده (همان حالتِ کاربر)');

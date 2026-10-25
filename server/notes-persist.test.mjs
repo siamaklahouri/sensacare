@@ -5,6 +5,7 @@
    این آزمون همان راهِ کاربر را می‌رود: ردیف بساز، صفحه را از نو بار
    کن، و ببین هست یا نه. */
 import { launch } from './pw.mjs';
+import { FIN } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
@@ -16,7 +17,7 @@ const gate = async () => {
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(300);
 };
-await p.goto('http://127.0.0.1:8893/', { waitUntil: 'networkidle' });
+await p.goto(FIN, { waitUntil: 'networkidle' });
 await gate();
 
 /* نشانه بی‌رقم است: صفحه رقم‌های لاتین را فارسی می‌کند و جست‌وجوی

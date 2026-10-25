@@ -9,23 +9,24 @@
      دو) متنِ کامل از راهِ پنجره در دسترس است،
      سه) و مهم‌تر از همه: نشانهٔ «⌄» وارد خودِ داده نمی‌شود. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const LONG = 'این یک موضوعِ بسیار بلند است که کاربر در خانهٔ موضوع می‌نویسد و شرح کاملی از بابتِ چک و قرارداد و توافقِ طرفین را در خود دارد و هیچ جوره در یک خط جا نمی‌شود';
 const b = await launch();
 
-for (const [tag, port, view, fields, store] of [
-  ['مالی', 8893, 'payablenotes',
+for (const [tag, url, view, fields, store] of [
+  ['مالی', FIN, 'payablenotes',
     [['newPayableNoteCheckNo', 'چکِ آزمون'], ['newPayableNoteBeneficiary', 'گیرنده'], ['newPayableNoteSubject', LONG]],
     () => payableNotesData],
-  ['IT', 8894, 'servers',
+  ['IT', IT, 'servers',
     [['newServerName', 'سرورِ آزمون'], ['newServerLocation', LONG]],
     () => (backupData && backupData.vm) || []]
 ]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(300);

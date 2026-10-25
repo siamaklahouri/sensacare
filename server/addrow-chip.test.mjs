@@ -10,20 +10,21 @@
    در ردیفِ افزودن اصلاً به این پیکان نیازی نیست: آن‌جا جای نوشتن است،
    نه خواندنِ یک متنِ بلندِ ذخیره‌شده. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 
 const LONG = 'یادداشتِ بسیار بلندی که در هیچ خانهٔ باریکی جا نمی‌شود و باید از قابش بیرون بزند';
 
-for (const [tag, port, view, ids] of [
-  ['IT', 8894, 'mvpn', ['newMvpnPhone', 'newMvpnOwner']],
-  ['مالی', 8893, 'parties', null]
+for (const [tag, url, view, ids] of [
+  ['IT', IT, 'mvpn', ['newMvpnPhone', 'newMvpnOwner']],
+  ['مالی', FIN, 'parties', null]
 ]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(300);

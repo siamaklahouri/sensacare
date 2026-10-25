@@ -1,5 +1,9 @@
 import { launch } from './pw.mjs';
-const DIR = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
+import { FIN } from './where.mjs';
+/* فایل‌های نمونه سرِ هر اجرا ساخته می‌شوند، نه از یک پوشهٔ بیرونی
+   خوانده. چرایش در fixtures.mjs. */
+import { makeXlsxFixtures } from './fixtures.mjs';
+const DIR = await makeXlsxFixtures();
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
@@ -7,7 +11,7 @@ async function open(){
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
   p.__errs = []; p.on('pageerror', e => p.__errs.push(String(e).slice(0,200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:8893/', { waitUntil: 'networkidle' });
+  await p.goto(FIN, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   return p;

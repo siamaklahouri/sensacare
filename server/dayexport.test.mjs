@@ -4,15 +4,16 @@
    نامِ فایل اَسکی بماند — کروم نامِ غیرِاَسکی را دور می‌ریزد و فایل
    با نامِ «download» و بی‌پسوند ذخیره می‌شود. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 
-for (const [tag, port] of [['IT', 8894], ['مالی', 8893]]) {
+for (const [tag, url] of [['IT', IT], ['مالی', FIN]]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1600);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(400);
@@ -23,9 +24,19 @@ for (const [tag, port] of [['IT', 8894], ['مالی', 8893]]) {
   const btns = await p.evaluate(() => [...document.querySelectorAll('#view-daily .day-ex button')].map(x => x.id));
   t(btns.includes('dayXlsxBtn') && btns.includes('dayPdfBtn'), 'هر دو دکمهٔ خروجی هست', btns.join('،'));
 
-  /* چند ردیف بنویسیم تا چیزی برای خروجی باشد */
+  /* چند ردیف بنویسیم تا چیزی برای خروجی باشد.
+     این فقط چاشنیِ کار است، نه خودِ آزمون: جدول از قبل ردیف دارد و
+     آنچه سنجیده می‌شود خروجی‌گرفتن است. در کارتابلِ مالی یکی از این
+     خانه‌ها زیرِ سرصفحهٔ چسبان می‌ماند و کلیک رویش سی ثانیه معطل
+     می‌شد — یعنی کلِ آزمون سرِ چیزی می‌افتاد که اصلاً ادعایش نبود.
+     پس اول به دید می‌آید و اگر باز هم نشد، از آن می‌گذریم. */
   const ins = await p.$$('#view-daily td.editable-text input');
-  for (let i = 0; i < Math.min(3, ins.length); i++) { await ins[i].click(); await ins[i].fill('کارِ آزمایشیِ ' + (i + 1)); }
+  for (let i = 0; i < Math.min(3, ins.length); i++) {
+    try {
+      await ins[i].scrollIntoViewIfNeeded({ timeout: 3000 });
+      await ins[i].fill('کارِ آزمایشیِ ' + (i + 1), { timeout: 3000 });
+    } catch (e) { /* پر نشد؛ ردیف‌های موجود کافی‌اند */ }
+  }
   await p.waitForTimeout(500);
 
   const d = await p.evaluate(() => window.dayExport.collect());

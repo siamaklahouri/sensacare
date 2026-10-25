@@ -1,5 +1,6 @@
 /* جابه‌جا کردنِ ردیف‌ها با کشیدن — فقط وقتی کلیدِ «حذف/تغییر» باز است. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const AB = 'الفبپتثجچحخدذرزژسشصضطظعغ';
@@ -24,14 +25,14 @@ const dragTo = (p, view, fromIdx, toIdx, after) => p.evaluate(({ x, f, to, af })
   return 'ok';
 }, { x: view, f: fromIdx, to: toIdx, af: after });
 
-for (const [tag, port, view, firstId, arrName] of [
-  ['IT', 8894, 'servers', 'newServerName', 'backupData.vm'],
-  ['مالی', 8893, 'parties', 'newPartyName', 'partiesData']
+for (const [tag, url, view, firstId, arrName] of [
+  ['IT', IT, 'servers', 'newServerName', 'backupData.vm'],
+  ['مالی', FIN, 'parties', 'newPartyName', 'partiesData']
 ]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1600);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(400);

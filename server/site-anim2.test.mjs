@@ -1,4 +1,5 @@
 import { launch } from './pw.mjs';
+import { HOME } from './where.mjs';
 const OUT = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -7,7 +8,7 @@ const b = await launch();
 
 const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
-await p.goto('http://127.0.0.1:8895/', { waitUntil: 'networkidle' });
+await p.goto(HOME, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1500);
 
 /* ---- نوارِ پیشرفت ---- */
@@ -71,7 +72,7 @@ t(d2.inside, 'و داخلِ نوار مانده');
 
 /* ---- شمردنِ عدد ---- */
 console.log('— شمردنِ عدد —');
-await p.goto('http://127.0.0.1:8895/', { waitUntil: 'networkidle' });
+await p.goto(HOME, { waitUntil: 'networkidle' });
 await p.waitForTimeout(900);
 const finals = await p.evaluate(() => [...document.querySelectorAll('#jobs .job .c')].map(x => x.textContent.trim()));
 await p.evaluate(() => document.getElementById('jobs').scrollIntoView());
@@ -104,7 +105,7 @@ t(await p.evaluate(() => Number(getComputedStyle(document.querySelector('#faq de
 
 /* ---- موجِ زیرِ کلمه ---- */
 console.log('— موجِ زیرِ کلمهٔ کلیدی —');
-await p.goto('http://127.0.0.1:8895/', { waitUntil: 'domcontentloaded' });
+await p.goto(HOME, { waitUntil: 'domcontentloaded' });
 await p.waitForTimeout(200);
 const sw0 = await p.evaluate(() => getComputedStyle(document.querySelector('.hero h1 .hl'), '::after').transform);
 await p.waitForTimeout(1600);
@@ -139,7 +140,7 @@ console.log('— حرکت را نمی‌خواهم —');
   const ctx = await b.newContext({ viewport: { width: 1280, height: 860 }, reducedMotion: 'reduce' });
   const q = await ctx.newPage();
   const e2 = []; q.on('pageerror', e => e2.push(String(e).slice(0, 120)));
-  await q.goto('http://127.0.0.1:8895/', { waitUntil: 'networkidle' });
+  await q.goto(HOME, { waitUntil: 'networkidle' });
   await q.waitForTimeout(700);
   await q.evaluate(() => scrollTo(0, document.documentElement.scrollHeight / 2));
   await q.waitForTimeout(400);

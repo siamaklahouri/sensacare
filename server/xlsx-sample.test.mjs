@@ -1,18 +1,23 @@
 /* نمونهٔ اکسل: دانلود می‌شود، و همان فایل با خواندنِ خودِ کارتابل
    برمی‌گردد — یعنی حلقه واقعاً بسته است، نه اینکه فقط فایلی ساخته شود. */
 import { launch } from './pw.mjs';
+/* مسیرِ ثابتِ یک کانتینرِ مشخص بود — یعنی روی هیچ ماشینِ دیگری
+   اجرا نمی‌شد. همان ایرادی که pw.mjs برای مرورگر حلش کرد. */
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { FIN, IT } from './where.mjs';
 import fs from 'node:fs';
-const DIR = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/dl/';
+const DIR = join(tmpdir(), 'kt-out') + '/';
 fs.rmSync(DIR, { recursive: true, force: true }); fs.mkdirSync(DIR, { recursive: true });
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 
-async function open(port) {
+async function open(url) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 }, acceptDownloads: true });
   p.__errs = []; p.on('pageerror', e => p.__errs.push(String(e).slice(0, 200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   return p;
@@ -31,7 +36,7 @@ async function grab(p, view, btn) {
 /* ---------- کارتابل IT ---------- */
 console.log('— کارتابل IT: دکمهٔ نمونه —');
 {
-  const p = await open(8894);
+  const p = await open(IT);
   const btns = await p.evaluate(() => ['sampleServersBtn','sampleMvpnBtn','sampleCompaniesBtn','sampleRemoteBtn']
     .map(id => id + '=' + (document.getElementById(id) ? 'هست' : 'نیست')));
   t(btns.every(x => /هست/.test(x)), 'کنارِ هر دکمهٔ خواندن، دکمهٔ نمونه هست', btns.join(' '));
@@ -65,7 +70,7 @@ console.log('— کارتابل IT: دکمهٔ نمونه —');
 /* ---------- کارتابل مالی ---------- */
 console.log('— کارتابل مالی: دکمهٔ نمونه —');
 {
-  const p = await open(8893);
+  const p = await open(FIN);
   const ids = ['samplePartiesBtn','sampleInvoicesBtn','samplePayablesBtn','samplePayableNotesBtn',
                'sampleReceivableNotesBtn','sampleExpensesBtn','sampleBankBtn','sampleBudgetBtn'];
   const have = await p.evaluate(list => list.filter(id => document.getElementById(id)).length, ids);

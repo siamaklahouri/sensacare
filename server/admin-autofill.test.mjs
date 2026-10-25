@@ -9,13 +9,14 @@
    این آزمون همان را نگه می‌دارد — نه خودِ کادر برگردد، نه بقایای
    سازوکارش، و فهرست بی‌آن درست کار کند. */
 import { launch } from './pw.mjs';
+import { ADMIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
 p.on('dialog', d => d.accept());
-await p.goto('http://127.0.0.1:8892/', { waitUntil: 'networkidle' });
+await p.goto(ADMIN, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1200);
 await p.evaluate(() => {
   const g = document.getElementById('gate'); if (g) { g.hidden = true; g.innerHTML = ''; }

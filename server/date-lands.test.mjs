@@ -10,13 +10,14 @@
    از تقویم انتخاب، و بعد دیدن اینکه تاریخ هم روی صفحه مانده هم در
    ردیفِ ساخته‌شده نشسته. */
 import { launch } from './pw.mjs';
+import { FIN } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
 p.on('dialog', d => d.accept());
-await p.goto('http://127.0.0.1:8893/', { waitUntil: 'networkidle' });
+await p.goto(FIN, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1600);
 await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
 await p.waitForTimeout(400);

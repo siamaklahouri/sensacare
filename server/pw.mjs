@@ -30,9 +30,16 @@ function exe() {
   return existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined;
 }
 
+/* سرور از روی نامِ میزبان تصمیم می‌گیرد کدام سایت را بدهد، پس
+   آزمونی که صفحهٔ خانهٔ sltech را می‌خواهد باید خودِ نام را صدا بزند
+   نه 127.0.0.1 — وگرنه صفحهٔ فروشگاه می‌آید. این قاعده همان نام‌ها را
+   به سرورِ محلی برمی‌گرداند، بی‌آنکه چیزی به /etc/hosts اضافه شود. */
+const HOSTMAP = 'MAP sltech.ir 127.0.0.1, MAP sensacare.ir 127.0.0.1';
+
 export function launch(opts) {
   const o = Object.assign({}, opts || {});
   const path = exe();
   if (path && !o.executablePath) o.executablePath = path;
+  o.args = (o.args || []).concat(['--host-resolver-rules=' + HOSTMAP]);
   return chromium.launch(o);
 }

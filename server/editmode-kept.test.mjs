@@ -4,19 +4,20 @@
    پس کاربر کلید را می‌زد، یک ردیف می‌افزود، و از آن به بعد هیچ خانه‌ای
    را نمی‌توانست ویرایش کند — بی‌آنکه چیزی به او بگوید. */
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 
-for (const [tag, port, view, addId, addVal] of [
-  ['IT', 8894, 'servers', 'newServerName', 'سرورِ آزمون'],
-  ['IT', 8894, 'mvpn', 'newMvpnPhone', '09120009999'],
-  ['مالی', 8893, 'parties', 'newPartyName', 'طرفِ آزمون']
+for (const [tag, url, view, addId, addVal] of [
+  ['IT', IT, 'servers', 'newServerName', 'سرورِ آزمون'],
+  ['IT', IT, 'mvpn', 'newMvpnPhone', '09120009999'],
+  ['مالی', FIN, 'parties', 'newPartyName', 'طرفِ آزمون']
 ]) {
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 200)));
   p.on('dialog', d => d.accept());
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(300);

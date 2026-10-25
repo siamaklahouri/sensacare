@@ -1,15 +1,52 @@
 import { launch } from './pw.mjs';
-const OUT = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
+/* مسیرِ ثابتِ یک کانتینرِ مشخص بود — یعنی روی هیچ ماشینِ دیگری
+   اجرا نمی‌شد. همان ایرادی که pw.mjs برای مرورگر حلش کرد. */
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import { HOME, panelHtml } from './where.mjs';
+const OUT = join(tmpdir(), 'kt-shots') + '/';
+/* عکسِ صفحه جایی باید بنشیند؛ پیش از این پوشه از قبل بود و ساخته
+   نمی‌شد — روی ماشینِ تازه همان‌جا می‌افتاد. */
+mkdirSync(OUT, { recursive: true });
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
+
+/* پلن‌ها با جاوااسکریپت و بعد از بارگذاری ساخته می‌شوند، و آزمون
+   می‌خواهد ببیند ناظرِ حرکت همان‌ها را هم می‌گیرد. روی هارنسِ تازه هیچ
+   پلنی تنظیم نشده، پس بخش خالی می‌ماند و آزمون روی هیچ می‌افتاد — نه
+   چون چیزی خراب است. این‌جا خودش دو پلن می‌گذارد تا چیزی برای دیدن
+   باشد. */
+{
+  const BASE = (process.env.VS_BASE || 'http://127.0.0.1:8911');
+  let ck = '';
+  const call = async (path, opt) => {
+    const o = Object.assign({ headers: {} }, opt || {});
+    o.headers = Object.assign({ 'Content-Type': 'application/json' }, o.headers,
+      ck ? { cookie: ck } : {});
+    const r = await fetch(BASE + path, o);
+    for (const c of (r.headers.getSetCookie ? r.headers.getSetCookie() : [])) {
+      const kv = c.split(';')[0], k = kv.split('=')[0];
+      ck = ck.split('; ').filter(x => x && x.split('=')[0] !== k).concat([kv]).join('; ');
+    }
+    return r.status;
+  };
+  await call('/api/admin.planer/signin', { method: 'POST', body: JSON.stringify({
+    user: process.env.VS_ADMIN || 'admin',
+    password: process.env.VS_ADMIN_PASS || 'adminadminadmin' }) });
+  await call('/api/admin.planer/site', { method: 'PUT', body: JSON.stringify({ plans: [
+    { name: 'یک‌ماهه', price: 450000, days: 30, tier: 'personal' },
+    { name: 'یک‌ساله', price: 4200000, days: 365, tier: 'personal' }
+  ] }) });
+}
 
 /* ---------- ۱) با حرکت ---------- */
 console.log('— صفحه با حرکت —');
 {
   const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
   const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
-  await p.goto('http://127.0.0.1:8895/', { waitUntil: 'domcontentloaded' });
+  await p.goto(HOME, { waitUntil: 'domcontentloaded' });
   t(await p.evaluate(() => document.documentElement.classList.contains('anim')), 'حالتِ حرکت روشن است');
 
   // سربرگ: همان اول باید نیمه‌راه باشد، نه سرِ جای آخر
@@ -104,7 +141,7 @@ console.log('— حرکت را نخواسته —');
 {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 860 }, reducedMotion: 'reduce' });
   const p = await ctx.newPage();
-  await p.goto('http://127.0.0.1:8895/', { waitUntil: 'networkidle' });
+  await p.goto(HOME, { waitUntil: 'networkidle' });
   await p.waitForTimeout(800);
   t(!(await p.evaluate(() => document.documentElement.classList.contains('anim'))),
     'اصلاً روشن نمی‌شود');
@@ -123,8 +160,7 @@ console.log('— نگهبان —');
   // اسکریپتِ پایینِ صفحه را می‌شکنیم تا فقط head اجرا شود
   let patched = false;
   await p.route('**/', async route => {
-    const r = await route.fetch();
-    let body = await r.text();
+    let body = await panelHtml('/');
     /* باید جایی بشکند که try/catch قورتش ندهد — وگرنه اسکریپت به کارش
        ادامه می‌دهد و آنچه آزموده می‌شود سناریوی دیگری است. */
     const mark = 'var SEL = ".sec-head';
@@ -133,7 +169,7 @@ console.log('— نگهبان —');
     await route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
   });
   const errs = []; p.on('pageerror', () => errs.push(1));
-  await p.goto('http://127.0.0.1:8895/', { waitUntil: 'domcontentloaded' });
+  await p.goto(HOME, { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(600);
   t(patched, 'جایِ شکستن پیدا شد');
   t(errs.length > 0, 'و اسکریپت واقعاً شکست', errs.length + ' خطا');

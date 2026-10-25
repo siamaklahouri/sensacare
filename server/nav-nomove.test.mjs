@@ -1,12 +1,13 @@
 import { launch } from './pw.mjs';
+import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 const b = await launch();
 
-for (const [name, port] of [['it', 8899], ['fin', 8898]]) {
+for (const [name, url] of [['it', IT], ['fin', FIN]]) {
   console.log('\n=== ' + name + ' ===');
   const p = await b.newPage({ viewport: { width: 1440, height: 950 } });
-  await p.goto('http://127.0.0.1:' + port + '/', { waitUntil: 'networkidle' });
+  await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1300);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(500);
