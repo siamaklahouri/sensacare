@@ -135,6 +135,11 @@ body{
   transition:color .15s, background .15s; }
 .topnav a:hover{ color:var(--brand); background:var(--brand-soft); }
 .topnav a[hidden]{ display:none; }
+/* «hidden» باید همه‌جا پنهان کند. روی دکمه‌ها نمی‌کرد: قاعدهٔ
+   پیش‌فرضِ مرورگر برای [hidden] از display:inline-flexِ .btn ضعیف‌تر
+   است، پس دکمهٔ پنهان — مثلِ «پلن‌ها و قیمت» وقتی فروش خاموش است —
+   سرِ جایش دیده می‌شد. */
+[hidden]{ display:none !important; }
 /* بخشی که همین حالا جلوِ چشم است پررنگ می‌شود — وگرنه منو می‌گوید
    کجا می‌شود رفت ولی نمی‌گوید کجا هستیم. */
 /* پس‌زمینه‌اش را قرصِ لغزان می‌دهد، نه خودش — وگرنه دو نشانه روی هم
@@ -659,7 +664,7 @@ html.anim details[open] summary::after{
     <a href="#why">چرا؟</a>
     <a href="#kinds">انواع</a>
     <a href="#jobs">شغل‌ها</a>
-    <a href="/demo/" class="demoLink" {{DEMOHIDE}}>دمو</a>
+    {{DEMO}}<a href="/demo/" class="demoLink">دمو</a>{{/DEMO}}
     <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
     <a href="#how">شروع</a>
     <a href="#app">روی گوشی</a>
@@ -683,7 +688,7 @@ html.anim details[open] summary::after{
       <a class="btn btn-main" href="#jobs">شغل‌ها را ببینم</a>
       <!-- دیدن از خواندن بهتر است: کارتابلِ نمایشی بی‌رمز باز می‌شود و
            هرچه در آن بنویسند روی سرور نمی‌نشیند. -->
-      <a class="btn btn-demo demoLink" href="/demo/" {{DEMOHIDE}}>کارتابل را همین حالا ببینم</a>
+      {{DEMO}}<a class="btn btn-demo demoLink" href="/demo/">کارتابل را همین حالا ببینم</a>{{/DEMO}}
       <a class="btn buyLink" href="#buy" hidden>پلن‌ها و قیمت</a>
       <a class="btn" href="#how">چطور شروع کنم؟</a>
       <!-- فایلِ نصبِ اندروید. «download» لازم است، وگرنه بعضی مرورگرها

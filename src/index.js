@@ -1797,7 +1797,14 @@ export default {
            ساخته نشده باشد نباید دیده شود: آدرسش ۴۰۴ می‌داد و بازدیدکننده
            به‌جای دمو، صفحهٔ خطا می‌دید. */
         const hasDemo = env.DB ? !!(await panelBySlug(env, 'demo').catch(() => null)) : false;
-        const html = (await res.text()).split('{{DEMOHIDE}}').join(hasDemo ? '' : 'hidden');
+        const raw = await res.text();
+        /* نبودنِ دمو با «hidden» حل نمی‌شود: display:inline-flexِ .btn از
+           قاعدهٔ پیش‌فرضِ مرورگر قوی‌تر است و دکمه دیده می‌ماند. پس
+           وقتی دمو نیست، خودِ نشانه‌ها از صفحه برداشته می‌شوند — هیچ
+           قاعدهٔ CSS نمی‌تواند چیزی را که در صفحه نیست برگرداند. */
+        const html = hasDemo
+          ? raw.split('{{DEMO}}').join('').split('{{/DEMO}}').join('')
+          : raw.replace(/\{\{DEMO\}\}[\s\S]*?\{\{\/DEMO\}\}/g, '');
         return withSecurity(new Response(html, { headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'public, max-age=300' } }));

@@ -60,7 +60,42 @@ for (const path of ['/nosuchthing/', '/nosuchthing', '/hamintori', '/p/1/', '/c/
 {
   const r = await get('/', PANEL);
   t(r.s === 200 && isPanel(r.b) && !isShop(r.b), 'خانهٔ پنل سرِ جایش است', 'status=' + r.s);
-  t(!/\{\{DEMOHIDE\}\}/.test(r.b), 'جایگاهِ دکمهٔ دمو پر شده و خالی نمانده');
+  t(!/\{\{\/?DEMO\}\}/.test(r.b), 'نشانه‌های قالب در صفحه نمانده‌اند');
+  t(/\[hidden\]\s*\{\s*display:\s*none\s*!important/.test(r.b),
+    '«hidden» روی دکمه هم کار می‌کند، نه فقط روی لینکِ نوارِ بالا');
+}
+
+/* ---------- لینکِ دمو ----------
+   دکمهٔ «کارتابل را همین حالا ببینم» تا وقتی کارتابلِ نمایشی ساخته
+   نشده باشد نباید در صفحه باشد: یک بار بود و به ۴۰۴ می‌رفت. با
+   «hidden» هم حل نشد (CSSِ .btn قوی‌تر بود)، پس این‌جا سنجیده می‌شود
+   که خودِ تگ در صفحه نباشد، نه این‌که پنهان باشد. */
+console.log('===== لینکِ دمو =====');
+{
+  const adm = mk();
+  await adm('/api/admin.planer/signin', { method: 'POST', body: JSON.stringify({ user: AUSER, password: APASS }) });
+  const mkDemo = () => adm('/api/admin.planer/planners',
+    { method: 'POST', body: JSON.stringify({ slug: 'demo', name: 'نمایشی', kind: 'it', user: 'demo' }) });
+
+  await mkDemo();
+  let r = await get('/', PANEL);
+  t(/href="\/demo\/"/.test(r.b), 'وقتی کارتابلِ نمایشی هست، لینکش در صفحه است');
+
+  const del = await adm('/api/admin.planer/planners/demo',
+    { method: 'DELETE', body: JSON.stringify({ confirm: 'demo' }) });
+  if (del.status !== 200) {
+    t(false, 'کارتابلِ نمایشی برای آزمون حذف نشد', 'status=' + del.status);
+  } else {
+    r = await get('/', PANEL);
+    t(!/href="\/demo\/"/.test(r.b), 'و وقتی نیست، هیچ لینکی به /demo/ در صفحه نمی‌ماند');
+    t(!/\{\{\/?DEMO\}\}/.test(r.b), 'و نشانه‌ها هم جا نمی‌مانند');
+    t(!/btn-demo/.test(r.b.split('</style>').pop() || ''),
+      'خودِ تگِ دکمه برداشته شده، نه فقط پنهان شده');
+    /* همان‌طور که بود تحویلش می‌دهیم؛ آزمون‌های دیگر رویش حساب می‌کنند */
+    await mkDemo();
+    r = await get('/', PANEL);
+    t(/href="\/demo\/"/.test(r.b), 'و با ساختنِ دوباره، لینک برمی‌گردد');
+  }
 }
 
 console.log('===== دامنهٔ فروشگاه: هیچ‌چیزِ پنل =====');
