@@ -72,6 +72,12 @@ for (const path of ['/nosuchthing/', '/nosuchthing', '/hamintori', '/p/1/', '/c/
    که خودِ تگ در صفحه نباشد، نه این‌که پنهان باشد. */
 console.log('===== لینکِ دمو =====');
 {
+  /* سرویس موقعِ بالا آمدن خودش کارتابلِ نمایشی را می‌سازد، پس پیش از
+     آن‌که این آزمون دست به چیزی بزند باید باشد و باز شود. */
+  const live = await get('/demo/', PANEL);
+  t(live.s === 200, 'کارتابلِ نمایشی بی‌آن‌که کسی بسازدش هست و باز می‌شود', 'status=' + live.s);
+  t(/demoBar|KARTABL_DEMO/.test(live.b), 'و صفحه خودش را نمایشی می‌داند');
+
   const adm = mk();
   await adm('/api/admin.planer/signin', { method: 'POST', body: JSON.stringify({ user: AUSER, password: APASS }) });
   const mkDemo = () => adm('/api/admin.planer/planners',

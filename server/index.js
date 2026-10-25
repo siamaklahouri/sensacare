@@ -255,6 +255,14 @@ if (process.argv.includes('--cron-now')) {
   process.exit(0);
 }
 
+/* کارتابلِ نمایشی باید باشد، وگرنه دکمهٔ «همین حالا ببینم» در صفحهٔ
+   اصلی به جایی نمی‌رسد. فقط وقتی اصلاً نباشد ساخته می‌شود؛ اگر
+   خودتان ساختید یا پاکش کردید، دست نمی‌خورد. */
+try {
+  const { ensureDemoPanel } = await import('../src/admin-planer.js');
+  if (await ensureDemoPanel(env)) console.log('کارتابلِ نمایشی ساخته شد: /demo/');
+} catch (e) { console.error('کارتابلِ نمایشی ساخته نشد:', e?.message || e); }
+
 server.listen(PORT, BIND, () => {
   console.log(`sltech روی http://${BIND}:${PORT}`);
   console.log(`دیتابیس: ${DB_FILE}`);

@@ -114,6 +114,40 @@ function cleanVault(list) {
 const DEFAULT_VAULT = [{ id: 'creds', type: 'creds', title: 'شرکت‌های من' },
                        { id: 'inst', type: 'inst', title: 'اقساط' }];
 
+/* ---------- کارتابلِ نمایشی ----------
+   صفحهٔ اصلی یک دکمهٔ «همین حالا ببینم» دارد. تا وقتی کسی دستی
+   کارتابلی با آدرسِ demo نساخته بود، آن دکمه به ۴۰۴ می‌رفت — و یک بار
+   هم بدتر: به صفحهٔ آن یکی سایت. ساختنش کارِ دستی نیست، پس سرویس
+   موقعِ بالا آمدن خودش می‌سازدش.
+
+   چرا gen/sales: کارتابلِ عمومی همان چیزی است که بازدیدکننده اگر
+   بخرد می‌گیرد، و «فروش و بازاریابی» را هر کسی می‌فهمد، حتی اگر کارش
+   این نباشد. چک‌لیستِ ماهش از همان قالبِ آمادهٔ شغل می‌آید، پس صفحه
+   از همان اولین باز شدن پُر است، نه یک جدولِ خالی.
+
+   نوشتن در این کارتابل روی سرور نمی‌نشیند (isDemo) و رمز هم نمی‌خواهد؛
+   رمزی که این‌جا ساخته می‌شود فقط برای این است که ردیفش مثلِ بقیه
+   کامل باشد. اگر خودتان ساختیدش یا پاکش کردید، این تابع دیگر دست
+   به آن نمی‌زند — فقط وقتی اصلاً نباشد می‌سازد. */
+export async function ensureDemoPanel(env) {
+  const SLUG = 'demo';
+  if (!env.DB) return false;
+  if (await one(env, 'SELECT slug FROM planners WHERE slug=?', SLUG)) return false;
+
+  const job = 'sales';
+  const kind = JOBS[job] ? JOBS[job].kind : 'gen';
+  const name = 'نمایشی';
+  const cfg = freshConfig(SLUG, name, kind, job, DEFAULT_VAULT);
+  cfg.user = SLUG;
+  cfg.demo = true;
+  if (JOBS[job] && Array.isArray(JOBS[job].views)) cfg.views = JOBS[job].views.slice();
+  await run(env, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
+    SLUG, name, kind, JSON.stringify(cfg), Date.now());
+  await setSetting(env, cfg.keys.pass, await hashPassword(newPassword()));
+  await setSetting(env, cfg.keys.gen, 1);
+  return true;
+}
+
 /* ---------- پیام‌های پشتیبانیِ خوانده‌نشده ----------
    تا امروز پیامِ تازه هیچ نشانی در پنل نداشت: فقط به ربات می‌رفت و
    اگر آدم سراغِ تبِ «پیام‌ها» نمی‌رفت، خبردار نمی‌شد. حالا زنگوله
