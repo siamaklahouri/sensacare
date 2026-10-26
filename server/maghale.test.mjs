@@ -32,7 +32,10 @@ console.log('— نوشتن —');
   const r = await adm('/api/admin.planer/articles', { method: 'POST', body: JSON.stringify({
     slug: 'azmoon-maghale', title: 'نوشتهٔ آزمون',
     excerpt: 'یک جملهٔ کوتاه برای فهرست.',
-    body: '## تیترِ دو\nپاراگرافِ اول.\n\n- گزینهٔ یک\n- گزینهٔ دو\n\n<script>bad()</script>',
+    /* خطِ دوم عمداً ادامهٔ همان پاراگراف است، نه پاراگرافِ تازه:
+       نویسنده متنش را برای خوانایی می‌شکند و نباید روی سایت
+       پاره‌پاره شود. */
+    body: '## تیترِ دو\nپاراگرافِ اول که\nدر دو خط نوشته شده.\n\n- گزینهٔ یک\n- گزینهٔ دو\n\n<script>bad()</script>',
     published: 1 }) });
   t(r.status === 200 && r.data.ok, 'مقاله ذخیره شد', r.data.url || r.data.error);
 
@@ -67,9 +70,13 @@ const b = await launch();
        دیده شود، نه به‌شکلِ تگ: یعنی در innerHTML باید escape شده
        باشد و هیچ <script> تازه‌ای در صفحه نباشد. */
     asText: /&lt;script&gt;/.test(document.body.innerHTML),
-    scripts: document.querySelectorAll('script:not([type])').length }));
+    scripts: document.querySelectorAll('script:not([type])').length,
+    paras: document.querySelectorAll('article p').length,
+    firstPara: ((document.querySelector('article p') || {}).textContent || '').trim() }));
   t(art.h1 === 'نوشتهٔ آزمون', 'عنوان درست است', art.h1);
   t(art.h2 >= 1 && art.li === 2, '«## » تیتر شد و «- » فهرست', 'h2=' + art.h2 + ' li=' + art.li);
+  t(/پاراگرافِ اول که در دو خط نوشته شده\./.test(art.firstPara),
+    'دو خطِ پشتِ هم یک پاراگراف شدند، نه دو تا', art.firstPara.slice(0, 60));
   t(art.ld >= 1, 'دادهٔ ساختاریافته دارد');
   t(art.asText && art.scripts === 0,
     'تگی که در متنِ مقاله بود، متن ماند و اجرا نشد',

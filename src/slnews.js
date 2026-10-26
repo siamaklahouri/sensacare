@@ -23,21 +23,30 @@ export function faDate(ms) {
 /* متنِ ساده → HTML. هیچ تگی از ورودی رد نمی‌شود. */
 export function render(body) {
   const out = [];
-  let list = null;
+  let list = null, para = null;
+
+  /* خطِ خالی پاراگراف را تمام می‌کند، نه هر خط. پیش از این هر خطِ
+     غیرخالی یک پاراگرافِ جدا می‌شد — یعنی نویسنده‌ای که متنش را برای
+     خوانایی در ویرایشگر می‌شکست، روی سایت یک متنِ پاره‌پاره می‌دید.
+     حالا خطوطِ پشتِ هم یک پاراگراف‌اند، همان‌طور که انتظار می‌رود. */
+  const endPara = () => { if (para) { out.push('<p>' + para.join(' ') + '</p>'); para = null; } };
+  const endList = () => { if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; } };
+
   for (const raw of String(body || '').split('\n')) {
     const line = raw.trim();
-    if (!line) { if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; } continue; }
+    if (!line) { endPara(); endList(); continue; }
     if (line.startsWith('## ')) {
-      if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+      endPara(); endList();
       out.push('<h2>' + esc(line.slice(3)) + '</h2>');
     } else if (line.startsWith('- ')) {
+      endPara();
       (list = list || []).push('<li>' + esc(line.slice(2)) + '</li>');
     } else {
-      if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
-      out.push('<p>' + esc(line) + '</p>');
+      endList();
+      (para = para || []).push(esc(line));
     }
   }
-  if (list) out.push('<ul>' + list.join('') + '</ul>');
+  endPara(); endList();
   return out.join('\n');
 }
 
@@ -109,12 +118,15 @@ const card = (r, big) =>
   `<b>${esc(r.title)}</b>` +
   (r.excerpt ? `<span class="ex">${esc(r.excerpt)}</span>` : '') +
   `<span class="meta">${esc(faDate(r.created))}` +
-  (r.size ? ` · ${fa(mins(r.size))} دقیقه خواندن` : '') +
+  /* «·» بینِ ارقامِ فارسی شبیهِ صفر دیده می‌شود؛ خطِ تیره ابهام ندارد */
+  (r.size ? ` — ${fa(mins(r.size))} دقیقه خواندن` : '') +
   `<span class="go">خواندن ←</span></span></a>`;
 
 export function listPage(rows, base) {
   const body = rows.length
-    ? `<div class="grid">${rows.map((r, n) => card(r, n === 0 && rows.length > 1)).join('\n')}</div>`
+    /* کارتِ بزرگ وقتی معنا دارد که پشتش چیزی باشد. با دو نوشته،
+       ردیفِ دوم نصفه می‌ماند و صفحه خلوت‌تر به نظر می‌رسد تا هست. */
+    ? `<div class="grid">${rows.map((r, n) => card(r, n === 0 && rows.length > 2)).join('\n')}</div>`
     : '<div class="empty">هنوز مقاله‌ای نوشته نشده.</div>';
   return page({
     title: 'مقاله‌ها — کارتابل ماهانه SLTech',
@@ -153,7 +165,7 @@ export function articlePage(row, base, others = []) {
     extraTop: '<a class="btn hide-s" href="/maghale/">مقاله‌ها</a>',
     hero: `<h1>${esc(row.title)}</h1>
       <p class="when">${esc(faDate(row.created))}` +
-      (row.size ? ` · ${fa(mins(row.size))} دقیقه خواندن` : '') + `</p>`,
+      (row.size ? ` — ${fa(mins(row.size))} دقیقه خواندن` : '') + `</p>`,
     body: `<article>${render(row.body)}</article>
       <div class="cta">
         <a class="btn btn-main" href="/login">کارتابلِ خودم را بسازم</a>
