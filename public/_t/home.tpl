@@ -297,6 +297,9 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 /* ---------- شغل‌ها ---------- */
 /* عکس‌های محصول. یک ستون روی گوشی، چون بریدنشان به دو ستون یعنی
    هیچ‌کدام خوانا نیست. */
+.artline{ margin:16px 0 0; font-size:13px; }
+.artline a{ color:inherit; opacity:.85; text-decoration:none; border-bottom:1px solid currentColor; }
+.artline a:hover{ opacity:1; }
 .shots{ display:grid; gap:18px; }
 .shots figure{ margin:0; }
 .shots img{ width:100%; height:auto; display:block; border:1px solid var(--line);
@@ -682,6 +685,7 @@ html.anim details[open] summary::after{
     <a href="#how">شروع</a>
     <a href="#app">روی گوشی</a>
     <a href="#faq">پرسش‌ها</a>
+    <a href="/maghale/">مقاله‌ها</a>
   </nav>
   <div class="sp"></div>
   <button class="icon-btn" id="themeBtn" title="تم روز و شب" aria-label="تم روز و شب">🌙</button>
@@ -1082,6 +1086,9 @@ html.anim details[open] summary::after{
         <div class="ask-note" id="askNote"></div>
       </form>
       <div class="ways" id="ways"></div>
+      <!-- مقاله‌ها جایی لازم دارد که از نوارِ بالا هم دیده شود و هم
+           از تهِ صفحه: نوارِ بالا روی گوشی جمع می‌شود. -->
+      <p class="artline"><a href="/maghale/">مقاله‌ها و نوشته‌ها ←</a></p>
     </div>
   </section>
 

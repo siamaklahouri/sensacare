@@ -1,7 +1,7 @@
 /* مقاله‌های دامنهٔ پنل: از پنل نوشته می‌شوند، روی sltech.ir منتشر
    می‌شوند، و متنِ ساده‌شان بی‌هیچ تگی به HTML تبدیل می‌شود. */
 import { launch } from './pw.mjs';
-import { ADMIN, HOME } from './where.mjs';
+import { ADMIN, HOME, panelHtml } from './where.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -82,10 +82,20 @@ const b = await launch();
   await p.close();
 }
 
+console.log('— راه رسیدن از صفحهٔ اصلی —');
+{
+  /* یک بار بخش ساخته شد ولی هیچ لینکی از خانه به آن نبود: مقاله
+     منتشر می‌شد و هیچ‌کس راهی به آن نداشت. */
+  /* fetch اجازهٔ دست‌زدن به سربرگِ Host را نمی‌دهد و بی آن، سرور
+     صفحهٔ فروشگاه را می‌دهد نه خانهٔ پنل. */
+  const home = await panelHtml('/');
+  const n = (home.match(/href="\/maghale\/"/g) || []).length;
+  t(n > 0, 'صفحهٔ اصلی به مقاله‌ها لینک دارد', n + ' لینک');
+}
+
 console.log('— نقشهٔ سایت —');
 {
-  const r = await fetch(BASE + '/sitemap.xml', { headers: { Host: 'sltech.ir' } });
-  const xml = await r.text();
+  const xml = await panelHtml('/sitemap.xml');
   t(xml.includes('/maghale/'), 'فهرستِ مقاله‌ها در نقشهٔ سایت هست');
   t(xml.includes('/maghale/azmoon-maghale/'), 'و خودِ مقاله هم');
 }
@@ -94,8 +104,8 @@ console.log('— پاک کردن —');
 {
   const r = await adm('/api/admin.planer/articles/azmoon-maghale', { method: 'DELETE' });
   t(r.status === 200, 'پاک شد');
-  const g = await fetch(BASE + '/maghale/azmoon-maghale/', { headers: { Host: 'sltech.ir' } });
-  t(g.status === 404, 'و دیگر باز نمی‌شود', 'status=' + g.status);
+  const gone = await panelHtml('/maghale/azmoon-maghale/');
+  t(/پیدا نشد/.test(gone), 'و دیگر باز نمی‌شود');
 }
 
 await b.close();
