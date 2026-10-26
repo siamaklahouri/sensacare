@@ -104,7 +104,7 @@ export const footBar = () => `
 
 /* صفحهٔ کامل. head را یک جا می‌سازد تا عنوان و توضیح و canonical در
    هر دو صفحه یک‌شکل باشند و چیزی جا نیفتد. */
-export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width }) {
+export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width, hero = '' }) {
   const head = ld.map(j => `<script type="application/ld+json">${JSON.stringify(j)}</script>`).join('\n');
   return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -122,6 +122,7 @@ export function page({ title, desc, url, css = '', body, ld = [], extraTop = '',
 ${head}
 </head><body>
 ${topBar(extraTop)}
+${hero ? `<div class="hero"><div class="wrap">${hero}</div></div>` : ''}
 <div class="wrap">${body}</div>
 ${footBar()}
 </body></html>`;

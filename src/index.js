@@ -2171,11 +2171,17 @@ export default {
       if (mA) {
         if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
         const row = await one(env,
-          'SELECT * FROM sl_articles WHERE slug=? AND published=1', mA[1]).catch(() => null);
+          `SELECT *, length(body) AS size FROM sl_articles
+            WHERE slug=? AND published=1`, mA[1]).catch(() => null);
         if (!row) return withSecurity(new Response(panelNotFoundPage(), { status: 404,
           headers: { 'Content-Type': 'text/html; charset=utf-8',
                      'X-Robots-Tag': 'noindex, nofollow' } }));
-        const html = slArticlePage(row, base);
+        /* چند نوشتهٔ دیگر، تا صفحه به دیوار ختم نشود */
+        const others = await all(env,
+          `SELECT slug, title, excerpt, created, length(body) AS size FROM sl_articles
+            WHERE published=1 AND slug<>? ORDER BY created DESC LIMIT 2`,
+          mA[1]).catch(() => []);
+        const html = slArticlePage(row, base, others);
         const tag = await etagOf(html);
         const same = notModified(req, tag);
         if (same) return withSecurity(same, await pageCsp(html));
@@ -2185,7 +2191,7 @@ export default {
       }
       if (p !== '/maghale/') return Response.redirect(new URL('/maghale/', req.url).toString(), 301);
       const rows = await all(env,
-        `SELECT slug, title, excerpt FROM sl_articles
+        `SELECT slug, title, excerpt, created, length(body) AS size FROM sl_articles
           WHERE published=1 ORDER BY created DESC LIMIT 60`).catch(() => []);
       const html = slListPage(rows, base);
       const tag = await etagOf(html);
