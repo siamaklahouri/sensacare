@@ -16,6 +16,12 @@ export const IT    = BASE + '/' + (process.env.VS_IT_SLUG  || 'siamak') + '/';
 export const FIN   = BASE + '/' + (process.env.VS_FIN_SLUG || 'sina') + '/';
 export const ADMIN = BASE + '/login';
 
+/* نام و رمزِ کارتابل‌های نمونه — از vshare.setup.md */
+export const IT_API   = process.env.VS_IT_API   || 'kartabl';
+export const IT_PASS  = process.env.VS_IT_PASS  || 'siamaksiamak';
+export const FIN_API  = process.env.VS_FIN_API  || 'sina';
+export const FIN_PASS = process.env.VS_FIN_PASS || 'sinasinasina';
+
 /* صفحهٔ خانهٔ sltech فقط روی دامنهٔ پنل سرو می‌شود — سرور از روی
    میزبان تصمیم می‌گیرد. با 127.0.0.1 صفحهٔ فروشگاه می‌آید، نه این.
    پس آزمون باید خودِ نام را صدا بزند؛ کرومیومِ آزمون با
@@ -50,4 +56,19 @@ export function panelHtml(path = '/') {
       }).on('error', rej);
     });
   });
+}
+
+/* واردِ کارتابل می‌شود و صفحه را با نشستِ باز بالا می‌آورد.
+   openKartabl فقط پردهٔ ورود را کنار می‌زند — برای آزمونی که چیزی
+   روی سرور می‌نویسد کافی نیست و هر درخواستش ۴۰۱ می‌گیرد. */
+export async function signIn(page, url, api, pass) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(async a => {
+    await fetch('/api/' + a.api + '/login', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: a.pass, remember: false }) });
+  }, { api, pass });
+  await page.goto(url, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2200);
 }

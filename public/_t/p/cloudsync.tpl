@@ -6,6 +6,8 @@ const Cloud = (function(){
   let timer = null;
   let inFlight = false;
   let again = false;       /* وسط ارسال، تغییر تازه‌ای رسید */
+  let base = null;         /* امضای ماه‌ها در لحظهٔ آخرین ذخیره */
+  let pendingClash = null; /* ماه‌هایی که واقعاً برخورد دارند */
 
   function setHint(text){
     const h = document.getElementById("saveHint");
@@ -22,7 +24,10 @@ const Cloud = (function(){
     const bar = document.createElement("div");
     bar.id = "syncConflict";
     bar.innerHTML =
-      '<span>این کارتابل از دستگاه دیگری هم تغییر کرده است. کدام نسخه بماند؟</span>' +
+      '<span>' + (pendingClash && pendingClash.length
+        ? 'این‌ها از دستگاه دیگری هم تغییر کرده‌اند: ' + escapeHtml(pendingClash.join('، ')) +
+          '. کدام نسخه بماند؟'
+        : 'این کارتابل از دستگاه دیگری هم تغییر کرده است. کدام نسخه بماند؟') + '</span>' +
       '<button type="button" id="conflictTake">نسخهٔ سرور را بیاور</button>' +
       '<button type="button" id="conflictKeep">نسخهٔ من را بنویس</button>';
     document.body.appendChild(bar);

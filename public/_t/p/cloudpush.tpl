@@ -25,11 +25,18 @@
           return;
         }
         if(r.data.loss){ showLoss(r.data.loss); setHint("ذخیره نشد — منتظر تأیید"); return; }
+        /* پیش از پرسیدن، ببینیم اصلاً برخوردی هست یا نه: اگر این
+           دستگاه ماهِ دیگری را دست زده باشد، هر دو با هم می‌نشینند و
+           کاربر چیزی نمی‌بیند. شرحش در پارهٔ mergemonths. */
+        if(await tryMerge()) return;
         showConflict(); setHint("ذخیره نشد — تداخل نسخه"); return;
       }
       if(r.status === 401){ inFlight = false; online = false; setHint("وارد نشده‌اید"); return; }
       if(!r.ok) throw new Error(r.data.error || "خطای سرور");
       rev = r.data.rev;
+      /* امضای همین چیزی که الان بالا رفت، پایهٔ تشخیصِ دفعهٔ بعد است:
+         از رویش معلوم می‌شود کدام ماه را *این* دستگاه عوض کرده. */
+      try{ base = Merge.snapshot(state); }catch(e){ base = null; }
       online = true;
       setHint("✓ ذخیره شد");
       /* حجمِ داده که از آستانه گذشت، یک بار گفته می‌شود — نه هر ذخیره.
@@ -54,12 +61,64 @@
     if(again){ again = false; schedule(); }
   }
 
+  /* نسخهٔ سرور را می‌گیرد و اگر ماه‌های دو طرف جدا باشند، هر دو را
+     با هم می‌نویسد. true یعنی حل شد و نوارِ تداخل لازم نیست. */
+  async function tryMerge(){
+    if(typeof Merge === "undefined" || !base) return false;
+    let srv;
+    try{
+      const g = await apiCall("/state");
+      if(!g.ok || !g.data || !g.data.state) return false;
+      srv = g.data;
+    }catch(e){ return false; }
+
+    let p;
+    try{ p = Merge.plan(base, state, srv.state); }catch(e){ return false; }
+    if(!p.ok){
+      /* برخوردِ واقعی. دستِ‌کم بگوییم سرِ چه چیزی. */
+      pendingClash = p.names;
+      return false;
+    }
+    if(!p.mine.length && !p.theirs.length) return false;
+
+    let merged;
+    try{ merged = Merge.apply(state, srv.state, p); }catch(e){ return false; }
+
+    const w = await apiCall("/state", { method: "PUT", body: JSON.stringify({
+      state: merged, db: dbSnapshot(), baseRev: srv.rev }) });
+    if(w.status !== 200 || !w.ok) return false;
+
+    /* روی همین صفحه هم بنشیند، وگرنه کاربر کارِ آن یکی دستگاه را
+       نمی‌بیند تا وقتی صفحه را تازه کند. */
+    try{
+      state = Object.assign(deepClone(DEFAULT_STATE), merged);
+      if(typeof ensureMonthsMigration === "function") ensureMonthsMigration();
+      if(typeof switchToMonth === "function" && state.currentMonthKey)
+        switchToMonth(state.currentMonthKey);
+      else if(typeof renderAll === "function") renderAll();
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+    }catch(e){}
+
+    rev = w.data.rev;
+    base = Merge.snapshot(state);
+    online = true;
+    setHint("✓ ذخیره شد");
+    setCloudStatus(p.theirs.length
+      ? "تغییرِ دستگاه دیگر هم آمد (" + p.theirs.map(Merge.label).join("، ") + ") و هر دو با هم ذخیره شدند."
+      : "آخرین همگام‌سازی: " + new Date(w.data.updated).toLocaleString("fa-IR"));
+    return true;
+  }
+
   function schedule(){
     clearTimeout(timer);
     timer = setTimeout(()=> push(false), 900);
   }
 
-  return { pull, push: schedule, pushNow: push, isOnline: ()=> online };
+  /* برای آزمون و برای وقتی که باید دید چرا ادغام نشد. چیزی از
+     دادهٔ کاربر بیرون نمی‌دهد — فقط شمارهٔ نسخه و امضاها. */
+  function debug(){ return { rev: rev, base: base, online: online, blocked: blocked }; }
+
+  return { pull, push: schedule, pushNow: push, isOnline: ()=> online, debug: debug };
 })();
 
 /* ---------- بخش تنظیمات ----------
