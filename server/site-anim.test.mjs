@@ -159,14 +159,18 @@ console.log('— نگهبان —');
   const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
   // اسکریپتِ پایینِ صفحه را می‌شکنیم تا فقط head اجرا شود
   let patched = false;
-  await p.route('**/', async route => {
-    let body = await panelHtml('/');
+  /* اسکریپتِ صفحه دیگر درون‌خطی نیست؛ فایلِ جداگانه‌ای است. پس باید
+     همان فایل را سرِ راه گرفت و شکست، نه متنِ صفحه را. */
+  const page = await panelHtml('/');
+  const jsHref = (page.match(/src="(\/_a\/[^"]+\.js)"/) || [])[1] || '/_a/none.js';
+  await p.route('**' + jsHref, async route => {
+    let body = await panelHtml(jsHref);
     /* باید جایی بشکند که try/catch قورتش ندهد — وگرنه اسکریپت به کارش
        ادامه می‌دهد و آنچه آزموده می‌شود سناریوی دیگری است. */
     const mark = 'var SEL = ".sec-head';
     patched = body.includes(mark);
     body = body.replace(mark, 'throw new Error("boom"); ' + mark);
-    await route.fulfill({ status: 200, body, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    await route.fulfill({ status: 200, body, headers: { 'content-type': 'text/javascript; charset=utf-8' } });
   });
   const errs = []; p.on('pageerror', () => errs.push(1));
   await p.goto(HOME, { waitUntil: 'domcontentloaded' });

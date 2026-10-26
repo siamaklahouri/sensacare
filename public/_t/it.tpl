@@ -661,36 +661,7 @@ window.KARTABL_IDB      = "{{IDB}}";
   .btn-brass:hover{ box-shadow:0 6px 16px rgba(14,139,139,.42); transform:translateY(-1px); }
   .btn-ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--card-border); }
   .btn-ghost:hover{ border-color:var(--brass); color:var(--brass-ink); background:var(--brass-bg); }
-  /* دکمهٔ حذف قبلاً همیشه قرمز بود و روی hover هم بزرگ می‌شد — در یک
-     جدولِ چهل ردیفی، چهل لکهٔ قرمزِ جهنده. حالا تا دست رویش نرود خاکستریِ
-     آرام است و فقط همان لحظه قرمز می‌شود. */
-  /* بی‌قاب که بود، یک ✕ِ خاکستریِ معلق بود نه دکمه — کسی نمی‌دانست
-     زدنی است. یک خطِ نازکِ خنثی کافی است؛ قرمز همچنان فقط روی hover. */
-  .btn-del{
-    display:inline-flex; align-items:center; justify-content:center;
-    width:26px; height:26px; padding:0; box-sizing:border-box;
-    background:transparent; border:1px solid var(--line); border-radius:7px;
-    color:var(--ink-soft); font-size:12px; line-height:1; cursor:pointer;
-    transition:background .14s, color .14s, border-color .14s;
-  }
-  .btn-del:hover{ background:var(--red-bg); color:var(--red-ink); border-color:var(--red); }
-  .btn-del:active{ transform:scale(.94); }
-  .btn-del:focus-visible{ outline:2px solid var(--red); outline-offset:1px; }
-  /* قفل‌شده یعنی «الان نمی‌شود»، نه «وجود ندارد». پیش‌تر display:none
-     بود و ستونِ حذف کاملاً خالی می‌ماند — صفحه را که باز می‌کردی هیچ
-     دکمه‌ای نبود و خیال می‌کردی حذف خراب است. حالا 🔒ِ کم‌رنگ با قابِ
-     خط‌چین سرِ جایش می‌ماند و می‌گوید فقط قفل است. */
-  .btn-del[disabled]{
-    cursor:not-allowed; font-size:0;
-    background:transparent; border-style:dashed; border-color:var(--line);
-    color:var(--ink-faint);
-  }
-  .btn-del[disabled]::before{ content:"🔒"; font-size:10.5px; line-height:1; }
-  .btn-del[disabled]:hover{ background:transparent; color:var(--ink-faint); border-color:var(--line); }
-  .btn-del[disabled]:active{ transform:none; }
-  /* و کلیدِ همان ستون از دور بگوید باز است یا بسته */
-  .edit-toggle-wrap::before, .del-toggle-wrap::before{ content:"🔒"; font-size:10px; line-height:1; }
-  .edit-toggle-wrap.open::before, .del-toggle-wrap.open::before{ content:"🔓"; }
+  {{PART:delbtncss}}
   .del-toggle-wrap, .edit-toggle-wrap{ display:inline-flex; align-items:center; gap:5px; font-size:10.5px; color:var(--ink-soft); user-select:none; white-space:nowrap; }
   .del-switch, .edit-switch{ position:relative; display:inline-block; width:28px; height:16px; flex:none; }
   .del-switch input, .edit-switch input{ opacity:0; width:0; height:0; }
@@ -1657,37 +1628,7 @@ function afterMonthChange(){
 }
 {{PART:monthpop}}
 
-
-/* ---------- دادهٔ داخلِ فایلِ پشتیبان ----------
-   فایلِ پشتیبان تا حالا خالی باز می‌شد و آدم باید می‌فهمید که باید
-   «⬆ بازیابی» بزند و کدام فایل را بدهد. حالا داده داخلِ خودِ صفحه
-   نشسته و همان بار اول پُر باز می‌شود.
-
-   مهرِ زمانِ پشتیبان نگه داشته می‌شود تا اگر همان فایل را دوباره باز
-   کردید، چیزی که این وسط عوض کرده‌اید پاک نشود — ولی پشتیبانِ تازه‌تر
-   جای قبلی را بگیرد. اگر localStorage در دسترس نباشد (روی file:// گاهی
-   نیست) هر بار از خودِ فایل خوانده می‌شود، که همان رفتارِ درست است. */
-let BK_SEED_READ = false, BK_SEED = null;
-function bkSeed(){
-  if(BK_SEED_READ) return BK_SEED;
-  BK_SEED_READ = true;
-  const s = (window.KARTABL_OFFLINE && window.KARTABL_SEED) ? window.KARTABL_SEED : null;
-  if(s){
-    try{
-      if(localStorage.getItem(STORE_KEY + ":seed") === String(s.stamp)){ BK_SEED = null; return null; }
-    }catch(e){ /* بدون حافظهٔ محلی هم باید باز شود */ }
-  }
-  BK_SEED = s;
-  return BK_SEED;
-}
-function bkSeedDone(){
-  const s = window.KARTABL_SEED;
-  if(!s) return;
-  try{ localStorage.setItem(STORE_KEY + ":seed", String(s.stamp)); }catch(e){}
-}
-
-async function loadState(){
-  /* دادهٔ پشتیبان یک شاخهٔ جدا نیست، فقط یک سرچشمهٔ دیگر برای همان
+{{PART:bkdata}}
      بایت‌هاست. اگر شاخهٔ جدا بود، پر کردنِ پیش‌فرض‌ها دو جا نوشته
      می‌شد و یکی‌شان یک روز عقب می‌افتاد. */
   const seed = bkSeed();
@@ -2620,76 +2561,9 @@ function addDayRow(){
   state.days.push({ day: maxDay+1, createdDate: getTodayJalaliStr(), main:"", meet:"", company:"", status:"", doneDate:"", important:false, reminderAt:"", reminderFired:false });
   renderDaily();
   scheduleSave();
-}
-
-/* ---------------- Jalali <-> Gregorian conversion (jalaali algorithm) ---------------- */
-function jDiv(a,b){ return ~~(a/b); }
-function jMod(a,b){ return a - ~~(a/b)*b; }
-function jalCal(jy){
-  const breaks = [-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
-  const bl = breaks.length;
-  const gy = jy + 621;
-  let leapJ = -14, jp = breaks[0], jm, jump=0, n, i;
-  for(i=1;i<bl;i++){
-    jm = breaks[i];
-    jump = jm - jp;
-    if(jy < jm) break;
-    leapJ = leapJ + jDiv(jump,33)*8 + jDiv(jMod(jump,33),4);
-    jp = jm;
-  }
-  n = jy - jp;
-  leapJ = leapJ + jDiv(n,33)*8 + jDiv(jMod(n,33)+3,4);
-  if(jMod(jump,33)===4 && jump-n===4) leapJ += 1;
-  const leapG = jDiv(gy,4) - jDiv((jDiv(gy,100)+1)*3,4) - 150;
-  const march = 20 + leapJ - leapG;
-  if(jump - n < 6) n = n - jump + jDiv(jump,33)*33;
-  let leap = jMod(jMod(n+1,33)-1,4);
-  if(leap===-1) leap=4;
-  return { leap, gy, march };
-}
-function g2d(gy,gm,gd){
-  let d = jDiv((gy+jDiv(gm-8,6)+100100)*1461,4) + jDiv(153*jMod(gm+9,12)+2,5) + gd - 34840408;
-  d = d - jDiv(jDiv(gy+100100+jDiv(gm-8,6),100)*3,4) + 752;
-  return d;
-}
-function j2d(jy,jm,jd){
-  const r = jalCal(jy);
-  return g2d(r.gy,3,r.march) + (jm-1)*31 - jDiv(jm,7)*(jm-7) + jd - 1;
-}
-function d2g(jdn){
-  let j = 4*jdn + 139361631;
-  j = j + jDiv(jDiv(4*jdn+183187720,146097)*3,4)*4 - 3908;
-  const i = jDiv(jMod(j,1461),4)*5 + 308;
-  const gd = jDiv(jMod(i,153),5) + 1;
-  const gm = jMod(jDiv(i,153),12) + 1;
-  const gy = jDiv(j,1461) - 100100 + jDiv(8-gm,6);
-  return { gy, gm, gd };
-}
+{{PART:jalalicore}}
 function jalaliToGregorian(jy,jm,jd){ return d2g(j2d(jy,jm,jd)); }
-function gregorianToJalali(gy,gm,gd){
-  // find jy by iterating march-anchor; use standard approach via g2d/j2d comparison
-  let jy = gy - 621;
-  // adjust jy using jalCal until march date bounds gd correctly
-  let r = jalCal(jy+1);
-  const gd2jdn = g2d(gy,gm,gd);
-  if(gd2jdn >= g2d(r.gy, 3, r.march)) jy += 1;
-  r = jalCal(jy);
-  const jdn1f = g2d(r.gy,3,r.march);
-  let k = gd2jdn - jdn1f;
-  let jm, jd;
-  if(k >= 0){
-    if(k <= 185){ jm = 1 + jDiv(k,31); jd = jMod(k,31) + 1; }
-    else{ k -= 186; jm = 7 + jDiv(k,30); jd = jMod(k,30) + 1; }
-  } else {
-    // shouldn't normally happen given the guard above, but fallback
-    jy -= 1;
-    const r2 = jalCal(jy);
-    k = gd2jdn - g2d(r2.gy,3,r2.march);
-    if(k <= 185){ jm = 1 + jDiv(k,31); jd = jMod(k,31) + 1; }
-    else{ k -= 186; jm = 7 + jDiv(k,30); jd = jMod(k,30) + 1; }
-  }
-  return { jy, jm, jd };
-}
+{{PART:jalalicore2}}
 
 /* ---------------- Important-item reminder popup (daily plan) — تاریخ شمسی ---------------- */
 let reminderPopupEl = null;
@@ -4480,6 +4354,7 @@ function applyDbSnapshot(c){
   mvpnData = { lines: c.lines || [] };
   remoteBackupData = { roster: c.roster || [] };
 }
+{{PART:mergemonths}}
 {{PART:cloudsync}}
       online = true; blocked = false;
       rev = srvRev;

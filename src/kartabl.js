@@ -545,6 +545,32 @@ async function lift(html, kind, tag, ext, store, makeRef) {
   return out + html.slice(last);
 }
 
+/* ==================== CSPِ بی‌«unsafe-inline» برای اسکریپت ====================
+   تا دیروز ناگزیر بود: کلِ جاوااسکریپتِ صفحه درون‌خطی بود و بی
+   unsafe-inline هیچ‌چیز اجرا نمی‌شد. یعنی اگر جایی متنی از کاربر بی
+   پالایش داخلِ صفحه می‌نشست، مرورگر هیچ محافظی نداشت — و این صفحه
+   رمز و دیتای شخصی دارد.
+
+   حالا که بدنه‌های بزرگ فایلِ جداگانه‌اند، فقط چند بلوکِ کوچک درون‌خطی
+   مانده (تمِ پیش از رسم، و مقدارهای همین کارتابل). برای همان‌ها هشِ
+   خودشان در هدر می‌آید: هر اسکریپتِ دیگری که کسی تزریق کند، چون هشش
+   در فهرست نیست، اجرا نمی‌شود.
+
+   هش — نه nonce — عمدی است: nonce هر بار عوض می‌شود و با ۳۰۴ جور
+   درنمی‌آید (مرورگر بدنهٔ کهنه را با هدرِ تازه می‌گیرد و صفحه می‌شکند).
+   هش از خودِ متن می‌آید، پس تا وقتی متن همان است، همان می‌ماند.
+
+   style هنوز unsafe-inline دارد: صفت‌های style="..." در سرتاسرِ قالب
+   هستند و برداشتنشان کارِ این دور نیست. خطرِ اصلی هم اسکریپت است. */
+export async function scriptCsp(html) {
+  const hashes = [];
+  for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m[1]));
+    hashes.push("'sha256-" + btoa(String.fromCharCode(...new Uint8Array(buf))) + "'");
+  }
+  return ["script-src 'self'", ...hashes, 'https://cdnjs.cloudflare.com'].join(' ');
+}
+
 /* ==================== بیرون بردنِ CSS و JS از خودِ صفحه ====================
    صفحهٔ کارتابل حدودِ ۷۷۰ کیلوبایت بود و فقط ۴۵ کیلوبایتش خودِ HTML؛
    بقیه CSS و جاوااسکریپتی بود که داخلِ همان صفحه نشسته بود. با ETag،
@@ -555,7 +581,7 @@ async function lift(html, kind, tag, ext, store, makeRef) {
    می‌ماند. استقراری که CSS را دست نزده باشد، همان فایل را دوباره
    نمی‌فرستد؛ و استقراری که دست زده باشد، نامِ تازه می‌دهد و مرورگر
    خودش می‌فهمد. */
-async function liftAssets(html, kind) {
+export async function liftAssets(html, kind) {
   html = await lift(html, kind, 'style', 'css', CSS_BLOBS,
     n => `<link rel="stylesheet" href="/_a/${n}">`);
   /* defer تا ترتیب حفظ شود و اجرا بعد از ساخته شدنِ صفحه باشد —

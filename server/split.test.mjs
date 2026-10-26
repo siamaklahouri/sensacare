@@ -3,6 +3,7 @@
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید (یا با
    server/ci-setup.sh). */
 import http from 'node:http';
+import { panelHtml } from './where.mjs';
 
 const BASE = new URL(process.env.VS_BASE || 'http://127.0.0.1:8911');
 const AUSER = process.env.VS_ADMIN || 'admin';
@@ -61,7 +62,13 @@ for (const path of ['/nosuchthing/', '/nosuchthing', '/hamintori', '/p/1/', '/c/
   const r = await get('/', PANEL);
   t(r.s === 200 && isPanel(r.b) && !isShop(r.b), 'خانهٔ پنل سرِ جایش است', 'status=' + r.s);
   t(!/\{\{\/?DEMO\}\}/.test(r.b), 'نشانه‌های قالب در صفحه نمانده‌اند');
-  t(/\[hidden\]\s*\{\s*display:\s*none\s*!important/.test(r.b),
+  /* CSS دیگر داخلِ خودِ صفحه نیست؛ فایلِ جداگانه‌ای است با نامِ
+     هش‌دار که یک سال در مرورگر می‌ماند. پس قاعده را همان‌جا
+     می‌سنجیم، نه در متنِ صفحه. */
+  const cssHref = (r.b.match(/href="(\/_a\/[^"]+\.css)"/) || [])[1];
+  t(!!cssHref, 'صفحه به فایلِ CSSِ جداگانه اشاره می‌کند', cssHref || '—');
+  const css = cssHref ? await panelHtml(cssHref) : '';
+  t(/\[hidden\]\s*\{\s*display:\s*none\s*!important/.test(css),
     '«hidden» روی دکمه هم کار می‌کند، نه فقط روی لینکِ نوارِ بالا');
 }
 
