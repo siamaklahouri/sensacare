@@ -23,6 +23,8 @@ set -u
 APP="${APP:-/opt/sltech/app}"
 ENVF="${SLTECH_ENV:-/etc/sltech/env}"
 DB="${DB_FILE:-/var/lib/sltech/sltech.db}"
+# کلیدِ امضای اندروید. در مخزن نیست و نباید باشد.
+KEYSTORE="${KEYSTORE:-/root/android.keystore}"
 OUT="${BACKUP_DIR:-/var/backups/sltech}"
 PORT="${PORT:-8787}"
 STATE="${OPS_STATE:-/var/lib/sltech/ops}"
@@ -196,7 +198,8 @@ env_backup(){
   fi
   [ -n "$pass" ] || { say "  ❌ رمز خالی بود."; fails=$((fails+1)); return; }
   mkdir -p "$OUT/env"
-  local f="$OUT/env/env-$(date +%Y%m%d-%H%M).enc"
+  local stamp; stamp=$(date +%Y%m%d-%H%M)
+  local f="$OUT/env/env-$stamp.enc"
   if OPS_PASS="$pass" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
        -in "$ENVF" -out "$f" -pass env:OPS_PASS 2>/dev/null; then
     chmod 600 "$f"
@@ -205,6 +208,25 @@ env_backup(){
     say "  برگرداندن:  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in $f -out env"
   else
     say "  ❌ رمزگذاری نشد."; fails=$((fails+1))
+  fi
+
+  # کلیدِ امضای برنامهٔ اندروید. یک بار گم شد و نسخهٔ تازهٔ برنامه
+  # دیگر «همان برنامه» حساب نمی‌شد — یعنی هر کاربری باید اول قبلی را
+  # پاک می‌کرد. این فایل در مخزن نیست و نباید باشد، پس تنها جایش همین
+  # سرور است و تنها پشتیبانش همین‌جا ساخته می‌شود.
+  if [ -f "$KEYSTORE" ]; then
+    local kf="$OUT/env/keystore-$stamp.enc"
+    if OPS_PASS="$pass" openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+         -in "$KEYSTORE" -out "$kf" -pass env:OPS_PASS 2>/dev/null; then
+      chmod 600 "$kf"
+      say "  ✅ $kf"
+      say "  رمزِ خودِ کلید جدا از این است و جایی ذخیره نمی‌شود — آن را"
+      say "  در مدیرِ رمزتان نگه دارید، وگرنه این فایل هم به درد نمی‌خورد."
+    else
+      say "  ❌ کلیدِ اندروید رمزگذاری نشد."; fails=$((fails+1))
+    fi
+  else
+    say "  ℹ️ کلیدِ اندروید ($KEYSTORE) نیست — رد شد."
   fi
 }
 
