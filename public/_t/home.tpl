@@ -295,6 +295,15 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 .kind ul li{ margin-bottom:4px; }
 
 /* ---------- شغل‌ها ---------- */
+/* عکس‌های محصول. یک ستون روی گوشی، چون بریدنشان به دو ستون یعنی
+   هیچ‌کدام خوانا نیست. */
+.shots{ display:grid; gap:18px; }
+.shots figure{ margin:0; }
+.shots img{ width:100%; height:auto; display:block; border:1px solid var(--line);
+  border-radius:var(--r); box-shadow:var(--sh-1); background:var(--white); }
+.shots figcaption{ margin-top:8px; font-size:12.5px; color:var(--ink-faint); text-align:center; }
+@media (min-width:900px){ .shots{ grid-template-columns:1fr 1fr; }
+  .shots figure:first-child{ grid-column:1 / -1; } }
 .jobs{ display:grid; gap:9px; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
 .job{ display:flex; align-items:center; gap:10px; background:var(--white);
   border:1px solid var(--line); border-radius:var(--r); padding:12px 14px;
@@ -666,6 +675,7 @@ html.anim details[open] summary::after{
     <span class="navdot" id="navdot" aria-hidden="true"></span>
     <a href="#why">چرا؟</a>
     <a href="#kinds">انواع</a>
+    <a href="#look">نمایش</a>
     <a href="#jobs">شغل‌ها</a>
     {{DEMO}}<a href="/demo/" class="demoLink">دمو</a>{{/DEMO}}
     <a href="#buy" class="buyLink" hidden>پلن‌ها</a>
@@ -798,6 +808,32 @@ html.anim details[open] summary::after{
             <li>حساب‌های بانکی و بودجهٔ ماهانه</li>
             <li>طرف‌حساب‌ها</li></ul>
       </div>
+    </div>
+  </section>
+
+  <!-- عکسِ خودِ محصول. تا امروز کسی که از گوگل می‌آمد هیچ تصویری
+       نمی‌دید و باید از روی متن حدس می‌زد چه می‌خرد. این عکس‌ها دستی
+       ساخته نشده‌اند: server/shots.mjs آن‌ها را از خودِ کارتابلِ
+       نمایشی می‌گیرد، پس هیچ‌وقت با محصول فرق نمی‌کنند. -->
+  <section id="look">
+    <div class="sec-head">
+      <h2>خودش این شکلی است</h2>
+      <p>سه بخش از کارتابلِ نمایشی — همان چیزی که بعد از ورود می‌بینید.
+         روی هرکدام بزنید تا بزرگ شود.</p>
+    </div>
+    <div class="shots">
+      <figure><a href="/shots/checklist.jpg" target="_blank" rel="noopener">
+        <img src="/shots/checklist.jpg" width="1680" height="880" loading="lazy"
+             alt="چک‌لیست ماهانه: دسته، وظیفه، مسئول، مهلت و وضعیت هر کار"></a>
+        <figcaption>چک‌لیست ماهانه — کارهای ماه با مسئول و مهلت</figcaption></figure>
+      <figure><a href="/shots/daily.jpg" target="_blank" rel="noopener">
+        <img src="/shots/daily.jpg" width="1680" height="880" loading="lazy"
+             alt="برنامهٔ روزانه: کار هر روز، شرکت، وضعیت و تاریخ انجام"></a>
+        <figcaption>برنامهٔ روزانه — روزبه‌روزِ ماه</figcaption></figure>
+      <figure><a href="/shots/dashboard.jpg" target="_blank" rel="noopener">
+        <img src="/shots/dashboard.jpg" width="1680" height="880" loading="lazy"
+             alt="داشبورد: نمودار پیشرفت ماه و شمار کارهای انجام‌شده"></a>
+        <figcaption>داشبورد — ماه چطور پیش می‌رود</figcaption></figure>
     </div>
   </section>
 

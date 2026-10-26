@@ -857,3 +857,19 @@ CREATE TABLE IF NOT EXISTS app_errors (
   notified INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS app_errors_last ON app_errors(last DESC);
+
+-- ۳۸ | مقاله‌های دامنهٔ پنل
+-- مقاله‌های فروشگاه در جدولِ articles هستند و از پنلِ فروشگاه اداره
+-- می‌شوند. حالا که دو سایت از هم جدا شده‌اند، sltech.ir نمی‌تواند از
+-- آن‌ها استفاده کند و خودش چیزی نداشت: کلِ دامنه بیست‌ودو صفحهٔ شغلی
+-- بود و بس. این جدول مالِ خودِ پنل است و از پنلِ خودش پر می‌شود.
+CREATE TABLE IF NOT EXISTS sl_articles (
+  slug      TEXT PRIMARY KEY,
+  title     TEXT NOT NULL,
+  excerpt   TEXT,
+  body      TEXT,
+  created   INTEGER NOT NULL,
+  updated   INTEGER NOT NULL,
+  published INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS sl_articles_pub ON sl_articles(published, created DESC);

@@ -854,6 +854,7 @@ table.inv-tab td.desc{ text-align:right; }
     <button data-tab="orders">سفارش‌ها</button>
     <button data-tab="msgs">پیام‌ها</button>
     <button data-tab="news">خبرها</button>
+    <button data-tab="articles">مقاله‌ها</button>
     <button data-tab="orgs">سازمان</button>
     <button data-tab="shared">بخش‌های مشترک</button>
     <button data-tab="site">تنظیمات سایت</button>
@@ -971,6 +972,33 @@ table.inv-tab td.desc{ text-align:right; }
   .nwrow .acts label{ font-size:11.5px; color:var(--ink-soft); display:flex;
     align-items:center; gap:5px; }
   </style>
+  <!-- مقاله‌های دامنهٔ پنل. مقاله‌های فروشگاه جای دیگری‌اند و حالا که
+       دو سایت جدا شده‌اند، این یکی خودش را لازم داشت. -->
+  <section id="tab-articles" hidden>
+    <div class="panel">
+      <h2>مقاله‌های sltech.ir</h2>
+      <p class="sub">هرچه این‌جا بنویسید و «منتشر» بزنید، در
+        <code>sltech.ir/maghale/</code> دیده می‌شود و به نقشهٔ سایت می‌رود.
+        متنش ساده است، نه HTML: خطِ خالی یعنی پاراگرافِ تازه،
+        <code>## </code> اولِ خط یعنی تیتر، و <code>- </code> یعنی فهرست.</p>
+      <div class="nwrow">
+        <div class="top">
+          <input class="ic" id="arSlug" placeholder="neshani-english" dir="ltr" style="flex:0 0 190px">
+          <input class="ti" id="arTitle" placeholder="عنوانِ مقاله">
+        </div>
+        <input id="arExcerpt" placeholder="یک جملهٔ کوتاه — در فهرست و در گوگل همین دیده می‌شود">
+        <textarea id="arBody" rows="10" placeholder="متنِ مقاله…"></textarea>
+        <div class="acts">
+          <label><input type="checkbox" id="arPub" checked> منتشر شود</label>
+          <button class="btn" id="arSave">ذخیره</button>
+          <button class="btn btn-ghost" id="arNew">نوشتهٔ تازه</button>
+          <span class="set-state" id="arState"></span>
+        </div>
+      </div>
+      <div id="arList" class="nwlist"></div>
+    </div>
+  </section>
+
   <section id="tab-news" hidden>
     <div class="panel">
       <h2>خبرهای کارتابل</h2>
@@ -1638,6 +1666,7 @@ function openApp(lastLogin){
   setupNew();
   setupKeys();
   setupSite();
+  setupArticles();
   loadPlanners();
 }
 
@@ -1782,6 +1811,7 @@ document.addEventListener("click", async e=>{
       if(b.dataset.tab === "log") loadLog();
       if(b.dataset.tab === "msgs") loadMessages();
       if(b.dataset.tab === "news") loadNews();
+      if(b.dataset.tab === "articles") loadArticles();
       if(b.dataset.tab === "orders") loadOrders();
       if(b.dataset.tab === "report") loadReport();
       if(b.dataset.tab === "shared"){ loadShared(); loadChat(); loadVShares(); }
@@ -1861,6 +1891,19 @@ function bellItems(){
     add("info", "💬", "پیامِ تازهٔ پشتیبانی",
       fa(mn.n) + " پیامِ خوانده‌نشده" + (mn.last ? " — " + faDateTime(mn.last) : ""),
       "msg|" + mn.n + "|" + (mn.last || 0), ()=> goBellTab("msgs"));
+
+  /* خطاهای برنامه. تا دیروز هیچ‌جا دیده نمی‌شدند و فقط در journald
+     می‌نشستند؛ حالا سرویس پیام می‌دهد و این‌جا هم شمرده می‌شوند.
+     کلید از شمارشان ساخته می‌شود تا خطای تازه دوباره دیده شود. */
+  const ae = DATA.appErrors;
+  if(ae && Number(ae.kinds)){
+    const t = (ae.top || [])[0] || {};
+    add("warn", "⚠️", "خطای سرور در ۲۴ ساعت گذشته",
+      fa(ae.kinds) + " جور خطا، " + fa(ae.total) + " بار" +
+      (t.path ? " — بیشترین: " + t.method + " " + t.path : "") +
+      (t.msg ? " (" + t.msg + ")" : ""),
+      "apperr|" + ae.kinds + "|" + ae.total);
+  }
 
   /* پشتیبانِ همگانی */
   const b = DATA.backupAll;
@@ -4313,6 +4356,80 @@ async function loadCoupons(){
       if(!r.ok){ say(r.data.error || "نشد.", true); return; }
       say("کد برداشته شد."); loadCoupons();
     };
+  });
+}
+
+/* ---------- مقاله‌های دامنهٔ پنل ----------
+   مقاله‌های فروشگاه جای دیگری‌اند. این‌ها مالِ sltech.ir هستند و
+   همان‌جا در /maghale/ دیده می‌شوند. */
+async function loadArticles(){
+  const box = document.getElementById("arList");
+  if(!box) return;
+  box.textContent = "…";
+  const r = await api("/articles");
+  if(!r.ok){ box.textContent = "نشد خواند."; return; }
+  const items = r.data.articles || [];
+  if(!items.length){ box.innerHTML = '<p class="sub">هنوز مقاله‌ای نوشته نشده.</p>'; return; }
+  box.innerHTML = items.map(a=>`
+    <div class="nwrow" data-slug="${esc(a.slug)}">
+      <div class="top">
+        <b style="flex:1">${esc(a.title)}</b>
+        <span class="st ${a.published ? "sent" : ""}">${a.published ? "منتشر شده" : "پیش‌نویس"}</span>
+        <span class="when">${faDateTime(a.created)}</span>
+      </div>
+      <div class="sub" style="margin:0 0 8px">${esc(a.excerpt || "")}</div>
+      <div class="acts">
+        <button class="btn btn-sm" data-edit="1">ویرایش</button>
+        <a class="btn btn-sm btn-ghost" target="_blank" rel="noopener"
+           href="/maghale/${esc(a.slug)}/">دیدنش</a>
+        <button class="btn btn-sm btn-ghost" data-del="1">پاک کن</button>
+      </div>
+    </div>`).join("");
+}
+
+function arFill(a){
+  document.getElementById("arSlug").value = a ? a.slug : "";
+  document.getElementById("arTitle").value = a ? a.title : "";
+  document.getElementById("arExcerpt").value = a ? (a.excerpt || "") : "";
+  document.getElementById("arBody").value = a ? (a.body || "") : "";
+  document.getElementById("arPub").checked = a ? !!a.published : true;
+}
+
+function setupArticles(){
+  const st = t => { const e = document.getElementById("arState"); if(e) e.textContent = t || ""; };
+
+  const save = document.getElementById("arSave");
+  if(save) save.addEventListener("click", async ()=>{
+    const payload = {
+      slug: document.getElementById("arSlug").value.trim().toLowerCase(),
+      title: document.getElementById("arTitle").value.trim(),
+      excerpt: document.getElementById("arExcerpt").value.trim(),
+      body: document.getElementById("arBody").value,
+      published: document.getElementById("arPub").checked ? 1 : 0
+    };
+    st("در حال ذخیره…");
+    const r = await api("/articles", { method:"POST", body: JSON.stringify(payload) });
+    st(r.ok ? "✓ ذخیره شد — " + r.data.url : (r.data.error || "ذخیره نشد"));
+    if(r.ok) loadArticles();
+  });
+
+  const fresh = document.getElementById("arNew");
+  if(fresh) fresh.addEventListener("click", ()=>{ arFill(null); st("نوشتهٔ تازه"); });
+
+  const list = document.getElementById("arList");
+  if(list) list.addEventListener("click", async e=>{
+    const row = e.target.closest(".nwrow");
+    if(!row) return;
+    const slug = row.dataset.slug;
+    if(e.target.dataset.edit){
+      const r = await api("/articles/" + encodeURIComponent(slug));
+      if(r.ok){ arFill(r.data.article); st("برای ویرایش باز شد"); window.scrollTo(0,0); }
+    }
+    if(e.target.dataset.del){
+      if(!confirm("مقالهٔ «" + slug + "» پاک شود؟")) return;
+      const r = await api("/articles/" + encodeURIComponent(slug), { method:"DELETE" });
+      if(r.ok) loadArticles();
+    }
   });
 }
 

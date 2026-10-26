@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { JOBS } from './kartabl-jobs.js';
 import { jobPage, jobTiles, jobCount, hasJobPage, jobList } from './jobpage.js';
+import { listPage as slListPage, articlePage as slArticlePage } from './slnews.js';
 import { handleAdminPlaner, ADMIN_PAGE, ADMIN_PAGE_OLD } from './admin-planer.js';
 import { handleSlUpdate, fromWeb, slContact,
          slLoginOptions, SL_NONCE } from './sltech-bot.js';
@@ -106,7 +107,7 @@ function disabledPanelPage(panel) {
 </div></body></html>`;
 }
 
-import { siteManifest, CSS_BLOBS, JS_BLOBS,
+import { siteManifest, CSS_BLOBS, JS_BLOBS, liftAssets, scriptCsp,
   handleKartabl, nightlyKartablBackup, allPanels, panelBySlug, panelByApi,
          renderPanelPage, withParts, assetReq, useBundledTemplates,
          appManifest, isDemo, readSession, makeSession, cookieHeader } from './kartabl.js';
@@ -1276,6 +1277,14 @@ function notModified(req, tag) {
     'ETag': tag, 'Cache-Control': PAGE_CACHE, 'X-Robots-Tag': 'noindex, nofollow' } });
 }
 
+/* CSPِ همین صفحه: مثلِ پیش‌فرض، ولی script-src به‌جای unsafe-inline
+   هشِ همان چند بلوکِ درون‌خطی را دارد. چرایش در scriptCsp. */
+async function pageCsp(html) {
+  const line = await scriptCsp(html);
+  return { 'Content-Security-Policy': SEC_HEADERS['Content-Security-Policy']
+    .split('; ').map(p => p.startsWith('script-src ') ? line : p).join('; ') };
+}
+
 function withSecurity(res, extra) {
   const h = new Headers(res.headers);
   for (const [k, v] of Object.entries(SEC_HEADERS)) h.set(k, v);
@@ -1813,9 +1822,10 @@ export default {
            و هرکدام لینکِ صفحهٔ خودش است. */
         html = html.split('{{JOBTILES}}').join(jobTiles())
                    .split('{{JOBCOUNT}}').join(faNum(jobCount()));
+        html = await liftAssets(html, 'home');
         return withSecurity(new Response(html, { headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=300' } }));
+          'Cache-Control': 'public, max-age=300' } }), await pageCsp(html));
       }
       /* اگر قالب نیامد، دستِ‌کم کاربر را به صفحهٔ ورود برسان */
       return Response.redirect(new URL(ADMIN_PAGE, req.url).toString(), 302);
@@ -2029,9 +2039,18 @@ export default {
       const base = siteBase(env, url, site);
       const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const day = t => new Date(t || Date.now()).toISOString().slice(0, 10);
+      const enc0 = t => encodeURIComponent(String(t));
       const urls = [`<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`];
       /* دامنهٔ پنل: خودِ صفحهٔ معرفی و صفحهٔ هر شغل. کارتابل‌ها و
          صفحهٔ ورود noindex‌اند و جایی در نقشه ندارند. */
+      if (site === 'panel' || site === 'both') {
+        urls.push(`<url><loc>${base}/maghale/</loc><changefreq>weekly</changefreq>` +
+                  `<priority>0.6</priority></url>`);
+        for (const a of await all(env,
+          'SELECT slug, updated FROM sl_articles WHERE published=1').catch(() => []))
+          urls.push(`<url><loc>${base}/maghale/${enc0(a.slug)}/</loc>` +
+                    `<lastmod>${day(a.updated)}</lastmod><priority>0.7</priority></url>`);
+      }
       if (site === 'panel' || site === 'both')
         for (const j of jobList())
           urls.push(`<url><loc>${base}/kar/${j.id}/</loc><changefreq>monthly</changefreq>` +
@@ -2076,16 +2095,20 @@ export default {
       const res = await env.ASSETS.fetch(assetReq(req, '/_t/admin.tpl'));
       /* پنلِ مدیریت هم از همان پاره‌قالب‌ها استفاده می‌کند — فعلاً فقط
          ارقامِ فارسی — پس مثلِ صفحهٔ کارتابل از withParts رد می‌شود. */
-      const adminHtml = res.ok ? await withParts(env, req, await res.text()) : null;
+      /* همان سبک‌سازیِ صفحهٔ کارتابل: پنل ادمین ۲۸۸ کیلوبایت بود و
+         همه‌اش هر بار از نو می‌آمد. */
+      const adminHtml = res.ok
+        ? await liftAssets(await withParts(env, req, await res.text()), 'admin')
+        : null;
       if (adminHtml) {
         const tag = await etagOf(adminHtml);
         const same = notModified(req, tag);
-        if (same) return withSecurity(same);
+        if (same) return withSecurity(same, await pageCsp(adminHtml));
         return withSecurity(new Response(adminHtml, { headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': PAGE_CACHE,
           'ETag': tag,
-          'X-Robots-Tag': 'noindex, nofollow' } }));
+          'X-Robots-Tag': 'noindex, nofollow' } }), await pageCsp(adminHtml));
       }
     }
 
@@ -2137,6 +2160,40 @@ export default {
           headers: { 'Content-Type': 'application/manifest+json; charset=utf-8',
                      'Cache-Control': 'no-cache',
                      'X-Robots-Tag': 'noindex, nofollow' } }));
+    }
+
+    /* ---------------- مقاله‌های دامنهٔ پنل ----------------
+       فهرست و خودِ مقاله. «/a/» مالِ فروشگاه است و روی این دامنه به
+       خانه می‌رود، پس نشانیِ جدا لازم بود. */
+    if (m === 'GET' && site !== 'shop' && /^\/maghale(\/[a-z0-9-]*)?\/?$/.test(p) && env.DB) {
+      const base = siteBase(env, url, site);
+      const mA = /^\/maghale\/([a-z0-9-]+)\/?$/.exec(p);
+      if (mA) {
+        if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
+        const row = await one(env,
+          'SELECT * FROM sl_articles WHERE slug=? AND published=1', mA[1]).catch(() => null);
+        if (!row) return withSecurity(new Response(panelNotFoundPage(), { status: 404,
+          headers: { 'Content-Type': 'text/html; charset=utf-8',
+                     'X-Robots-Tag': 'noindex, nofollow' } }));
+        const html = slArticlePage(row, base);
+        const tag = await etagOf(html);
+        const same = notModified(req, tag);
+        if (same) return withSecurity(same, await pageCsp(html));
+        return withSecurity(new Response(html, { headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=600', 'ETag': tag } }), await pageCsp(html));
+      }
+      if (p !== '/maghale/') return Response.redirect(new URL('/maghale/', req.url).toString(), 301);
+      const rows = await all(env,
+        `SELECT slug, title, excerpt FROM sl_articles
+          WHERE published=1 ORDER BY created DESC LIMIT 60`).catch(() => []);
+      const html = slListPage(rows, base);
+      const tag = await etagOf(html);
+      const same = notModified(req, tag);
+      if (same) return withSecurity(same, await pageCsp(html));
+      return withSecurity(new Response(html, { headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=300', 'ETag': tag } }), await pageCsp(html));
     }
 
     /* ---------------- صفحهٔ شغل ----------------
@@ -2197,14 +2254,14 @@ export default {
 
             const tag = await etagOf(html);
             const same = demoCookie ? null : notModified(req, tag);
-            if (same) return withSecurity(same);
+            if (same) return withSecurity(same, await pageCsp(html));
             const h = {
               'Content-Type': 'text/html; charset=utf-8',
               'Cache-Control': PAGE_CACHE,
               'ETag': tag,
               'X-Robots-Tag': 'noindex, nofollow' };
             if (demoCookie) h['Set-Cookie'] = demoCookie;
-            return withSecurity(new Response(html, { headers: h }));
+            return withSecurity(new Response(html, { headers: h }), await pageCsp(html));
           }
         }
       }

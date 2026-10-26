@@ -75,6 +75,29 @@ export function jobPage(id, base) {
       `<td class="day">روزِ ${fa(t.deadline)}</td></tr>`).join('')
   ).join('\n');
 
+  /* پرسش‌های متداول از خودِ دادهٔ همین شغل ساخته می‌شوند، نه یک متنِ
+     ثابتِ تکراری: عددها و نام‌ها واقعی‌اند و اگر چک‌لیست عوض شود،
+     جواب‌ها هم همان لحظه عوض می‌شوند. گوگل هم این بخش را می‌فهمد و
+     گاهی خودِ پرسش و پاسخ را در نتیجه نشان می‌دهد. */
+  const firstCats = cats.slice(0, 4).join('، ');
+  const early = j.tasks.filter(t => t.deadline <= 10).length;
+  const faq = [
+    [`چک‌لیست ماهانهٔ ${j.label} شاملِ چه کارهایی است؟`,
+     `${fa(j.tasks.length)} کار در ${fa(cats.length)} دسته — از جمله ${esc(firstCats)}. ` +
+     `هر کار مسئول و روزِ مهلتِ خودش را دارد و ${fa(early)} کار مهلتشان در ده روزِ اولِ ماه است.`],
+    [`می‌توانم کارها را عوض کنم یا کارِ خودم را اضافه کنم؟`,
+     `بله. این فهرست فقط دانهٔ اولیه است: از همان لحظهٔ ساختِ کارتابل، هر وظیفه را ` +
+     `می‌توانید ویرایش کنید، پاک کنید یا کارِ تازه بنویسید. هیچ ردیفی قفل نیست.`],
+    [`هر ماه باید از نو بنویسمشان؟`,
+     `نه. ماهِ تازه که می‌سازید، کارهای تکرارشونده خودشان می‌آیند و ماه‌های گذشته هم ` +
+     `سرِ جایشان می‌مانند تا هر وقت خواستید نگاهشان کنید.`],
+    [`فقط همین چک‌لیست است؟`,
+     `نه. کنارش برنامهٔ روزانه، داشبوردِ پیشرفتِ ماه، یک بخشِ رمزدار برای چیزهایی که ` +
+     `نباید جایی نوشته شوند، و خروجیِ اکسل هست.`]
+  ];
+  const faqHtml = faq.map(([q, a]) =>
+    `<details><summary>${esc(q)}</summary><p>${a}</p></details>`).join('\n');
+
   const others = jobList().filter(o => o.id !== id).map(o =>
     `<a href="/kar/${esc(o.id)}/">${o.icon} ${esc(o.label)}</a>`).join(' · ');
 
@@ -90,6 +113,15 @@ export function jobPage(id, base) {
     step: j.tasks.map((t, i) => ({
       '@type': 'HowToStep', position: i + 1, name: t.task,
       text: `${t.category} — مسئول: ${t.owner} — مهلت: روزِ ${t.deadline} ماه`
+    }))
+  };
+
+  const ldFaq = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(([q, a]) => ({
+      '@type': 'Question', name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '') }
     }))
   };
 
@@ -141,10 +173,19 @@ export function jobPage(id, base) {
  .others a{color:var(--ink-soft);text-decoration:none}
  .others a:hover{color:var(--accent)}
  h2{font-size:16px;margin:30px 0 10px}
+ .shot{margin:0 0 10px}
+ .shot img{width:100%;height:auto;display:block;border:1px solid var(--line);
+   border-radius:12px;background:var(--card)}
+ .shot figcaption{margin-top:7px;font-size:12px;color:var(--ink-faint);text-align:center}
+ .faq details{background:var(--card);border:1px solid var(--line);border-radius:10px;
+   padding:10px 14px;margin-bottom:8px}
+ .faq summary{cursor:pointer;font-size:13.5px;font-weight:600}
+ .faq p{margin:8px 0 2px;font-size:13px;color:var(--ink-soft);line-height:2.1}
  footer{border-top:1px solid var(--line);margin-top:30px;padding:18px 0;
    font-size:12px;color:var(--ink-faint)}
 </style>
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
+<script type="application/ld+json">${JSON.stringify(ldFaq)}</script>
 </head><body>
 
 <header class="top"><div class="wrap">
@@ -172,6 +213,19 @@ ${rows}
   <div class="cta">
     <a class="btn btn-main" href="/login">کارتابلِ خودم را بسازم</a>
     <a class="btn" href="/#jobs">شغل‌های دیگر</a>
+  </div>
+
+  <h2>کارتابل این شکلی است</h2>
+  <figure class="shot">
+    <a href="/shots/checklist.jpg" target="_blank" rel="noopener">
+      <img src="/shots/checklist.jpg" width="1680" height="880" loading="lazy"
+           alt="چک‌لیست ماهانه در کارتابل: دسته، وظیفه، مسئول، مهلت و وضعیت"></a>
+    <figcaption>همین چک‌لیست، بعد از ساختنِ کارتابل</figcaption>
+  </figure>
+
+  <h2>پرسش‌های متداول</h2>
+  <div class="faq">
+${faqHtml}
   </div>
 
   <h2>این فهرست از کجا می‌آید؟</h2>

@@ -19,6 +19,7 @@ import {
   handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
+import { SL_SLUG } from './slnews.js';
 import { setSlWebhook, recentMessages, toUser, SL_PF, slContact } from './sltech-bot.js';
 import { listOrders, setOrder, listCoupons, saveCoupon, dropCoupon,
          VIEW_LABEL as SL_VIEW_LABEL, FREE_VIEWS as SL_FREE_VIEWS,
@@ -722,11 +723,84 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
          و لازم نباشد کسی حدس بزند چرا چیزی نیامده. */
       backupAll: await getSetting(env, BK_LAST, null),
       /* پیام‌های پشتیبانیِ خوانده‌نشده — زنگوله از همین خبر می‌دهد */
-      msgNews: await msgNews(env)
+      msgNews: await msgNews(env),
+      /* خطاهای برنامه در شبانه‌روزِ گذشته. سرویس خودش سرِ هر خطای تازه
+         پیام می‌دهد، ولی پیام در انبوهِ گفتگو گم می‌شود؛ این‌جا همیشه
+         جلوی چشم است تا کسی که وارد پنل می‌شود ببیند چیزی هست یا نه. */
+      appErrors: await appErrorSummary(env)
     });
   }
 
-  /* ---- ساختنِ کارتابل ---- */
+  /* خلاصهٔ خطاهای برنامه. جزئیات در «ops.sh errors» است؛ این‌جا فقط
+   باید بگوید «چیزی هست یا نه» و چه چیزی. */
+async function appErrorSummary(env) {
+  try {
+    const since = Date.now() - 86400000;
+    const rows = await all(env,
+      `SELECT method, path, msg, n, last FROM app_errors
+        WHERE last >= ? ORDER BY n DESC LIMIT 5`, since);
+    if (!rows.length) return { kinds: 0, total: 0, top: [] };
+    const sum = await one(env,
+      'SELECT COUNT(*) k, COALESCE(SUM(n),0) n FROM app_errors WHERE last >= ?', since);
+    return { kinds: Number(sum.k) || 0, total: Number(sum.n) || 0,
+             top: rows.map(r => ({ method: r.method, path: r.path,
+                                   msg: String(r.msg || '').slice(0, 120),
+                                   n: Number(r.n) || 0, last: Number(r.last) || 0 })) };
+  } catch (e) { return { kinds: 0, total: 0, top: [] }; }
+}
+
+/* ---- مقاله‌های دامنهٔ پنل ----
+   متنش ساده است، نه HTML: هر خطِ خالی پاراگراف، «## » تیتر، «- »
+   فهرست. چرایش در src/slnews.js. */
+async function handleArticles(env, p, m, body) {
+  if (p === '/articles' && m === 'GET') {
+    const rows = await all(env,
+      `SELECT slug, title, excerpt, created, updated, published,
+              length(body) AS size FROM sl_articles ORDER BY created DESC`).catch(() => []);
+    return json({ ok: true, articles: rows });
+  }
+
+  const one0 = /^\/articles\/([a-z0-9-]+)$/.exec(p);
+  if (one0 && m === 'GET') {
+    const row = await one(env, 'SELECT * FROM sl_articles WHERE slug=?', one0[1]);
+    if (!row) return bad('مقاله پیدا نشد.', 404);
+    return json({ ok: true, article: row });
+  }
+
+  if (p === '/articles' && m === 'POST') {
+    const slug = String(body.slug || '').trim().toLowerCase();
+    const title = String(body.title || '').trim().slice(0, 120);
+    if (!SL_SLUG.test(slug))
+      return bad('نشانی فقط حروف انگلیسی کوچک، عدد و خط تیره — بین ۲ تا ۴۸ حرف.');
+    if (!title) return bad('عنوان لازم است.');
+    if (slug === 'maghale') return bad('این نشانی مالِ خودِ فهرست است.');
+    const now = Date.now();
+    const cur = await one(env, 'SELECT created FROM sl_articles WHERE slug=?', slug);
+    await run(env, `INSERT INTO sl_articles(slug,title,excerpt,body,created,updated,published)
+      VALUES(?,?,?,?,?,?,?)
+      ON CONFLICT(slug) DO UPDATE SET title=excluded.title, excerpt=excluded.excerpt,
+        body=excluded.body, updated=excluded.updated, published=excluded.published`,
+      slug, title, String(body.excerpt || '').trim().slice(0, 300),
+      String(body.body || ''), (cur && cur.created) || now, now,
+      body.published ? 1 : 0);
+    await log(env, cur ? 'article-edit' : 'article-new', slug, title.slice(0, 40));
+    return json({ ok: true, slug, url: '/maghale/' + slug + '/' });
+  }
+
+  if (one0 && m === 'DELETE') {
+    await run(env, 'DELETE FROM sl_articles WHERE slug=?', one0[1]);
+    await log(env, 'article-del', one0[1], '');
+    return json({ ok: true });
+  }
+  return null;
+}
+
+/* ---- ساختنِ کارتابل ---- */
+  {
+    const r = await handleArticles(env, p, m, body);
+    if (r) return r;
+  }
+
   if (p === '/planners' && m === 'POST') {
     const name = String(body.name || '').trim().slice(0, 40);
     const slug = String(body.slug || '').trim().toLowerCase();
