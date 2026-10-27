@@ -39,7 +39,7 @@ LIST="
   site-anim.test.mjs site-anim2.test.mjs win-icons.test.mjs
   xlsx-import.test.mjs xlsx-import-fin.test.mjs xlsx-sample.test.mjs
   merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs
-  updown.test.mjs seo.test.mjs aria.test.mjs narrow.test.mjs"
+  updown.test.mjs seo.test.mjs aria.test.mjs narrow.test.mjs orgroles.test.mjs"
 
 for f in $LIST; do
   [ -f "$f" ] || continue

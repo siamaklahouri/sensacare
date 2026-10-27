@@ -83,7 +83,11 @@ async function ensure(env) {
     "ALTER TABLE sl_orders ADD COLUMN views TEXT NOT NULL DEFAULT '[]'",
     "ALTER TABLE sl_orders ADD COLUMN customs TEXT NOT NULL DEFAULT '[]'",
     "ALTER TABLE sl_orders ADD COLUMN orgname TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE sl_orders ADD COLUMN sharednote TEXT NOT NULL DEFAULT ''"
+    "ALTER TABLE sl_orders ADD COLUMN sharednote TEXT NOT NULL DEFAULT ''",
+    /* سفارشِ سازمانی یک شغل نیست، چند شغل است با تعدادِ خودش:
+       «۱ مدیرعامل، ۵ حسابدار، ۲ دفتردار…». ستونِ job یکی بیشتر
+       نمی‌گیرد، پس ردیف‌ها این‌جا می‌نشینند. */
+    "ALTER TABLE sl_orders ADD COLUMN lines TEXT NOT NULL DEFAULT '[]'"
   ]) { try { await run(env, sql); } catch (e) { /* از قبل بود */ } }
 
   try {
@@ -164,12 +168,19 @@ export function viewPrice(st, v) {
   return Math.max(0, Math.round(DEFAULT_VIEW_PRICE[v] || 0));
 }
 
-export function planTotal(plan, st, { seats = 1, views = [], customs = [] } = {}) {
+export function planTotal(plan, st, { seats = 1, views = [], customs = [], lines = [] } = {}) {
   const base = Math.max(0, Number(plan.price || 0));
   const baseSeats = Math.max(1, Math.round(Number(plan.baseSeats) || 1));
   const perSeat = Math.max(0, Math.round(Number(plan.perSeat) || 0));
-  const n = Math.max(1, Math.round(Number(seats) || 1));
   const arr = v => Array.isArray(v) ? v : [];
+  /* سفارشِ سازمانی چند ردیف دارد و هر ردیف شغل و تعدادِ خودش:
+     «۱ مدیرعامل، ۵ حسابدار، ۴ فنی». تعدادِ نفرات جمعِ ردیف‌هاست و
+     بخش‌های اضافه هم ردیف‌به‌ردیف حساب می‌شوند — چون هر شغل بخش‌های
+     خودش را دارد و حسابدار بابتِ «VeeamBackup» پول نمی‌دهد. */
+  const rows = arr(lines).filter(r => r && Number(r.count) > 0);
+  const n = rows.length
+    ? Math.max(1, rows.reduce((t, r) => t + Math.max(1, Math.round(Number(r.count) || 1)), 0))
+    : Math.max(1, Math.round(Number(seats) || 1));
 
   const seatPart = base + Math.max(0, n - baseSeats) * perSeat;
   /* هر بخش قیمتِ خودش. پیش از این همه یک عدد بودند و نمی‌شد گفت
@@ -179,11 +190,20 @@ export function planTotal(plan, st, { seats = 1, views = [], customs = [] } = {}
      بخش را همهٔ کارتابل‌ها می‌گیرند، پس مثلِ خودِ پلن نفر به نفر
      حساب می‌شود. پیش از این ضرب نمی‌شد، یعنی سازمانِ پنجاه‌نفره
      بابتِ گزارش‌ساز همان‌قدر می‌داد که سازمانِ دونفره. */
-  const extraPart = n * arr(views).reduce((t, v) => t + viewPrice(st, v), 0);
+  const extraPart = rows.length
+    ? rows.reduce((t, r) => t + Math.max(1, Math.round(Number(r.count) || 1)) *
+        arr(r.views).reduce((s2, v) => s2 + viewPrice(st, v), 0), 0)
+    : n * arr(views).reduce((t, v) => t + viewPrice(st, v), 0);
   /* ولی سفارشی‌سازی ضرب نمی‌شود: آن هزینهٔ یک‌بارِ ساختنِ آن بخش است،
      نه اجازهٔ استفاده‌اش. ضرب کردنش یعنی بابتِ یک کارِ توسعه، به
      تعدادِ نفرات پول گرفتن. */
-  const customPart = arr(customs).length *
+  /* سفارشی‌سازی یک‌بار است، پس در حالتِ چندردیفی هم تکراری‌ها یکی
+     شمرده می‌شوند: دو شغل که هر دو همان بخشِ سفارشی را خواسته‌اند،
+     یک کارِ توسعه است نه دو تا. */
+  const customSet = rows.length
+    ? new Set(rows.flatMap(r => arr(r.customs)))
+    : new Set(arr(customs));
+  const customPart = customSet.size *
                      Math.max(0, Math.round(Number(st && st.customPrice) || 0));
 
   return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
@@ -213,7 +233,7 @@ export async function placeOrder(env, body) {
   const job = txt(body.job, 30);
   const kind = KINDS[body.kind] ? body.kind : 'gen';
   const note = txt(body.note, 500);
-  const rawSeats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
+  let rawSeats = Math.min(Math.max(parseInt(body.seats, 10) || 1, 1), 200);
 
   if (!name) return { error: 'نامتان را بنویسید.' };
   if (job && !JOBS[job]) return { error: 'شغلِ انتخاب‌شده را نمی‌شناسم.' };
@@ -234,6 +254,32 @@ export async function placeOrder(env, body) {
   };
   const views = pickList(body.views, jobViews.filter(v => !FREE_VIEWS.includes(v)));
   const customs = pickList(body.customs, views);
+
+  /* ---------- ردیف‌های سفارشِ سازمانی ----------
+     یک سازمان یک شغل نیست. «۱۵ کاربر» یعنی مثلاً ۱ مدیرعامل، ۵
+     حسابدار، ۲ دفتردار، ۳ بازرگانی و ۴ فنی — و هر کدام قالبِ کارتابلِ
+     خودش را می‌خواهد. تا امروز فرم فقط یک شغل می‌گرفت و بقیه باید
+     دستی هماهنگ می‌شد.
+
+     هر ردیف این‌جا از نو سنجیده می‌شود، نه از روی حرفِ مرورگر: شغل
+     باید واقعاً وجود داشته باشد و بخش‌های خواسته‌شده باید بخشی از
+     همان شغل باشند — وگرنه می‌شد بخشی را خرید که در قالبِ آن شغل
+     اصلاً نیست. */
+  const rawLines = Array.isArray(body.lines) ? body.lines.slice(0, 20) : [];
+  const lines = [];
+  for (const L of rawLines) {
+    const lj = txt(L && L.job, 30);
+    if (!lj || !JOBS[lj]) continue;
+    const cnt = Math.min(Math.max(parseInt(L.count, 10) || 0, 1), 200);
+    const lv = [...(JOBS[lj].views || []), ...(JOBS[lj].extras || [])];
+    const picked = pickList(L.views, lv.filter(v => !FREE_VIEWS.includes(v)));
+    /* یک شغل دو بار نیاید؛ تعدادش جمع شود */
+    const had = lines.find(x => x.job === lj);
+    if (had) { had.count = Math.min(200, had.count + cnt); continue; }
+    lines.push({ job: lj, kind: JOBS[lj].kind || 'gen', count: cnt,
+                 views: picked, customs: pickList(L.customs, picked) });
+  }
+  const lineSeats = lines.reduce((t, r) => t + r.count, 0);
   const orgName = txt(body.orgName, 80);
   const sharedNote = txt(body.sharedNote, 300);
 
@@ -245,6 +291,9 @@ export async function placeOrder(env, body) {
   /* پلنِ سازمانی از تعدادِ پایه شروع می‌شود و کمتر از آن معنا ندارد.
      صفحه هم همین را می‌گذارد، ولی حرفِ مرورگر سند نیست: بی این،
      می‌شد سفارشِ «سازمانی، ۱ نفر» فرستاد و فاکتور همان را می‌نوشت. */
+  /* وقتی ردیف هست، تعدادِ نفرات از جمعشان می‌آید نه از کادرِ تعداد —
+     دو عدد که بتوانند با هم نخوانند، روزی نمی‌خوانند. */
+  if (lines.length) rawSeats = Math.min(200, Math.max(1, lineSeats));
   const minSeats = Math.max(1, Math.round(Number(plan.baseSeats) || 1));
   if (rawSeats < minSeats)
     return { error: 'این پلن از ' + fa(minSeats) + ' نفر به بالاست.' };
@@ -253,7 +302,7 @@ export async function placeOrder(env, body) {
   await ensure(env);
   const id = newInvoice();
   const now = Date.now();
-  const bill = planTotal(plan, st, { seats, views, customs });
+  const bill = planTotal(plan, st, { seats, views, customs, lines });
   const full = bill.total;
 
   /* کدِ نامعتبر سفارش را رد نمی‌کند، فقط تخفیف نمی‌دهد و همان را
@@ -263,12 +312,13 @@ export async function placeOrder(env, body) {
   const price = full - off;
   try {
     await run(env,
-      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount,pf,chat,tier,views,customs,orgname,sharednote)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO sl_orders(id,created,plan,price,days,kind,job,name,contact,seats,note,status,updated,coupon,discount,pf,chat,tier,views,customs,orgname,sharednote,lines)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?, 'new', ?,?,?,?,?,?,?,?,?,?,?)`,
       id, now, plan.name, price, Number(plan.days || 0), kind, job, name, contact, seats, note, now,
       off ? cp.code : '', off, login.platform || '', String(login.chat_id || ''),
       plan.tier === 'org' ? 'org' : 'personal',
-      JSON.stringify(views), JSON.stringify(customs), orgName, sharedNote);
+      JSON.stringify(views), JSON.stringify(customs), orgName, sharedNote,
+      JSON.stringify(lines));
     if (off) await run(env, 'UPDATE sl_coupons SET used = used + 1 WHERE code=?', cp.code);
   } catch (e) {
     return { error: 'سفارش ثبت نشد: ' + e.message, status: 500 };
@@ -276,11 +326,19 @@ export async function placeOrder(env, body) {
 
   /* خبرش به هر دو ربات — همان‌جایی که فیش هم قرار است بیاید. */
   const unit = plan.tier === 'org' ? 'نفر' : 'کارتابل';
-  const lines =
+  /* نامش «lines» نیست چون در همین تابع ردیف‌های سفارش همین نام را
+     دارند و قاطی شدنشان یعنی فاکتورِ غلط. */
+  const msg =
     `پلن: ${plan.name}${seats > 1 ? ` × ${fa(seats)} ${unit}` : ''}\n` +
     (orgName ? `سازمان: ${orgName}\n` : '') +
-    `شغل: ${job && JOBS[job] ? JOBS[job].label : KINDS[kind]}\n` +
-    (views.length
+    /* سفارشِ چندشغله: هر ردیف با تعداد و بخش‌های خودش، تا مدیر بداند
+       چند کارتابل از چه قالبی باید بسازد. */
+    (lines.length
+      ? 'شغل‌ها:\n' + lines.map(r =>
+          `  • ${JOBS[r.job] ? JOBS[r.job].label : r.job} × ${fa(r.count)} ${unit}` +
+          (r.views.length ? ` — ${r.views.map(viewName).join('، ')}` : '') + '\n').join('')
+      : `شغل: ${job && JOBS[job] ? JOBS[job].label : KINDS[kind]}\n`) +
+    (!lines.length && views.length
       ? `بخش‌های اضافه: ${views.map(viewName).join('، ')}\n` +
         (customs.length ? `سفارشی‌سازی: ${customs.map(viewName).join('، ')}\n` : '')
       : '') +
@@ -289,7 +347,9 @@ export async function placeOrder(env, body) {
     `پایه: ${money(bill.seatPart)}\n` +
     /* «× چند نفر» در فاکتور می‌آید، وگرنه عدد با قیمتی که کنارِ هر
        بخش دیده بود نمی‌خواند و به نظرش اشتباه می‌رسد. */
-    (bill.extraPart ? `بخش‌های اضافه (${fa(seats)} ${unit}): ${money(bill.extraPart)}\n` : '') +
+    (bill.extraPart
+      ? `بخش‌های اضافه${lines.length ? '' : ` (${fa(seats)} ${unit})`}: ${money(bill.extraPart)}\n`
+      : '') +
     (bill.customPart ? `سفارشی‌سازی (یک‌بار): ${money(bill.customPart)}\n` : '') +
     (off ? `جمع: ${money(full)}\nتخفیف (${cp.code}): ${money(off)}\nقابل پرداخت: ${money(price)}\n`
          : `قابل پرداخت: ${money(price)}\n`) +
@@ -299,7 +359,7 @@ export async function placeOrder(env, body) {
   await toAdmin(env,
     { pf: login.platform || 'slweb', chat: String(login.chat_id || 'order:' + id),
       name, phone: contact },
-    `🧾 سفارشِ تازه — فاکتور ${id}\n\n${lines}`,
+    `🧾 سفارشِ تازه — فاکتور ${id}\n\n${msg}`,
     'سفارش');
 
   /* و فاکتور برای خودِ خریدار، در همان گفتگویی که با آن وصل شده. */
@@ -308,7 +368,7 @@ export async function placeOrder(env, body) {
   if (myKind && login.chat_id) {
     const ct = slContact(st);
     await slSend(env, myKind, { chat_id: String(login.chat_id), parse_mode: 'HTML',
-      text: `🧾 <b>فاکتور ${esc(id)}</b>\n\n${esc(lines)}\n` +
+      text: `🧾 <b>فاکتور ${esc(id)}</b>\n\n${esc(msg)}\n` +
             (st.card ? `💳 کارت: <code>${esc(st.card)}</code>` +
                        (st.cardName ? `\n به نامِ ${esc(st.cardName)}` : '') + '\n\n' : '') +
             `مبلغ را کارت‌به‌کارت کن و <b>عکسِ فیش را همین‌جا بفرست</b>.\n` +
@@ -332,7 +392,7 @@ export async function listOrders(env, limit = 100) {
   try {
     return await all(env,
       `SELECT id, created, plan, price, days, kind, job, name, contact, seats, note,
-              status, slug, updated, coupon, discount
+              status, slug, updated, coupon, discount, orgname, lines
          FROM sl_orders ORDER BY created DESC LIMIT ?`, limit);
   } catch (e) { return []; }
 }

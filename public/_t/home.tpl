@@ -418,6 +418,33 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
   border:1px solid rgba(255,255,255,.35); }
 .ways a:hover{ background:rgba(255,255,255,.14); }
 
+/* ---------- ردیف‌های شغلِ سازمانی ---------- */
+.oroles{margin:14px 0 0;padding:14px;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--paper)}
+.oroles-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13.5px}
+.oroles-head span{margin-inline-start:auto;color:var(--brand);font-weight:700}
+.orole{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.orole select{flex:1 1 170px;min-width:0}
+.orole .cnt{flex:0 0 92px;display:flex;align-items:center;gap:6px}
+.orole .cnt input{width:60px;text-align:center}
+.orole .cnt span{font-size:12px;color:var(--ink-faint)}
+.orole .x{flex:none;width:30px;height:30px;padding:0;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:var(--white);color:var(--ink-faint);font-size:13px}
+.orole .x:hover{border-color:var(--red,#A6222B);color:var(--red,#A6222B)}
+.orole .secs{flex:none;padding:6px 11px;font-size:12px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:var(--white);color:var(--ink-soft)}
+.orole .secs.on{border-color:var(--brand);color:var(--brand)}
+.orole-secs{flex:1 1 100%;display:none;gap:6px;flex-wrap:wrap;
+  padding:8px 10px;margin:0 0 4px;border-radius:9px;background:var(--white);
+  border:1px solid var(--line-soft)}
+.orole-secs.open{display:flex}
+.orole-secs label{display:inline-flex;align-items:center;gap:5px;font-size:12px;
+  padding:4px 8px;border-radius:7px;background:var(--paper);cursor:pointer}
+.orole-secs label.free{opacity:.65;cursor:default}
+.orole-secs .pr{color:var(--ink-faint);font-size:11px}
+.oroles-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:8px}
+@media (max-width:560px){ .orole select{flex:1 1 100%} }
+
 /* ---------- پلن‌ها و سفارش ---------- */
 /* شش پلن روی یک شبکهٔ سه‌ستونه: سه بالا، سه پایین. auto-fit پیش از
    این چهار تا را بالا می‌چید و دو تا را پایین، که هم بی‌قواره بود هم
@@ -923,12 +950,27 @@ html.anim details[open] summary::after{
         <!-- فقط برای پلنِ سازمانی؛ برای شخصی پنهان می‌ماند. -->
         <input type="text" id="oOrgName" placeholder="نام سازمان" hidden>
       </div>
-      <div class="ask-row">
+      <!-- شخصی: یک شغل و یک عدد. -->
+      <div class="ask-row" id="oOneRow">
         <select id="oJob"><option value="">— شغل را انتخاب کنید —</option></select>
         <div class="oseat">
           <label for="oSeats" id="oSeatLb">تعداد کارتابل</label>
           <input type="number" id="oSeats" min="1" max="200" value="1" dir="ltr">
         </div>
+      </div>
+
+      <!-- سازمانی: یک سازمان یک شغل نیست. «۱۵ کاربر» یعنی مثلاً ۱
+           مدیرعامل، ۵ حسابدار، ۲ دفتردار، ۳ بازرگانی و ۴ فنی — و هر
+           کدام قالبِ کارتابلِ خودش را می‌خواهد. پس ردیف‌به‌ردیف. -->
+      <div class="oroles" id="oRoles" hidden>
+        <div class="oroles-head">
+          <b>شغل‌ها و تعدادِ نفرات</b>
+          <span id="oRolesSum"></span>
+        </div>
+        <div id="oRoleList"></div>
+        <button type="button" class="btn btn-sm" id="oRoleAdd">＋ افزودن شغل</button>
+        <div class="oroles-note">برای هر شغل، تعدادِ نفراتش را بنویسید. جمعشان
+          می‌شود تعدادِ کارتابل‌های سازمان.</div>
       </div>
       <div class="seatnote" id="oSeatNote"></div>
 
@@ -1299,6 +1341,7 @@ function showPlans(plans){
   });
   /* عددِ کمتر از پایه را همان‌جا می‌گوییم، نه سرِ ثبتِ سفارش —
      صفتِ min جلوی تایپ را نمی‌گیرد، فقط اعتبارسنجیِ فرم را. */
+  document.getElementById("oRoleAdd").addEventListener("click", ()=>{ addRole(); sumUp(); });
   document.getElementById("oSeats").addEventListener("input", ()=>{
     const el = document.getElementById("oSeats");
     const lo = seatMin();
@@ -1327,7 +1370,71 @@ function seatMin(){
   return PICKED.tier === "org" ? Math.max(1, Number(PICKED.baseSeats) || 1) : 1;
 }
 
+/* ==================== ردیف‌های شغلِ سازمانی ====================
+   هر ردیف یک شغل است با تعدادِ نفراتِ خودش و بخش‌های اضافهٔ خودش.
+   «بخش‌های خودش» مهم است: هر شغل بخش‌های متفاوتی دارد و حسابدار
+   بابتِ «VeeamBackup» پول نمی‌دهد. */
+function roleRows(){
+  return [...document.querySelectorAll('#oRoleList .orole')].map(row=>({
+    job: row.querySelector('select').value,
+    count: Math.max(1, Math.min(200, Number(row.querySelector('.cnt input').value) || 1)),
+    views: [...row.querySelectorAll('.orole-secs input[data-v]')]
+      .filter(c=>c.checked && !c.disabled).map(c=>c.dataset.v),
+    customs: [...row.querySelectorAll('.orole-secs input[data-c]')]
+      .filter(c=>c.checked && !c.disabled).map(c=>c.dataset.c)
+  })).filter(r=>r.job);
+}
+
+function roleSeats(){ return roleRows().reduce((t,r)=>t+r.count, 0); }
+
+/* بخش‌های همان شغل، داخلِ همان ردیف. بسته می‌ماند تا فرم شلوغ نشود —
+   کسی که فقط تعداد می‌خواهد بدهد، نباید از کنارِ ده تیک رد شود. */
+function paintRoleSecs(row){
+  const box = row.querySelector('.orole-secs');
+  const job = JOBS.find(j=>j.id === row.querySelector('select').value);
+  const paid = job ? (job.views||[]).filter(v=>FREE.indexOf(v) < 0) : [];
+  box.innerHTML = paid.length
+    ? paid.map(v=>`<label><input type="checkbox" data-v="${escH(v)}">
+        <span>${escH(VLB[v]||v)}</span><span class="pr">${escH(money(viewPrice(v)))}</span></label>`).join("")
+    : '<span class="pr">این شغل بخشِ اضافه‌ای ندارد.</span>';
+  row.querySelector('.secs').hidden = !paid.length;
+}
+
+function addRole(job, count){
+  const list = document.getElementById("oRoleList");
+  const row = document.createElement("div");
+  row.className = "orole";
+  row.innerHTML =
+    '<select aria-label="شغل"><option value="">— شغل —</option>' +
+    JOBS.map(j=>`<option value="${escH(j.id)}">${escH(j.label)}</option>`).join("") + '</select>' +
+    '<div class="cnt"><input type="number" min="1" max="200" value="1" dir="ltr" aria-label="تعداد نفرات"><span>نفر</span></div>' +
+    '<button type="button" class="secs" hidden>بخش‌ها</button>' +
+    '<button type="button" class="x" title="حذف این شغل" aria-label="حذف این شغل">✕</button>' +
+    '<div class="orole-secs"></div>';
+  list.appendChild(row);
+  if(job) row.querySelector('select').value = job;
+  if(count) row.querySelector('.cnt input').value = String(count);
+  row.querySelector('select').addEventListener("change", ()=>{ paintRoleSecs(row); sumUp(); });
+  row.querySelector('.cnt input').addEventListener("input", sumUp);
+  row.addEventListener("change", e=>{ if(e.target.matches('input[type=checkbox]')) sumUp(); });
+  row.querySelector('.secs').addEventListener("click", ()=>{
+    const b = row.querySelector('.orole-secs');
+    b.classList.toggle("open");
+    row.querySelector('.secs').classList.toggle("on", b.classList.contains("open"));
+  });
+  row.querySelector('.x').addEventListener("click", ()=>{
+    row.remove();
+    if(!document.querySelectorAll('#oRoleList .orole').length) addRole();
+    sumUp();
+  });
+  paintRoleSecs(row);
+  return row;
+}
+
 function seatCount(){
+  /* سازمانی عددِ جداگانه ندارد: تعدادش جمعِ ردیف‌هاست. دو عددی که
+     بتوانند با هم نخوانند، روزی نمی‌خوانند. */
+  if(PICKED && PICKED.tier === "org") return roleSeats();
   const n = Number(document.getElementById("oSeats").value) || 0;
   return Math.max(seatMin(), Math.min(200, n));
 }
@@ -1343,6 +1450,13 @@ function tuneForm(){
   document.getElementById("oOrgName").hidden  = !org;
   document.getElementById("oSharedRow").hidden = !org;
   document.getElementById("oSeatLb").textContent = org ? "تعداد نفرات" : "تعداد کارتابل";
+
+  /* سازمانی ردیف‌ساز می‌گیرد و شخصی همان یک شغل و یک عدد. هر دو
+     هم‌زمان دیده نمی‌شوند، وگرنه معلوم نیست کدام سند است. */
+  document.getElementById("oOneRow").hidden = org;
+  document.getElementById("oRoles").hidden  = !org;
+  document.getElementById("oSecBox").hidden = org || document.getElementById("oSecBox").hidden;
+  if(org && !document.querySelectorAll('#oRoleList .orole').length) addRole();
 
   /* سازمانی از تعدادِ پایه شروع می‌شود؛ کمتر از آن معنایی ندارد و
      قیمت را هم کم نمی‌کند، پس نگذاریم کاربر عددِ گمراه‌کننده بزند. */
@@ -1434,14 +1548,30 @@ function calcTotal(){
   const baseSeats = Math.max(1, Number(PICKED.baseSeats) || 1);
   const per = Math.max(0, Number(PICKED.perSeat) || 0);
   const seatPart = base + Math.max(0, seatCount() - baseSeats) * per;
-  /* بخش‌ها نفر به نفر، سفارشی‌سازی یک‌بار — عینِ فرمولِ سرور. */
-  const extraPart = seatCount() * pickedViews().reduce((t, v)=> t + viewPrice(v), 0);
-  const customPart = pickedCustoms().length * Math.max(0, Number(SITE.customPrice) || 0);
+  /* بخش‌ها نفر به نفر، سفارشی‌سازی یک‌بار — عینِ فرمولِ سرور.
+     در حالتِ سازمانی، «نفر به نفر» یعنی نفراتِ همان ردیف: بخشی که
+     فقط فنی‌ها خواسته‌اند، برای حسابدارها حساب نمی‌شود. */
+  const org = PICKED.tier === "org";
+  const rows = org ? roleRows() : [];
+  const extraPart = org
+    ? rows.reduce((t,r)=> t + r.count * r.views.reduce((s2,v)=> s2 + viewPrice(v), 0), 0)
+    : seatCount() * pickedViews().reduce((t, v)=> t + viewPrice(v), 0);
+  const customCount = org
+    ? new Set(rows.flatMap(r=>r.customs)).size
+    : pickedCustoms().length;
+  const customPart = customCount * Math.max(0, Number(SITE.customPrice) || 0);
   return { seatPart, extraPart, customPart, total: seatPart + extraPart + customPart };
 }
 
 function sumUp(){
   if(!PICKED) return;
+  if(PICKED.tier === "org"){
+    const n = roleSeats();
+    const min = seatMin();
+    const el = document.getElementById("oRolesSum");
+    el.textContent = n ? faD(n) + " نفر" + (n < min ? "  (این پلن از " + faD(min) + " نفر به بالاست)" : "") : "";
+    el.style.color = n && n < min ? "var(--red, #A6222B)" : "";
+  }
   const b = calcTotal();
   const full = b.total;
 
@@ -1593,6 +1723,9 @@ document.getElementById("orderForm").addEventListener("submit", async (e)=>{
         kind: (JOBS.find(j=>j.id===g("oJob"))||{}).kind || "gen",
         job: g("oJob"), seats: g("oSeats"), note: g("oNote"),
         views: pickedViews(), customs: pickedCustoms(),
+        /* سازمانی ردیف می‌فرستد؛ سرور از روی همین‌ها تعداد و قیمت را
+           خودش حساب می‌کند و به عددهای این صفحه اعتماد نمی‌کند. */
+        lines: PICKED.tier === "org" ? roleRows() : [],
         orgName: g("oOrgName"), sharedNote: g("oSharedNote"),
         coupon: g("oCoupon") }) });
     const d = await r.json().catch(()=>({}));

@@ -87,9 +87,18 @@ console.log('===== فایلِ نصب =====');
     'و نامِ بستهٔ برنامه را می‌گوید', tgt.package_name);
   t((j[0] || {}).relation && j[0].relation.indexOf('delegate_permission/common.handle_all_urls') >= 0,
     'با همان نسبتی که اندروید می‌خواهد');
-  const fp = (tgt.sha256_cert_fingerprints || [])[0] || '';
-  t(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/.test(fp),
-    'و اثرِ انگشتِ کلیدِ امضا، کامل و با رقمِ بزرگ', fp.slice(0, 17) + '…');
+  /* فهرست است نه یک عدد، و عمداً: کلیدِ امضا که عوض می‌شود، اثرِ
+     انگشتِ تازه کنارِ قدیمی می‌نشیند نه به‌جایش — وگرنه تأییدِ
+     برنامه برای هرکسی که نسخهٔ قبلی را نصب دارد می‌شکند. پس این‌جا
+     «همهٔ» اعضا سنجیده می‌شوند، نه فقط اولی. */
+  const fps = tgt.sha256_cert_fingerprints || [];
+  const shape = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+  t(fps.length >= 1, 'دستِ‌کم یک اثرِ انگشت دارد', fps.length + ' تا');
+  const malformed = fps.filter(f => !shape.test(f));
+  t(malformed.length === 0, 'و هرکدام کامل و با رقمِ بزرگ است',
+    malformed.length ? malformed.map(f => String(f).slice(0, 20)).join(' · ')
+                     : fps.map(f => f.slice(0, 17) + '…').join(' · '));
+  t(new Set(fps).size === fps.length, 'و هیچ‌کدام تکراری نیست');
 
   const apk = await fetch(BASE + '/sltech.apk');
   const buf = apk.ok ? Buffer.from(await apk.arrayBuffer()) : Buffer.alloc(0);
