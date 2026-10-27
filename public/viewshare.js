@@ -247,8 +247,9 @@
         .concat((c.opts || []).map(function (o) {
           return '<option value="' + esc(o) + '"' + (String(v) === o ? " selected" : "") + ">" + esc(o) + "</option>";
         })).join("");
-      return '<td><select class="vs-s" data-k="' + esc(c.k) + '"' + (open ? "" : " disabled") + ">" +
-             opts + "</select></td>";
+      /* نامِ ستون روی خودِ کادر: صفحه‌خوان سرستونِ جدول را نمی‌خواند */
+      return '<td><select class="vs-s" aria-label="' + esc(c.t || c.k) + '" data-k="' +
+             esc(c.k) + '"' + (open ? "" : " disabled") + ">" + opts + "</select></td>";
     }
     var shown = c.kind === "money" ? money(v) : (c.kind === "num" ? (v === "" || v == null ? "" : fa(v)) : esc(v == null ? "" : v));
     var able = open && c.edit !== "never";

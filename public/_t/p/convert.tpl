@@ -167,13 +167,13 @@ function setupConvert() {
     '<div class="panel">' +
       '<h3><span class="cv-ico">🔄</span> تبدیل واحد</h3>' +
       '<div class="cv-row">' +
-        '<select id="cvCat">' + Object.keys(CONV).map(function (k) {
+        '<select id="cvCat" aria-label="دستهٔ تبدیل">' + Object.keys(CONV).map(function (k) {
           return '<option value="' + k + '">' + escapeHtml(CONV[k].t) + "</option>";
         }).join("") + "</select>" +
         '<input type="text" id="cvVal" inputmode="decimal" placeholder="عدد" dir="ltr">' +
-        '<select id="cvFrom" class="cv-unit"></select>' +
+        '<select id="cvFrom" class="cv-unit" aria-label="از واحدِ"></select>' +
         '<button type="button" class="btn btn-sm" id="cvSwap" title="جابه‌جا">⇄</button>' +
-        '<select id="cvTo" class="cv-unit"></select>' +
+        '<select id="cvTo" class="cv-unit" aria-label="به واحدِ"></select>' +
       "</div>" +
       '<div class="cv-row" id="cvRateBox" hidden>' +
         '<label class="cv-lb">نرخ (هر واحد چند تومان)</label>' +
@@ -185,8 +185,8 @@ function setupConvert() {
     '<div class="panel" style="margin-top:12px;">' +
       '<h3><span class="cv-ico">🗓</span> ماهِ شمسی روی تقویمِ میلادی</h3>' +
       '<div class="cv-row">' +
-        '<select id="cvMY"></select>' +
-        '<select id="cvMM">' + CONV_JM.map(function (n, i) {
+        '<select id="cvMY" aria-label="سالِ شمسی"></select>' +
+        '<select id="cvMM" aria-label="ماهِ شمسی">' + CONV_JM.map(function (n, i) {
           return '<option value="' + (i + 1) + '">' + n + "</option>";
         }).join("") + "</select>" +
       "</div>" +

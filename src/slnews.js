@@ -1,4 +1,4 @@
-import { page, esc, fa } from './pageshell.js';
+import { page, esc, fa, crumbs } from './pageshell.js';
 /* ==================== مقاله‌های دامنهٔ پنل ====================
    مقاله‌های فروشگاه در جدولِ articles هستند و از پنلِ فروشگاه اداره
    می‌شوند. حالا که دو سایت کاملاً جدا شده‌اند، sltech.ir نمی‌تواند از
@@ -128,11 +128,35 @@ export function listPage(rows, base) {
        ردیفِ دوم نصفه می‌ماند و صفحه خلوت‌تر به نظر می‌رسد تا هست. */
     ? `<div class="grid">${rows.map((r, n) => card(r, n === 0 && rows.length > 2)).join('\n')}</div>`
     : '<div class="empty">هنوز مقاله‌ای نوشته نشده.</div>';
+  /* فهرست تا امروز هیچ دادهٔ ساختاریافته‌ای نداشت: گوگل می‌دید چند
+     لینک کنار هم است ولی نمی‌دانست این یک وبلاگ است و این‌ها نوشته‌های
+     آن. «Blog» می‌گوید این‌جا چیست و «ItemList» ترتیبِ نوشته‌ها را —
+     همان ترتیبی که در صفحه هم هست، نه ترتیبی دیگر. */
+  const ld = [{
+    '@context': 'https://schema.org', '@type': 'Blog',
+    '@id': base + '/maghale/#blog',
+    name: 'مقاله‌های کارتابل ماهانه SLTech',
+    description: 'نوشته‌هایی دربارهٔ برنامهٔ ماهانه، چک‌لیستِ کار و نظم دادن به کارهای تکرارشونده.',
+    url: base + '/maghale/', inLanguage: 'fa-IR',
+    publisher: { '@type': 'Organization', name: 'SLTech', url: base + '/' }
+  }];
+  if (rows.length) ld.push({
+    '@context': 'https://schema.org', '@type': 'ItemList',
+    itemListOrder: 'https://schema.org/ItemListOrderDescending',
+    numberOfItems: rows.length,
+    itemListElement: rows.map((r, i) => ({
+      '@type': 'ListItem', position: i + 1, url: `${base}/maghale/${r.slug}/`, name: r.title
+    }))
+  });
+  ld.push(crumbs(base, [{ name: 'خانه', path: '/' }, { name: 'مقاله‌ها', path: '/maghale/' }]));
+
   return page({
     title: 'مقاله‌ها — کارتابل ماهانه SLTech',
     desc: 'نوشته‌هایی دربارهٔ برنامهٔ ماهانه، چک‌لیستِ کار و نظم دادن به کارهای تکرارشونده.',
     url: base + '/maghale/',
-    css: CSS,
+    css: CSS, ld,
+    /* فهرست یک صفحه است، نه یک نوشته — og:type هم باید همین را بگوید */
+    ogType: 'website',
     width: '1040px',
     extraTop: '<a class="btn hide-s" href="/#jobs">شغل‌ها</a>',
     hero: `<h1>مقاله‌ها</h1>
@@ -161,7 +185,9 @@ export function articlePage(row, base, others = []) {
     : '';
   return page({
     title: row.title + ' — کارتابل ماهانه SLTech',
-    desc, url, css: CSS, ld: [ld], width: '760px',
+    desc, url, css: CSS, width: '760px',
+    ld: [ld, crumbs(base, [{ name: 'خانه', path: '/' }, { name: 'مقاله‌ها', path: '/maghale/' },
+                           { name: row.title, path: `/maghale/${row.slug}/` }])],
     extraTop: '<a class="btn hide-s" href="/maghale/">مقاله‌ها</a>',
     hero: `<h1>${esc(row.title)}</h1>
       <p class="when">${esc(faDate(row.created))}` +

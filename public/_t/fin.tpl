@@ -690,7 +690,7 @@ window.KARTABL_IDB      = "{{IDB}}";
         <button class="btn btn-ghost" id="exportBtn" data-feat="files">⬇ پشتیبان</button>
         <button class="btn btn-ghost" id="importBtn" data-feat="files">⬆ بازیابی</button>
       </div>
-      <input type="file" id="importFile" accept="application/json" style="display:none;">
+      <input type="file" id="importFile" accept="application/json" aria-label="فایلِ پشتیبان برای بازیابی" style="display:none;">
       <button class="btn btn-ghost foot-lock" id="lockBtn">🔓 خروج از کارتابل</button>
     </div>
   </div>
@@ -2157,7 +2157,7 @@ function renderParties(){
       <td>＋</td>
       <td><input type="text" id="newPartyName" placeholder="نام" style="width:100%;"></td>
       <td>
-        <select id="newPartyType" style="width:100%;">${PARTY_TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
+        <select id="newPartyType" aria-label="نوعِ طرفِ حساب" style="width:100%;">${PARTY_TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
       </td>
       <td><input type="text" id="newPartyPhone" placeholder="تلفن" style="width:100%;"></td>
       <td><input type="text" id="newPartyContact" placeholder="مسئول تماس" style="width:100%;"></td>
@@ -2315,7 +2315,7 @@ function renderInvoices(){
       <td><input type="number" id="newInvoiceAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td><input type="number" id="newInvoicePaid" placeholder="پرداخت‌شده" style="width:100%;"></td>
       <td>
-        <select id="newInvoiceStatus" style="width:100%;">${INVOICE_STATUS.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
+        <select id="newInvoiceStatus" aria-label="وضعیتِ فاکتور" style="width:100%;">${INVOICE_STATUS.map(s=>`<option value="${s}">${s}</option>`).join("")}</select>
       </td>
       <td><input type="text" id="newInvoiceEnteredBy" placeholder="نام وارد کننده" style="width:100%;"></td>
       <td><button class="btn btn-brass btn-sm" id="addInvoiceBtn">افزودن</button></td>
@@ -2844,15 +2844,15 @@ function renderExpenses(){
       <td>＋</td>
       <td><input type="text" id="newExpenseDate" data-date placeholder="تاریخ" style="width:100%;"></td>
       <td>
-        <select id="newExpenseType" style="width:100%;">${SOURCE_USE_TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
+        <select id="newExpenseType" aria-label="نوعِ هزینه" style="width:100%;">${SOURCE_USE_TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")}</select>
       </td>
       <td>
-        <select id="newExpenseCategory" style="width:100%;">${EXPENSE_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join("")}</select>
+        <select id="newExpenseCategory" aria-label="دستهٔ هزینه" style="width:100%;">${EXPENSE_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join("")}</select>
       </td>
       <td><input type="text" id="newExpenseDescription" placeholder="شرح" style="width:100%;"></td>
       <td><input type="number" id="newExpenseAmount" placeholder="مبلغ" style="width:100%;"></td>
       <td>
-        <select id="newExpensePayment" style="width:100%;">${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join("")}</select>
+        <select id="newExpensePayment" aria-label="شیوهٔ پرداخت" style="width:100%;">${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join("")}</select>
       </td>
       <td><input type="text" id="newExpenseEnteredBy" placeholder="نام وارد کننده" style="width:100%;"></td>
       <td><button class="btn btn-brass btn-sm" id="addExpenseBtn">افزودن</button></td>
@@ -3364,8 +3364,8 @@ function renderChecklist(){
     <tr data-idx="${i}">
       <td>${fa(i+1)}</td>
       <td class="editable-text"><input type="text" data-field="category" value="${escapeHtml(t.category)}" list="taskCategoryOptions" placeholder="دسته‌بندی"></td>
-      <td class="editable-text"><input type="text" data-field="task" value="${escapeHtml(t.task)}"></td>
-      <td class="editable-text"><input type="text" data-field="owner" value="${escapeHtml(t.owner)}"></td>
+      <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
+      <td class="editable-text"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
         <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
                 title="انتخابِ روزِ مهلت">
@@ -3374,16 +3374,16 @@ function renderChecklist(){
         </button>
       </td>
       <td>
-        <select data-field="status" class="st-select" data-st="${escapeHtml(t.status||'')}">
+        <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(t.status||'')}">
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
       <td>
-        <select data-field="priority">
+        <select data-field="priority" aria-label="اولویت">
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
-      <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
+      <td class="editable-text"><input type="text" data-field="note" aria-label="توضیحات" value="${escapeHtml(t.note)}"></td>
       <td><button class="star-btn ${t.reminder && !t.reminder.fired ? 'active':''}" data-star="${i}" title="${t.reminder && !t.reminder.fired ? 'یادآور تنظیم‌شده — برای تغییر کلیک کنید':'تنظیم یادآور'}">${t.reminder && !t.reminder.fired ? '⭐':'☆'}</button></td>
       <td class="clip-cell" data-kind="task" data-i="${i}" data-nocp>
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
@@ -3512,7 +3512,7 @@ function renderDaily(){
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="توضیحات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام طرف‌حساب" list="dailyPartyOptions"></td>
       <td>
-        <select data-field="status" class="st-select" data-st="${escapeHtml(d.status||'')}">
+        <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>

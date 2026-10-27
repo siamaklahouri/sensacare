@@ -12,7 +12,7 @@
    «blank» صفحه ندارد: چک‌لیستِ آماده‌ای ندارد که نشان داده شود. */
 
 import { JOBS } from './kartabl-jobs.js';
-import { page, esc, fa } from './pageshell.js';
+import { page, esc, fa, crumbs } from './pageshell.js';
 
 /* شغل‌هایی که صفحه دارند، به‌ترتیبِ خودِ فایل */
 export function jobList() {
@@ -121,7 +121,7 @@ export function jobPage(id, base) {
 
   return page({
     title, desc, url, width: '820px',
-    ld: [ld, ldFaq],
+    ld: [ld, ldFaq, crumbs(base, [{ name: 'خانه', path: '/' }, { name: j.label, path: `/kar/${id}/` }])],
     extraTop: '<a class="btn hide-s" href="/#jobs">شغل‌های دیگر</a>',
     css: `
 .meta{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 28px}

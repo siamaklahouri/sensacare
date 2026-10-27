@@ -122,6 +122,38 @@ try{
   else
     good apperrors "خطای برنامه‌ای در ۲۴ ساعت گذشته نبوده"
   fi
+
+  # ۵) سطحِ عمومیِ سایت: چند مقاله منتشر شده و نقشهٔ سایت چند نشانی
+  #    دارد. چرا این‌جا: یک بار سرچ کنسول ۲۴ نشانی نشان داد و ۲۴ دقیقاً
+  #    «خانه + فهرستِ مقاله‌ها + ۲۲ صفحهٔ شغلی» است — یعنی هیچ مقاله‌ای
+  #    در نقشه نبود و هیچ‌کس خبر نداشت. مقاله‌ای که پیش‌نویس مانده،
+  #    نوشته نشده حساب می‌شود، و این تنها جایی است که هر روز نگاه
+  #    می‌شود.
+  local arts pub locs
+  arts=$(node -e "
+const {DatabaseSync}=require('node:sqlite');
+try{
+  const db=new DatabaseSync(process.argv[1]);
+  const r=db.prepare('SELECT COUNT(*) t, COALESCE(SUM(published),0) p FROM sl_articles').get();
+  console.log(r.t+' '+r.p);
+}catch(e){ console.log('- -'); }
+" "$DB" 2>/dev/null)
+  pub=${arts##* }
+  arts=${arts%% *}
+  locs=$(curl -s -m 5 -H 'Host: sltech.ir' "http://127.0.0.1:$PORT/sitemap.xml" 2>/dev/null |
+         grep -c '<loc>' || true)
+  if [ "${locs:-0}" -lt 2 ]; then
+    bad sitemap "نقشهٔ سایت خالی است (${locs:-0} نشانی) — گوگل چیزی برای خزیدن ندارد."
+  else
+    good sitemap "نقشهٔ سایت: $locs نشانی"
+  fi
+  if [ "$arts" = "-" ]; then
+    say "  مقاله‌ها خوانده نشد."
+  elif [ "${pub:-0}" -lt "${arts:-0}" ]; then
+    say "  ℹ️  مقاله: $arts نوشته، $pub منتشرشده — بقیه پیش‌نویس‌اند و در سایت نیستند."
+  else
+    say "  ✅ مقاله: هر $arts نوشته منتشر شده‌اند"
+  fi
 }
 
 # ---------- فهرستِ خطاها ----------

@@ -10,7 +10,7 @@
     فایل روی همین دستگاه خوانده می‌شود و جایی فرستاده نمی‌شود.</div>
 
   <div class="panel rp-drop" id="rpDrop">
-    <input type="file" id="rpFile" accept=".xlsx,.xls,.xlsm,.csv" hidden>
+    <input type="file" id="rpFile" accept=".xlsx,.xls,.xlsm,.csv" aria-label="فایلِ اکسل برای گزارش" hidden>
     <div class="rp-ic">📄</div>
     <button type="button" class="btn btn-brass" id="rpPick">⬆ انتخاب فایل اکسل</button>
     <div class="rp-hint">یا فایل را همین‌جا رها کنید — xlsx، xls یا csv</div>

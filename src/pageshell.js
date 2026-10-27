@@ -104,14 +104,29 @@ export const footBar = () => `
 
 /* صفحهٔ کامل. head را یک جا می‌سازد تا عنوان و توضیح و canonical در
    هر دو صفحه یک‌شکل باشند و چیزی جا نیفتد. */
-export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width, hero = '' }) {
+/* ---------- خرده‌نان ----------
+   «این صفحه کجای سایت است» را هم به گوگل می‌گوید (زیرِ نتیجه به‌جای
+   نشانیِ خام، مسیر نشان داده می‌شود) و هم خودش یک سنجهٔ سلامتِ ساختار
+   است: صفحه‌ای که نمی‌شود مسیرش را نوشت، احتمالاً جایش هم معلوم نیست.
+
+   نشانی‌ها همه واقعی‌اند؛ لنگرِ «#» این‌جا نمی‌آید، چون خرده‌نانی که به
+   یک تکه از صفحهٔ دیگر اشاره کند، مسیر نیست. */
+export const crumbs = (base, items) => ({
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: items.map((it, i) => ({
+    '@type': 'ListItem', position: i + 1, name: it.name, item: base + it.path
+  }))
+});
+
+export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width, hero = '',
+                       ogType = 'article' }) {
   const head = ld.map(j => `<script type="application/ld+json">${JSON.stringify(j)}</script>`).join('\n');
   return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(url)}">
-<meta property="og:type" content="article">
+<meta property="og:type" content="${esc(ogType)}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(url)}">

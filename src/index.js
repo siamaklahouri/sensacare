@@ -1193,6 +1193,65 @@ function jsonForScript(obj) {
     .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 }
 
+/* ==================== دادهٔ ساختاریافتهٔ صفحهٔ اصلی ====================
+   صفحهٔ اصلیِ sltech.ir تا امروز هیچ‌کدام را نداشت: نه Organization،
+   نه WebSite، نه معرفیِ خودِ نرم‌افزار. یعنی گوگل از روی صفحهٔ اصلیِ یک
+   محصول نمی‌فهمید این محصول چیست و صاحبش کیست — در حالی که صفحه‌های
+   شغلی و خودِ مقاله‌ها داده داشتند. مهم‌ترین صفحه، خالی‌ترین بود.
+
+   سه گره در یک گراف، چون یک چیز نیستند: «SLTech» سازنده است،
+   «sltech.ir» سایت است، و «کارتابل ماهانه» نرم‌افزار. با @id به هم
+   وصل‌اند تا گوگل سه موجودیتِ بی‌ربط نبیند.
+
+   دو چیز عمداً نیست:
+
+   قیمت. پلن‌ها از تنظیماتِ پنل می‌آیند، موقعِ خاموش بودنِ فروش اصلاً
+   دیده نمی‌شوند، و هر کدام بخش‌های انتخابیِ خودش را دارد — یعنی هیچ
+   عددِ واحدی نیست که بشود نوشت. قیمتی که با صفحه نخواند، از نبودنش
+   بدتر است: گوگل آن را «ناسازگار» علامت می‌زند.
+
+   امتیاز و نظر. نداریم. aggregateRatingِ ساختگی تخلف است. */
+function homeLd(base, st) {
+  const org = base + '/#org';
+  const ct = slContact(st || {});
+  const contact = [];
+  if (st && st.phone) contact.push({ '@type': 'ContactPoint', contactType: 'customer support',
+    telephone: String(st.phone), availableLanguage: 'fa' });
+  if (st && st.email) contact.push({ '@type': 'ContactPoint', contactType: 'customer support',
+    email: String(st.email), availableLanguage: 'fa' });
+  const sameAs = [];
+  if (ct.telegram) sameAs.push('https://t.me/' + String(ct.telegram).replace(/^@/, ''));
+  if (ct.bale) sameAs.push('https://ble.ir/' + String(ct.bale).replace(/^@/, ''));
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      Object.assign({
+        '@type': 'Organization', '@id': org, name: 'SLTech', url: base + '/',
+        logo: { '@type': 'ImageObject', url: base + '/icon-sl.3.png', width: 512, height: 512 }
+      }, contact.length ? { contactPoint: contact } : {}, sameAs.length ? { sameAs } : {}),
+      {
+        '@type': 'WebSite', '@id': base + '/#site', url: base + '/',
+        name: 'کارتابل ماهانه SLTech', inLanguage: 'fa-IR', publisher: { '@id': org }
+      },
+      {
+        '@type': 'WebApplication', '@id': base + '/#app',
+        name: 'کارتابل ماهانه SLTech', url: base + '/',
+        applicationCategory: 'BusinessApplication',
+        /* روی مرورگر کار می‌کند و روی اندروید هم نصب می‌شود */
+        operatingSystem: 'Web, Android',
+        inLanguage: 'fa-IR',
+        description: 'چک‌لیست ماهانهٔ آمادهٔ هر شغل، برنامهٔ روزانه، داشبورد، ' +
+          'تقویم شمسی و بخش رمزدارِ شخصی — همه در یک کارتابل.',
+        featureList: ['چک‌لیست ماهانه', 'برنامهٔ روزانه', 'داشبورد و نمودار',
+          'تقویم شمسی', 'بخش رمزدار شخصی', 'گزارش‌ساز', 'خروجی اکسل', 'کارکرد آفلاین'],
+        screenshot: ['dashboard', 'checklist', 'daily'].map(n => base + '/shots/' + n + '.jpg'),
+        publisher: { '@id': org }
+      }
+    ]
+  };
+}
+
 /* محدودیت تعداد درخواست. بدون این، حدس زدن رمز، پر کردن دیتابیس با
    سفارش قلابی و تمام کردن سهمیهٔ هوش مصنوعی هیچ مانعی ندارد. */
 async function rateLimit(env, key, limit, windowSec) {
@@ -1716,7 +1775,7 @@ async function reorderReminders(env) {
 /* ==========================================================
    مسیرها
    ========================================================== */
-export default {
+const worker = {
   /* هر شب یک بار: پشتیبان کامل را در تلگرام و بله می‌فرستد */
   async scheduled(event, env, ctx) {
     /* همان تنظیمِ آدرسِ ربات‌ها که در fetch هم هست. بدونِ این، کرون
@@ -1792,6 +1851,27 @@ export default {
     const m = req.method;
 
     if (m === 'OPTIONS') return json({});
+
+    /* ---------------- HEAD ----------------
+       مسیرهای صفحه فقط GET را می‌گرفتند و HEAD از همه‌شان رد می‌شد تا
+       به ۴۰۴ برسد. یعنی `HEAD /` چهارصدوچهار می‌داد در حالی که
+       `GET /` دویست بود — و هر سرویسِ پایشِ آپ‌تایمی که با HEAD چک
+       می‌کند، سایت را «پایین» گزارش می‌داد. بعضی خزنده‌ها و ربات‌های
+       پیش‌نمایشِ لینک هم اول HEAD می‌زنند.
+
+       این‌جا، نه در تک‌تکِ مسیرها: اگر شرطِ هر مسیر جداگانه عوض شود،
+       مسیرِ بعدی که اضافه شود دوباره جا می‌ماند. HEAD همان GET است،
+       فقط بی‌بدنه — پس همین‌جا به GET سپرده می‌شود و بدنهٔ جوابش
+       برداشته. درخواستِ تازه GET است، پس این شاخه دوباره صدا نمی‌زند.
+
+       سربرگ‌ها دست‌نخورده می‌مانند: ETag و Content-Type و CSP همان
+       چیزی است که GET می‌داد، که اصلاً نکتهٔ HEAD همین است. */
+    if (m === 'HEAD') {
+      const r = await worker.fetch(
+        new Request(req.url, { method: 'GET', headers: req.headers }), env, ctx);
+      return new Response(null, { status: r.status, statusText: r.statusText, headers: r.headers });
+    }
+
     if (env.TG_BASE) globalThis.__TGBASE = env.TG_BASE;
     if (env.BALE_BASE) globalThis.__BALEBASE = env.BALE_BASE;
 
@@ -1822,6 +1902,12 @@ export default {
            و هرکدام لینکِ صفحهٔ خودش است. */
         html = html.split('{{JOBTILES}}').join(jobTiles())
                    .split('{{JOBCOUNT}}').join(faNum(jobCount()));
+        /* راه‌های تماس از همان تنظیماتی می‌آیند که خودِ صفحه نشانشان
+           می‌دهد، پس داده و صفحه همیشه یکی‌اند. */
+        const slSt = env.DB ? ((await getSetting(env, 'sltechSite', {}).catch(() => null)) || {}) : {};
+        html = html.split('{{LD}}').join(
+          '<script type="application/ld+json">' +
+          jsonForScript(homeLd(siteBase(env, url, site), slSt)) + '</script>');
         html = await liftAssets(html, 'home');
         return withSecurity(new Response(html, { headers: {
           'Content-Type': 'text/html; charset=utf-8',
@@ -3447,3 +3533,5 @@ export default {
     }
   }
 };
+
+export default worker;

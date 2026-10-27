@@ -904,7 +904,7 @@ window.KARTABL_IDB      = "{{IDB}}";
         <button class="btn btn-ghost" id="exportBtn" data-feat="files">⬇ پشتیبان</button>
         <button class="btn btn-ghost" id="importBtn" data-feat="files">⬆ بازیابی</button>
       </div>
-      <input type="file" id="importFile" accept="application/json" style="display:none;">
+      <input type="file" id="importFile" accept="application/json" aria-label="فایلِ پشتیبان برای بازیابی" style="display:none;">
       <button class="btn btn-ghost foot-lock" id="lockBtn">🔓 خروج از کارتابل</button>
     </div>
   </div>
@@ -2387,10 +2387,10 @@ function renderChecklist(){
     <tr data-idx="${i}">
       <td>${fa(i+1)}</td>
       <td>
-        <select data-field="category">${categoryOptions(t.category)}</select>
+        <select data-field="category" aria-label="دسته‌بندی">${categoryOptions(t.category)}</select>
       </td>
-      <td class="editable-text"><input type="text" data-field="task" value="${escapeHtml(t.task)}"></td>
-      <td class="editable-text"><input type="text" data-field="owner" value="${escapeHtml(t.owner)}"></td>
+      <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
+      <td class="editable-text"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
         <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
                 title="انتخاب روزِ مهلت">
@@ -2399,16 +2399,16 @@ function renderChecklist(){
         </button>
       </td>
       <td>
-        <select data-field="status" class="st-select" data-st="${escapeHtml(t.status||'')}">
+        <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(t.status||'')}">
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
       <td>
-        <select data-field="priority">
+        <select data-field="priority" aria-label="اولویت">
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
-      <td class="editable-text"><input type="text" data-field="note" value="${escapeHtml(t.note)}"></td>
+      <td class="editable-text"><input type="text" data-field="note" aria-label="توضیحات" value="${escapeHtml(t.note)}"></td>
       <td class="clip-cell" data-kind="task" data-i="${i}" data-nocp>
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
       </td>
@@ -2513,7 +2513,7 @@ function renderDaily(){
       <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
       <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
       <td>
-        <select data-field="status" class="st-select" data-st="${escapeHtml(d.status||'')}">
+        <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
@@ -3840,7 +3840,7 @@ function renderCompanies(){
       <tr>
         <td class="editable-cell" contenteditable="${isEditable?'true':'false'}" data-section="companies" data-company="${escapeHtml(name)}" data-idx="${idx}" data-field="dateStr" style="opacity:${isEditable?'1':'0.7'}; cursor:${isEditable?'text':'default'};">${escapeHtml(e.dateStr)}</td>
         <td class="editable-cell" contenteditable="${isEditable?'true':'false'}" data-section="companies" data-company="${escapeHtml(name)}" data-idx="${idx}" data-field="time" style="opacity:${isEditable?'1':'0.7'}; cursor:${isEditable?'text':'default'};">${escapeHtml(e.time)}</td>
-        <td><select class="visit-type-select" data-company="${escapeHtml(name)}" data-idx="${idx}" ${isEditable?'':'disabled'}>${typeOptions}</select></td>
+        <td><select class="visit-type-select" aria-label="نوعِ بازدید" data-company="${escapeHtml(name)}" data-idx="${idx}" ${isEditable?'':'disabled'}>${typeOptions}</select></td>
         <td class="rn-cell">${ROWNOTE.btn(!!(e.note||"").trim(), {
           "data-note-company": escapeHtml(name), "data-note-idx": idx })}</td>
         <td><button class="btn-del" data-remove-visit="${escapeHtml(name)}|${idx}" ${isEditable?'':'disabled'} title="حذف">✕</button></td>
@@ -3878,7 +3878,7 @@ function renderCompanies(){
         <div class="visit-add-bar">
           <input type="text" class="new-visit-date" data-company="${escapeHtml(name)}" placeholder="تاریخ — ۱۴۰۵.۰۵.۲۰" style="width:160px;">
           <input type="text" class="new-visit-time" data-company="${escapeHtml(name)}" placeholder="مدت — ۳۰m" style="width:130px;">
-          <select class="new-visit-type" data-company="${escapeHtml(name)}" style="width:70px;">${TYPE_OPTIONS.map(o=>`<option value="${o}">${TYPE_LABELS_FA[o]}</option>`).join("")}</select>
+          <select class="new-visit-type" aria-label="نوعِ بازدیدِ تازه" data-company="${escapeHtml(name)}" style="width:70px;">${TYPE_OPTIONS.map(o=>`<option value="${o}">${TYPE_LABELS_FA[o]}</option>`).join("")}</select>
           <button class="btn btn-brass btn-sm" data-add-visit="${escapeHtml(name)}">＋</button>
         </div>
       </div>`;
@@ -4144,7 +4144,12 @@ function renderRemoteChecklist(){
     const cells = Array.from({length:days}, (_,i)=>{
       const d = i+1;
       const on = !!checks[d];
-      return `<td><button type="button" class="day-toggle ${on?'checked':''}" data-server="${escapeHtml(m.server)}" data-day="${d}">${on?'✓':''}</button></td>`;
+      /* ۴۵ دکمه در این جدول بود و هیچ‌کدام نامی نداشتند: متنشان یا
+         «✓» بود یا هیچ، پس صفحه‌خوان فقط می‌گفت «دکمه». حالا هرکدام
+         می‌گوید مالِ کدام سرور و کدام روز است، و aria-pressed وضعش
+         را — چون این دکمه نیست، کلیدِ دو حالته است. */
+      const nm = `${m.server} — روز ${fa(d)}`;
+      return `<td><button type="button" class="day-toggle ${on?'checked':''}" data-server="${escapeHtml(m.server)}" data-day="${d}" aria-pressed="${on?'true':'false'}" aria-label="${escapeHtml(nm)}" title="${escapeHtml(nm)}">${on?'✓':''}</button></td>`;
     }).join("");
     return `<tr data-idx="${roster.indexOf(m)}"><td class="server-name editable-cell" contenteditable="${editMode.remote?'true':'false'}" data-section="remote" data-server="${escapeHtml(m.server)}" style="opacity:${editMode.remote?'1':'0.85'}; cursor:${editMode.remote?'text':'default'};">${escapeHtml(m.server)}</td>${cells}<td class="remote-count-cell">${fa(count)}/${fa(days)}</td><td><button class="btn-del" data-remove-remote="${escapeHtml(m.server)}" ${editMode.remote?'':'disabled'} title="حذف">✕</button></td></tr>`;
   }).join("");

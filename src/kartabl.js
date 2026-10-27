@@ -523,6 +523,22 @@ async function lift(html, kind, tag, ext, store, makeRef) {
   for (const m of html.matchAll(re)) {
     if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
     if (hasPlaceholder(m[0])) continue;
+    /* «<script type="application/ld+json">» اسکریپت نیست، داده است:
+       مرورگر اجرایش نمی‌کند و گوگل از داخلِ همان صفحه می‌خواندش. اگر
+       مثلِ بقیه بیرون کشیده شود، سر از یک فایلِ .js درمی‌آورد و از
+       صفحه غیب می‌شود — یعنی دادهٔ ساختاریافته بی‌صدا ناپدید.
+       هر type‌ای که جاوااسکریپت نباشد همین حکم را دارد. */
+    if (tag === 'script') {
+      /* فقط خودِ تگِ باز، نه بدنه. اولین نسخه روی کلِ متن می‌گشت و
+         چون در هفتصد کیلوبایت جاوااسکریپتِ کارتابل جایی «type="text"»
+         نوشته شده بود، هر اسکریپتی «نوعِ ناشناخته» به حساب می‌آمد و
+         هیچ‌کدام بیرون کشیده نمی‌شدند: صفحه از ۶۰ کیلوبایت به ۷۴۱
+         پرید. سرِ هر چیزی که روی HTML الگو می‌گذارد باید پرسید کجای
+         متن را می‌خواند. */
+      const open = m[0].slice(0, m[0].indexOf('>') + 1);
+      const t = (open.match(/\btype="([^"]*)"/i) || ['', ''])[1].toLowerCase();
+      if (t && t !== 'text/javascript' && t !== 'application/javascript') continue;
+    }
     picked.push(m);
   }
   if (!picked.length) return html;

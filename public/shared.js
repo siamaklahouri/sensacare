@@ -378,7 +378,11 @@
               opts += DATE_MODES.map(function (m) {
                 return '<option value="' + m[0] + '">' + esc(m[1]) + "</option>";
               }).join("");
-            return '<select class="sh-filter sh-fcol" data-shfcol="' + esc(box.id) +
+            /* نخستین گزینه («وضعیت: همه») نامِ کادر را می‌گوید، ولی
+               صفحه‌خوان آن را به‌عنوانِ مقدار می‌خواند نه نام. پس نامش
+               جداگانه می‌آید. */
+            return '<select class="sh-filter sh-fcol" aria-label="' + esc('فیلترِ ' + (c.t || c.k)) +
+                   '" data-shfcol="' + esc(box.id) +
                    '" data-k="' + esc(c.k) + '">' + opts + "</select>";
           }).join("") +
           '<button type="button" class="btn btn-sm sh-fclear" data-shfclear="' +
@@ -628,7 +632,13 @@
     var v = val === undefined || val === null ? "" : val;
     var dir = col.ltr ? ' dir="ltr"' : "";
     /* مثل بقیهٔ جدول‌های کارتابل: هیچ خانه‌ای پیشنهادِ «نام کاربری» نگیرد */
-    var name = ' data-k="' + esc(col.k) + '" autocomplete="off" spellcheck="false"' +
+    /* نامِ ستون روی خودِ کادر هم می‌نشیند. در یک جدول، آدمی که
+       می‌بیند از سرستون می‌فهمد این خانه چیست؛ صفحه‌خوان سرستون را
+       نمی‌خواند و بی این صفت فقط می‌گوید «ویرایشِ متن» — یعنی کاربر
+       نمی‌داند دارد کجا تایپ می‌کند. یک جا می‌نشیند و هر سه نوعِ
+       کادر (input و select و textarea) را می‌گیرد. */
+    var name = ' data-k="' + esc(col.k) + '" aria-label="' + esc(col.t || col.k) + '"' +
+               ' autocomplete="off" spellcheck="false"' +
                ' data-lpignore="true" data-1p-ignore data-form-type="other"';
     /* «مسئول» هم یک فهرستِ بسته است، فقط مقدار و برچسبش فرق دارند —
        پس همان سازنده، نه یک کپیِ دیگر با همان صفت‌ها. */

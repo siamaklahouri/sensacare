@@ -49,6 +49,11 @@ try{
 <meta name="twitter:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
 <meta name="twitter:image" content="https://sltech.ir/og.png">
 <link rel="canonical" href="https://sltech.ir/">
+<!-- دادهٔ ساختاریافته از خودِ سرور می‌آید، نه از همین‌جا: راه‌های تماس و
+     شمارِ شغل‌ها در تنظیماتِ پنل‌اند و اگر این‌جا نوشته شوند، روزی با
+     آنچه در صفحه دیده می‌شود نمی‌خوانند — و دادهٔ ساختاریافته‌ای که با
+     صفحه نخواند، از نبودنش بدتر است. -->
+{{LD}}
 <style>
 @font-face{font-family:Vazirmatn;font-style:normal;font-weight:400;font-display:swap;
   src:url(/f/Vazirmatn-Regular.2.woff2) format("woff2")}
