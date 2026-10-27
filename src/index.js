@@ -2118,6 +2118,45 @@ const worker = {
         { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'max-age=3600' } });
     }
 
+    /* ---------------- فیدِ مقاله‌ها ----------------
+       بخشِ مقاله‌ها راهِ دنبال کردن نداشت: کسی که یک نوشته را می‌پسندید
+       هیچ راهی نداشت جز اینکه هر چند وقت خودش سر بزند. فید همان راه
+       است، و برای موتورها هم یک مسیرِ کشفِ دیگر کنارِ نقشهٔ سایت.
+
+       پیش از سرو شدنِ فایل‌های ثابت می‌آید، وگرنه «.xml» از این شاخه
+       رد می‌شود و ۴۰۴ می‌گیرد. */
+    if (p === '/maghale/feed.xml' && site !== 'shop' && env.DB) {
+      const base = siteBase(env, url, site);
+      const x = t => String(t == null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const rows = await all(env,
+        `SELECT slug, title, excerpt, created, updated FROM sl_articles
+          WHERE published=1 ORDER BY created DESC LIMIT 30`).catch(() => []);
+      const rfc = t => new Date(Number(t) || Date.now()).toUTCString();
+      const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>' +
+        `<title>مقاله‌های کارتابل ماهانه SLTech</title>` +
+        `<link>${x(base)}/maghale/</link>` +
+        `<description>نوشته‌هایی دربارهٔ برنامهٔ ماهانه، چک‌لیستِ کار و نظم دادن به کارهای تکرارشونده.</description>` +
+        `<language>fa-ir</language>` +
+        `<atom:link href="${x(base)}/maghale/feed.xml" rel="self" type="application/rss+xml"/>` +
+        (rows.length ? `<lastBuildDate>${rfc(Math.max(...rows.map(r => r.updated || r.created)))}</lastBuildDate>` : '') +
+        rows.map(r => '<item>' +
+          `<title>${x(r.title)}</title>` +
+          `<link>${x(base)}/maghale/${x(r.slug)}/</link>` +
+          `<guid isPermaLink="true">${x(base)}/maghale/${x(r.slug)}/</guid>` +
+          `<pubDate>${rfc(r.created)}</pubDate>` +
+          (r.excerpt ? `<description>${x(r.excerpt)}</description>` : '') +
+          '</item>').join('') +
+        '</channel></rss>';
+      const tag = await etagOf(body);
+      const same = notModified(req, tag);
+      if (same) return withSecurity(same);
+      return withSecurity(new Response(body, { headers: {
+        'Content-Type': 'application/rss+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=900', 'ETag': tag } }));
+    }
+
     if (p === '/sitemap.xml') {
       /* دامنهٔ خودِ همین سایت، نه همیشه فروشگاه: نقشهٔ sltech.ir پیش
          از این آدرس‌های sensacare.ir را فهرست می‌کرد — یعنی یک دامنه
@@ -2300,7 +2339,11 @@ const worker = {
                                 'X-Robots-Tag': 'noindex, nofollow' } }));
       /* بی اسلشِ آخر، همان صفحه با دو نشانی در فهرستِ گوگل می‌نشیند */
       if (!p.endsWith('/')) return Response.redirect(new URL(p + '/', req.url).toString(), 301);
-      const html = jobPage(id, siteBase(env, url, site));
+      /* سه مقالهٔ تازه، تا صفحهٔ شغلی بن‌بست نباشد */
+      const reads = env.DB ? await all(env,
+        `SELECT slug, title, excerpt FROM sl_articles
+          WHERE published=1 ORDER BY created DESC LIMIT 3`).catch(() => []) : [];
+      const html = jobPage(id, siteBase(env, url, site), reads);
       const tag = await etagOf(html);
       const same = notModified(req, tag);
       if (same) return withSecurity(same);

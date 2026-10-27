@@ -1,4 +1,5 @@
 import { page, esc, fa, crumbs } from './pageshell.js';
+import { jobList } from './jobpage.js';
 /* ==================== مقاله‌های دامنهٔ پنل ====================
    مقاله‌های فروشگاه در جدولِ articles هستند و از پنلِ فروشگاه اداره
    می‌شوند. حالا که دو سایت کاملاً جدا شده‌اند، sltech.ir نمی‌تواند از
@@ -106,11 +107,37 @@ article li::marker{color:var(--brand)}
   padding-top:28px; border-top:1px solid var(--line-soft)}
 .more{margin-top:46px}
 .more h2{font-size:17px; margin:0 0 14px}
+.jobs{margin-top:44px; padding-top:28px; border-top:1px solid var(--line-soft)}
+.jobs h2{font-size:17px; margin:0 0 14px}
+.jobs .chips{display:flex; flex-wrap:wrap; gap:8px}
+.jobs .chips a{display:inline-flex; align-items:center; gap:6px;
+  padding:8px 14px; border-radius:999px; font-size:13.5px; text-decoration:none;
+  color:var(--ink-soft); background:var(--white);
+  border:1px solid var(--line); transition:border-color .15s, color .15s}
+.jobs .chips a:hover{border-color:var(--brand); color:var(--brand)}
+.jobs .chips .more-j{border-style:dashed; color:var(--brand)}
 `;
 
 /* زمانِ تقریبیِ خواندن. عددِ دقیقی نیست و نباید باشد — فقط به خواننده
    می‌گوید چند دقیقه وقت می‌خواهد. حدودِ ۹۰۰ نویسهٔ فارسی در دقیقه. */
 const mins = size => Math.max(1, Math.round((Number(size) || 0) / 900));
+
+/* راهی از نوشته به کار. مقاله‌ها عمومی‌اند («چک‌لیست ماهانه چیست»)
+   و صفحه‌های شغلی جایی‌اند که خواننده واقعاً چیزی به دست می‌آورد —
+   ولی تا امروز هیچ پیوندی بینشان نبود، نه یکی. هشت‌تا نشان داده
+   می‌شود و بقیه پشتِ یک لینک: بیست‌ودو لینک تهِ هر مقاله، خودش یک
+   جور شلوغی است. */
+const jobRow = () => {
+  const all = jobList();
+  const some = all.slice(0, 8);
+  return `<div class="jobs">
+    <h2>چک‌لیستِ آمادهٔ شغلِ خودتان</h2>
+    <div class="chips">${some.map(j =>
+      `<a href="/kar/${esc(j.id)}/">${j.icon} ${esc(j.label)}</a>`).join('')}` +
+    (all.length > some.length
+      ? `<a class="more-j" href="/#jobs">همهٔ ${fa(all.length)} شغل ←</a>` : '') +
+    `</div></div>`;
+};
 
 const card = (r, big) =>
   `<a class="card${big ? ' big' : ''}" href="/maghale/${esc(r.slug)}/">` +
@@ -197,6 +224,7 @@ export function articlePage(row, base, others = []) {
         <a class="btn btn-main" href="/login">کارتابلِ خودم را بسازم</a>
         <a class="btn" href="/maghale/">همهٔ مقاله‌ها</a>
       </div>
+      ${jobRow()}
       ${more}`
   });
 }

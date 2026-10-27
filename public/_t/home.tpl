@@ -35,9 +35,14 @@ try{
 <meta property="og:title" content="کارتابل ماهانه SLTech">
 <meta property="og:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
 <!-- کارتِ هم‌رسانی: نشانِ ۵۱۲×۵۱۲ در تلگرام و واتساپ یک مربعِ کوچک
-     می‌شد، نه کارت. og.png همان ۱۲۰۰×۶۳۰ است که فروشگاه هم به‌کار
-     می‌برد؛ ابعاد هم نوشته شده تا پیش از دانلودِ عکس جا باز شود. -->
-<meta property="og:image" content="https://sltech.ir/og.png">
+     می‌شد، نه کارت. ابعاد هم نوشته شده تا پیش از دانلودِ عکس جا باز شود.
+
+     تا امروز «og.png» بود — و آن کارتِ فروشگاه سنساست. یعنی هر لینکی
+     که از sltech در تلگرام یا بله فرستاده می‌شد، پیش‌نمایشش آگهیِ
+     محصولاتِ بهداشتیِ یک سایتِ دیگر را نشان می‌داد. هر دو سایت از یک
+     پوشهٔ public سرو می‌شوند، پس نامِ یکسان یعنی فایلِ یکسان. این یکی
+     مالِ خودِ SLTech است و فروشگاه همان og.png خودش را دارد. -->
+<meta property="og:image" content="https://sltech.ir/og-sl.1.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="کارتابل ماهانه SLTech">
@@ -47,7 +52,7 @@ try{
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="کارتابل ماهانه SLTech">
 <meta name="twitter:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
-<meta name="twitter:image" content="https://sltech.ir/og.png">
+<meta name="twitter:image" content="https://sltech.ir/og-sl.1.jpg">
 <link rel="canonical" href="https://sltech.ir/">
 <!-- دادهٔ ساختاریافته از خودِ سرور می‌آید، نه از همین‌جا: راه‌های تماس و
      شمارِ شغل‌ها در تنظیماتِ پنل‌اند و اگر این‌جا نوشته شوند، روزی با

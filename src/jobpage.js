@@ -44,7 +44,9 @@ export function jobTiles() {
 export function jobCount() { return jobList().length; }
 
 /* ---------- خودِ صفحه ---------- */
-export function jobPage(id, base) {
+/* «articles» از دیتابیس می‌آید (مسیرِ /kar/ در index.js). خالی بودنش
+   صفحه را خراب نمی‌کند — فقط بخشِ خواندن نمی‌آید. */
+export function jobPage(id, base, articles = []) {
   const j = JOBS[id];
   if (!hasJobPage(id)) return null;
 
@@ -94,6 +96,19 @@ export function jobPage(id, base) {
 
   const others = jobList().filter(o => o.id !== id).map(o =>
     `<a href="/kar/${esc(o.id)}/">${o.icon} ${esc(o.label)}</a>`).join(' · ');
+
+  /* تا امروز بینِ صفحه‌های شغلی و مقاله‌ها هیچ پیوندی نبود — نه یکی.
+     بیست‌ودو صفحهٔ شغلی و چند مقاله که هیچ‌کدام دیگری را نمی‌شناخت:
+     خواننده‌ای که «چک‌لیست ماهانه چیست» را خوانده راهی به چک‌لیستِ
+     شغلِ خودش نداشت، و برعکس. */
+  const readMore = articles.length
+    ? `
+  <h2>خواندنِ بیشتر</h2>
+  <ul class="reads">${articles.map(a =>
+      `<li><a href="/maghale/${esc(a.slug)}/">${esc(a.title)}</a>` +
+      (a.excerpt ? `<span>${esc(String(a.excerpt).slice(0, 110))}</span>` : '') + '</li>').join('')}
+  </ul>`
+    : '';
 
   /* دادهٔ ساختاریافته: گوگل این را به‌شکلِ یک «راهنما» می‌فهمد و
      مرحله‌هایش را گاهی همان‌جا در نتیجه نشان می‌دهد. */
@@ -148,6 +163,12 @@ tbody tr:not(.cat):hover{background:var(--paper-2)}
   padding-top:24px;border-top:1px solid var(--line-soft)}
 .others a{color:var(--ink-soft);text-decoration:none}
 .others a:hover{color:var(--brand)}
+.reads{list-style:none;margin:0 0 10px;padding:0}
+.reads li{padding:13px 0;border-bottom:1px solid var(--line-soft)}
+.reads li:last-child{border-bottom:none}
+.reads a{color:var(--brand);font-weight:600;font-size:15px;text-decoration:none}
+.reads a:hover{text-decoration:underline}
+.reads span{display:block;margin-top:4px;font-size:13px;color:var(--ink-soft);line-height:1.9}
 `,
     body: `
   <h1>چک‌لیست ماهانهٔ ${esc(j.label)}</h1>
@@ -188,6 +209,7 @@ ${faqHtml}
   جدولِ خالی. از همان لحظه هم هرکدامش را می‌توانید عوض کنید، پاک کنید یا کارِ خودتان
   را اضافه کنید. چیزی قفل نیست.</p>
 
+${readMore}
   <div class="others"><strong>شغل‌های دیگر:</strong><br>${others}</div>`
   });
 }

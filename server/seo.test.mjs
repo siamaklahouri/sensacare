@@ -128,6 +128,84 @@ console.log('— صفحه‌ها سبک مانده‌اند —');
   }
 }
 
+/* ---------------- کارتِ هم‌رسانی ----------------
+   این یکی نگهبانِ مرزِ دو سایت است، نه یک سنجهٔ سئو. «/og.png» کارتِ
+   فروشگاه سنساست و هر ۲۸ صفحهٔ sltech به همان اشاره می‌کرد: هر لینکی
+   که در تلگرام یا بله فرستاده می‌شد، پیش‌نمایشش آگهیِ محصولاتِ بهداشتیِ
+   یک سایتِ دیگر را نشان می‌داد. هر دو سایت از یک پوشهٔ public سرو
+   می‌شوند، پس نامِ یکسان یعنی فایلِ یکسان — و همین باعث می‌شود این
+   اشتباه بی‌صدا برگردد. */
+console.log('— کارتِ هم‌رسانی —');
+{
+  const paths = ['/', '/maghale/', '/kar/hr/'];
+  const arts = (await panelHtml('/maghale/')).match(/\/maghale\/([a-z0-9-]+)\//);
+  if (arts) paths.push('/maghale/' + arts[1] + '/');
+  const shop = [], imgs = new Set();
+  for (const u of paths) {
+    const h = await panelHtml(u);
+    if (/\/og\.png/.test(h)) shop.push(u);
+    const m = h.match(/<meta property="og:image" content="([^"]+)"/);
+    if (m) imgs.add(m[1].replace(/^https?:\/\/[^/]+/, ''));
+  }
+  t(shop.length === 0, 'هیچ صفحهٔ پنلی به کارتِ فروشگاه («/og.png») اشاره نمی‌کند',
+    shop.length ? 'هنوز در ' + shop.join(' و ') : paths.length + ' صفحه پاک');
+  t(imgs.size === 1 && [...imgs][0] === '/og-sl.1.jpg',
+    'و همه به کارتِ خودِ SLTech اشاره می‌کنند', [...imgs].join(' '));
+
+  const r = await fetch(BASE + '/og-sl.1.jpg', { headers: { Host: 'sltech.ir' } });
+  t(r.status === 200, 'خودِ کارت روی سرور هست', String(r.status));
+  t(/^image\//.test(r.headers.get('content-type') || ''), 'و نوعش تصویر است',
+    r.headers.get('content-type'));
+  const buf = Buffer.from(await r.arrayBuffer());
+  /* ۱۲۰۰×۶۳۰ شرطِ خودِ تلگرام و واتساپ است؛ با ابعادِ دیگر کارت
+     نمی‌شود و به یک مربعِ کوچک کنارِ متن تبدیل می‌شود. */
+  let w = 0, hgt = 0, i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xFF) { i++; continue; }
+    const mk = buf[i + 1];
+    if (mk >= 0xC0 && mk <= 0xCF && mk !== 0xC4 && mk !== 0xC8 && mk !== 0xCC) {
+      hgt = buf.readUInt16BE(i + 5); w = buf.readUInt16BE(i + 7); break;
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  t(w === 1200 && hgt === 630, 'ابعادش ۱۲۰۰×۶۳۰ است', w + '×' + hgt);
+  t(buf.length < 300 * 1024, 'و سبک است', Math.round(buf.length / 1024) + ' کیلوبایت');
+}
+
+/* ---------------- فید ---------------- */
+console.log('— فیدِ مقاله‌ها —');
+{
+  const r = await fetch(BASE + '/maghale/feed.xml', { headers: { Host: 'sltech.ir' } });
+  t(r.status === 200, 'فید جواب می‌دهد', String(r.status));
+  t(/rss\+xml/.test(r.headers.get('content-type') || ''), 'با نوعِ درست',
+    r.headers.get('content-type'));
+  const xml = await r.text();
+  const items = (xml.match(/<item>/g) || []).length;
+  const list = await panelHtml('/maghale/');
+  const cards = (list.match(/class="card[^"]*" href="\/maghale\//g) || []).length;
+  t(items === cards, 'همان‌قدر نوشته دارد که فهرست', items + ' در برابر ' + cards);
+  t(/<atom:link[^>]+rel="self"/.test(xml), 'و نشانیِ خودش را معرفی می‌کند');
+  t(/<link rel="alternate" type="application\/rss\+xml"/.test(list),
+    'از خودِ صفحه هم پیدا می‌شود');
+}
+
+/* ---------------- پیوندهای داخلی ----------------
+   بیست‌ودو صفحهٔ شغلی و چند مقاله بودند که هیچ‌کدام دیگری را
+   نمی‌شناخت — صفر پیوند در هر دو جهت. */
+console.log('— پیوندِ مقاله و شغل —');
+{
+  const slug = ((await panelHtml('/maghale/')).match(/\/maghale\/([a-z0-9-]+)\//) || [])[1];
+  if (!slug) t(false, 'مقاله‌ای برای آزمودن نبود');
+  else {
+    const art = await panelHtml('/maghale/' + slug + '/');
+    const toJobs = new Set([...art.matchAll(/href="(\/kar\/[a-z]+\/)"/g)].map(m => m[1]));
+    t(toJobs.size >= 5, 'از مقاله راهی به صفحه‌های شغلی هست', toJobs.size + ' شغل');
+  }
+  const job = await panelHtml('/kar/hr/');
+  const toArts = new Set([...job.matchAll(/href="(\/maghale\/[a-z0-9-]+\/)"/g)].map(m => m[1]));
+  t(toArts.size >= 1, 'و از صفحهٔ شغلی هم راهی به مقاله‌ها', toArts.size + ' مقاله');
+}
+
 console.log('— فهرستِ مقاله‌ها —');
 {
   const html = await panelHtml('/maghale/');

@@ -99,7 +99,8 @@ export const topBar = (extra = '') => `
 export const footBar = () => `
 <footer class="foot"><div class="wrap">
   <a href="/">کارتابل ماهانه SLTech</a> — برنامهٔ ماهِ هر شغلی، یک‌جا ·
-  <a href="/maghale/">مقاله‌ها</a> · <a href="/#jobs">شغل‌ها</a>
+  <a href="/maghale/">مقاله‌ها</a> · <a href="/#jobs">شغل‌ها</a> ·
+  <a href="/maghale/feed.xml">فید</a>
 </div></footer>`;
 
 /* صفحهٔ کامل. head را یک جا می‌سازد تا عنوان و توضیح و canonical در
@@ -118,6 +119,12 @@ export const crumbs = (base, items) => ({
   }))
 });
 
+/* کارتِ هم‌رسانیِ خودِ SLTech. پیش از این «/og.png» بود، که کارتِ
+   فروشگاه سنساست — هر دو سایت از یک پوشهٔ public سرو می‌شوند، پس نامِ
+   یکسان یعنی فایلِ یکسان، و هر لینکِ اشتراکیِ sltech آگهیِ آن یکی را
+   نشان می‌داد. */
+const OG_CARD = '/og-sl.1.jpg';
+
 export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width, hero = '',
                        ogType = 'article' }) {
   const head = ld.map(j => `<script type="application/ld+json">${JSON.stringify(j)}</script>`).join('\n');
@@ -130,9 +137,14 @@ export function page({ title, desc, url, css = '', body, ld = [], extraTop = '',
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${esc(url)}">
-<meta property="og:image" content="${esc(url.replace(/^(https?:\/\/[^/]+).*$/, '$1'))}/og.png">
+<meta property="og:image" content="${esc(url.replace(/^(https?:\/\/[^/]+).*$/, '$1'))}${OG_CARD}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="SLTech">
+<meta property="og:locale" content="fa_IR">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon-sl.3.png">
+<link rel="alternate" type="application/rss+xml" title="مقاله‌های SLTech" href="/maghale/feed.xml">
 <style>${BASE_CSS}${width ? `\n.wrap{--w:${width}}` : ''}${css}</style>
 ${head}
 </head><body>
