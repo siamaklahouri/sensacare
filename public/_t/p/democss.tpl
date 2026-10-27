@@ -13,5 +13,11 @@
   .demobar a:hover{ border-bottom-color:#fff; }
   /* جا برای نوار، تا دکمه‌های ته صفحه زیرش نمانند */
   html[data-demo="1"] body{ padding-bottom:46px; }
-  html[data-demo="1"] .chat-fab{ bottom:62px; }
+  /* «.chat-fab» بود و به هیچ‌چیز نمی‌خورد: آن نامِ کلاسی است که
+     chat.js روی خودِ body می‌گذارد، نه روی دکمه؛ و body جایگاهِ
+     چیده‌شده ندارد که «bottom» رویش کار کند. پس دکمهٔ گفتگو در
+     نسخهٔ نمایشی سرِ جای همیشگی‌اش می‌ماند و نوارِ دمو — که از آن
+     بالاتر می‌نشیند — نیمه‌اش را می‌پوشاند. نامِ درستِ قابِ شناور
+     «.ch-fab-wrap» است. */
+  html[data-demo="1"] .ch-fab-wrap{ bottom:62px; }
   @media print{ .demobar{ display:none !important; } }

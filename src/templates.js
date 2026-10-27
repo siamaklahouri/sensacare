@@ -93,6 +93,8 @@ import p_bkdata from '../public/_t/p/bkdata.tpl';
 import p_delbtncss from '../public/_t/p/delbtncss.tpl';
 import p_rownote from '../public/_t/p/rownote.tpl';
 import p_rownotecss from '../public/_t/p/rownotecss.tpl';
+import p_updown from '../public/_t/p/updown.tpl';
+import p_updowncss from '../public/_t/p/updowncss.tpl';
 
 import t_it from '../public/_t/it.tpl';
 import t_fin from '../public/_t/fin.tpl';
@@ -102,6 +104,8 @@ import t_home from '../public/_t/home.tpl';
 /* نامِ پاره → متنش. همان نامی که در {{PART:...}} می‌آید. */
 export const PARTS = new Map([
   ['rownote', p_rownote],
+  ['updown', p_updown],
+  ['updowncss', p_updowncss],
   ['rownotecss', p_rownotecss],
   ['jalalicore', p_jalalicore],
   ['jalalicore2', p_jalalicore2],

@@ -38,7 +38,8 @@ LIST="
   notes-persist.test.mjs row-appears.test.mjs rowdrag.test.mjs
   site-anim.test.mjs site-anim2.test.mjs win-icons.test.mjs
   xlsx-import.test.mjs xlsx-import-fin.test.mjs xlsx-sample.test.mjs
-  merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs"
+  merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs
+  updown.test.mjs"
 
 for f in $LIST; do
   [ -f "$f" ] || continue

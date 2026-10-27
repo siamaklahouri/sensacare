@@ -157,6 +157,7 @@ window.KARTABL_IDB      = "{{IDB}}";
   .period input::placeholder{ color:var(--ink-faint); }
 {{PART:tablecss}}
 {{PART:cellpopcss}}
+{{PART:updowncss}}
 {{PART:rowdragcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
@@ -4106,6 +4107,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 });
 
 {{PART:cellpop}}
+{{PART:updown}}
 {{PART:dellock}}
 {{PART:dayexport}}
 {{PART:navmobile}}

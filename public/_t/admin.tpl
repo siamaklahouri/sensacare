@@ -793,6 +793,7 @@ table.inv-tab td.desc{ text-align:right; }
   .meta .m span:first-child{ min-width:96px; }
 }
 {{PART:datepickcss}}
+{{PART:updowncss}}
 </style>
 </head>
 <body>
@@ -4802,6 +4803,7 @@ async function loadLog(){
 <script>
 {{PART:fadigits}}
 {{PART:datepick}}
+{{PART:updown}}
 </script>
 </body>
 </html>

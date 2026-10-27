@@ -174,6 +174,7 @@ window.KARTABL_IDB      = "{{IDB}}";
   .period select option{ color:var(--ink); }
 {{PART:tablecss}}
 {{PART:rownotecss}}
+{{PART:updowncss}}
 {{PART:cellpopcss}}
 {{PART:rowdragcss}}
 {{PART:datepickcss}}
@@ -4502,6 +4503,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 
 {{PART:cellpop}}
 {{PART:rownote}}
+{{PART:updown}}
 {{PART:dellock}}
 {{PART:dayexport}}
 {{PART:navmobile}}
