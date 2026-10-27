@@ -173,6 +173,7 @@ window.KARTABL_IDB      = "{{IDB}}";
   }
   .period select option{ color:var(--ink); }
 {{PART:tablecss}}
+{{PART:rownotecss}}
 {{PART:cellpopcss}}
 {{PART:rowdragcss}}
 {{PART:datepickcss}}
@@ -2974,7 +2975,7 @@ function buildEmptyDatabaseWorkbook(){
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Location","Server","Size","SizeUsed","ScheduleBackup","LastRestore","LastFullBackup","Time","Storage"]]), "Servers");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Group","Year","Month","Day","Done"]]), "DailyBackupLog");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Company","Date","Time","Type"]]), "Companies");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Company","Date","Time","Type","Note"]]), "Companies");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Phone","Owner","Stage","Ext","ExtFull","Plan"]]), "MVPN");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Server"]]), "RemoteChecklist");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Month","Category","Task","Owner","Deadline","Status","Priority","Note"]]), "Tasks");
@@ -3155,7 +3156,11 @@ const XS_COMPANIES = [
   { k:'company', as:['Company','شرکت','نام شرکت','مشتری'] },
   { k:'dateStr', as:['Date','تاریخ','تاریخ بازدید'] },
   { k:'time',    as:['Time','مدت','مدت زمان','ساعت'] },
-  { k:'type',    as:['Type','نوع','نوع بازدید'] }
+  { k:'type',    as:['Type','نوع','نوع بازدید'] },
+  /* توضیحِ هر بازدید. ستونش در خودِ شیت است، نه فقط در حافظه — وگرنه
+     اولین ذخیره آن را دور می‌ریخت، چون شیت هر بار از نو ساخته
+     می‌شود. */
+  { k:'note',    as:['Note','توضیحات','یادداشت','شرح','توضیح'] }
 ];
 const XS_DAILYLOG = [
   { k:'group', as:['Group','گروه','دسته'] },
@@ -3327,7 +3332,8 @@ function parseCompaniesSheet(wb){
     const dateStr = String(x.dateStr==null ? "" : x.dateStr).trim();
     if(!out[company]) out[company] = [];
     if(!dateStr){ skipped++; continue; }
-    out[company].push({ dateStr, time: String(x.time||""), type: String(x.type||""), _x: x._x });
+    out[company].push({ dateStr, time: String(x.time||""), type: String(x.type||""),
+                        note: String(x.note||""), _x: x._x });
   }
   if(skipped) setTimeout(()=> alert(
     fa(skipped) + " ردیف بدونِ تاریخ در شیت Companies بود و وارد نشد."), 0);
@@ -3336,10 +3342,11 @@ function parseCompaniesSheet(wb){
 }
 
 function companiesToAOA(){
-  const header = ["Company","Date","Time","Type"];
+  const header = ["Company","Date","Time","Type","Note"];
   const rows = [];
   Object.keys(companiesData.companies).forEach(name=>{
-    companiesData.companies[name].forEach(e=> rows.push([name, e.dateStr, e.time, e.type]));
+    companiesData.companies[name].forEach(e=>
+      rows.push([name, e.dateStr, e.time, e.type, e.note || ""]));
   });
   return [header, ...rows];
 }
@@ -3354,7 +3361,7 @@ function saveCompaniesSheet(){
 function addCompanyVisit(name, dateStr, time, type){
   if(!companiesData) companiesData = { companies:{} };
   if(!companiesData.companies[name]) companiesData.companies[name] = [];
-  companiesData.companies[name].push({ dateStr, time, type });
+  companiesData.companies[name].push({ dateStr, time, type, note:"" });
   companiesData.companies[name].sort((a,b)=> a.dateStr.localeCompare(b.dateStr));
   // فعال‌سازی خودکار حالت «حذف/تغییر» برای این شرکت تا ردیف تازه‌اضافه‌شده
   // بلافاصله قابل‌مشاهده، ویرایش و بررسی باشد و نیازی به کلیک جداگانه نباشد.
@@ -3833,6 +3840,8 @@ function renderCompanies(){
         <td class="editable-cell" contenteditable="${isEditable?'true':'false'}" data-section="companies" data-company="${escapeHtml(name)}" data-idx="${idx}" data-field="dateStr" style="opacity:${isEditable?'1':'0.7'}; cursor:${isEditable?'text':'default'};">${escapeHtml(e.dateStr)}</td>
         <td class="editable-cell" contenteditable="${isEditable?'true':'false'}" data-section="companies" data-company="${escapeHtml(name)}" data-idx="${idx}" data-field="time" style="opacity:${isEditable?'1':'0.7'}; cursor:${isEditable?'text':'default'};">${escapeHtml(e.time)}</td>
         <td><select class="visit-type-select" data-company="${escapeHtml(name)}" data-idx="${idx}" ${isEditable?'':'disabled'}>${typeOptions}</select></td>
+        <td class="rn-cell">${ROWNOTE.btn(!!(e.note||"").trim(), {
+          "data-note-company": escapeHtml(name), "data-note-idx": idx })}</td>
         <td><button class="btn-del" data-remove-visit="${escapeHtml(name)}|${idx}" ${isEditable?'':'disabled'} title="حذف">✕</button></td>
       </tr>`;
     }).join("");
@@ -3849,10 +3858,12 @@ function renderCompanies(){
         <div class="tbl-wrap visits-wrap" style="max-height:280px; overflow-y:auto;">
           <table class="company-visits-table">
             <colgroup>
-              <col style="width:22%;"><col style="width:20%;"><col style="width:38%;"><col style="width:20%;">
+              <col style="width:20%;"><col style="width:17%;"><col style="width:31%;">
+              <col style="width:12%;"><col style="width:20%;">
             </colgroup>
             <thead><tr>
               <th>تاریخ</th><th>مدت زمان</th><th>نوع</th>
+              <th title="برای هر بازدید می‌توانید توضیح بنویسید">توضیحات</th>
               <th>
                 <label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر برای این شرکت">
                   <span class="edit-switch"><input type="checkbox" class="edit-toggle-company" data-company="${escapeHtml(name)}" ${isEditable?'checked':''}><span class="track"></span></span>
@@ -3907,6 +3918,27 @@ function renderCompanies(){
       renderCompanies();
     });
   });
+  /* مدادِ هر ردیف. برخلافِ بقیهٔ خانه‌ها، به «حذف/تغییر» بند نیست:
+     نوشتنِ توضیح کارِ خطرناکی نیست و اگر پشتِ همان کلید باشد، کسی
+     سراغش نمی‌رود. */
+  wrap.querySelectorAll(".rn-btn[data-note-company]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const name = b.getAttribute("data-note-company");
+      const idx  = parseInt(b.getAttribute("data-note-idx"), 10);
+      const row  = companiesData && companiesData.companies[name]
+                 ? companiesData.companies[name][idx] : null;
+      if(!row) return;
+      ROWNOTE.open({
+        title: "توضیحاتِ بازدید — " + name + "، " + (row.dateStr || "بی‌تاریخ"),
+        text: row.note || "",
+        onSave: v=>{
+          commitCompanyVisitCell(name, idx, "note", v);
+          renderCompanies();
+        }
+      });
+    });
+  });
+
   wrap.querySelectorAll(".edit-toggle-company").forEach(cb=>{
     cb.addEventListener("change", ()=>{
       const company = cb.getAttribute("data-company");
@@ -4437,8 +4469,9 @@ const XSAMPLE = {
       ext:"۱۰۲", extFull:"", plan:"سازمانی ۱۰ گیگ" }
   ]},
   sampleCompaniesBtn: { sheet:"Companies", schema:()=>XS_COMPANIES, file:"نمونه-بازدید-شرکت‌ها.xlsx", rows:[
-    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۰۲", time:"۲ ساعت", type:"Person" },
-    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۱۸", time:"۱ ساعت", type:"Remote" }
+    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۰۲", time:"۲ ساعت", type:"Person",
+      note:"تعویضِ سوییچِ طبقهٔ دوم. دفعهٔ بعد کابل‌های اضافه جمع شود." },
+    { company:"شرکت نمونه", dateStr:"۱۴۰۵/۰۷/۱۸", time:"۱ ساعت", type:"Remote", note:"" }
   ]},
   sampleRemoteBtn: { sheet:"RemoteChecklist", schema:()=>[{k:"server", as:["Server","نام سرور"]}],
     file:"نمونه-چک‌لیست-ریموت.xlsx", rows:[{ server:"SRV-APP-01" }, { server:"SRV-DB-01" }],
@@ -4468,6 +4501,7 @@ Object.keys(XSAMPLE).forEach(id=>{
 });
 
 {{PART:cellpop}}
+{{PART:rownote}}
 {{PART:dellock}}
 {{PART:dayexport}}
 {{PART:navmobile}}
