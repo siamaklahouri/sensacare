@@ -694,7 +694,10 @@ window.KARTABL_IDB      = "{{IDB}}";
   /* ستون‌ها پهنای خودشان را دارند و زیرِ یک حد فشرده نمی‌شوند:
      «سنگ آهن» نباید «سنگ» شود. صفحهٔ باریک‌تر، خودِ جدول را می‌لغزاند
      (همان کاری که روی گوشی از قبل می‌کرد). */
-  .daily-plan-table{ min-width:1180px; }
+  /* فقط برای نمایشگرِ بزرگ: روی گوشی ستون‌های درجهٔ دوم برداشته
+     می‌شوند و این min-width آن را بی‌اثر می‌کرد — جدول همان ۱۱۸۰
+     می‌ماند و فضای آزادشده می‌رفت به ستونِ «وضعیت». */
+  @media (min-width:761px){ .daily-plan-table{ min-width:1180px; } }
   .daily-plan-table td, .daily-plan-table th{ padding-left:10px; padding-right:10px; }
   .daily-plan-table td:nth-child(4), .daily-plan-table th:nth-child(4){ border-right:1px solid var(--line); padding-right:14px; }
   .daily-plan-table td:nth-child(5), .daily-plan-table th:nth-child(5){ padding-right:14px; padding-left:14px; }
@@ -994,12 +997,12 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th style="width:26px;">#</th><th>دسته‌بندی</th><th>وظیفه</th><th style="width:120px;">مسئول</th>
-            <th style="width:104px;">مهلت</th><th style="width:110px;">وضعیت</th><th style="width:90px;">اولویت</th>
-            <th>یادداشت</th>
-            <th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th>
-            <th style="width:46px;" title="وظیفه‌ای که تیک دارد، ماهِ بعد هم می‌آید">🔁</th>
-            <th style="width:40px;" title="حذف">🗑</th>
+            <th style="width:26px;" class="col-num">#</th><th class="col-hide-s">دسته‌بندی</th><th class="col-main">وظیفه</th><th style="width:120px;" class="col-hide-s">مسئول</th>
+            <th style="width:104px;" class="col-date">مهلت</th><th style="width:110px;" class="col-stat">وضعیت</th><th style="width:90px;" class="col-hide-s">اولویت</th>
+            <th class="col-hide-s">یادداشت</th>
+            <th style="width:48px;" class="col-hide-s" title="پیوست: عکس، فاکتور، فایل">📎</th>
+            <th style="width:46px;" class="col-hide-s" title="وظیفه‌ای که تیک دارد، ماهِ بعد هم می‌آید">🔁</th>
+            <th style="width:40px;" class="col-del" title="حذف">🗑</th>
           </tr></thead>
           <tbody id="checklistBody"></tbody>
         </table>
@@ -1022,16 +1025,16 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="tbl-wrap">
         <table class="daily-plan-table">
           <thead>
-          <tr><th style="width:38px;">ردیف</th><th style="width:80px;">📅 تاریخ</th><th style="width:16%;">📌 وظایف اصلی</th><th style="width:34%;">🤝 توضیحات</th><th style="width:150px;">🏢 شرکت</th><th style="width:172px;">وضعیت</th><th style="width:108px;" class="nowrap">✅ تاریخ انجام</th><th style="width:36px;" title="مهم / یادآوری">⭐</th><th style="width:48px;" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:34px;"></th></tr>
+          <tr><th style="width:38px;" class="col-num">ردیف</th><th style="width:80px;" class="col-hide-s">📅 تاریخ</th><th style="width:16%;" class="col-main">📌 وظایف اصلی</th><th style="width:34%;" class="col-hide-s">🤝 توضیحات</th><th style="width:150px;" class="col-hide-s">🏢 شرکت</th><th style="width:172px;" class="col-stat">وضعیت</th><th style="width:108px;" class="nowrap col-hide-s">✅ تاریخ انجام</th><th style="width:36px;" class="col-hide-s" title="مهم / یادآوری">⭐</th><th style="width:48px;" class="col-hide-s" title="پیوست: عکس، فاکتور، فایل">📎</th><th style="width:34px;" class="col-del"></th></tr>
           <tr class="filter-row">
             <th></th>
-            <th><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
-            <th></th><th></th>
-            <th><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
+            <th class="col-hide-s"><div class="msf" id="msfDailyDate" data-key="createdDate"></div></th>
+            <th></th><th class="col-hide-s"></th>
+            <th class="col-hide-s"><div class="msf" id="msfDailyCompany" data-key="company"></div></th>
             <th><div class="msf" id="msfDailyStatus" data-key="status"></div></th>
-            <th></th>
-            <th></th>
-            <th></th>
+            <th class="col-hide-s"></th>
+            <th class="col-hide-s"></th>
+            <th class="col-hide-s"></th>
             <th></th>
           </tr>
           </thead>
@@ -2386,11 +2389,11 @@ function renderChecklist(){
   body.innerHTML = state.tasks.map((t,i)=>`
     <tr data-idx="${i}">
       <td>${fa(i+1)}</td>
-      <td>
+      <td class="col-hide-s">
         <select data-field="category" aria-label="دسته‌بندی">${categoryOptions(t.category)}</select>
       </td>
       <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
-      <td class="editable-text"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
         <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
                 title="انتخاب روزِ مهلت">
@@ -2403,16 +2406,16 @@ function renderChecklist(){
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td>
+      <td class="col-hide-s">
         <select data-field="priority" aria-label="اولویت">
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
-      <td class="editable-text"><input type="text" data-field="note" aria-label="توضیحات" value="${escapeHtml(t.note)}"></td>
-      <td class="clip-cell" data-kind="task" data-i="${i}" data-nocp>
+      <td class="editable-text col-hide-s"><input type="text" data-field="note" aria-label="توضیحات" value="${escapeHtml(t.note)}"></td>
+      <td class="clip-cell col-hide-s" data-kind="task" data-i="${i}" data-nocp>
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
       </td>
-      <td class="rep-cell" data-nocp>
+      <td class="rep-cell col-hide-s" data-nocp>
         <select class="rep-box" data-rep="${i}" title="${repeatLabel(t)}">
           ${REPEATS.map(r=>`<option value="${r[0]}" ${repeatEvery(t)===r[0]?"selected":""}>${r[1]}</option>`).join("")}
         </select>
@@ -2508,22 +2511,22 @@ function renderDaily(){
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
     <tr data-idx="${d.idx}">
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}</td>
+      <td class="daily-date-cell col-hide-s" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}</td>
       <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
-      <td class="editable-text"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
-      <td class="editable-text"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="جلسات"></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام شرکت" list="dailyCompanyOptions"></td>
       <td>
         <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td class="daily-date-cell daily-done-cell${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
-      <td style="text-align:center;">
+      <td class="daily-date-cell daily-done-cell col-hide-s${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
+      <td style="text-align:center;" class="col-hide-s">
         <button type="button" class="star-btn ${d.important?'is-important':''}" data-star-idx="${d.idx}"
           title="${d.important && d.reminderAt ? 'یادآوری: '+formatReminderAtFa(d.reminderAt) : 'علامت‌گذاری به‌عنوان مهم برای یادآوری'}">${d.important?'⭐':'☆'}</button>
       </td>
-      <td class="clip-cell" data-kind="day" data-i="${d.idx}" data-nocp>
+      <td class="clip-cell col-hide-s" data-kind="day" data-i="${d.idx}" data-nocp>
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
       </td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>

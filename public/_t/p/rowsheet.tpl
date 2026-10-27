@@ -26,6 +26,19 @@
     return document.documentElement.getAttribute("data-app") === "1";
   }
 
+  /* کشو تا امروز فقط در حالتِ نصب‌شده باز می‌شد. ولی ایرادی که برای
+     حلش ساخته شده — جدولِ هشت‌ستونه در قابِ باریک — مالِ نصب‌شده بودن
+     نیست، مالِ باریک بودنِ صفحه است: کسی که همان کارتابل را با مرورگرِ
+     گوشی باز می‌کرد، همان جدول را داشت و کشو را نداشت.
+
+     ۷۶۰ همان آستانه‌ای است که کلِ چیدمان با آن باریک می‌شود (mobilecss)
+     و حالا ستون‌های درجهٔ دوم هم با همان برداشته می‌شوند — پس هر جا
+     ستونی پنهان است، کشو هست. */
+  function narrow() {
+    try { return matchMedia("(max-width:760px)").matches; } catch (e) { return false; }
+  }
+  function sheetMode() { return appMode() || narrow(); }
+
   function rowOf(body, idx) {
     return document.querySelector("#" + body + ' tr[data-idx="' + idx + '"]');
   }
@@ -155,7 +168,7 @@
      معلوم باشد زدنی است). نگه داشتنِ انگشت روی هر جای ردیف هم همان
      کار را می‌کند، برای کسی که شماره را نمی‌بیند. */
   function handleFor(e) {
-    if (!appMode()) return null;
+    if (!sheetMode()) return null;
     var td = e.target.closest ? e.target.closest("td") : null;
     if (!td || td.cellIndex !== 0) return null;
     var tr = td.closest("tr[data-idx]");
@@ -171,7 +184,7 @@
 
   var hold = null;
   document.addEventListener("pointerdown", function (e) {
-    if (!appMode()) return;
+    if (!sheetMode()) return;
     var tr = e.target.closest ? e.target.closest("tr[data-idx]") : null;
     var body = tr && tr.closest("tbody");
     if (!body || TABLES.indexOf(body.id) < 0) return;

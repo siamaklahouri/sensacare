@@ -130,9 +130,18 @@ for (const w of WHO) {
 
   await ctx.close();
 
-  /* ---------- در مرورگر نباید باشد ---------- */
-  const web = await b.newContext({ viewport: { width: 412, height: 880 }, isMobile: true, hasTouch: true });
-  const p2 = await web.newPage();
+  /* ---------- در مرورگر ----------
+     این بخش قبلاً می‌سنجید که کشو «در مرورگر اصلاً باز نشود»، چون
+     ساخته شده بود برای حالتِ نصب‌شده. آن انتظار عوض شد و دلیلش
+     اندازه‌گیری بود: جدولِ چک‌لیست روی گوشیِ ۳۹۰ پیکسلی ۵۵۸ پیکسل عرض
+     داشت و ستونِ «وظیفه» ۴۲ پیکسل — و همان جدول را کسی که با مرورگرِ
+     گوشی باز می‌کرد هم داشت، بی‌آنکه کشویی داشته باشد.
+
+     حالا روی هر صفحهٔ باریک ستون‌های درجهٔ دوم به کشو می‌روند، پس کشو
+     هم باید همان‌جا باز شود — وگرنه داده از دسترس خارج می‌شود. چیزی
+     که سرِ جایش ماند این است: روی پنجرهٔ پهن، هیچ‌چیز عوض نشده. */
+  const narrowWeb = await b.newContext({ viewport: { width: 412, height: 880 }, isMobile: true, hasTouch: true });
+  const p2 = await narrowWeb.newPage();
   await p2.goto(BASE + w.page, { waitUntil: 'networkidle' });
   await p2.evaluate(async a => {
     await fetch('/api/' + a.api + '/login', { method: 'POST', credentials: 'same-origin',
@@ -151,9 +160,37 @@ for (const w of WHO) {
     const sh = document.getElementById('rowSheet');
     return { sheet: !!sh && !sh.hidden, cursor: td ? getComputedStyle(td).cursor : '' };
   });
-  t(!inWeb.sheet, 'داخلِ مرورگر هیچ کشویی باز نمی‌شود — جدول همان جدولِ همیشگی است');
-  t(inWeb.cursor !== 'pointer', 'و شمارهٔ ردیف هم دسته نمی‌شود', inWeb.cursor);
-  await web.close();
+  t(inWeb.sheet, 'در مرورگرِ گوشی هم کشو باز می‌شود — ستون‌هایی که آن‌جا پنهان‌اند باید جایی باشند');
+  await narrowWeb.close();
+
+  /* و پنجرهٔ پهن: همان جدولِ همیشگی، بی‌کشو */
+  const wideWeb = await b.newContext({ viewport: { width: 1400, height: 900 } });
+  const p3 = await wideWeb.newPage();
+  await p3.goto(BASE + w.page, { waitUntil: 'networkidle' });
+  await p3.evaluate(async a => {
+    await fetch('/api/' + a.api + '/login', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: a.pass, remember: false }) });
+  }, { api: w.api, pass: w.pass });
+  await p3.goto(BASE + w.page, { waitUntil: 'networkidle' });
+  await p3.waitForTimeout(2500);
+  const inWide = await p3.evaluate(async () => {
+    const nb = document.querySelector('.navbtn[data-view="daily"]');
+    if (nb) nb.click();
+    await new Promise(r => setTimeout(r, 300));
+    const td = document.querySelector('#dailyBody tr[data-idx="0"] td');
+    if (td) td.click();
+    await new Promise(r => setTimeout(r, 250));
+    const sh = document.getElementById('rowSheet');
+    const tbl = document.querySelector('#view-daily table');
+    const ths = tbl ? [...tbl.querySelectorAll('thead tr:first-child th')] : [];
+    return { sheet: !!sh && !sh.hidden, cursor: td ? getComputedStyle(td).cursor : '',
+      hidden: ths.filter(th => getComputedStyle(th).display === 'none').length };
+  });
+  t(!inWide.sheet, 'روی پنجرهٔ پهن هیچ کشویی باز نمی‌شود — جدول همان جدولِ همیشگی است');
+  t(inWide.cursor !== 'pointer', 'و شمارهٔ ردیف هم دسته نمی‌شود', inWide.cursor);
+  t(inWide.hidden === 0, 'و هیچ ستونی پنهان نیست', inWide.hidden + ' ستونِ پنهان');
+  await wideWeb.close();
 }
 
 await b.close();

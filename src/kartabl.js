@@ -412,6 +412,31 @@ export async function withParts(env, req, html) {
    این مانیفست به هیچ کارتابلی بند نیست: از ورود شروع می‌شود و
    محدوده‌اش کلِ دامنه است، پس هر کاربری بعد از ورود داخلِ برنامه
    می‌ماند. */
+/* ---------- تصویرهای پنجرهٔ نصب ----------
+   بی اینها کروم موقعِ نصب فقط یک نوارِ یک‌خطی نشان می‌دهد؛ با اینها
+   کارتی با پیش‌نمایش و نام و توضیح. یعنی کسی که تا دمِ نصب آمده،
+   می‌بیند چه چیزی را دارد نصب می‌کند.
+
+   «narrow» برای گوشی لازم است و «wide» برای دسکتاپ: اگر فقط wide
+   بدهی، روی گوشی همان نوارِ ساده می‌ماند — و گوشی همان جایی است که
+   نصب اتفاق می‌افتد. */
+const SHOTS = [
+  { src: '/shots/phone.jpg', sizes: '780x1688', type: 'image/jpeg',
+    form_factor: 'narrow', label: 'چک‌لیست ماهانه روی گوشی' },
+  { src: '/shots/dashboard.jpg', sizes: '1680x880', type: 'image/jpeg',
+    form_factor: 'wide', label: 'داشبورد ماهانه' },
+  { src: '/shots/checklist.jpg', sizes: '1680x880', type: 'image/jpeg',
+    form_factor: 'wide', label: 'چک‌لیست وظایف ماهانه' },
+  { src: '/shots/daily.jpg', sizes: '1680x880', type: 'image/jpeg',
+    form_factor: 'wide', label: 'برنامهٔ روزانهٔ ماه' }
+];
+
+/* کارتابل در یک پنجره باز می‌شود، نه چندتا: زدنِ نشانه وقتی برنامه از
+   قبل باز است باید همان را جلو بیاورد. بی این، اندروید پنجرهٔ تازه
+   می‌سازد و دو نسخه از یک کارتابل هم‌زمان باز می‌ماند — که با همگام‌سازیِ
+   تک‌نشستی یعنی یکی‌شان بی‌کار می‌شود. */
+const LAUNCH = { client_mode: 'navigate-existing' };
+
 export function siteManifest() {
   const icons = [
     { src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
@@ -431,6 +456,8 @@ export function siteManifest() {
     background_color: '#EEF2F6',
     theme_color: '#EEF2F6',
     categories: ['productivity', 'business'],
+    launch_handler: LAUNCH,
+    screenshots: SHOTS,
     icons
   };
 }
@@ -459,6 +486,8 @@ export function appManifest(panel) {
     background_color: '#EEF2F6',
     theme_color: '#EEF2F6',
     categories: ['productivity', 'business'],
+    launch_handler: LAUNCH,
+    screenshots: SHOTS,
     icons,
     /* نگه داشتنِ نشانه روی صفحهٔ خانه، فهرستِ کوتاه می‌آورد */
     shortcuts: [cut('برنامهٔ روزانه', 'روزانه', 'daily'),
