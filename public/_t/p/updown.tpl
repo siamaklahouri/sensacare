@@ -54,6 +54,10 @@ const UPDOWN = (function(){
       '</svg>';
     btn.addEventListener("click", go);
     document.body.appendChild(btn);
+    /* سمتِ راستِ صفحه در کارتابل مالِ ستونِ بخش‌هاست و دکمه نباید روی
+       تهِ آن بیفتد. این‌جا فقط خبر می‌دهیم که ستون هست؛ اینکه چقدر
+       تو بیاید و از چه عرضی به بعد، کارِ CSS است. */
+    if(document.querySelector(".sidebar")) document.body.classList.add("ud-side");
     face(false);
   }
 
