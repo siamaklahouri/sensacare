@@ -157,7 +157,13 @@ cd "$AND"
 chmod 600 ./android.keystore
 # حافظهٔ این سرور ۱٫۹ گیگابایت است؛ بی این سقف، gradle خودش را می‌کشد.
 export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx900m -Dorg.gradle.daemon=false"
-bubblewrap update --skipVersionUpgrade || die "update نشد."
+# «--skipVersionUpgrade» در همهٔ نسخه‌های bubblewrap نیست. اگر نبود،
+# کلِ کار آخرِ راه می‌افتاد — بعد از نیم ساعت دانلود. پس اول با پرچم،
+# و اگر نشناختش بی‌پرچم. شمارهٔ نسخه از قبل در twa-manifest.json
+# درست است (۲)، پس هر دو راه یک نتیجه می‌دهند.
+bubblewrap update --skipVersionUpgrade 2>/dev/null ||
+  bubblewrap update ||
+  die "update نشد."
 say "   رمزِ کلید را bubblewrap خودش می‌پرسد — این اسکریپت نمی‌پرسد و نگهش نمی‌دارد."
 bubblewrap build --skipPwaValidation || die "build نشد."
 
@@ -183,5 +189,21 @@ else
   say "      بالای صفحه می‌گذارد. اضافه‌اش کنید — کنارِ قبلی‌ها، نه به‌جایشان:"
   say "      public/.well-known/assetlinks.json → sha256_cert_fingerprints"
 fi
+say ""
+# ---------- نصب روی گوشی ----------
+# این مهم‌ترین جمله‌ای است که آخرِ کار لازم می‌شود و تا امروز نوشته
+# نشده بود: APKِ تازه با کلیدِ دیگری امضا شده، و اندروید اجازه نمی‌دهد
+# برنامه‌ای با امضای متفاوت روی نسخهٔ نصب‌شده بنشیند — هرچه
+# appVersionCode بالاتر باشد. پیامش «App not installed» است و آدم
+# فکر می‌کند فایل خراب است.
+say "— نصب روی گوشی —"
+say "   ۱) برنامهٔ فعلیِ SLTech را از گوشی پاک کنید."
+say "      کلیدِ امضا عوض شده و اندروید نصبِ روی نسخهٔ قبلی را رد می‌کند؛"
+say "      پیامش «App not installed» است و ربطی به سالم بودنِ فایل ندارد."
+say "   ۲) https://sltech.ir/sltech.apk را دانلود و نصب کنید."
+say ""
+say "   دادهٔ کارتابل با پاک کردنِ برنامه از بین نمی‌رود: برنامه فقط یک"
+say "   پوسته است و همه‌چیز یا روی سرور است یا در حافظهٔ خودِ کروم برای"
+say "   همین دامنه — که مالِ کروم است، نه این برنامه."
 say ""
 say "کلید را از این‌جا پاک کنید وقتی کارتان تمام شد:  rm -f $AND/android.keystore"
