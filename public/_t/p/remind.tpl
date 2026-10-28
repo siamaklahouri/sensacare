@@ -24,7 +24,16 @@
   var DAY = 86400000;
   var LS = "sltechPushOn";
   var LSD = "sltechDigest";       /* خلاصهٔ صبحگاهی */
-  var VAULT_AHEAD = 2;      /* سررسیدِ شخصی: دو روز قبل */
+  /* ---------- چند روز قبل خبر برود ----------
+     تا امروز هر سررسید یک خبر داشت: چک‌لیست «فردا» و دیتای شخصی «دو
+     روز قبل». یک خبر برای کاری که دو روز دیگر است یعنی اگر همان یک
+     بار را ندیدی، دیگر خبری نیست.
+
+     حالا هر دو، دو بار خبر می‌دهند: دو روز مانده و یک روز مانده.
+     ترتیبش از دور به نزدیک است تا متنِ هرکدام با فاصله‌اش بخواند. */
+  var AHEAD = [2, 1];
+  /* متنِ فاصله. «فردا» از «۱ روز مانده» طبیعی‌تر است. */
+  function leftWord(d){ return d === 1 ? "فردا" : faNum(d) + " روز دیگر"; }
   var HOUR = 9;             /* ساعتِ یادآورهای روزانه‌نشده */
 
   function faNum(n){
@@ -90,15 +99,19 @@
         if(!t || t.status === "انجام شد") return;
         var dd = parseInt(toEn(t.deadline), 10);
         if(!(dd >= 1 && dd <= 31)) return;
-        var at = stampAt(mk.y, mk.m, dd, HOUR);
-        if(!at) return;
-        at -= DAY;
-        if(at <= now || at > cap) return;
-        out.push({ id: "c|" + key + "|" + i + "|" + dd,
-                   at: at, tag: "chk-" + key + "-" + i,
-                   title: "🕒 مهلت نزدیک",
-                   body: "فردا مهلتِ «" + cut(t.task, 70) + "»" +
-                         (t.category ? " (" + cut(t.category, 30) + ")" : "") + " است." });
+        var due = stampAt(mk.y, mk.m, dd, HOUR);
+        if(!due) return;
+        /* یک خبر برای هر فاصله. شناسه و برچسب هم باید فرق کنند،
+           وگرنه دومی جای اولی را می‌گیرد و باز یک خبر می‌ماند. */
+        AHEAD.forEach(function(d){
+          var at = due - d * DAY;
+          if(at <= now || at > cap) return;
+          out.push({ id: "c|" + key + "|" + i + "|" + dd + "|" + d,
+                     at: at, tag: "chk-" + key + "-" + i + "-d" + d,
+                     title: "🕒 مهلت نزدیک",
+                     body: leftWord(d) + " مهلتِ «" + cut(t.task, 70) + "»" +
+                           (t.category ? " (" + cut(t.category, 30) + ")" : "") + " است." });
+        });
       });
 
       /* برنامهٔ روزانه: ردیفِ مهم با ساعتِ یادآورِ دستی */
@@ -120,14 +133,17 @@
     try{ due = Array.isArray(state.personalDue) ? state.personalDue : []; }catch(e){ due = []; }
     due.forEach(function(k){
       var p = String(k).split("/");
-      var at = stampAt(parseInt(toEn(p[0]), 10), parseInt(toEn(p[1]), 10),
-                       parseInt(toEn(p[2]), 10), HOUR);
-      if(!at) return;
-      at -= VAULT_AHEAD * DAY;
-      if(at <= now || at > cap) return;
-      out.push({ id: "v|" + k, at: at, tag: "due-" + k,
-                 title: "🔔 سررسیدِ نزدیک",
-                 body: "یک سررسید در دیتای شخصی نزدیک است. برای دیدنش کارتابل را باز کنید." });
+      var at0 = stampAt(parseInt(toEn(p[0]), 10), parseInt(toEn(p[1]), 10),
+                        parseInt(toEn(p[2]), 10), HOUR);
+      if(!at0) return;
+      AHEAD.forEach(function(d){
+        var at = at0 - d * DAY;
+        if(at <= now || at > cap) return;
+        out.push({ id: "v|" + k + "|" + d, at: at, tag: "due-" + k + "-d" + d,
+                   title: "🔔 سررسیدِ نزدیک",
+                   body: leftWord(d) + " یک سررسید در دیتای شخصی است." +
+                         " برای دیدنش کارتابل را باز کنید." });
+      });
     });
 
     /* ---------- خلاصهٔ صبحگاهی ----------

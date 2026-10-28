@@ -418,32 +418,73 @@ details p{ margin:10px 0 0; color:var(--ink-soft); font-size:13.8px; }
   border:1px solid rgba(255,255,255,.35); }
 .ways a:hover{ background:rgba(255,255,255,.14); }
 
-/* ---------- ردیف‌های شغلِ سازمانی ---------- */
+/* ---------- ردیف‌های شغلِ سازمانی ----------
+   سه چیز از نسخهٔ اول زشت بود و هر سه را عکس نشان داد:
+
+   قیمتِ هر بخش دو خط می‌شد («۲۵۰,۰۰۰» بالا و «تومان» پایین)، چون
+   خانه‌ها عرضِ محتوا داشتند. حالا شبکه‌ای با ستون‌های هم‌عرض است و
+   قیمت nowrap.
+
+   بلندیِ کنترل‌های یک ردیف با هم فرق داشت — کشوی شغل ۴۳ پیکسل و
+   دکمه‌ها ۳۰ — پس ردیف پلکانی به نظر می‌رسید. حالا همه ۴۲.
+
+   و تابلوی بخش‌ها یک جعبهٔ شناور بود که معلوم نبود مالِ کدام ردیف
+   است. حالا خودِ ردیف وقتی باز است قاب می‌گیرد، پس تابلو تویِ آن
+   می‌نشیند نه زیرش. */
 .oroles{margin:14px 0 0;padding:14px;border:1px solid var(--line);
   border-radius:var(--r);background:var(--paper)}
-.oroles-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13.5px}
-.oroles-head span{margin-inline-start:auto;color:var(--brand);font-weight:700}
-.orole{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.orole select{flex:1 1 170px;min-width:0}
-.orole .cnt{flex:0 0 92px;display:flex;align-items:center;gap:6px}
-.orole .cnt input{width:60px;text-align:center}
-.orole .cnt span{font-size:12px;color:var(--ink-faint)}
-.orole .x{flex:none;width:30px;height:30px;padding:0;border-radius:8px;cursor:pointer;
-  border:1px solid var(--line);background:var(--white);color:var(--ink-faint);font-size:13px}
+.oroles-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:13.5px}
+.oroles-head span{margin-inline-start:auto;color:var(--brand);font-weight:700;font-size:13px}
+
+.orole{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:7px;margin-bottom:7px;border-radius:12px;
+  border:1px solid transparent;transition:border-color .16s, background .16s}
+.orole.open{border-color:var(--line);background:var(--white)}
+.orole select{flex:1 1 180px;min-width:0;height:42px;padding-block:0}
+
+/* شمارنده یک کادر است، نه یک کادر و یک برچسبِ شناور کنارش */
+.orole .cnt{flex:0 0 104px;display:flex;align-items:center;height:42px;
+  padding-inline:10px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--paper-2);transition:border-color .15s}
+.orole .cnt:focus-within{border-color:var(--brand)}
+.orole .cnt input{width:100%;min-width:0;padding:0;border:none;background:none;
+  text-align:center;font-size:14px;color:var(--ink)}
+.orole .cnt input:focus{outline:none}
+.orole .cnt span{flex:none;font-size:11.5px;color:var(--ink-faint);padding-inline-start:4px}
+
+.orole .secs,.orole .x{flex:none;height:42px;border-radius:var(--r);cursor:pointer;
+  border:1px solid var(--line);background:var(--white);color:var(--ink-soft);
+  font-family:inherit;transition:border-color .15s, color .15s}
+.orole .secs{padding:0 14px;font-size:12.5px}
+.orole .secs:hover{border-color:var(--brand);color:var(--brand)}
+.orole .secs.on{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.orole .x{width:42px;padding:0;font-size:14px}
 .orole .x:hover{border-color:var(--red,#A6222B);color:var(--red,#A6222B)}
-.orole .secs{flex:none;padding:6px 11px;font-size:12px;border-radius:8px;cursor:pointer;
-  border:1px solid var(--line);background:var(--white);color:var(--ink-soft)}
-.orole .secs.on{border-color:var(--brand);color:var(--brand)}
-.orole-secs{flex:1 1 100%;display:none;gap:6px;flex-wrap:wrap;
-  padding:8px 10px;margin:0 0 4px;border-radius:9px;background:var(--white);
-  border:1px solid var(--line-soft)}
-.orole-secs.open{display:flex}
-.orole-secs label{display:inline-flex;align-items:center;gap:5px;font-size:12px;
-  padding:4px 8px;border-radius:7px;background:var(--paper);cursor:pointer}
-.orole-secs label.free{opacity:.65;cursor:default}
-.orole-secs .pr{color:var(--ink-faint);font-size:11px}
-.oroles-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:8px}
-@media (max-width:560px){ .orole select{flex:1 1 100%} }
+
+/* شبکه، نه انبوهِ درهم: ستون‌های هم‌عرض و خانه‌های هم‌قد */
+.orole-secs{flex:1 1 100%;display:none;margin-top:3px;padding:10px;
+  border-radius:10px;background:var(--paper);border:1px solid var(--line-soft);
+  grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:7px}
+.orole-secs.open{display:grid}
+.orole-secs label{display:grid;grid-template-columns:auto 1fr auto;align-items:center;
+  gap:9px;padding:9px 11px;border-radius:9px;cursor:pointer;
+  background:var(--white);border:1px solid transparent;transition:border-color .15s}
+.orole-secs label:hover{border-color:var(--line)}
+.orole-secs label:has(input:checked){border-color:var(--brand);background:var(--brand-soft)}
+.orole-secs input{margin:0;flex:none}
+.orole-secs .nm{font-size:12.5px;color:var(--ink);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* «۲۵۰,۰۰۰ تومان» نباید وسطش بشکند */
+.orole-secs .pr{font-size:11px;color:var(--ink-faint);white-space:nowrap}
+.orole-secs .none{grid-column:1/-1;font-size:12px;color:var(--ink-faint);padding:4px 2px}
+
+.oroles-note{font-size:11.5px;color:var(--ink-faint);line-height:1.9;margin-top:10px}
+@media (max-width:560px){
+  .orole{gap:7px}
+  .orole select{flex:1 1 100%}
+  .orole .cnt{flex:1 1 auto}
+  .orole-secs{grid-template-columns:1fr}
+}
 
 /* ---------- پلن‌ها و سفارش ---------- */
 /* شش پلن روی یک شبکهٔ سه‌ستونه: سه بالا، سه پایین. auto-fit پیش از
@@ -1394,9 +1435,10 @@ function paintRoleSecs(row){
   const job = JOBS.find(j=>j.id === row.querySelector('select').value);
   const paid = job ? (job.views||[]).filter(v=>FREE.indexOf(v) < 0) : [];
   box.innerHTML = paid.length
-    ? paid.map(v=>`<label><input type="checkbox" data-v="${escH(v)}">
-        <span>${escH(VLB[v]||v)}</span><span class="pr">${escH(money(viewPrice(v)))}</span></label>`).join("")
-    : '<span class="pr">این شغل بخشِ اضافه‌ای ندارد.</span>';
+    ? paid.map(v=>`<label><input type="checkbox" data-v="${escH(v)}">` +
+        `<span class="nm">${escH(VLB[v]||v)}</span>` +
+        `<span class="pr">${escH(money(viewPrice(v)))}</span></label>`).join("")
+    : '<span class="none">این شغل بخشِ اضافه‌ای ندارد.</span>';
   row.querySelector('.secs').hidden = !paid.length;
 }
 
@@ -1419,8 +1461,10 @@ function addRole(job, count){
   row.addEventListener("change", e=>{ if(e.target.matches('input[type=checkbox]')) sumUp(); });
   row.querySelector('.secs').addEventListener("click", ()=>{
     const b = row.querySelector('.orole-secs');
-    b.classList.toggle("open");
-    row.querySelector('.secs').classList.toggle("on", b.classList.contains("open"));
+    const on = b.classList.toggle("open");
+    row.querySelector('.secs').classList.toggle("on", on);
+    /* خودِ ردیف قاب می‌گیرد، تا تابلو معلوم باشد مالِ کدام است */
+    row.classList.toggle("open", on);
   });
   row.querySelector('.x').addEventListener("click", ()=>{
     row.remove();

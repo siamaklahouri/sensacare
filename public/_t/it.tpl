@@ -2029,15 +2029,22 @@ function computeChecklistReminders(){
     && String(state.meta.year||"").trim()===String(today.year).trim();
   if(!isCurrentRealMonth) return [];
   const out = [];
+  /* دو روز مانده و یک روز مانده — نه فقط یکی. یک خبر برای کاری که
+     دو روز دیگر است یعنی اگر همان یک بار را ندیدی، دیگر خبری نیست.
+     همین قاعده در یادآورِ گوشی هم هست (پارهٔ remind)، پس صفحه و
+     اعلان یک چیز می‌گویند. */
   state.tasks.forEach((t,idx)=>{
     if(t.status === "انجام شد") return;
     const deadline = parseInt(t.deadline);
     if(!Number.isFinite(deadline)) return;
     const diff = deadline - today.day;
-    if(diff === 1){
-      const key = "chk|"+(state.currentMonthKey||"")+"|"+idx+"|"+deadline;
+    if(diff >= 1 && diff <= 2){
+      /* فاصله در کلید هست: اگر یادآورِ «۲ روز» را بستی، یادآورِ
+         «فردا» باز هم می‌آید — خبرِ تازه‌ای است، نه همان. */
+      const key = "chk|"+(state.currentMonthKey||"")+"|"+idx+"|"+deadline+"|"+diff;
       out.push({ key, kind:"checklist", overdue:false,
-        text: `فردا مهلت وظیفه‌ی «${t.task}» (${t.category}) فرا می‌رسد.` });
+        text: (diff === 1 ? "فردا" : fa(String(diff)) + " روز دیگر") +
+              ` مهلت وظیفه‌ی «${t.task}» (${t.category}) فرا می‌رسد.` });
     }
   });
   return out;
