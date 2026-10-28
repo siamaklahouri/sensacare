@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="{{ICON}}">
-<link rel="apple-touch-icon" href="/app-icon-apple.1.png">
+<link rel="apple-touch-icon" href="/app-icon-apple.2.png">
 <!-- برنامهٔ اندروید: مانیفست برای هر کارتابل جداگانه ساخته می‌شود، پس
      نشانی‌اش نسبی است («/siamak/app.webmanifest»). -->
 <link rel="manifest" href="app.webmanifest">
@@ -819,7 +819,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
 <div id="gateScreen">
   <form class="gate-card" id="gateForm" autocomplete="off">
-    <img class="gate-mark" src="/icon-sl.3.png" alt="SLTech" width="68" height="68">
+    <img class="gate-mark" src="/icon-sl.4.png" alt="SLTech" width="68" height="68">
     <div class="brandword">SLTech</div>
     <h2>{{TITLE}}</h2>
     <p>برای ورود، رمز عبور کارتابل را وارد کنید.</p>
@@ -836,7 +836,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
 <div class="topbar">
   <div class="brand">
-    <img class="mark" src="/icon-sl.3.png" width="42" height="42" alt="SLTech">
+    <img class="mark" src="/icon-sl.4.png" width="42" height="42" alt="SLTech">
     <div class="titles">
       <h1>{{TITLE}}</h1>
       <small>بکاپ، سرورها، امنیت و برنامه‌ی ماه</small>
@@ -1962,7 +1962,7 @@ function requestNotifyPermission(){
 function fireBrowserNotification(title, body){
   try{
     if(typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    const opt = { body, icon:"/app-icon-192.1.png", badge:"/app-icon-192.1.png",
+    const opt = { body, icon:"/app-icon-192.2.png", badge:"/app-icon-192.2.png",
                   lang:"fa", dir:"rtl", tag:"kartabl-reminder" };
     const plain = ()=>{ try{ new Notification(title, opt); }catch(e){} };
     /* «controller» و نه فقط «serviceWorker»: جایی که سرویس‌ورکری ثبت

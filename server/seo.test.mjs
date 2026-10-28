@@ -149,10 +149,10 @@ console.log('— کارتِ هم‌رسانی —');
   }
   t(shop.length === 0, 'هیچ صفحهٔ پنلی به کارتِ فروشگاه («/og.png») اشاره نمی‌کند',
     shop.length ? 'هنوز در ' + shop.join(' و ') : paths.length + ' صفحه پاک');
-  t(imgs.size === 1 && [...imgs][0] === '/og-sl.1.jpg',
+  t(imgs.size === 1 && [...imgs][0] === '/og-sl.2.jpg',
     'و همه به کارتِ خودِ SLTech اشاره می‌کنند', [...imgs].join(' '));
 
-  const r = await fetch(BASE + '/og-sl.1.jpg', { headers: { Host: 'sltech.ir' } });
+  const r = await fetch(BASE + '/og-sl.2.jpg', { headers: { Host: 'sltech.ir' } });
   t(r.status === 200, 'خودِ کارت روی سرور هست', String(r.status));
   t(/^image\//.test(r.headers.get('content-type') || ''), 'و نوعش تصویر است',
     r.headers.get('content-type'));

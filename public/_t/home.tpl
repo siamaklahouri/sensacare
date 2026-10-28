@@ -28,9 +28,9 @@ try{
 </script>
 <title>کارتابل ماهانه SLTech — برنامهٔ ماه هر شغلی، یک‌جا</title>
 <meta name="description" content="کارتابل ماهانه: چک‌لیست آمادهٔ شغل خودتان، برنامهٔ روزانه، داشبورد، و بخش رمزدار شخصی. برای مدیر IT، مالی، منابع انسانی، فروش، انبار، پشتیبانی و ده شغل دیگر.">
-<link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.3.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.3.png">
-<link rel="apple-touch-icon" href="/icon-sl.3.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.4.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.4.png">
+<link rel="apple-touch-icon" href="/app-icon-apple.2.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="کارتابل ماهانه SLTech">
 <meta property="og:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
@@ -42,7 +42,7 @@ try{
      محصولاتِ بهداشتیِ یک سایتِ دیگر را نشان می‌داد. هر دو سایت از یک
      پوشهٔ public سرو می‌شوند، پس نامِ یکسان یعنی فایلِ یکسان. این یکی
      مالِ خودِ SLTech است و فروشگاه همان og.png خودش را دارد. -->
-<meta property="og:image" content="https://sltech.ir/og-sl.1.jpg">
+<meta property="og:image" content="https://sltech.ir/og-sl.2.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="کارتابل ماهانه SLTech">
@@ -52,7 +52,7 @@ try{
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="کارتابل ماهانه SLTech">
 <meta name="twitter:description" content="برنامهٔ ماهِ هر شغلی، یک‌جا — با چک‌لیست آماده، برنامهٔ روزانه و بخش رمزدار شخصی.">
-<meta name="twitter:image" content="https://sltech.ir/og-sl.1.jpg">
+<meta name="twitter:image" content="https://sltech.ir/og-sl.2.jpg">
 <link rel="canonical" href="https://sltech.ir/">
 <!-- دادهٔ ساختاریافته از خودِ سرور می‌آید، نه از همین‌جا: راه‌های تماس و
      شمارِ شغل‌ها در تنظیماتِ پنل‌اند و اگر این‌جا نوشته شوند، روزی با
@@ -747,7 +747,7 @@ html.anim details[open] summary::after{
 
 <div class="top"><div class="wrap">
   <a class="brand" href="/">
-    <img src="/icon-sl.3.png" alt="SLTech" width="38" height="38">
+    <img src="/icon-sl.4.png" alt="SLTech" width="38" height="38">
     <b>SLTech</b>
   </a>
   <!-- تا پیش از این نوارِ بالا فقط لوگو و دکمهٔ ورود بود. صفحه هشت

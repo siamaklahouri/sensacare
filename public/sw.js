@@ -24,16 +24,20 @@
    (skipWaiting): بعد از هر استقرار، دفعهٔ بعد که برنامه باز شود همان
    نسخهٔ تازه کار می‌کند. */
 
-var V = "sltech-app-1";
+var V = "sltech-app-2";
 var SHELL = [
   "/f/Vazirmatn-Regular.2.woff2",
   "/f/Vazirmatn-Medium.2.woff2",
   "/f/Vazirmatn-SemiBold.2.woff2",
   "/f/Vazirmatn-Bold.2.woff2",
-  "/icon-sl.3.png",
-  "/app-icon-192.1.png",
-  "/app-icon-mask.1.png"
+  "/icon-sl.4.png",
+  "/app-icon-192.2.png"
 ];
+
+/* app-icon-mask.2.png عمداً این‌جا نیست: آن را هیچ صفحه‌ای نمی‌کشد.
+   فقط اندروید موقعِ نصب یک بار می‌خواندش تا نشانهٔ روی صفحه را بسازد.
+   ذخیره‌اش یعنی ۹۵ کیلوبایتِ اضافه روی اولین باز شدنِ برنامه، بی‌آنکه
+   حتی یک بار نمایش داده شود. */
 
 self.addEventListener("install", function (e) {
   e.waitUntil(
@@ -97,7 +101,7 @@ self.addEventListener("message", function (e) {
 function genericNote() {
   return self.registration.showNotification("یادآور کارتابل", {
     body: "یک یادآور سررسیده — برای دیدنش کارتابل را باز کنید.",
-    tag: "kartabl-generic", icon: "/app-icon-192.1.png", badge: "/icon-sl.3.png",
+    tag: "kartabl-generic", icon: "/app-icon-192.2.png", badge: "/icon-sl.4.png",
     dir: "rtl", lang: "fa"
   });
 }
@@ -117,15 +121,15 @@ self.addEventListener("push", function (e) {
           if (due.length > 5) {
             return self.registration.showNotification("یادآور کارتابل", {
               body: due.length + " یادآور سررسیده است.",
-              tag: "kartabl-many", icon: "/app-icon-192.1.png",
-              badge: "/icon-sl.3.png", dir: "rtl", lang: "fa"
+              tag: "kartabl-many", icon: "/app-icon-192.2.png",
+              badge: "/icon-sl.4.png", dir: "rtl", lang: "fa"
             });
           }
           return Promise.all(due.map(function (it) {
             return self.registration.showNotification(
               it.title || "یادآور کارتابل", {
                 body: it.body || "", tag: it.tag || it.id,
-                icon: "/app-icon-192.1.png", badge: "/icon-sl.3.png",
+                icon: "/app-icon-192.2.png", badge: "/icon-sl.4.png",
                 dir: "rtl", lang: "fa", renotify: true
               });
           }));

@@ -265,7 +265,7 @@
        برنامه باشد، نه یک صفحهٔ وبِ در حالِ بالا آمدن. */
     html[data-app="1"] #loadingScreen::before{
       content:""; width:76px; height:76px; border-radius:50%;
-      background:url("/icon-sl.3.png") center/contain no-repeat;
+      background:url("/icon-sl.4.png") center/contain no-repeat;
       box-shadow:0 8px 26px rgba(11,37,69,.20);
       margin-bottom:4px;
     }

@@ -439,9 +439,9 @@ const LAUNCH = { client_mode: 'navigate-existing' };
 
 export function siteManifest() {
   const icons = [
-    { src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: '/icon-sl.3.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: '/app-icon-mask.1.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    { src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-sl.4.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/app-icon-mask.2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ];
   return {
     id: '/',
@@ -465,13 +465,13 @@ export function siteManifest() {
 export function appManifest(panel) {
   const base = panel.page || ('/' + panel.id + '/');
   const icons = [
-    { src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: '/icon-sl.3.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: '/app-icon-mask.1.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    { src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-sl.4.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/app-icon-mask.2.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ];
   const cut = (name, short, view) => ({
     name, short_name: short, url: base + '#' + view,
-    icons: [{ src: '/app-icon-192.1.png', sizes: '192x192', type: 'image/png' }]
+    icons: [{ src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png' }]
   });
   return {
     id: base,

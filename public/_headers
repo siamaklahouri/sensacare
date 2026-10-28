@@ -20,15 +20,26 @@
 /sw.js
   Cache-Control: no-cache
 
-# نشانه‌های برنامه نامشان شماره دارد (app-icon-192.1.png)، پس نسخهٔ
+# نشانه‌های برنامه نامشان شماره دارد (app-icon-192.2.png)، پس نسخهٔ
 # تازه نامِ تازه می‌گیرد و این یکی می‌تواند برای همیشه بماند.
-/app-icon-192.1.png
+# هر پنج‌تا این‌جا هستند: اگر یکی جا بیفتد، همان یکی هر بار دوباره
+# گرفته می‌شود و فرقش فقط وقتی معلوم می‌شود که اینترنت کُند باشد.
+/app-icon-192.2.png
   Cache-Control: public, max-age=31536000, immutable
 
-/app-icon-mask.1.png
+/app-icon-mask.2.png
   Cache-Control: public, max-age=31536000, immutable
 
-/app-icon-apple.1.png
+/app-icon-apple.2.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/icon-sl.4.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon-sl.4.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/og-sl.2.jpg
   Cache-Control: public, max-age=31536000, immutable
 
 # کارتابل مدیر IT صفحه‌ای خصوصی است و نباید در نتایج گوگل بیاید. مسیر

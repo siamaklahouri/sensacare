@@ -13,8 +13,8 @@
   "backgroundColor": "#EEF2F6",
   "enableNotifications": true,
   "startUrl": "/login",
-  "iconUrl": "https://sltech.ir/icon-sl.3.png",
-  "maskableIconUrl": "https://sltech.ir/app-icon-mask.1.png",
+  "iconUrl": "https://sltech.ir/icon-sl.4.png",
+  "maskableIconUrl": "https://sltech.ir/app-icon-mask.2.png",
   "signingKey": {
     "path": "./android.keystore",
     "alias": "sltech"

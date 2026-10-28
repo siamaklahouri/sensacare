@@ -1228,7 +1228,7 @@ function homeLd(base, st) {
     '@graph': [
       Object.assign({
         '@type': 'Organization', '@id': org, name: 'SLTech', url: base + '/',
-        logo: { '@type': 'ImageObject', url: base + '/icon-sl.3.png', width: 512, height: 512 }
+        logo: { '@type': 'ImageObject', url: base + '/icon-sl.4.png', width: 512, height: 512 }
       }, contact.length ? { contactPoint: contact } : {}, sameAs.length ? { sameAs } : {}),
       {
         '@type': 'WebSite', '@id': base + '/#site', url: base + '/',

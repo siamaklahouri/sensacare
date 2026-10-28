@@ -90,7 +90,7 @@ footer.foot a{color:inherit; text-decoration:none; border-bottom:1px solid curre
 /* نوارِ بالا و پایینِ مشترک. «back» لینکِ برگشت است، اگر لازم باشد. */
 export const topBar = (extra = '') => `
 <header class="top"><div class="wrap">
-  <a class="brand" href="/"><img src="/icon-sl.3.png" alt=""><b>کارتابل ماهانه SLTech</b></a>
+  <a class="brand" href="/"><img src="/icon-sl.4.png" alt=""><b>کارتابل ماهانه SLTech</b></a>
   <span class="sp"></span>
   ${extra}
   <a class="btn btn-main" href="/login">ورود به کارتابل</a>
@@ -123,7 +123,7 @@ export const crumbs = (base, items) => ({
    فروشگاه سنساست — هر دو سایت از یک پوشهٔ public سرو می‌شوند، پس نامِ
    یکسان یعنی فایلِ یکسان، و هر لینکِ اشتراکیِ sltech آگهیِ آن یکی را
    نشان می‌داد. */
-const OG_CARD = '/og-sl.1.jpg';
+const OG_CARD = '/og-sl.2.jpg';
 
 export function page({ title, desc, url, css = '', body, ld = [], extraTop = '', width, hero = '',
                        ogType = 'article' }) {
@@ -143,7 +143,7 @@ export function page({ title, desc, url, css = '', body, ld = [], extraTop = '',
 <meta property="og:site_name" content="SLTech">
 <meta property="og:locale" content="fa_IR">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="/favicon-sl.3.png">
+<link rel="icon" href="/favicon-sl.4.png">
 <link rel="alternate" type="application/rss+xml" title="مقاله‌های SLTech" href="/maghale/feed.xml">
 <style>${BASE_CSS}${width ? `\n.wrap{--w:${width}}` : ''}${css}</style>
 ${head}
