@@ -46,34 +46,57 @@ console.log('— نوارِ داخلِ صفحه —');
 }
 
 console.log('— صفِ اعلانِ گوشی —');
+/* این بخش یک بار به ساعتِ روز وابسته بود و افتاد: سررسید را «دو روز
+   دیگر» گذاشته بودم و انتظارِ دو اعلان داشتم. ولی اعلان‌ها زمان‌بندی
+   می‌شوند، نه شمارش: نشانهٔ «۲ روز مانده» یعنی امروز ساعت ۹ صبح، و
+   هر اجرایی بعد از ۹ آن لحظه را گذشته می‌بیند و درست حذفش می‌کند.
+   یعنی آزمون صبح سبز بود و بعدازظهر قرمز.
+
+   حالا دو حالتِ قطعی سنجیده می‌شود، هیچ‌کدام وابسته به ساعت:
+
+   الف) سررسیدی که هر دو نشانه‌اش در آینده است — باید دو اعلان بدهد.
+   ب) سررسیدِ همین امروز — هر دو نشانه‌اش گذشته، پس هیچ اعلانی. */
 {
   const r = await p.evaluate(() => {
     const d = getTodayJalaliParts();
     const key = d.year + '|' + d.monthName;
-    /* یک ماهِ ساختگی با یک سررسید، و یک سررسیدِ دیتای شخصی */
-    const snap = {};
-    snap[key] = { tasks: [{ task: 'تمدیدِ گواهی', category: 'امنیت',
-      deadline: d.day + 2, status: 'انجام نشده' }], days: [] };
-    window.allMonthsSnapshot = () => snap;
-    state.personalDue = [d.year + '/' + d.monthNum + '/' + (d.day + 2)];
-    const q = REMIND.build() || [];
-    return {
-      chk: q.filter(x => String(x.id).startsWith('c|')).map(x => x.body),
-      chkTags: q.filter(x => String(x.id).startsWith('c|')).map(x => x.tag),
-      vault: q.filter(x => String(x.id).startsWith('v|')).map(x => x.body),
-      vaultTags: q.filter(x => String(x.id).startsWith('v|')).map(x => x.tag)
-    };
+    const mk = (day) => { const o = {}; o[key] = { tasks: [{ task: 'تمدیدِ گواهی',
+      category: 'امنیت', deadline: day, status: 'انجام نشده' }], days: [] }; return o; };
+    const pick = (q, p) => q.filter(x => String(x.id).startsWith(p));
+    const shape = l => ({ bodies: l.map(x => x.body), tags: l.map(x => x.tag),
+                          ids: l.map(x => x.id), future: l.every(x => x.at > Date.now()) });
+
+    /* الف — هر دو نشانه در آینده */
+    window.allMonthsSnapshot = () => mk(d.day + 5);
+    state.personalDue = [d.year + '/' + d.monthNum + '/' + (d.day + 5)];
+    const far = REMIND.build() || [];
+
+    /* ب — سررسیدِ امروز: هر دو نشانه پشتِ سر */
+    window.allMonthsSnapshot = () => mk(d.day);
+    state.personalDue = [d.year + '/' + d.monthNum + '/' + d.day];
+    const past = REMIND.build() || [];
+
+    return { chk: shape(pick(far, 'c|')), vault: shape(pick(far, 'v|')),
+             pastChk: pick(past, 'c|').length, pastVault: pick(past, 'v|').length };
   });
-  t(r.chk.length === 2, 'چک‌لیست دو اعلان در صف می‌گذارد', String(r.chk.length));
-  t(r.chk.some(x => /۲ روز دیگر/.test(x)) && r.chk.some(x => /فردا/.test(x)),
-    'یکی «۲ روز دیگر» و یکی «فردا»', r.chk.join(' | ').slice(0, 90));
-  t(new Set(r.chkTags).size === r.chkTags.length,
-    'برچسبشان فرق دارد، وگرنه دومی جای اولی را می‌گرفت', r.chkTags.join(' '));
-  t(r.vault.length === 2, 'سررسیدِ دیتای شخصی هم دو اعلان', String(r.vault.length));
-  t(new Set(r.vaultTags).size === r.vaultTags.length, 'با برچسب‌های جدا', r.vaultTags.join(' '));
+
+  t(r.chk.bodies.length === 2, 'چک‌لیست دو اعلان در صف می‌گذارد', String(r.chk.bodies.length));
+  t(r.chk.bodies.some(x => /۲ روز دیگر/.test(x)) && r.chk.bodies.some(x => /فردا/.test(x)),
+    'یکی «۲ روز دیگر» و یکی «فردا»', r.chk.bodies.join(' | ').slice(0, 90));
+  t(new Set(r.chk.tags).size === r.chk.tags.length,
+    'برچسبشان فرق دارد، وگرنه دومی جای اولی را می‌گرفت', r.chk.tags.join(' '));
+  t(new Set(r.chk.ids).size === r.chk.ids.length, 'شناسه‌شان هم');
+
+  t(r.vault.bodies.length === 2, 'سررسیدِ دیتای شخصی هم دو اعلان', String(r.vault.bodies.length));
+  t(new Set(r.vault.tags).size === r.vault.tags.length, 'با برچسب‌های جدا', r.vault.tags.join(' '));
   /* متنِ صندوق باید کلی بماند: کلیدش هیچ‌وقت به سرور نمی‌رسد */
-  t(r.vault.every(x => /دیتای شخصی/.test(x) && !/تمدیدِ گواهی/.test(x)),
-    'و متنش کلی است — چیزی از داخلِ صندوق بیرون نمی‌رود', r.vault[0]);
+  t(r.vault.bodies.every(x => /دیتای شخصی/.test(x) && !/تمدیدِ گواهی/.test(x)),
+    'و متنش کلی است — چیزی از داخلِ صندوق بیرون نمی‌رود', r.vault.bodies[0]);
+
+  t(r.chk.future && r.vault.future, 'هیچ اعلانی برای لحظه‌ای در گذشته صف نمی‌شود');
+  t(r.pastChk === 0 && r.pastVault === 0,
+    'و سررسیدی که نشانه‌هایش گذشته، هیچ اعلانی نمی‌دهد',
+    `چک‌لیست ${r.pastChk}، دیتای شخصی ${r.pastVault}`);
 }
 
 t(errs.length === 0, 'هیچ خطای صفحه‌ای نبود', errs.join(' | ') || 'پاک');

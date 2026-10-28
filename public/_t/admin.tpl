@@ -240,6 +240,22 @@ a{ color:var(--brass-ink); }
 }
 .bell-foot button:hover{ border-color:var(--brass); }
 .bell-foot button[disabled]{ opacity:.5; cursor:default; }
+/* روی گوشی، کشویی باید به خودِ نوار بچسبد نه به دکمهٔ زنگوله.
+   زنگوله وسطِ نوار است و پنجره از فاصله‌اش تا هر لبه پهن‌تر؛ پس به
+   هر طرف که بچسبد از صفحه بیرون می‌زند. در ۴۱۲ پیکسل ۸۱ پیکسل بیرون
+   بود و اولِ هر سطر بریده می‌شد — و در ۳۶۰ پیکسل خودِ صفحه هم افقی
+   می‌لغزید.
+
+   «position:static» روی پوشش یعنی مرجعِ جایگاه می‌شود .topbar، که
+   خودش چسبان است و تمامِ عرضِ صفحه را می‌گیرد. پس inset-inline:12px
+   از دو لبهٔ صفحه فاصله می‌گیرد و top:calc(100%+8px) زیرِ نوار
+   می‌نشیند — هر ارتفاعی که نوار داشته باشد. زنگولهٔ خودِ کارتابل
+   همین کار را با عددِ ثابتِ 64px می‌کند؛ این‌جا نوار ۸۰ پیکسل است،
+   پس عددِ ثابت غلط می‌شد. */
+@media (max-width:760px){
+  .bell-wrap{ position:static; }
+  .bell-pop{ top:calc(100% + 8px); inset-inline:12px; width:auto; }
+}
 /* هر خبر زدنی است — دستِ‌کم برای «خواندم» */
 .bell-item{ cursor:pointer; }
 .bell-item:hover{ background:var(--paper-2, rgba(0,0,0,.03)); }
@@ -514,6 +530,11 @@ a{ color:var(--brass-ink); }
 .findbar input::placeholder{ color:var(--ink-faint); }
 .findbar input:focus{ outline:none; border-color:var(--brass); box-shadow:var(--glow); }
 .findbar .n{ font-size:11.5px; color:var(--ink-faint); white-space:nowrap; }
+/* ...به‌جز گزارشِ پشتیبان، که برخلافِ شمارنده‌های کنارش یک جملهٔ کامل
+   است («آخرین پشتیبانِ خودکار: … — … — ۱۹۳، 5.8M، نسخهٔ ساعتی، ۱
+   پیوست»). با nowrap روی صفحهٔ ۳۶۰ پیکسلی ۳۷۹ پیکسل می‌شد و کلِ
+   صفحه را افقی می‌لغزاند. */
+.findbar #opsLine{ white-space:normal; min-width:0; }
 
 /* ---------- انتخاب نوع کارتابل ---------- */
 .kinds{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px,1fr));

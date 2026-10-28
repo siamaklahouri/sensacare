@@ -40,7 +40,7 @@ LIST="
   xlsx-import.test.mjs xlsx-import-fin.test.mjs xlsx-sample.test.mjs
   merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs
   updown.test.mjs seo.test.mjs aria.test.mjs narrow.test.mjs orgroles.test.mjs
-  duesoon.test.mjs icons.test.mjs"
+  duesoon.test.mjs icons.test.mjs adminnarrow.test.mjs"
 
 for f in $LIST; do
   [ -f "$f" ] || continue
