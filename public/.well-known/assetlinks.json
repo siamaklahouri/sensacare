@@ -1,12 +1,15 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "ir.sltech.kartabl",
       "sha256_cert_fingerprints": [
         "4F:5E:81:ED:6C:5E:AF:89:9F:04:F8:46:8C:50:65:71:C4:5C:E2:6B:FE:DD:CE:84:F0:3C:6B:16:AC:D1:35:F5",
-        "38:DB:F1:64:0E:05:CE:21:46:2D:FC:1C:02:18:2A:F1:BF:58:DC:83:02:BC:04:4C:18:B3:F8:64:D3:82:14:60"
+        "38:DB:F1:64:0E:05:CE:21:46:2D:FC:1C:02:18:2A:F1:BF:58:DC:83:02:BC:04:4C:18:B3:F8:64:D3:82:14:60",
+        "E8:E4:35:60:57:1D:9D:10:EC:59:85:98:82:35:6F:34:D3:70:83:F1:76:EB:08:96:A0:1A:29:E4:37:1D:1D:30"
       ]
     }
   }
