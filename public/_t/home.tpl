@@ -310,13 +310,109 @@ section{ padding:52px 0; scroll-margin-top:86px; }
 .artline{ margin:16px 0 0; font-size:13px; }
 .artline a{ color:inherit; opacity:.85; text-decoration:none; border-bottom:1px solid currentColor; }
 .artline a:hover{ opacity:1; }
-.shots{ display:grid; gap:18px; }
-.shots figure{ margin:0; }
-.shots img{ width:100%; height:auto; display:block; border:1px solid var(--line);
-  border-radius:var(--r); box-shadow:var(--sh-1); background:var(--white); }
-.shots figcaption{ margin-top:8px; font-size:12.5px; color:var(--ink-faint); text-align:center; }
-@media (min-width:900px){ .shots{ grid-template-columns:1fr 1fr; }
-  .shots figure:first-child{ grid-column:1 / -1; } }
+/* ---------- یک ماه در کارتابل ----------
+   الگو از سایت‌هایی آمده که اسکرول را به زمان تبدیل می‌کنند: یک سوژه
+   روی صفحه می‌ماند و مرحله‌به‌مرحله عوض می‌شود. آن‌جا سوژه عکسِ
+   استودیویی بود؛ این‌جا خودِ صفحهٔ کارتابل است — و همین بهتر جواب
+   می‌دهد، چون برچسبی که به نقطه‌ای از یک عکسِ غذا سنجاق شود تزئین
+   است، ولی روی یک جدولِ واقعی می‌گوید کجا را نگاه کن.
+
+   پیش‌فرضِ CSS حالتِ ساده است: پنج فصل پشتِ سرِ هم، مثل هر بخشِ
+   دیگری. جاوااسکریپت فقط وقتی صفحه پهن است و کاربر جنبش نخواسته،
+   کلاسِ «st-on» را می‌گذارد و حالتِ چسبان روشن می‌شود. پس بی
+   جاوااسکریپت، روی گوشی، و با prefers-reduced-motion هیچ‌چیز نصفه
+   نمی‌ماند — همان پنج تصویر با توضیحشان می‌ماند. */
+#look{ --tone:#2C6E8F; }
+.story{ position:relative; }
+/* تصویر تمامِ عرض و متن زیرش، نه دو ستون. نسخهٔ اولِ این بخش
+   دوستونی بود و تصویر ۶۲۵ پیکسل می‌شد — یعنی جدولِ کارتابل خوانده
+   نمی‌شد، در حالی که کلِ حرفِ این بخش «خودش را ببین» است. */
+.st-ch{ display:grid; gap:14px; margin-bottom:38px;
+  grid-template-rows:auto auto; align-content:start; }
+.st-ch:last-child{ margin-bottom:0; }
+/* شماره و تیتر کنارِ هم، توضیح زیرشان — کم‌ارتفاع، تا جا برای
+   تصویر بماند. */
+.st-txt{ display:grid; gap:4px; }
+@media (min-width:760px){
+  .st-txt{ grid-template-columns:auto 1fr; align-items:baseline; column-gap:14px; }
+  .st-txt .st-n{ grid-row:1; }
+  .st-txt h3{ grid-row:1; }
+  .st-txt p{ grid-column:2; }
+}
+
+.st-fig{ margin:0; display:grid; place-items:center; min-width:0; }
+/* پوسته دقیقاً اندازهٔ خودِ تصویر است، نه اندازهٔ ستون. بی این، روی
+   تصویرِ عمودیِ گوشی برچسب‌ها از جایشان درمی‌رفتند. */
+.st-img{ position:relative; display:inline-block; max-width:100%; line-height:0; }
+.st-img img{ display:block; width:100%; height:auto; max-width:100%;
+  border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--sh-1); background:var(--white); }
+
+/* برچسبِ سنجاق‌شده. left/top عمدی‌اند و نه inset-inline: مختصات روی
+   خودِ تصویرند و نباید با راست‌به‌چپ جابه‌جا شوند. */
+.st-pin{ position:absolute; left:var(--x); top:var(--y); width:0; height:0; line-height:1; }
+.st-pin .d{ position:absolute; left:-6px; top:-6px; width:12px; height:12px; border-radius:50%;
+  background:var(--tone); box-shadow:0 0 0 3px color-mix(in srgb, var(--tone) 26%, transparent),
+             0 1px 4px rgba(11,37,69,.3); }
+.st-pin::after{ content:""; position:absolute; left:0; bottom:5px; width:1.5px; height:15px;
+  background:var(--tone); opacity:.55; }
+.st-pin .t{ position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+  white-space:nowrap; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px;
+  background:var(--white); color:var(--tone); border:1px solid color-mix(in srgb, var(--tone) 35%, var(--line));
+  box-shadow:var(--sh-1); }
+/* کنارِ لبه‌ها پلاک نباید از تصویر بزند بیرون */
+.st-pin.e .t{ left:auto; right:-2px; transform:none; }
+.st-pin.s .t{ left:-2px; transform:none; }
+/* و بالای تصویر، پلاک باید زیرِ نقطه بنشیند نه رویش: آن بالا تیترِ
+   خودِ کارتابل است و پوشاندنش یعنی پوشاندنِ همان چیزی که قرار بود
+   نشان داده شود. */
+.st-pin.b .t{ bottom:auto; top:20px; }
+.st-pin.b::after{ bottom:auto; top:5px; }
+
+/* در عرضِ گوشی، تصویر کوچک است و پلاکِ هم‌اندازهٔ دسکتاپ رویش
+   سنگینی می‌کند. */
+@media (max-width:760px){
+  .st-pin .t{ font-size:10px; padding:3px 7px; }
+  .st-pin .d{ left:-4px; top:-4px; width:9px; height:9px; box-shadow:0 0 0 2px color-mix(in srgb, var(--tone) 26%, transparent); }
+  .st-pin::after{ height:11px; }
+  .st-pin .t{ bottom:16px; }
+  .st-pin.b .t{ top:16px; }
+}
+.st-img a{ display:block; line-height:0; border-radius:var(--r); }
+
+.st-txt .st-n{ margin:0 0 7px; font-size:12.5px; font-weight:700; letter-spacing:.14em;
+  color:var(--tone); }
+.st-txt .st-n span{ color:var(--ink-faint); font-weight:600; }
+.st-txt h3{ margin:0 0 9px; font-size:21px; line-height:1.6; }
+.st-txt p{ margin:0; color:var(--ink-soft); font-size:14.5px; }
+@media (max-width:899px){ .st-txt h3{ font-size:18px; } }
+
+/* ریلِ فصل‌ها — فقط در حالتِ چسبان دیده می‌شود */
+.st-rail{ display:none; list-style:none; margin:18px 0 0; padding:0; gap:7px; }
+.story.st-on .st-rail{ display:flex; }
+.st-rail button{ display:block; width:100%; height:4px; padding:0; border:0; cursor:pointer;
+  border-radius:999px; background:var(--line);
+  transition:background .25s, transform .25s; font-size:0; }
+.st-rail li{ flex:1; }
+.st-rail button[aria-current="true"]{ background:var(--tone); transform:scaleY(1.8); }
+.st-rail button:hover{ background:color-mix(in srgb, var(--tone) 55%, var(--line)); }
+
+/* ---------- حالتِ چسبان ---------- */
+.story.st-on .st-track{ height:calc(5 * 78vh); }
+.story.st-on .st-stage{ position:sticky; top:96px; height:min(80vh, 700px); }
+.story.st-on .st-ch{ position:absolute; inset:0; margin:0;
+  opacity:0; visibility:hidden; transition:opacity .5s ease, visibility .5s; }
+.story.st-on .st-ch.on{ opacity:1; visibility:visible; }
+.story.st-on .st-ch{ grid-template-rows:1fr auto; }
+.story.st-on .st-fig{ min-height:0; align-self:center; }
+.story.st-on .st-img{ max-height:100%; }
+/* قد از ارتفاعِ صحنه می‌آید و عرض خودش را پیدا می‌کند؛ تا جایی که
+   از عرضِ ستون بیرون نزند. */
+.story.st-on .st-img img{ max-height:calc(min(80vh, 700px) - 104px); width:auto; }
+.story.st-on .st-pin{ opacity:0; transform:translateY(7px);
+  transition:opacity .45s ease, transform .45s ease; }
+.story.st-on .st-ch.on .st-pin{ opacity:1; transform:none;
+  transition-delay:calc(.3s + var(--i, 0) * .15s); }
 .jobs{ display:grid; gap:9px; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
 .job{ display:flex; align-items:center; gap:10px; background:var(--white);
   border:1px solid var(--line); border-radius:var(--r); padding:12px 14px;
@@ -899,23 +995,79 @@ html.anim details[open] summary::after{
        نمایشی می‌گیرد، پس هیچ‌وقت با محصول فرق نمی‌کنند. -->
   <section id="look">
     <div class="sec-head">
-      <h2>خودش این شکلی است</h2>
-      <p>سه بخش از کارتابلِ نمایشی — همان چیزی که بعد از ورود می‌بینید.
-         روی هرکدام بزنید تا بزرگ شود.</p>
+      <h2>یک ماه در کارتابل</h2>
+      <p>از روزِ اولِ ماه تا بستنش، پنج مرحله — و همهٔ تصویرها از همان
+         کارتابلِ نمایشی‌اند که بعد از ورود می‌بینید. روی هر تصویر بزنید تا بزرگ شود.</p>
     </div>
-    <div class="shots">
-      <figure><a href="/shots/checklist.jpg" target="_blank" rel="noopener">
-        <img src="/shots/checklist.jpg" width="1680" height="880" loading="lazy"
-             alt="چک‌لیست ماهانه: دسته، وظیفه، مسئول، مهلت و وضعیت هر کار"></a>
-        <figcaption>چک‌لیست ماهانه — کارهای ماه با مسئول و مهلت</figcaption></figure>
-      <figure><a href="/shots/daily.jpg" target="_blank" rel="noopener">
-        <img src="/shots/daily.jpg" width="1680" height="880" loading="lazy"
-             alt="برنامهٔ روزانه: کار هر روز، شرکت، وضعیت و تاریخ انجام"></a>
-        <figcaption>برنامهٔ روزانه — روزبه‌روزِ ماه</figcaption></figure>
-      <figure><a href="/shots/dashboard.jpg" target="_blank" rel="noopener">
-        <img src="/shots/dashboard.jpg" width="1680" height="880" loading="lazy"
-             alt="داشبورد: نمودار پیشرفت ماه و شمار کارهای انجام‌شده"></a>
-        <figcaption>داشبورد — ماه چطور پیش می‌رود</figcaption></figure>
+
+    <div class="story" id="story">
+      <div class="st-track">
+        <div class="st-stage">
+      <article class="st-ch" data-ch="0">
+        <figure class="st-fig"><span class="st-img">
+          <a href="/shots/checklist.jpg" target="_blank" rel="noopener" aria-label="دیدنِ تصویر در اندازهٔ کامل"><img src="/shots/checklist.jpg" width="1680" height="880" loading="lazy" alt="چک‌لیست ماهانه با وظیفه‌های از پیش نوشته‌شده"></a>
+          <span class="st-pin b" style="--x:77%;--y:30%;--i:0"><span class="d"></span><span class="t">وظیفه‌های آماده</span></span>
+          <span class="st-pin e b" style="--x:93%;--y:20%;--i:1"><span class="d"></span><span class="t">بخش‌های کارتابل</span></span>
+        </span></figure>
+        <div class="st-txt">
+          <p class="st-n">۰۱<span> / ۰۵</span></p>
+          <h3>ماه که باز می‌شود، خالی نیست</h3>
+          <p>با انتخابِ شغل، چک‌لیستِ همان شغل از روزِ اول داخلش است — نه یک جدولِ خالی که باید خودت پرش کنی.</p>
+        </div>
+      </article>
+      <article class="st-ch" data-ch="1">
+        <figure class="st-fig"><span class="st-img">
+          <a href="/shots/checklist.jpg" target="_blank" rel="noopener" aria-label="دیدنِ تصویر در اندازهٔ کامل"><img src="/shots/checklist.jpg" width="1680" height="880" loading="lazy" alt="ستون‌های مسئول و مهلت و وضعیت در چک‌لیست"></a>
+          <span class="st-pin b" style="--x:51%;--y:30%;--i:0"><span class="d"></span><span class="t">مسئول</span></span>
+          <span class="st-pin" style="--x:44%;--y:46%;--i:1"><span class="d"></span><span class="t">روزِ مهلت</span></span>
+          <span class="st-pin" style="--x:38%;--y:58%;--i:2"><span class="d"></span><span class="t">وضعیت</span></span>
+        </span></figure>
+        <div class="st-txt">
+          <p class="st-n">۰۲<span> / ۰۵</span></p>
+          <h3>هر کار، یک مسئول و یک مهلت</h3>
+          <p>ستون‌ها از قبل سرِ جایشان‌اند: چه کسی، تا چه روزی، با چه اولویتی. چیزی را نمی‌سازی، فقط پر می‌کنی.</p>
+        </div>
+      </article>
+      <article class="st-ch" data-ch="2">
+        <figure class="st-fig"><span class="st-img">
+          <a href="/shots/dashboard.jpg" target="_blank" rel="noopener" aria-label="دیدنِ تصویر در اندازهٔ کامل"><img src="/shots/dashboard.jpg" width="1680" height="880" loading="lazy" alt="داشبورد ماهانه با شمار کارها و نمودار وضعیت"></a>
+          <span class="st-pin e" style="--x:79%;--y:41%;--i:0"><span class="d"></span><span class="t">کلِ کارهای ماه</span></span>
+          <span class="st-pin s" style="--x:9%;--y:41%;--i:1"><span class="d"></span><span class="t">درصدِ پیشرفت</span></span>
+          <span class="st-pin" style="--x:72%;--y:78%;--i:2"><span class="d"></span><span class="t">یک نگاه، وضعیتِ ماه</span></span>
+        </span></figure>
+        <div class="st-txt">
+          <p class="st-n">۰۳<span> / ۰۵</span></p>
+          <h3>نزدیک که شد، خودش می‌گوید</h3>
+          <p>دو روز مانده و یک روز مانده خبر می‌دهد — هم بالای صفحه و هم روی گوشی. لازم نیست یادت بماند.</p>
+        </div>
+      </article>
+      <article class="st-ch" data-ch="3">
+        <figure class="st-fig"><span class="st-img">
+          <a href="/shots/daily.jpg" target="_blank" rel="noopener" aria-label="دیدنِ تصویر در اندازهٔ کامل"><img src="/shots/daily.jpg" width="1680" height="880" loading="lazy" alt="برنامهٔ روزانهٔ ماه با ستون تاریخ و خروجی اکسل و PDF"></a>
+          <span class="st-pin e b" style="--x:79%;--y:29%;--i:0"><span class="d"></span><span class="t">روزِ ماه</span></span>
+          <span class="st-pin b" style="--x:67%;--y:22%;--i:1"><span class="d"></span><span class="t">خروجی اکسل و PDF</span></span>
+        </span></figure>
+        <div class="st-txt">
+          <p class="st-n">۰۴<span> / ۰۵</span></p>
+          <h3>روزها که پر می‌شوند</h3>
+          <p>برنامهٔ روزانه کنارِ چک‌لیست می‌نشیند: هر روز چه کردی، با کدام شرکت، و کِی تمام شد.</p>
+        </div>
+      </article>
+      <article class="st-ch" data-ch="4">
+        <figure class="st-fig"><span class="st-img">
+          <a href="/shots/phone.jpg" target="_blank" rel="noopener" aria-label="دیدنِ تصویر در اندازهٔ کامل"><img src="/shots/phone.jpg" width="780" height="1688" loading="lazy" alt="کارتابل روی گوشی با فهرست وظیفه‌ها و دکمهٔ افزودن"></a>
+          <span class="st-pin b" style="--x:26%;--y:33%;--i:0"><span class="d"></span><span class="t">وضعیت، با یک زدن</span></span>
+          <span class="st-pin" style="--x:50%;--y:88%;--i:1"><span class="d"></span><span class="t">افزودن وظیفه</span></span>
+        </span></figure>
+        <div class="st-txt">
+          <p class="st-n">۰۵<span> / ۰۵</span></p>
+          <h3>و همه‌اش توی جیبت</h3>
+          <p>همان کارتابل روی گوشی، با اعلانِ سررسید. نصب می‌شود و بی‌اینترنت هم باز می‌شود.</p>
+        </div>
+      </article>
+        </div>
+      </div>
+      <ol class="st-rail" id="stRail" aria-label="مرحله‌های ماه"></ol>
     </div>
   </section>
 
@@ -1983,6 +2135,85 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>{
       }, delay || 0);
     }catch(e){ /* شمردن که نشد، عدد سرِ جایش است */ }
   };
+})();
+
+/* ==================== یک ماه در کارتابل ====================
+   اسکرول به‌جای رفتن به بخشِ بعدی، همین بخش را جلو می‌برد: صحنه
+   می‌چسبد و پنج فصل یکی‌یکی عوض می‌شوند.
+
+   این فقط یک لایهٔ اضافه است. بی آن — روی گوشی، با
+   prefers-reduced-motion، یا اگر همین اسکریپت نرسد — پنج فصل پشتِ
+   سرِ هم دیده می‌شوند و چیزی کم نیست. کلاسِ «st-on» تنها جایی است
+   که این دو حالت از هم جدا می‌شوند. */
+(function(){
+  var story = document.getElementById("story");
+  var rail  = document.getElementById("stRail");
+  if(!story || !rail) return;
+  var chs = [].slice.call(story.querySelectorAll(".st-ch"));
+  var track = story.querySelector(".st-track");
+  if(!chs.length || !track) return;
+
+  var wide = matchMedia("(min-width:900px)");
+  var still = matchMedia("(prefers-reduced-motion: reduce)");
+  var cur = -1, pending = false;
+
+  /* ریل از روی خودِ فصل‌ها ساخته می‌شود تا اگر فصلی کم یا زیاد شد،
+     دستی جایی به‌روز نشود. */
+  chs.forEach(function(c, i){
+    var li = document.createElement("li");
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-label", "مرحلهٔ " + (i + 1));
+    b.onclick = function(){ goTo(i); };
+    li.appendChild(b); rail.appendChild(li);
+  });
+  var btns = [].slice.call(rail.querySelectorAll("button"));
+
+  function on(){ return wide.matches && !still.matches; }
+
+  function show(i){
+    if(i === cur) return;
+    cur = i;
+    chs.forEach(function(c, k){ c.classList.toggle("on", k === i); });
+    btns.forEach(function(b, k){ b.setAttribute("aria-current", k === i ? "true" : "false"); });
+  }
+
+  /* نسبتِ پیشرویِ ریل از روی خودِ قاب حساب می‌شود، نه از scrollY:
+     این‌طور هر چیزی که بالای صفحه کم یا زیاد شود هم درست می‌ماند. */
+  function paint(){
+    pending = false;
+    if(!on()) return;
+    var r = track.getBoundingClientRect();
+    var span = r.height - innerHeight;
+    var p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0;
+    show(Math.min(chs.length - 1, Math.floor(p * chs.length)));
+  }
+  function tick(){ if(!pending){ pending = true; requestAnimationFrame(paint); } }
+
+  function goTo(i){
+    if(!on()){ chs[i].scrollIntoView({ behavior:"smooth", block:"center" }); return; }
+    var r = track.getBoundingClientRect();
+    var span = r.height - innerHeight;
+    var top = scrollY + r.top + span * ((i + 0.5) / chs.length);
+    scrollTo({ top: top, behavior: "smooth" });
+  }
+
+  function setup(){
+    var want = on();
+    story.classList.toggle("st-on", want);
+    if(want){ cur = -1; paint(); }
+    else { cur = -1; chs.forEach(function(c){ c.classList.remove("on"); }); }
+  }
+
+  addEventListener("scroll", tick, { passive:true });
+  addEventListener("resize", function(){ setup(); tick(); }, { passive:true });
+  /* addListener برای سافاریِ قدیمی‌تر که addEventListener روی
+     matchMedia ندارد. */
+  [wide, still].forEach(function(m){
+    if(m.addEventListener) m.addEventListener("change", setup);
+    else if(m.addListener) m.addListener(setup);
+  });
+  setup();
 })();
 </script>
 
