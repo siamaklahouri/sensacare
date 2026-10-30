@@ -26,7 +26,8 @@
    استایل و داده دارد. ساختارِ درست تضمین نمی‌کند که باز شود. */
 import { launch } from './pw.mjs';
 import { inflateRawSync } from 'node:zlib';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname, posix } from 'node:path';
 
@@ -146,12 +147,16 @@ console.log('— ارجاع‌های خودِ صفحه —');
 const htmlDir = posix.dirname(htmlName);
 const fromHtml = check(htmlName, 'HTML');
 
-console.log('— ارجاع‌های فایل‌های بیرون‌کشیده —');
-const lifted = fromHtml.filter(f => /\/_a\/.*\.(css|js)$/.test(f));
-t(lifted.length >= 2, 'CSS و JSِ بیرون‌کشیده هر دو داخلِ زیپ‌اند',
-  lifted.map(x => x.split('/').pop()).join(' و ') || 'هیچ‌کدام');
-/* جاوااسکریپت نسبت به سند حل می‌شود، پس مبنایش پوشهٔ HTML است */
-for (const f of lifted) check(f, f.split('/').pop(), f.endsWith('.js') ? htmlDir : undefined);
+console.log('— صفحه خودکفاست —');
+{
+  const txt = files.get(htmlName).toString('utf8');
+  const style = [...txt.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + m[1].length, 0);
+  const script = [...txt.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .reduce((n, m) => n + m[1].length, 0);
+  t(style > 50000, 'CSS داخلِ خودِ صفحه است', `${Math.round(style / 1024)} کیلوبایت`);
+  t(script > 100000, 'و جاوااسکریپت هم', `${Math.round(script / 1024)} کیلوبایت`);
+  t(!/\/_a\//.test(txt), 'و هیچ ارجاعی به فایلِ بیرون‌کشیده نمانده');
+}
 
 /* ---------- پشتیبانِ تکیِ داخلِ خودِ کارتابل ----------
    مسیرِ جداگانه‌ای است: آن‌جا پوشهٔ مشترکی نیست و فایل‌ها کنارِ خودِ
@@ -195,7 +200,14 @@ for (const [name, body] of files) {
   mkdirSync(dirname(full), { recursive: true });
   writeFileSync(full, body);
 }
-const b = await launch();
+let b = null;
+try { b = await launch(); }
+catch (e) { console.log('   —  مرورگر در دسترس نیست، سنجه‌های دیداری رد شدند'); }
+if (!b) {
+  rmSync(dir, { recursive: true, force: true });
+  console.log((bad ? 'BAD ' : '') + ok + ' ok، ' + bad + ' bad');
+  process.exit(bad ? 1 : 0);
+}
 const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
 const failed = [];
 p.on('requestfailed', r => failed.push(r.url()));
@@ -228,6 +240,71 @@ t(seen.offline, 'و در حالتِ آفلاین است، پس سراغِ سرو
 const real = failed.filter(u => !/Vazirmatn-Regular\.2\.woff2$/.test(u));
 t(real.length === 0, 'هیچ فایلِ دیگری نرسیده نماند', real.join(', ') || 'پاک');
 t(errs.length === 0, 'و هیچ خطای صفحه‌ای نبود', errs.join(' | ') || 'پاک');
+
+
+/* ---------- و تنها، بی هیچ فایلِ کناری ----------
+   کسی که زیپ را باز می‌کند لازم نیست اول اکسترکتش کند: ویندوز
+   اجازه می‌دهد فایلِ داخلِ زیپ دوبار کلیک شود و آن را تنها در یک
+   پوشهٔ موقت باز می‌کند. صفحه باید همان‌جا هم خوانده شود. */
+console.log('— تنها، بی فایلِ کناری —');
+{
+  const solo = mkdtempSync(join(tmpdir(), 'solo-'));
+  const file = htmlName.split('/').pop();
+  writeFileSync(join(solo, file), files.get(htmlName));
+  const p3 = await b.newPage({ viewport: { width: 1200, height: 850 } });
+  await p3.goto('file://' + join(solo, file).split('/').map(encodeURIComponent).join('/')
+    .replace(/^file%3A/, ''), { waitUntil: 'load' }).catch(() => { });
+  await p3.waitForTimeout(2400);
+  const r3 = await p3.evaluate(() => ({
+    font: getComputedStyle(document.body).fontFamily,
+    bg: getComputedStyle(document.body).backgroundColor,
+    rows: document.querySelectorAll('tbody tr').length
+  }));
+  t(/Vazirmatn/.test(r3.font) && r3.bg !== 'rgba(0, 0, 0, 0)',
+    'بی فایلِ کناری هم استایل دارد', r3.bg);
+  t(r3.rows > 0, 'و داده‌اش رسم می‌شود', r3.rows + ' سطر');
+  await p3.close();
+  rmSync(solo, { recursive: true, force: true });
+}
+
+/* ---------- ابزارِ درست کردنِ پشتیبان‌های آن بازه ----------
+   bkfix دادهٔ فایلِ قدیمی را برمی‌دارد و داخلِ نمایشگرِ سالم می‌گذارد.
+   چیزی که باید تضمین شود همین است: دادهٔ خروجی همان دادهٔ ورودی
+   باشد — نه دادهٔ پشتیبانی که نمایشگرش از آن آمده. اگر این جابه‌جا
+   شود، آدم فکر می‌کند پشتیبانِ مهرش را باز کرده و دادهٔ امروز را
+   می‌بیند، که از خرابیِ اولیه بدتر است. */
+console.log('— ابزارِ bkfix —');
+{
+  const zipPath = join(dir, 'snapshot.zip');
+  writeFileSync(zipPath, zipBytes);
+  const out = mkdtempSync(join(tmpdir(), 'bkfix-'));
+  let ran = true, msg = '';
+  try {
+    execFileSync(process.execPath, [new URL('./bkfix.mjs', import.meta.url).pathname,
+      zipPath, zipPath, out], { stdio: 'pipe' });
+  } catch (e) { ran = false; msg = String(e.stderr || e.message).slice(0, 120); }
+  t(ran, 'bkfix بی‌خطا اجرا شد', msg || 'ok');
+  if (ran) {
+    const seedOf = txt => (txt.match(/window\.KARTABL_SEED = ([\s\S]*?);<\/script>/) || [])[1];
+    const before = seedOf(files.get(htmlName).toString('utf8'));
+    const after = seedOf(readFileSync(join(out, htmlName), 'utf8'));
+    t(!!after, 'خروجی بلوکِ داده دارد');
+    t(before === after, 'و دادهٔ خروجی دقیقاً همان دادهٔ ورودی است — بایت به بایت',
+      after && before ? `${before.length} بایت` : 'یکی‌شان نیست');
+    const p2 = await (await launch()).newPage({ viewport: { width: 1100, height: 800 } });
+    await p2.goto('file://' + join(out, htmlName).split('/').map(encodeURIComponent).join('/')
+      .replace(/^file%3A/, ''), { waitUntil: 'load' }).catch(() => { });
+    await p2.waitForTimeout(2400);
+    const seen2 = await p2.evaluate(() => ({
+      font: getComputedStyle(document.body).fontFamily,
+      rows: document.querySelectorAll('tbody tr').length
+    }));
+    t(/Vazirmatn/.test(seen2.font) && seen2.rows > 0,
+      'و فایلِ درست‌شده با استایل و داده باز می‌شود', `${seen2.rows} سطر`);
+    await p2.context().browser().close();
+  }
+  rmSync(out, { recursive: true, force: true });
+}
 
 await b.close();
 rmSync(dir, { recursive: true, force: true });
