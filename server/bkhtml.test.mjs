@@ -161,6 +161,15 @@ console.log('— صفحه خودکفاست —');
   t(style > 50000, 'CSS داخلِ خودِ صفحه است', `${Math.round(style / 1024)} کیلوبایت`);
   t(script > 100000, 'و جاوااسکریپت هم', `${Math.round(script / 1024)} کیلوبایت`);
   t(!/\/_a\//.test(txt), 'و هیچ ارجاعی به فایلِ بیرون‌کشیده نمانده');
+  /* قلم و نمودار یک بار فایلِ کنار بودند و استدلالم این بود که
+     «نبودنشان صفحه را ناخوانا نمی‌کند». در دقیقهٔ اول کسی پرسید
+     «این چه قلمی است؟» — پس استدلال غلط بود. حالا همه‌چیز داخلِ
+     صفحه است و این سنجه‌ها نگهش می‌دارند. */
+  const fonts = (txt.match(/data:font\/woff2;base64,/g) || []).length;
+  t(fonts >= 4, 'قلم‌ها داخلِ خودِ صفحه‌اند', fonts + ' وزن');
+  t(/data:image\/(?:png|svg\+xml);base64,/.test(txt), 'و تصویرها هم');
+  t(!/["'(]\/[A-Za-z0-9_./-]+\.(?:woff2|png|svg|ico|webp)["')]/.test(txt),
+    'و هیچ نشانیِ فایلِ بیرونی نمانده');
 }
 
 /* ---------- پشتیبانِ تکیِ داخلِ خودِ کارتابل ----------
@@ -229,7 +238,9 @@ const seen = await p.evaluate(async () => {
     bg: getComputedStyle(document.body).backgroundColor,
     rows: document.querySelectorAll('tbody tr').length,
     offline: !!window.KARTABL_OFFLINE,
-    vazir: (() => { try { return document.fonts.check('400 16px Vazirmatn'); } catch (e) { return false; } })()
+    vazir: (() => { try { return document.fonts.check('400 16px Vazirmatn'); } catch (e) { return false; } })(),
+    chart: typeof Chart, xlsx: typeof XLSX,
+    drawn: [...document.querySelectorAll('canvas')].filter(c => c.width > 0 && c.height > 0).length
   };
 });
 t(/Vazirmatn/.test(seen.font), 'صفحه استایل دارد — قلمش Vazirmatn است', seen.font.slice(0, 40));
@@ -239,6 +250,10 @@ t(seen.vazir, 'و فایلِ قلم واقعاً بارگذاری شد');
 t(seen.rows > 0, 'و دادهٔ کارتابل رسم شده — یعنی جاوااسکریپت هم اجرا شد',
   seen.rows + ' سطر');
 t(seen.offline, 'و در حالتِ آفلاین است، پس سراغِ سرور نمی‌رود');
+t(seen.chart === 'function' && seen.xlsx === 'object',
+  'کتابخانهٔ نمودار و اکسل از قبل تعریف‌اند، پس سراغِ شبکه نمی‌روند',
+  `Chart=${seen.chart}، XLSX=${seen.xlsx}`);
+t(seen.drawn > 0, 'و نمودارها رسم شده‌اند', seen.drawn + ' نمودار');
 
 /* preloadِ قلم با crossorigin روی file:// همیشه رد می‌شود و همان قلم
    از راهِ CSS می‌آید؛ بالا ثابت شد که بارگذاری می‌شود. بقیه مهم‌اند. */
@@ -259,15 +274,19 @@ console.log('— تنها، بی فایلِ کناری —');
   const p3 = await b.newPage({ viewport: { width: 1200, height: 850 } });
   await p3.goto('file://' + join(solo, file).split('/').map(encodeURIComponent).join('/')
     .replace(/^file%3A/, ''), { waitUntil: 'load' }).catch(() => { });
-  await p3.waitForTimeout(2400);
+  await p3.waitForTimeout(3200);
   const r3 = await p3.evaluate(() => ({
     font: getComputedStyle(document.body).fontFamily,
     bg: getComputedStyle(document.body).backgroundColor,
-    rows: document.querySelectorAll('tbody tr').length
+    rows: document.querySelectorAll('tbody tr').length,
+    vazir: (() => { try { return document.fonts.check('400 16px Vazirmatn'); } catch (e) { return false; } })(),
+    drawn: [...document.querySelectorAll('canvas')].filter(c => c.width > 0 && c.height > 0).length
   }));
   t(/Vazirmatn/.test(r3.font) && r3.bg !== 'rgba(0, 0, 0, 0)',
     'بی فایلِ کناری هم استایل دارد', r3.bg);
   t(r3.rows > 0, 'و داده‌اش رسم می‌شود', r3.rows + ' سطر');
+  t(r3.vazir, 'و قلمش همان Vazirmatn است، نه قلمِ پیش‌فرضِ سیستم');
+  t(r3.drawn > 0, 'و نمودارهایش هم رسم می‌شوند', r3.drawn + ' نمودار');
   await p3.close();
   rmSync(solo, { recursive: true, force: true });
 }

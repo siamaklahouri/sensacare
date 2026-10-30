@@ -1289,7 +1289,7 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     /* نسخهٔ داخل پشتیبان نباید سراغ سرور برود: نه ورود می‌خواهد و نه
        همگام‌سازی. بدون این پرچم، فایلِ بازشده روی سیستم منتظر جوابی
        می‌ماند که هیچ‌وقت نمی‌آید. */
-    html = html.replace('<head>', '<head>\n<script>window.KARTABL_OFFLINE = true;\n' +
+    html = html.replace('<head>', () => '<head>\n<script>window.KARTABL_OFFLINE = true;\n' +
                         'window.KARTABL_SEED = ' + seed + ';<\/script>');
 
     /* ---------- صفحه را خودکفا کن ----------
@@ -1314,6 +1314,66 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
       (m, n) => { const b = CSS_BLOBS.get(n); return b === undefined ? m : '<style>\n' + b + '\n</style>'; });
     html = html.replace(/<script src="\/_a\/([A-Za-z0-9._-]+\.js)"[^>]*><\/script>/g,
       (m, n) => { const b = JS_BLOBS.get(n); return b === undefined ? m : '<script>\n' + b + '\n<\/script>'; });
+
+    /* ---------- و بقیه‌اش هم داخلِ خودِ صفحه ----------
+       مرحلهٔ قبل CSS و جاوااسکریپت را برگرداند داخل، ولی قلم و
+       کتابخانهٔ نمودار را فایلِ کنار گذاشت. استدلالم این بود که
+       «نبودنشان صفحه را ناخوانا نمی‌کند» — و در همان دقیقهٔ اول
+       کسی پرسید «این چه قلمی است؟». درست هم بود: صفحه‌ای که با
+       قلمِ پیش‌فرضِ ویندوز و سه نمودارِ «در حال بارگذاری» باز شود،
+       همان حسِ خراب بودن را می‌دهد، چه فنی خراب باشد چه نباشد.
+
+       پس هرچه صفحه لازم دارد می‌رود داخلش: قلم‌ها و تصویرها به شکلِ
+       data:، و دو کتابخانه به شکلِ اسکریپتِ درون‌خطی. بعدش فایل به
+       هیچ‌چیزِ کنارش بند نیست — از داخلِ زیپ، از دسکتاپ، از فلش،
+       هر جا.
+
+       «</script» در متنِ کتابخانه‌ها فرار داده می‌شود: داخلِ رشته‌های
+       جاوااسکریپت چنین چیزی هست و بی فرار دادن، همان‌جا تگ بسته
+       می‌شود و بقیهٔ فایل متنِ صفحه می‌شود. */
+    const b64 = bytes => {
+      let s = '';
+      for (let i = 0; i < bytes.length; i += 0x8000)
+        s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      return btoa(s);
+    };
+    const MIME = { woff2: 'font/woff2', png: 'image/png', svg: 'image/svg+xml',
+                   ico: 'image/x-icon', webp: 'image/webp', jpg: 'image/jpeg' };
+    const inlined = new Map();
+    const asData = async url => {
+      if (inlined.has(url)) return inlined.get(url);
+      const ext = (url.match(/\.([a-z0-9]+)$/i) || ['', ''])[1].toLowerCase();
+      const bytes = MIME[ext] ? await grab(url) : null;
+      const out = bytes ? 'data:' + MIME[ext] + ';base64,' + b64(bytes) : null;
+      inlined.set(url, out);
+      return out;
+    };
+
+    /* قلم و تصویر، هرجای صفحه که باشند */
+    {
+      const seen = new Set();
+      for (const m of html.matchAll(/["'(](\/[A-Za-z0-9_./-]+\.(?:woff2|png|svg|ico|webp|jpg))["')]/g))
+        seen.add(m[1]);
+      for (const url of seen) {
+        const d = await asData(url);
+        if (d) html = html.split(url).join(d);
+      }
+    }
+
+    /* نمودار و اکسل: هر دو «typeof X === undefined» را می‌سنجند و
+       اگر از قبل تعریف شده باشد سراغِ شبکه نمی‌روند. */
+    {
+      let pre = '';
+      for (const u of ['/v/chart.umd.min.js', '/v/xlsx.full.min.js']) {
+        const bytes = await grab(u);
+        if (!bytes) continue;
+        pre += '<script>' + new TextDecoder().decode(bytes).split('</script').join('<\\/script') + '<\/script>\n';
+      }
+      /* تابع، نه رشته: در جایگزینِ رشته‌ای، «$&» و «$'» معنای ویژه
+         دارند و جاوااسکریپتِ فشرده پر از «$» است. یک بار همین
+         کتابخانهٔ اکسل را وسطِ کار قیچی کرد. */
+      if (pre) html = html.replace('</head>', () => pre + '</head>');
+    }
 
     /* فایل‌های همراه از خودِ صفحه درمی‌آیند، نه از یک فهرستِ دستی.
        فهرستِ دستی سایهٔ قالب بود و مثل هر سایه‌ای عقب می‌افتاد: یک بار
@@ -1376,6 +1436,10 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     const SHOP_ONLY = /^\/(index\.html|admin\.js|og\.png|logo(-mark)?(-mono|-white)?\.svg)$/;
     for (const [from, to] of wanted) {
       if (SHOP_ONLY.test(from)) continue;
+      /* هیچ اسکریپتِ بیرونی‌ای بار نمی‌شود: کتابخانه‌ها از قبل داخلِ
+         صفحه‌اند و chat.js و sw.js و امثالشان در حالتِ آفلاین اصلاً
+         صدا زده نمی‌شوند. نامشان فقط به‌عنوان رشته در کد مانده. */
+      if (/\.js$/.test(from)) continue;
       /* نسخهٔ بازنویسی‌شده، نه خامِ روی سرور */
       if (rewritten.has(to)) { extras.push({ name: to, data: rewritten.get(to) }); continue; }
       const data = await grab(from);

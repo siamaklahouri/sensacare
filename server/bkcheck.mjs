@@ -70,11 +70,19 @@ for (const name of [...files.keys()].filter(k => k.endsWith('.html')).sort()) {
   const css = [...txt.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((a, m) => a + m[1].length, 0);
   const js = [...txt.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
     .reduce((a, m) => a + m[1].length, 0);
+  const fonts = (txt.match(/data:font\/woff2;base64,/g) || []).length;
+  const imgs = (txt.match(/data:image\/[a-z+]+;base64,/g) || []).length;
   const selfContained = css > 50000 && js > 100000;
   console.log(selfContained
     ? `   ✅ خودکفاست — CSS ${kb(css)}، جاوااسکریپت ${kb(js)}`
     : `   ⚠️  خودکفا نیست — CSS ${kb(css)}، جاوااسکریپت ${kb(js)}`);
   if (!selfContained) bad++;
+  const rich = fonts >= 4 && imgs >= 1;
+  console.log(rich
+    ? `   ✅ قلم و تصویر هم داخلش‌اند — ${fonts} وزنِ قلم، ${imgs} تصویر`
+    : `   ⚠️  قلم یا تصویر داخلش نیست — ${fonts} وزنِ قلم، ${imgs} تصویر` +
+      ' (صفحه باز می‌شود ولی با قلمِ پیش‌فرضِ سیستم)');
+  if (!rich) bad++;
 
   /* ارجاع‌هایی که به بیرون مانده‌اند */
   const dir = posix.dirname(name);
