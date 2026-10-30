@@ -24,7 +24,12 @@
 
    سه) و در نهایت، صفحه واقعاً با مرورگر از روی دیسک باز می‌شود و
    استایل و داده دارد. ساختارِ درست تضمین نمی‌کند که باز شود. */
-import { launch } from './pw.mjs';
+/* ایمپورتِ پویا، عمدی: روی سرور playwright نصب نیست و یک ایمپورتِ
+   ایستا پیش از اجرای هر خطی می‌افتد — آن‌وقت حتی سنجه‌های ساختاری
+   که هیچ مرورگری نمی‌خواهند هم اجرا نمی‌شوند. یک بار همین شد و
+   وارسی‌ای که روی سرور داده بودم اصلاً شروع نشد. */
+let launch = null;
+try { ({ launch } = await import('./pw.mjs')); } catch (e) { launch = null; }
 import { inflateRawSync } from 'node:zlib';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -201,8 +206,8 @@ for (const [name, body] of files) {
   writeFileSync(full, body);
 }
 let b = null;
-try { b = await launch(); }
-catch (e) { console.log('   —  مرورگر در دسترس نیست، سنجه‌های دیداری رد شدند'); }
+try { if (launch) b = await launch(); } catch (e) { b = null; }
+if (!b) console.log('   —  مرورگر در دسترس نیست، سنجه‌های دیداری رد شدند');
 if (!b) {
   rmSync(dir, { recursive: true, force: true });
   console.log((bad ? 'BAD ' : '') + ok + ' ok، ' + bad + ' bad');
@@ -291,7 +296,7 @@ console.log('— ابزارِ bkfix —');
     t(!!after, 'خروجی بلوکِ داده دارد');
     t(before === after, 'و دادهٔ خروجی دقیقاً همان دادهٔ ورودی است — بایت به بایت',
       after && before ? `${before.length} بایت` : 'یکی‌شان نیست');
-    const p2 = await (await launch()).newPage({ viewport: { width: 1100, height: 800 } });
+    const p2 = await b.newPage({ viewport: { width: 1100, height: 800 } });
     await p2.goto('file://' + join(out, htmlName).split('/').map(encodeURIComponent).join('/')
       .replace(/^file%3A/, ''), { waitUntil: 'load' }).catch(() => { });
     await p2.waitForTimeout(2400);
@@ -301,7 +306,7 @@ console.log('— ابزارِ bkfix —');
     }));
     t(/Vazirmatn/.test(seen2.font) && seen2.rows > 0,
       'و فایلِ درست‌شده با استایل و داده باز می‌شود', `${seen2.rows} سطر`);
-    await p2.context().browser().close();
+    await p2.close();
   }
   rmSync(out, { recursive: true, force: true });
 }
