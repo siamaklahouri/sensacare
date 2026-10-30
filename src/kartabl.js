@@ -1245,10 +1245,20 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
   const grab = async path => {
     if (cache && cache.has(path)) return cache.get(path);
     let out = null;
-    try {
-      const r = await env.ASSETS.fetch(assetReq(req, path));
-      out = r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
-    } catch (e) { out = null; }
+    /* «/_a/…» فایلی روی دیسک نیست: همان CSS و جاوااسکریپتی است که این
+       ورکر از خودِ صفحه بیرون کشیده و در حافظه نگه داشته. ASSETS
+       پیدایش نمی‌کند و null برمی‌گرداند — بی‌صدا. نتیجه‌اش این بود که
+       فایلِ HTMLِ پشتیبان بی هیچ استایل و اسکریپتی باز می‌شد. */
+    const lifted = path.match(/^\/_a\/([A-Za-z0-9._-]+\.(css|js))$/);
+    if (lifted) {
+      const body = (lifted[2] === 'css' ? CSS_BLOBS : JS_BLOBS).get(lifted[1]);
+      out = body === undefined ? null : new TextEncoder().encode(body);
+    } else {
+      try {
+        const r = await env.ASSETS.fetch(assetReq(req, path));
+        out = r.ok ? new Uint8Array(await r.arrayBuffer()) : null;
+      } catch (e) { out = null; }
+    }
     if (cache) cache.set(path, out);
     return out;
   };
@@ -1291,7 +1301,11 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     const wanted = new Map();          /* آدرسِ روی سرور → نامِ داخلِ زیپ */
     /* نقطه داخلِ نامِ فایل مجاز است: «icon-siamak.2.png» شمارهٔ نسخه را
        وسطِ نامش دارد و بدونِ این، همان لوگو از قلم می‌افتاد. */
-    const ASSET = /(["'(])((?:\/[a-z0-9_-]{1,32})?\/(?:v|f)\/[A-Za-z0-9_.-]+|\/[A-Za-z0-9_.-]+\.(?:png|svg|ico|webp|js|css))(["')])/g;
+    /* «/_a/k-it-….css» دو بخش دارد و در هیچ‌کدام از دو شاخهٔ قبلی
+       نمی‌افتاد: نه زیرِ /v/ و /f/ است و نه یک نامِ تک‌بخشیِ ریشه. پس
+       از ۳ آبان که CSS و JS از صفحه بیرون کشیده شدند، بی‌صدا از
+       پشتیبان جا می‌ماند. */
+    const ASSET = /(["'(])(\/_a\/[A-Za-z0-9_.-]+\.(?:css|js)|(?:\/[a-z0-9_-]{1,32})?\/(?:v|f)\/[A-Za-z0-9_.-]+|\/[A-Za-z0-9_.-]+\.(?:png|svg|ico|webp|js|css))(["')])/g;
     html = html.replace(ASSET, (m, open, url, close) => {
       /* نامِ کارتابل اگر جلوی /v/ یا /f/ چسبیده بود برداشته می‌شود:
          روی سرور هر دو به یک فایل می‌رسند، ولی کنارِ فایل فقط یکی. */
@@ -1302,6 +1316,35 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
       return open + (SH ? '../' + SH + '/' + rel : rel) + close;
     });
 
+    /* ---------- یک لایه عمیق‌تر ----------
+       فایل‌های بیرون‌کشیده خودشان ارجاع دارند: CSS به پنج وزنِ فونت و
+       لوگو، و JS به کتابخانهٔ نمودار و اکسل و چند اسکریپتِ کناری. آن
+       ارجاع‌ها داخلِ همان فایل‌اند نه داخلِ HTML، پس بازنویسیِ بالا
+       نمی‌بیندشان و فایلِ پشتیبان با CSSِ درست ولی بی‌فونت باز می‌شد.
+
+       تا پیش از بیرون‌کشیدن، همهٔ این‌ها داخلِ خودِ صفحه بودند و همین
+       الگو می‌گرفتشان. حالا یک بار هم روی خودِ فایل‌ها اجرا می‌شود.
+
+       و پیشوندِ این دو یکی نیست، که یک بار گولم زد: نشانیِ داخلِ CSS
+       نسبت به خودِ فایلِ CSS حل می‌شود (پس «../» یعنی پوشهٔ مشترک)،
+       ولی نشانی‌ای که جاوااسکریپت در زمانِ اجرا می‌سازد نسبت به
+       «سند» حل می‌شود — یعنی همان پیشوندی را می‌خواهد که خودِ HTML
+       گرفت. با «../» کتابخانهٔ نمودار سر از کنارِ پوشهٔ کارتابل
+       درمی‌آورد و پیدا نمی‌شد. */
+    const rewritten = new Map();
+    for (const [from, to] of [...wanted]) {
+      if (!/^\/_a\//.test(from)) continue;
+      const raw = await grab(from);
+      if (!raw) continue;
+      const css = from.endsWith('.css');
+      rewritten.set(to, new TextDecoder().decode(raw).replace(ASSET, (m, open, url, close) => {
+        const rel = url.replace(/^\/[a-z0-9_-]{1,32}(?=\/(?:v|f)\/)/, '').replace(/^\//, '');
+        wanted.set('/' + rel, SH ? SH + '/' + rel : F + '/' + rel);
+        const to2 = css ? '../' + rel : (SH ? '../' + SH + '/' + rel : rel);
+        return open + to2 + close;
+      }));
+    }
+
     /* فروشگاه و کارتابل‌ها روی یک ورکرند ولی دو چیزِ جدا. هیچ فایلی از
        فروشگاه نباید داخلِ پشتیبانِ کارتابل برود. چون فهرست از خودِ
        صفحهٔ کارتابل درمی‌آید این عملاً ممکن نیست، ولی نرده‌اش گذاشته
@@ -1310,6 +1353,8 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
     const SHOP_ONLY = /^\/(index\.html|admin\.js|og\.png|logo(-mark)?(-mono|-white)?\.svg)$/;
     for (const [from, to] of wanted) {
       if (SHOP_ONLY.test(from)) continue;
+      /* نسخهٔ بازنویسی‌شده، نه خامِ روی سرور */
+      if (rewritten.has(to)) { extras.push({ name: to, data: rewritten.get(to) }); continue; }
       const data = await grab(from);
       /* woff2 و png خودشان فشرده‌اند؛ دوباره فشردنشان فقط وقت می‌برد */
       if (data) extras.push({ name: to, data, store: /\.(woff2|png|webp|ico)$/.test(to) });

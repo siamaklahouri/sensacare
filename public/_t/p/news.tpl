@@ -95,6 +95,11 @@
   }
 
   async function load() {
+    /* نسخهٔ داخلِ پشتیبان سروری ندارد: این درخواست آن‌جا به
+       «file:///api/kartabl/news» می‌رسد و می‌افتد. چیزی نمی‌شکند،
+       ولی یک خطای قرمز در کنسولِ فایلی می‌گذارد که آدم را دنبالِ
+       ایرادی می‌فرستد که وجود ندارد. */
+    if (window.KARTABL_OFFLINE) return;
     try {
       var r = await apiCall("/news");
       if (!r.ok) return;
