@@ -539,6 +539,46 @@ window.KARTABL_IDB      = "{{IDB}}";
   tbody td{ padding:6px 6px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle; font-size:12px; transition:background .1s; }
   tbody tr:nth-child(even){ background:var(--paper); }
   tbody tr:hover{ background:var(--brass-bg); }
+
+  /* ستونِ «زمان‌بندی» در فهرستِ سرورها، رنگی.
+     رنگ از پرتکرار به کم‌تکرار می‌رود — سبزِ «روزانه دوبار» تا سرخِ
+     «شش ماه یک بار» — پس خودش می‌گوید کدام سرور بیشتر محافظت می‌شود
+     و کدام کمتر؛ ترتیبِ رنگ‌ها معنا دارد، تصادفی نیست.
+     متن داخلِ خودِ خانه می‌مانَد، پس رنگ راهنمای جداگانه لازم ندارد.
+     رنگِ خانه روی رنگِ hoverِ ردیف می‌نشیند، چون آن روی <tr> است و
+     این روی <td>. */
+  td.sch{
+    background:var(--sch-bg, transparent);
+    color:var(--sch-ink, inherit);
+    font-weight:600;
+  }
+  /* نشانه یک نقطهٔ رنگی است که به خودِ متن می‌چسبد، نه نواری در لبهٔ
+     خانه: نوار از دور شبیهِ خطِ جداکنندهٔ ستون می‌شد و وقتی همهٔ
+     ردیف‌ها داشتندش، یک خطِ ممتد می‌ساخت که چیزی نمی‌گفت.
+     ::before است، پس داخلِ textContent نمی‌آید و ویرایشِ خانه و
+     ذخیره‌اش دست‌نخورده می‌مانَد. */
+  td.sch::before{
+    content:""; display:inline-block; vertical-align:middle;
+    width:9px; height:9px; border-radius:50%;
+    background:var(--sch, transparent);
+    margin-inline-end:7px; margin-top:-2px;
+  }
+  /* خالی نشانه ندارد — چیزی برای گفتن نیست */
+  td.sch-none::before{ display:none; }
+  /* ناشناس: نقطهٔ توخالی، تا پیدا باشد ولی با پنج‌تای اصلی قاطی نشود */
+  td.sch-other::before{ background:transparent; box-shadow:inset 0 0 0 2px var(--ink-faint); }
+  td.sch-d2{ --sch:var(--green);  --sch-bg:var(--green-bg);  --sch-ink:var(--green-ink); }
+  /* آبی، نه فیروزه‌ای: فیروزه‌ایِ این پالت کنارِ سبز تقریباً همان سبز
+     دیده می‌شد و دو ردیفِ کنارِ هم از هم جدا نمی‌شدند — یعنی همان
+     کاری که رنگ قرار بود بکند، نمی‌کرد. */
+  td.sch-d1{ --sch:var(--brass);  --sch-bg:var(--brass-bg);  --sch-ink:var(--brass-ink); }
+  td.sch-m1{ --sch:var(--amber);  --sch-bg:var(--amber-bg);  --sch-ink:var(--amber-ink); }
+  td.sch-m4{ --sch:var(--purple); --sch-bg:var(--purple-bg); --sch-ink:var(--purple-ink); }
+  td.sch-m6{ --sch:var(--red);    --sch-bg:var(--red-bg);    --sch-ink:var(--red-ink); }
+  /* نوشته‌ای که در فهرستِ پنج‌تایی نیست — رنگی نمی‌گیرد ولی بی‌نشان هم
+     نمی‌مانَد، تا غلطِ تایپی خودش را نشان بدهد. */
+  td.sch-other{ --sch:transparent; --sch-bg:transparent; --sch-ink:var(--ink-soft); }
+  td.sch-none{ --sch:transparent; --sch-bg:transparent; --sch-ink:var(--ink-faint); }
   .filter-row th{ background:var(--paper-deep); padding:4px 5px; position:sticky; top:34px; }
   {{PART:multifiltercss}}
   /* ---------- Chart drill-down modal ---------- */
@@ -3544,6 +3584,26 @@ function removeRemoteDay(idx){
 
 const SCHEDULE_OPTIONS = ["روزانه یک بار","روزانه دوبار","ماهانه یک بار","چهارماه یک بار","شش ماه یک بار"];
 
+/* کلاسِ رنگِ زمان‌بندی. نوشتهٔ داخلِ خانه دستی وارد می‌شود، پس یک شکلِ
+   ثابت ندارد: «روزانه یک بار» و «روزانه یک‌بار» و «روزانه 1 بار» همه
+   یک چیزند. نیم‌فاصله و فاصله‌های اضافه و رقم‌های فارسی را یکسان
+   می‌کنیم و بعد می‌سنجیم.
+   ترتیبِ سنجه‌ها مهم است: «شش ماه» و «چهارماه» پیش از «ماه» می‌آیند،
+   وگرنه هر سه ماهانه حساب می‌شدند. */
+function scheduleClass(v){
+  let s = String(v == null ? "" : v)
+    .replace(/\u200c/g, " ")                       /* نیم‌فاصله */
+    .replace(/[۰-۹]/g, d => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+    .replace(/\s+/g, " ").trim();
+  if(!s) return "sch-none";
+  if(/روزانه|هر روز/.test(s))
+    return /دو ?بار|2 ?بار|دوبار/.test(s) ? "sch-d2" : "sch-d1";
+  if(/شش ?ماه|6 ?ماه/.test(s))   return "sch-m6";
+  if(/چهار ?ماه|4 ?ماه/.test(s)) return "sch-m4";
+  if(/ماهانه|1 ?ماه|هر ماه/.test(s)) return "sch-m1";
+  return "sch-other";
+}
+
 function applyVmFilters(vm){
   return vm.filter(m=>{
     for(const key of Object.keys(vmFilters)){
@@ -3604,9 +3664,9 @@ function updateEditableMode(section){
    رسیدنِ داده از سرور — خانه‌ها را دوباره قفل می‌کرد، در حالی که کلید
    هنوز روشن بود. کاربر کلید را می‌زد، یک ردیف می‌افزود، و دیگر هیچ
    خانه‌ای را نمی‌توانست ویرایش کند. */
-function editableTd(value, idx, field, section){
+function editableTd(value, idx, field, section, cls){
   const on = !!editMode[section];
-  return `<td class="editable-cell" contenteditable="${on?'true':'false'}" data-idx="${idx}" data-field="${field}" data-section="${section}" style="opacity:${on?'1':'0.7'}; cursor:${on?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+  return `<td class="editable-cell${cls?' '+cls:''}" contenteditable="${on?'true':'false'}" data-idx="${idx}" data-field="${field}" data-section="${section}" style="opacity:${on?'1':'0.7'}; cursor:${on?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
 }
 
 function renderServers(){
@@ -3659,7 +3719,7 @@ function renderServers(){
       ${editableTd(m.location, idx, "location", "servers")}
       ${editableTd(m.sizeUsed, idx, "sizeUsed", "servers")}
       ${editableTd(m.sizeVib, idx, "sizeVib", "servers")}
-      ${editableTd(m.schedule, idx, "schedule", "servers")}
+      ${editableTd(m.schedule, idx, "schedule", "servers", "sch " + scheduleClass(m.schedule))}
       ${editableTd(m.lastRestore, idx, "lastRestore", "servers")}
       ${editableTd(m.lastFullBackup, idx, "lastFullBackup", "servers")}
       ${editableTd(m.storage, idx, "storage", "servers")}
