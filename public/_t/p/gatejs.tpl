@@ -265,23 +265,31 @@ let signedIn = false;   /* نتیجه‌اش: وارد شده‌ایم یا نه
   });
 
   /* ---------- رمز را فراموش کرده‌ام ----------
-     رمزِ تازه را سرور می‌سازد و فقط به همان گفتگوی تلگرامی می‌فرستد که
+     رمزِ تازه را سرور می‌سازد و فقط به همان گفتگوی رباتی می‌فرستد که
      پشتیبان‌ها می‌روند. اینجا هیچ‌وقت دیده نمی‌شود، حتی در پاسخِ درخواست؛
      یعنی زدنِ این دکمه به‌تنهایی به کسی رمز نمی‌دهد. */
+  /* نامِ جایی که پیام واقعاً رفت. سرور خودش می‌گوید؛ ما حدس نمی‌زنیم،
+     چون کانال‌ها از تنظیمات عوض می‌شوند و جمله‌ای که اسمِ یک کانال را
+     سفت نوشته باشد، روزی آدم را دنبالِ نخودِ سیاه می‌فرستد. */
+  const where = r => {
+    const to = (r && r.data && r.data.to) || [];
+    return to.length ? to.join(" و ") : "رباتِ پشتیبان";
+  };
+
   const forgotBtn = document.getElementById("gateForgot");
   if(forgotBtn && window.KARTABL_OFFLINE) forgotBtn.style.display = "none";
   if(forgotBtn) forgotBtn.addEventListener("click", async ()=>{
     const go = confirm(
-      "رمز تازه به همان گفتگوی تلگرامی فرستاده می‌شود که پشتیبان‌ها می‌روند.\n" +
+      "رمز تازه به همان گفتگوی رباتی فرستاده می‌شود که پشتیبان‌ها می‌روند.\n" +
       "از همان لحظه رمز فعلی از کار می‌افتد و هر دستگاهی که وارد مانده بیرون می‌افتد.\n\n" +
       "ادامه بدهم؟");
     if(!go) return;
     forgotBtn.disabled = true; errEl.textContent = "";
-    noteEl.textContent = "در حال فرستادن به تلگرام...";
+    noteEl.textContent = "در حال فرستادن به ربات...";
     try{
       const r = await apiCall("/forgot", { method: "POST" });
       if(r.ok){
-        noteEl.textContent = "رمز تازه به تلگرام رفت. پیام ربات را ببینید و همان را این‌جا وارد کنید.";
+        noteEl.textContent = "رمز تازه به " + where(r) + " رفت. پیام ربات را ببینید و همان را این‌جا وارد کنید.";
         input.value = "";
         try{ input.focus(); }catch(e){}
       }else{

@@ -40,7 +40,7 @@ LIST="
   xlsx-import.test.mjs xlsx-import-fin.test.mjs xlsx-sample.test.mjs
   merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs
   updown.test.mjs seo.test.mjs aria.test.mjs narrow.test.mjs orgroles.test.mjs
-  duesoon.test.mjs icons.test.mjs adminnarrow.test.mjs bkhtml.test.mjs"
+  duesoon.test.mjs icons.test.mjs adminnarrow.test.mjs bkhtml.test.mjs bkseen.test.mjs"
 
 for f in $LIST; do
   [ -f "$f" ] || continue
@@ -51,14 +51,31 @@ for f in $LIST; do
   clear_limits
   # DB_FILE هم می‌رود: چند آزمون باید ردیفی را که از راهِ ربات
   # می‌آید (مثلِ گفتگوی بله) خودشان در جدول بگذارند.
-  out=$(VS_BASE="$BASE" DB_FILE="$DB" node "$f" 2>&1)
+  out=$(VS_BASE="$BASE" DB_FILE="$DB" node "$f" 2>&1); rc=$?
   echo "$out" | tail -1
-  # «۰ bad» شکست نیست — فقط عددِ غیرصفر
-  if echo "$out" | tail -1 | grep -qE 'BAD [1-9]|[1-9][0-9]* bad'; then
+  # کدِ خروج، نه خطِ آخر. تا امروز این‌جا فقط دنبالِ الگوی «N bad» در
+  # خطِ آخر می‌گشت — و خطِ آخرِ آزمونی که کرش کرده «Node.js v22.x»
+  # است، که با آن الگو نمی‌خواند. یعنی آزمونی که اصلاً اجرا نشده بود
+  # «قبول» حساب می‌شد.
+  #
+  # یک بار همین شد: سرورِ محلی خوابیده بود، هر آزمونِ مرورگری کرش
+  # کرد، و مجموعه «۰ bad» و خروجِ صفر داد. مجموعه‌ای که نتواند
+  # نیفتادن را از نرسیدن جدا کند، از نبودنش بدتر است — چون به آن
+  # اعتماد می‌شود.
+  #
+  # هر آزمون با «process.exit(bad ? 1 : 0)» تمام می‌شود، پس کدِ خروج
+  # هم شکستِ سنجه‌ها را می‌گوید و هم کرش را.
+  if [ "$rc" -ne 0 ]; then
     fail=1
-    # خطِ آخر می‌گوید «افتاد»، نه «چرا». بی این، هر بار باید همان
-    # فایل را دستی دوباره اجرا کرد — و دستی معمولاً پاس می‌شود.
-    echo "$out" | grep -E '^ +BAD' | sed 's/^/    /'
+    bads=$(echo "$out" | grep -E '^ +BAD')
+    if [ -n "$bads" ]; then
+      # خطِ آخر می‌گوید «افتاد»، نه «چرا».
+      echo "$bads" | sed 's/^/    /'
+    else
+      # هیچ سنجه‌ای نیفتاده ولی کد خروجِ غیرصفر داده: یعنی کرش.
+      echo "    ⚠️  اجرا نشد (کدِ خروج $rc) — چند خطِ آخر:"
+      echo "$out" | tail -8 | sed 's/^/      /'
+    fi
   fi
 done
 # فایلی که در این فهرست نیست، اجرا نمی‌شود — و چون اجرا نمی‌شود،

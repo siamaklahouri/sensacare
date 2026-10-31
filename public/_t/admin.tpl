@@ -827,7 +827,7 @@ table.inv-tab td.desc{ text-align:right; }
     <div class="brandword">SLTech</div>
     <h1 id="gateTitle">ورود به کارتابل</h1>
     <p id="gateSub">نام کاربری و رمزتان را بزنید تا وارد کارتابل خودتان شوید.</p>
-    <input type="text" id="gateCode" placeholder="کد تلگرام" autocomplete="off" dir="ltr" hidden data-ascii>
+    <input type="text" id="gateCode" placeholder="کدِ ربات" autocomplete="off" dir="ltr" hidden data-ascii>
     <input type="text" id="gateUser" placeholder="نام کاربری" autocomplete="username"
            dir="ltr" spellcheck="false" autocapitalize="off" data-ascii>
     <input type="password" id="gatePass" placeholder="رمز" autocomplete="current-password">
@@ -1598,7 +1598,7 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
     document.getElementById("gatePass").hidden = true;
     document.getElementById("gateUser").hidden = true;
     document.getElementById("gateNote").innerHTML =
-      "کدِ ورود به " + esc((r.data.to || []).join(" و ") || "تلگرام") +
+      "کدِ ورود به " + esc((r.data.to || []).join(" و ") || "رباتِ پشتیبان") +
       " فرستاده شد.<br>ده دقیقه اعتبار دارد.";
     btn.disabled = false; btn.textContent = "تأیید کد";
     return;
@@ -1932,6 +1932,17 @@ function bellItems(){
   const goBk = ()=> goBellTab("list", "bkAll");
   if(b && b.at){
     const when = faDateTime(b.at);
+    /* پشتیبان شبانه است. اگر چند شب خبری نشود یعنی چیزی خوابیده —
+       کرون، سرویس، یا خودِ ساختِ زیپ. تا امروز همان «پشتیبان رفت» با
+       تاریخِ کهنه می‌نشست و کسی تاریخ را نمی‌خواند؛ سکوت شبیهِ سلامت
+       بود. حالا بعد از دو شب خودش می‌گوید. */
+    const nights = Math.floor((Date.now() - b.at) / 864e5);
+    if(b.ok && nights >= 2){
+      add("warn", "⏰", "پشتیبان " + fa(nights) + " روز است نرفته",
+        "آخرین نوبتِ موفق: " + when + ". پشتیبان هر شب می‌رود، پس یعنی " +
+        "چیزی خوابیده — از «پشتیبان همین حالا» امتحان کنید.",
+        "bk-stale|" + nights, goBk);
+    }
     if(b.ok){
       add("ok", ICON.archive, "پشتیبان رفت",
         when + " — " + fa(b.count || 0) + " کارتابل، " +
@@ -1952,6 +1963,23 @@ function bellItems(){
     add("warn", ICON.archive, "هنوز پشتیبانی ثبت نشده",
       "اولین نوبت که برود، همین‌جا می‌آید.", "bk-none", goBk);
   }
+
+  /* پشتیبانِ هر کارتابل، جدا از همگانی. دکمهٔ «پشتیبان» داخلِ خودِ
+     کارتابل هم همین راه را می‌رود، و اگر نیمه‌کاره بماند تنها جایی که
+     می‌شد فهمید، همان کانالی بود که نگرفته. */
+  (DATA.items || []).forEach(p=>{
+    const lb = p.lastBackup;
+    if(!lb || !lb.at) return;
+    const who = p.name || p.slug;
+    if(lb.ok === false)
+      add("bad", "⛔", "پشتیبانِ " + who + " نرفت",
+        faDateTime(lb.at) + " — " + (lb.error || "بی‌دلیلِ ثبت‌شده"),
+        "pbk-bad|" + p.slug + "|" + lb.at, ()=> goBellTab("site"));
+    else if((lb.failed || []).length)
+      add("warn", "⚠️", "پشتیبانِ " + who + " به همهٔ ربات‌ها نرسید",
+        "نرسید به: " + (lb.failed || []).join(" و ") + " — " + faDateTime(lb.at),
+        "pbk-part|" + p.slug + "|" + lb.at, ()=> goBellTab("site"));
+  });
 
   /* مهلتِ کارتابل‌ها */
   const now = Date.now(), DAY = 864e5;
@@ -4772,6 +4800,11 @@ function renderActivity(){
 function backupChip(b, now){
   if(!b || !b.at) return `<span class="chip chip-none">— بی‌سابقه</span>`;
   if(b.ok === false) return `<span class="chip chip-bad" title="${esc(b.error||"")}">✕ نرفت</span>`;
+  /* رفت، ولی نه به همهٔ ربات‌ها. تا امروز این حالت همان «✓ رفت»ِ سبز
+     را می‌گرفت، پس از این جدول هیچ‌وقت معلوم نمی‌شد که یک کانال
+     ماه‌ها است چیزی نمی‌گیرد. */
+  if((b.failed || []).length)
+    return `<span class="chip chip-warn" title="${esc("نرسید به: " + (b.failed||[]).join(" / "))}">! ناقص</span>`;
   const d = daysAgo(b.at, now);
   if(d > 2) return `<span class="chip chip-warn">! ${esc(agoText(b.at, now))}</span>`;
   return `<span class="chip chip-ok">✓ ${esc(agoText(b.at, now))}</span>`;

@@ -667,6 +667,10 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
         /* تلاشِ ناموفقِ ورود — تا ادمین ببیند کسی دمِ درِ کدام کارتابل
            ایستاده. خودِ رمزِ غلط ذخیره نمی‌شود. */
         badPass: await badPassOf(env, r.slug),
+        /* آخرین نوبتِ پشتیبانِ خودِ این کارتابل — زنگوله از همین
+           می‌فهمد که یک کانال نگرفته. تا امروز فقط در سربرگِ
+           «گزارش» بود، که کسی سری‌به‌سری بازش نمی‌کند. */
+        lastBackup: await getSetting(env, (c.keys || {}).last || '', null),
         hasEscrow: !!(await getSetting(env, 'escrow:' + r.slug, null)),
         builtin: false
       });
@@ -684,6 +688,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                      lastLogin: await getSetting(env, 'login:' + b.slug, 0),
                      lastSeen: await getSetting(env, 'seen:' + b.slug, 0),
                      badPass: await badPassOf(env, b.slug),
+                     lastBackup: await getSetting(env, b.keys.last, null),
                      hasEscrow: !!(await getSetting(env, 'escrow:' + b.slug, null)) });
     return json({
       items,
@@ -703,7 +708,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
                    { id: 'table', label: 'جدول دل‌خواه' }],
       features: [
         { id: 'pass', label: 'عوض کردن رمز ورود', note: 'کاربر بتواند رمز ورودِ خودش را عوض کند' },
-        { id: 'backup', label: 'تنظیم پشتیبان تلگرام', note: 'ربات و گفتگوی پشتیبان و ارسال دستی' },
+        { id: 'backup', label: 'تنظیم رباتِ پشتیبان', note: 'ربات و گفتگوی پشتیبان و ارسال دستی' },
         { id: 'ai', label: 'دستیار هوشمند', note: 'خودِ دستیار — بخشش از نوار کنار برداشته می‌شود' },
         { id: 'aikey', label: 'تنظیم موتور دستیار', note: 'کاربر نتواند کلید هوش مصنوعی را عوض کند' },
         { id: 'vault', label: 'دیتای شخصی', note: 'بخش رمزدارِ شخصی کاربر' },

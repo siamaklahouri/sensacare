@@ -169,7 +169,7 @@ function parsePersonalVaultSheet(wb){
 
    موقع ساختنِ کد، همین‌جا در مرورگر یک کد تصادفی ساخته می‌شود، رمزِ فعلی
    با آن قفل می‌شود، و پاکتِ قفل‌شده کنار بقیهٔ داده می‌ماند. خودِ کد
-   هیچ‌جا ذخیره نمی‌شود و فقط یک بار از سرور رد می‌شود تا به تلگرام برسد.
+   هیچ‌جا ذخیره نمی‌شود و فقط یک بار از سرور رد می‌شود تا به ربات برسد.
    یعنی هر کس فقط به دادهٔ سرور برسد، پاکت را دارد و کلیدش را ندارد. */
 
 const VAULT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -221,9 +221,13 @@ async function vaultPasswordWorks(password){
   }catch(e){ return false; }
 }
 
+/* نامِ کانالی که کد را گرفت را برمی‌گرداند، تا پیامِ موفقیت بتواند
+   بگوید کجا را نگاه کنند. سرور می‌گوید؛ ما حدس نمی‌زنیم. */
 async function sendVaultRecoveryCode(code){
   const r = await apiCall("/vault/recovery", { method:"POST", body: JSON.stringify({ code }) });
-  if(!r.ok) throw new Error(r.data.error || "به تلگرام نرسید.");
+  if(!r.ok) throw new Error(r.data.error || "به ربات نرسید.");
+  const to = (r.data && r.data.to) || [];
+  return to.length ? to.join(" و ") : "رباتِ پشتیبان";
 }
 
 /* ساختنِ کدِ تازه — از داخلِ صندوقِ باز. رمز را دوباره می‌پرسیم چون
@@ -232,8 +236,8 @@ async function armVaultRecovery(){
   if(window.KARTABL_OFFLINE){ alert("در نسخهٔ پشتیبان به سرور وصل نیستیم، پس کد فرستاده نمی‌شود."); return; }
   const had = !!(state.personalRecovery && state.personalRecovery.cipher);
   if(!confirm(had
-    ? "یک کد بازیابیِ تازه ساخته و به تلگرام فرستاده می‌شود.\nکد قبلی از کار می‌افتد.\n\nادامه بدهم؟"
-    : "یک کد بازیابی ساخته و به همان گفتگوی تلگرامیِ پشتیبان‌ها فرستاده می‌شود.\nاگر روزی رمز این بخش را فراموش کردید، با همان کد باز می‌شود و داده‌ها سرِ جایشان می‌مانند.\n\nادامه بدهم؟")) return;
+    ? "یک کد بازیابیِ تازه ساخته و به رباتِ پشتیبان فرستاده می‌شود.\nکد قبلی از کار می‌افتد.\n\nادامه بدهم؟"
+    : "یک کد بازیابی ساخته و به همان گفتگوی رباتیِ پشتیبان‌ها فرستاده می‌شود.\nاگر روزی رمز این بخش را فراموش کردید، با همان کد باز می‌شود و داده‌ها سرِ جایشان می‌مانند.\n\nادامه بدهم؟")) return;
 
   const pw = prompt("برای ساختن کد، رمزِ فعلیِ همین بخش را وارد کنید:");
   if(pw === null) return;
@@ -242,13 +246,13 @@ async function armVaultRecovery(){
   try{
     const code = makeVaultRecoveryCode();
     const envelope = await wrapVaultPassword(pw, code);
-    /* اول فرستادن، بعد ذخیره: اگر تلگرام نرفت، پاکتی که کدش به دستتان
+    /* اول فرستادن، بعد ذخیره: اگر به ربات نرفت، پاکتی که کدش به دستتان
        نرسیده روی داده نمی‌نشیند. */
-    await sendVaultRecoveryCode(code);
+    const to = await sendVaultRecoveryCode(code);
     state.personalRecovery = envelope;
     scheduleSave();
     renderPersonalView();
-    alert("✓ کد بازیابی به تلگرام رفت. آن پیام را نگه دارید.");
+    alert("✓ کد بازیابی به " + to + " رفت. آن پیام را نگه دارید.");
   }catch(e){
     alert("نشد — " + (e.message || e));
   }
@@ -258,14 +262,14 @@ async function armVaultRecovery(){
 async function recoverVaultWithCode(){
   const env = state.personalRecovery;
   if(!env || !env.cipher){ alert("کد بازیابی‌ای برای این بخش ساخته نشده."); return; }
-  const code = prompt("کد بازیابی را از پیام تلگرام این‌جا وارد کنید:");
+  const code = prompt("کد بازیابی را از پیامِ ربات این‌جا وارد کنید:");
   if(code === null) return;
   let pw;
   try{
     pw = await unwrapVaultPassword(env, code.trim());
   }catch(e){
     const err = document.getElementById("personalLockError");
-    if(err) err.textContent = "❌ این کد باز نکرد. دوباره از روی پیام تلگرام نگاه کنید.";
+    if(err) err.textContent = "❌ این کد باز نکرد. دوباره از روی پیامِ ربات نگاه کنید.";
     return;
   }
   await tryUnlockPersonal(pw);
@@ -433,14 +437,14 @@ function openChangePersonalPassword(){
       try{
         const code = makeVaultRecoveryCode();
         const envelope = await wrapVaultPassword(np, code);
-        await sendVaultRecoveryCode(code);
+        const to = await sendVaultRecoveryCode(code);
         state.personalRecovery = envelope;
         scheduleSave();
-        alert("✓ رمز عوض شد. کد بازیابیِ تازه هم به تلگرام رفت؛ کد قبلی دیگر کار نمی‌کند.");
+        alert("✓ رمز عوض شد. کد بازیابیِ تازه هم به " + to + " رفت؛ کد قبلی دیگر کار نمی‌کند.");
       }catch(e){
         state.personalRecovery = null;
         scheduleSave();
-        alert("✓ رمز عوض شد.\n\n⚠️ ولی کد بازیابیِ تازه به تلگرام نرفت (" + (e.message||e) + ")، پس بازیابی خاموش شد. از دکمهٔ «ساختن کد بازیابی» دوباره راهش بیندازید.");
+        alert("✓ رمز عوض شد.\n\n⚠️ ولی کد بازیابیِ تازه به ربات نرفت (" + (e.message||e) + ")، پس بازیابی خاموش شد. از دکمهٔ «ساختن کد بازیابی» دوباره راهش بیندازید.");
       }
       renderPersonalView();
     } else {

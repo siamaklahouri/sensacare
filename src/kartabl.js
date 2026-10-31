@@ -1548,8 +1548,11 @@ export async function botMessage(env, text) {
         body: JSON.stringify(body)
       });
       const d = await r.json().catch(() => ({}));
-      if (d.ok) sent.push(bot.kind); else failed.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
-    } catch (e) { failed.push(bot.kind + ': ' + e.message); }
+      /* نامِ خوانا، نه 'tg' و 'bale': این فهرست به صفحه می‌رسد و
+         صفحه باید بتواند بگوید «به بله رفت»، نه «به bale رفت». */
+      if (d.ok) sent.push(bot.label || bot.kind);
+      else failed.push((bot.label || bot.kind) + ': ' + (d.description || 'نپذیرفت'));
+    } catch (e) { failed.push((bot.label || bot.kind) + ': ' + e.message); }
   }
   return sent.length ? { ok: true, to: sent, failed }
                      : { ok: false, error: failed.join(' — ') || 'هیچ رباتی نگرفت.' };
@@ -1585,12 +1588,12 @@ export async function sendKartablBackup(env, req, panel, note = '') {
       /* دیگر «بازیابی بزن» نمی‌گوید: داده داخلِ خودِ صفحه است و همان
          بار اول پُر باز می‌شود. گفتنِ کارِ اضافه‌ای که لازم نیست، آدم
          را دنبالِ نخود سیاه می‌فرستد. */
-      ? 'زیپ را اکسترکت کن و فایل HTML را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.'
+      ? 'فایلِ HTML داخلِ زیپ را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز. اکسترکت هم لازم نیست.'
       : '⚠️ این بار صفحهٔ کارتابل داخلِ زیپ نیست. برای برگرداندن: صفحه را باز کن و «⬆ بازیابی» را با فایل JSON بزن.');
 
   /* به هر ربات جداگانه. اگر یکی نگرفت، آن یکی نباید قربانی شود —
      پشتیبانی که به یک جا رسیده باشد از هیچ بهتر است. */
-  const sent = [], failed = [];
+  const sent = [], failed = [], okBots = [];
   for (const bot of bots) {
     const fd = new FormData();
     fd.append('chat_id', bot.chat);
@@ -1600,14 +1603,31 @@ export async function sendKartablBackup(env, req, panel, note = '') {
     try {
       const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
       const d = await r.json().catch(() => ({}));
-      if (d.ok) sent.push(bot.kind);
-      else failed.push(bot.kind + ': ' + (d.description || 'نپذیرفت'));
-    } catch (e) { failed.push(bot.kind + ': ' + e.message); }
+      if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); }
+      else failed.push((bot.label || bot.kind) + ' — ' + (d.description || 'نپذیرفت'));
+    } catch (e) { failed.push((bot.label || bot.kind) + ' — ' + e.message); }
   }
-  if (!sent.length) return { ok: false, error: failed.join(' — ') || 'هیچ رباتی نگرفت.' };
+  if (!sent.length) {
+    /* با « — » به هم می‌چسبیدند و از «تلگرام — chat not found — بله —
+       chat not found» کسی سر در نمی‌آورد کدام جمله مالِ کدام ربات است. */
+    const error = failed.join(' / ') || 'هیچ رباتی نگرفت.';
+    /* بی این سطر، شکستِ کامل هیچ‌جا ثبت نمی‌شد و نشانِ سبزِ نوبتِ قبل
+       سرِ جایش می‌ماند — یعنی جدولِ پنل می‌گفت پشتیبان رفته، در حالی
+       که نرفته بود. خبرِ سوخته از بی‌خبری بدتر است. */
+    await setSetting(env, panel.keys.last,
+      { at: Date.now(), ok: false, error, failed }).catch(() => {});
+    await tellBackupFailed(env, error, panel.title);
+    return { ok: false, error };
+  }
   await setSetting(env, panel.keys.last,
-    { at: Date.now(), size: zip.length, ok: true, to: sent, failed });
-  return { ok: true, size: zip.length, name, counts, to: sent, failed };
+    { at: Date.now(), size: zip.length, ok: true, partial: failed.length > 0,
+      to: sent, failed });
+  /* پشتیبانِ همگانی وقتی فقط به بخشی از ربات‌ها می‌رسید خبر می‌داد،
+     این یکی نه — و این‌جا همان‌قدر مهم است: کسی که دکمهٔ پشتیبان را
+     زده، پیامِ موفقیت را در یک کانال می‌بیند و خیالش راحت می‌شود،
+     بی‌آنکه بداند کانالِ دیگر نگرفته. */
+  if (failed.length) await tellBackupPartial(env, okBots, failed, panel.title);
+  return { ok: true, partial: failed.length > 0, size: zip.length, name, counts, to: sent, failed };
 }
 
 /* بله تگ‌های HTML را نمی‌فهمد و خودشان را نشان می‌دهد. */
@@ -1754,8 +1774,8 @@ export async function sendAllBackup(env, req, note = '') {
           .map(x => x.panel.title + (x.htmlErr ? ' — ' + x.htmlErr : '')).join(' / ')
       : '') +
     (failed.length ? `\n\n⚠️ ساخته نشد: ${failed.join(' — ')}` : '') +
-    `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. اکسترکت کن و فایلِ HTML هر ` +
-    `پوشه را باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز.`;
+    `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. فایلِ HTML هر پوشه را ` +
+    `باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز. اکسترکت هم لازم نیست.`;
 
   const sent = [], bad = [], okBots = [];
   for (const bot of bots) {
@@ -1935,7 +1955,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     await setSetting(env, panel.keys.pass, await hashPassword(next));
     await setSetting(env, panel.keys.gen, (await getSetting(env, panel.keys.gen, 1)) + 1);
     await setSetting(env, panel.keys.reset, Date.now());
-    return json({ ok: true });
+    return json({ ok: true, to: sent.to || [] });
   }
 
   /* ---------- گزارشِ Veeam ----------
@@ -2435,7 +2455,10 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
       `با همین کد باز می‌شود و داده‌ها سرِ جایشان می‌مانند.\n` +
       `این پیام را پاک نکنید. اگر قبلاً کدی داشتید، آن یکی دیگر کار نمی‌کند.`);
     if (!sent.ok) return bad('به ربات نرسید: ' + sent.error, 502);
-    return json({ ok: true });
+    /* مقصد هم برمی‌گردد: صفحه باید بگوید کد کجا رفته. تا امروز
+       می‌گفت «در تلگرام ببین» — و روزی که تلگرام از تنظیمات برداشته
+       شد، همان جمله آدم را دنبالِ نخودِ سیاه می‌فرستاد. */
+    return json({ ok: true, to: sent.to || [] });
   }
 
   /* ---------- انتخابِ سرویسِ دستیار ----------
