@@ -33,6 +33,8 @@
 | نبضِ سرویس | `curl -s localhost:8787/healthz` |
 | خاموش کردنِ ورودِ دومرحله‌ای (وقتی ربات نرسید) | `node /opt/sltech/app/server/index.js --admin-2fa off` |
 | روشن کردنش از سرور | `node /opt/sltech/app/server/index.js --admin-2fa on` |
+| دیدنِ کانال‌های پشتیبان | `node /opt/sltech/app/server/index.js --bots` |
+| برداشتنِ یک کانال | `node /opt/sltech/app/server/index.js --bot-off tg` (یا `bale`) |
 
 ## فایلِ کلیدها
 

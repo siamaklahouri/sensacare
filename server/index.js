@@ -287,6 +287,63 @@ if (process.argv.includes('--notify')) {
   process.exit(r.ok ? 0 : 1);
 }
 
+/* ---------- ربات‌های پشتیبان: دیدن و برداشتن ----------
+   یک کانال را از «تنظیمات سایت» برمی‌دارد، بی آنکه کسی مجبور باشد
+   با sqlite داخلِ JSON دست ببرد:
+
+     node server/index.js --bots              # چه چیزی تنظیم است
+     node server/index.js --bot-off tg        # تلگرام را بردار
+     node server/index.js --bot-off bale      # بله را بردار
+
+   توکن هیچ‌وقت چاپ نمی‌شود — فقط چهار رقمِ آخرش، تا بشود فهمید کدام
+   توکن است بی‌آنکه خودش جایی بنشیند. و آخرین کانال را هم برمی‌دارد،
+   ولی بلند می‌گوید که از این به بعد پشتیبان جایی نمی‌رود. */
+if (process.argv.includes('--bots') || process.argv.includes('--bot-off')) {
+  const { getSetting, setSetting, siteBots } = await import('../src/kartabl.js');
+  const KEY = 'sltechSite';
+  const st = (await getSetting(env, KEY, {})) || {};
+  const tail = t => { const x = String(t || ''); return x ? '…' + x.slice(-4) : '—'; };
+  const show = async () => {
+    console.log('  تلگرام: ' + (st.tgToken ? 'تنظیم است (' + tail(st.tgToken) +
+                '، گفتگو ' + (st.tgChat || '—') + ')' : 'تنظیم نیست'));
+    console.log('  بله:    ' + (st.baleToken ? 'تنظیم است (' + tail(st.baleToken) +
+                '، گفتگو ' + (st.baleChat || '—') + ')' : 'تنظیم نیست'));
+    console.log('  پشتیبان الان به ' + ((await siteBots(env)).length || 0) + ' کانال می‌رود.');
+  };
+  if (!process.argv.includes('--bot-off')) {
+    console.log('[ربات‌ها]');
+    await show();
+    DB.close();
+    process.exit(0);
+  }
+  const which = String(process.argv[process.argv.indexOf('--bot-off') + 1] || '').toLowerCase();
+  const map = { tg: ['tgToken', 'tgChat', 'تلگرام'], telegram: ['tgToken', 'tgChat', 'تلگرام'],
+                bale: ['baleToken', 'baleChat', 'بله'] };
+  const hit = map[which];
+  if (!hit) {
+    console.error('[ربات‌ها] کدام کانال؟ tg یا bale.');
+    DB.close();
+    process.exit(2);
+  }
+  const [tk, ck, label] = hit;
+  if (!st[tk] && !st[ck]) {
+    console.log('[ربات‌ها] ' + label + ' از قبل تنظیم نبود — چیزی عوض نشد.');
+    await show();
+    DB.close();
+    process.exit(0);
+  }
+  delete st[tk]; delete st[ck];
+  await setSetting(env, KEY, st);
+  console.log('[ربات‌ها] ' + label + ' برداشته شد.');
+  const left = (await siteBots(env)).length;
+  await show();
+  if (!left)
+    console.log('⚠️  حالا هیچ کانالی نمانده: پشتیبان ساخته می‌شود ولی جایی ' +
+                'نمی‌رود. در پنل، زنگوله همین را خواهد گفت.');
+  DB.close();
+  process.exit(0);
+}
+
 /* یک نوبتِ یادآور با دست — برای وقتی که باید دید چه می‌رود، بی
    انتظارِ شصت ثانیه */
 if (process.argv.includes('--remind-now')) {
