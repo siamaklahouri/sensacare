@@ -288,56 +288,96 @@ if (process.argv.includes('--notify')) {
 }
 
 /* ---------- ربات‌های پشتیبان: دیدن و برداشتن ----------
-   یک کانال را از «تنظیمات سایت» برمی‌دارد، بی آنکه کسی مجبور باشد
-   با sqlite داخلِ JSON دست ببرد:
 
-     node server/index.js --bots              # چه چیزی تنظیم است
-     node server/index.js --bot-off tg        # تلگرام را بردار
-     node server/index.js --bot-off bale      # بله را بردار
+     node server/index.js --bots           # چه چیزی تنظیم است
+     node server/index.js --bot-off tg     # هر کانالِ تلگرامی را بردار
+     node server/index.js --bot-off bale   # بله را بردار
+     node server/index.js --bot-off old    # فقط رباتِ قدیمیِ کارتابل
 
-   توکن هیچ‌وقت چاپ نمی‌شود — فقط چهار رقمِ آخرش، تا بشود فهمید کدام
-   توکن است بی‌آنکه خودش جایی بنشیند. و آخرین کانال را هم برمی‌دارد،
-   ولی بلند می‌گوید که از این به بعد پشتیبان جایی نمی‌رود. */
+   توکن هیچ‌وقت چاپ نمی‌شود — فقط چهار رقمِ آخرش.
+
+   نسخهٔ اولِ این دستور سه جا را دو جا می‌دید: فهرستش فقط
+   sltechSite را می‌خواند، ولی شمارنده‌اش از siteBots می‌آمد که رباتِ
+   قدیمیِ کارتابل را هم حساب می‌کند. نتیجه این شد که گفت «تلگرام
+   برداشته شد» و در خطِ بعد «پشتیبان به ۲ کانال می‌رود» — و آن کانالِ
+   دوم همان تلگرامی بود که باید می‌رفت. حالا فهرست از خودِ siteBots
+   ساخته می‌شود، پس نمی‌تواند با شمارنده اختلاف پیدا کند. */
+const BOT_SLOTS = [
+  { id: 'tg',   label: 'تلگرامِ سایت',  kind: 'telegram',
+    where: 'sltechSite', keys: ['tgToken', 'tgChat'] },
+  { id: 'bale', label: 'بله',            kind: 'bale',
+    where: 'sltechSite', keys: ['baleToken', 'baleChat'] },
+  { id: 'old',  label: 'تلگرامِ قدیمیِ کارتابل', kind: 'telegram',
+    where: 'settings',   keys: ['kartablBotToken', 'kartablChatId'] }
+];
+
 if (process.argv.includes('--bots') || process.argv.includes('--bot-off')) {
   const { getSetting, setSetting, siteBots } = await import('../src/kartabl.js');
-  const KEY = 'sltechSite';
-  const st = (await getSetting(env, KEY, {})) || {};
   const tail = t => { const x = String(t || ''); return x ? '…' + x.slice(-4) : '—'; };
-  const show = async () => {
-    console.log('  تلگرام: ' + (st.tgToken ? 'تنظیم است (' + tail(st.tgToken) +
-                '، گفتگو ' + (st.tgChat || '—') + ')' : 'تنظیم نیست'));
-    console.log('  بله:    ' + (st.baleToken ? 'تنظیم است (' + tail(st.baleToken) +
-                '، گفتگو ' + (st.baleChat || '—') + ')' : 'تنظیم نیست'));
-    console.log('  پشتیبان الان به ' + ((await siteBots(env)).length || 0) + ' کانال می‌رود.');
+
+  const slotValues = async (slot) => {
+    if (slot.where === 'sltechSite') {
+      const st = (await getSetting(env, 'sltechSite', {})) || {};
+      return [st[slot.keys[0]] || '', st[slot.keys[1]] || ''];
+    }
+    return [await getSetting(env, slot.keys[0], ''),
+            await getSetting(env, slot.keys[1], '')];
   };
+
+  const show = async () => {
+    /* اول خامِ هر خانه — چه چیزی نوشته شده */
+    for (const slot of BOT_SLOTS) {
+      const [tk, ch] = await slotValues(slot);
+      console.log('  ' + (slot.label + '  ').padEnd(26) +
+        (tk ? 'توکن ' + tail(tk) : 'توکن ندارد') + ' · ' +
+        (ch ? 'گفتگو ' + ch : 'گفتگو ندارد') +
+        (tk && !ch ? '  ← ناقص، پس کانالِ فعالی نیست' : ''));
+    }
+    /* بعد آن‌چه پشتیبان واقعاً به آن می‌رود. اگر این دو با هم نخوانند،
+       همین‌جا دیده می‌شود، نه سرِ نوبتِ بعدیِ پشتیبان. */
+    const live = await siteBots(env);
+    console.log('  ——');
+    console.log('  پشتیبان الان به ' + live.length + ' کانال می‌رود' +
+                (live.length ? ': ' + live.map(b => b.label).join('، ') : ''));
+  };
+
   if (!process.argv.includes('--bot-off')) {
     console.log('[ربات‌ها]');
     await show();
     DB.close();
     process.exit(0);
   }
+
   const which = String(process.argv[process.argv.indexOf('--bot-off') + 1] || '').toLowerCase();
-  const map = { tg: ['tgToken', 'tgChat', 'تلگرام'], telegram: ['tgToken', 'tgChat', 'تلگرام'],
-                bale: ['baleToken', 'baleChat', 'بله'] };
-  const hit = map[which];
-  if (!hit) {
-    console.error('[ربات‌ها] کدام کانال؟ tg یا bale.');
+  /* «tg» یعنی تلگرام، و تلگرام دو خانه دارد. کسی که می‌گوید تلگرام را
+     بردار، منظورش «یکی از دو تلگرام» نیست. */
+  const targets =
+    which === 'tg' || which === 'telegram' ? BOT_SLOTS.filter(x => x.kind === 'telegram') :
+    which === 'bale' ? BOT_SLOTS.filter(x => x.id === 'bale') :
+    which === 'old' ? BOT_SLOTS.filter(x => x.id === 'old') : null;
+  if (!targets) {
+    console.error('[ربات‌ها] کدام کانال؟ tg (هر دو تلگرام)، bale، یا old (فقط رباتِ قدیمی).');
     DB.close();
     process.exit(2);
   }
-  const [tk, ck, label] = hit;
-  if (!st[tk] && !st[ck]) {
-    console.log('[ربات‌ها] ' + label + ' از قبل تنظیم نبود — چیزی عوض نشد.');
-    await show();
-    DB.close();
-    process.exit(0);
+
+  let touched = 0;
+  for (const slot of targets) {
+    const [tk, ch] = await slotValues(slot);
+    if (!tk && !ch) { console.log('[ربات‌ها] ' + slot.label + ': از قبل تنظیم نبود.'); continue; }
+    if (slot.where === 'sltechSite') {
+      const st = (await getSetting(env, 'sltechSite', {})) || {};
+      delete st[slot.keys[0]]; delete st[slot.keys[1]];
+      await setSetting(env, 'sltechSite', st);
+    } else {
+      for (const k of slot.keys) await setSetting(env, k, '');
+    }
+    console.log('[ربات‌ها] ' + slot.label + ': برداشته شد.');
+    touched++;
   }
-  delete st[tk]; delete st[ck];
-  await setSetting(env, KEY, st);
-  console.log('[ربات‌ها] ' + label + ' برداشته شد.');
-  const left = (await siteBots(env)).length;
+  if (!touched) console.log('[ربات‌ها] چیزی عوض نشد.');
   await show();
-  if (!left)
+  if (!(await siteBots(env)).length)
     console.log('⚠️  حالا هیچ کانالی نمانده: پشتیبان ساخته می‌شود ولی جایی ' +
                 'نمی‌رود. در پنل، زنگوله همین را خواهد گفت.');
   DB.close();
