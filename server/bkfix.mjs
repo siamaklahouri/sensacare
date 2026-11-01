@@ -131,6 +131,32 @@ for (const [name, body] of NEW) {
   if (!name.endsWith('.html')) continue;
   fresh.set(name.split('/')[0], body.toString('utf8'));
 }
+
+/* ---------- کارتابلی که دیگر وجود ندارد ----------
+   اگر کسی از آن موقع تا حالا پاک شده باشد، پوشه‌اش در پشتیبانِ تازه
+   نیست و تا امروز دست‌نخورده می‌ماند — یعنی همچنان بی‌استایل.
+
+   ولی نوعش حدس نمی‌خواهد: خودِ صفحهٔ خراب نوعش را نوشته. همان نشانیِ
+   گم‌شده‌ای که باعثِ خرابی شد — «/_a/k-it-…» — نوعِ کارتابل را در
+   خودش دارد. (نمایشگرِ تازه این نشانی را ندارد، چون خودکفاست؛ برای
+   همین نوعِ آن را از پوشه‌هایی می‌خوانیم که در هر دو پشتیبان هستند.)
+
+   نمایشگر برای هر نوع یکی است و داده همه در SEED می‌نشیند، پس گذاشتنِ
+   دادهٔ یک کارتابلِ «it» داخلِ نمایشگرِ «it» دقیقاً درست است. چیزی که
+   خطرناک بود و هست، قاطی کردنِ دو نوعِ متفاوت است — و این‌جا نوع از
+   روی خودِ فایل خوانده می‌شود، نه از روی شباهتِ نام. */
+const KIND = /\/_a\/k-([a-z]+)-[a-z0-9]+\.(?:css|js)/;
+const kindOf = txt => (txt.match(KIND) || [])[1] || '';
+
+const byKind = new Map();
+for (const [name, body] of OLD) {
+  if (!name.endsWith('.html')) continue;
+  const folder = name.split('/')[0];
+  const viewer = fresh.get(folder);
+  if (!viewer) continue;                       /* این یکی خودش جا مانده */
+  const k = kindOf(body.toString('utf8'));
+  if (k && !byKind.has(k)) byKind.set(k, viewer);
+}
 if (!fresh.size) { console.error('در پشتیبانِ تازه هیچ نمایشگری پیدا نشد.'); process.exit(1); }
 
 let fixed = 0, copied = 0, skipped = [];
@@ -141,11 +167,19 @@ for (const [name, body] of OLD) {
   const txt = body.toString('utf8');
   const seed = txt.match(SEED);
   if (!seed) { skipped.push(name + ' (دادهٔ داخلش پیدا نشد)'); write(name, body); continue; }
-  const viewer = fresh.get(name.split('/')[0]);
+  let viewer = fresh.get(name.split('/')[0]);
+  let via = '';
   if (!viewer) {
-    skipped.push(name + ' (این کارتابل در پشتیبانِ تازه نیست — دست نخورد)');
+    const k = kindOf(txt);
+    viewer = k ? byKind.get(k) : null;
+    if (viewer) via = ' (از روی نوعِ «' + k + '» که خودِ فایل گفته)';
+  }
+  if (!viewer) {
+    skipped.push(name + ' (این کارتابل در پشتیبانِ تازه نیست و نوعش هم ' +
+                 'از فایل خوانده نشد — دست نخورد)');
     write(name, body); continue;
   }
+  if (via) console.log('بازسازی شد ' + name + via);
   if (!SEED.test(viewer)) { skipped.push(name + ' (نمایشگرِ تازه جای داده ندارد)'); write(name, body); continue; }
 
   write(name, Buffer.from(viewer.replace(SEED, (m, a, _old, c) => a + seed[2] + c), 'utf8'));

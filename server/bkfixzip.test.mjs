@@ -145,6 +145,52 @@ console.log('===== کارتابلی که دیگر وجود ندارد =====');
   t(!got.includes('خودکفا'), 'نمایشگرِ کارتابلِ دیگری رویش ننشست');
 }
 
+/* ================= ۴) کارتابلی که پاک شده، ولی نوعش معلوم است ========== */
+console.log('===== کارتابلی که پاک شده =====');
+{
+  const oldZip = join(dir, 'old4.zip'), newZip = join(dir, 'new4.zip'), out = join(dir, 'out4');
+  /* صفحهٔ خراب نوعِ کارتابل را در همان نشانیِ گم‌شده نوشته دارد:
+     «/_a/k-it-…». پس برای کسی که دیگر در پشتیبانِ تازه نیست، نمایشگرِ
+     سالمِ هم‌نوعش را می‌شود برداشت — این خوانده‌شدن است، نه حدس. */
+  const itOld = n => '<html><head><link rel="stylesheet" href="/_a/k-it-dead.css">' +
+    '<script>window.KARTABL_SEED = {"که":"' + n + '"};<\/script></head><body>کهنه</body></html>';
+  const finOld = '<html><head><link rel="stylesheet" href="/_a/k-fin-dead.css">' +
+    '<script>window.KARTABL_SEED = {"که":"مالی"};<\/script></head><body>کهنه</body></html>';
+  writeFileSync(oldZip, makeRawZip([
+    ['It/', null], ['It/p.html', B(itOld('فنی'))],
+    ['Mali/', null], ['Mali/p.html', B(finOld)],
+    ['Rafte/', null], ['Rafte/p.html', B(itOld('رفته'))]
+  ]));
+  const viewer = k => '<html><head><style>b{}</style><script>window.KARTABL_SEED = {};' +
+    '<\/script></head><body>نمایشگرِ ' + k + '</body></html>';
+  writeFileSync(newZip, makeRawZip([
+    ['It/', null], ['It/p.html', B(viewer('فنی'))],
+    ['Mali/', null], ['Mali/p.html', B(viewer('مالی'))]
+  ]));
+  const r = run(oldZip, newZip, out);
+  t(r.ok, 'ابزار کرش نمی‌کند');
+  const got = existsSync(join(out, 'Rafte/p.html'))
+    ? readFileSync(join(out, 'Rafte/p.html'), 'utf8') : '';
+  t(got.includes('رفته'), 'دادهٔ کارتابلِ پاک‌شده سرِ جایش است');
+  t(got.includes('نمایشگرِ فنی'), 'و نمایشگرِ سالمِ هم‌نوعش رویش نشست');
+  t(!got.includes('نمایشگرِ مالی'), 'نه نمایشگرِ نوعِ دیگر — این همان خطری است که نباید بشود');
+  t(/نوعِ «it»/.test(r.out), 'و می‌گوید از روی چه چیزی تصمیم گرفت');
+
+  /* فایلی که نوعش هم خوانده نمی‌شود، باید دست‌نخورده بماند */
+  const oldZip2 = join(dir, 'old5.zip'), out2 = join(dir, 'out5');
+  writeFileSync(oldZip2, makeRawZip([
+    ['It/', null], ['It/p.html', B(itOld('فنی'))],
+    ['Gom/', null], ['Gom/p.html', B('<html><head><script>window.KARTABL_SEED = {"که":"بی‌نوع"};<\/script></head><body>کهنه</body></html>')]
+  ]));
+  const r2 = run(oldZip2, newZip, out2);
+  t(r2.ok, 'و این یکی هم کرش نمی‌کند');
+  const g2 = existsSync(join(out2, 'Gom/p.html')) ? readFileSync(join(out2, 'Gom/p.html'), 'utf8') : '';
+  t(g2.includes('بی‌نوع') && g2.includes('کهنه'),
+    'فایلی که نوعش معلوم نیست، دست‌نخورده کپی می‌شود');
+  t(!g2.includes('نمایشگرِ'), 'و هیچ نمایشگری رویش نمی‌نشیند');
+  t(/دست‌نخورده/.test(r2.out), 'و گزارش می‌شود');
+}
+
 rmSync(dir, { recursive: true, force: true });
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);
