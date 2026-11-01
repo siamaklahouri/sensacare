@@ -2143,7 +2143,8 @@ function renderParties(){
       <td>${fa(idx+1)}</td>
       ${editableTd(p.name, idx, "name")}
       <td>
-        <select data-idx="${idx}" class="party-type-select" ${editMode.parties?'':'disabled'}>
+        <select data-idx="${idx}" class="party-type-select" ${editMode.parties?'':'disabled'}
+                aria-label="نوعِ طرف‌حساب ${escapeHtml(p.name || ("ردیف " + fa(idx+1)))}">
           ${PARTY_TYPES.map(t=>`<option value="${t}" ${p.type===t?"selected":""}>${t}</option>`).join("")}
         </select>
       </td>
@@ -3990,7 +3991,12 @@ function applyDbSnapshot(c){
 function setupToolbar(){
   const ex = document.getElementById("exportBtn");
   if(ex) ex.addEventListener("click", ()=>{
-    const blob = new Blob([JSON.stringify(state, null, 1)], {type:"application/json"});
+    /* هر دو نیمه. در این کارتابل «db» تقریباً همه‌چیز است —
+       طرف‌حساب‌ها، اسناد، پرداختنی‌ها، هزینه‌ها، بانک و بودجه — و تا
+       امروز هیچ‌کدام داخلِ فایلِ پشتیبان نمی‌رفت. */
+    const blob = new Blob([JSON.stringify(
+      { kartabl: 2, stamp: Date.now(), state: state, db: dbSnapshot() }, null, 1)],
+      {type:"application/json"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = FILE_NAME;
@@ -4007,13 +4013,28 @@ function setupToolbar(){
       const reader = new FileReader();
       reader.onload = ()=>{
         try{
-          state = Object.assign(deepClone(DEFAULT_STATE), JSON.parse(reader.result));
+          /* دو شکلِ فایل: تازه ({state, db}) و قدیمی (خودِ state).
+             فایل‌های قدیمی باید تا همیشه باز شوند. */
+          const parsed = JSON.parse(reader.result);
+          const wrapped = parsed && typeof parsed === "object" &&
+                          parsed.state && typeof parsed.state === "object";
+          state = Object.assign(deepClone(DEFAULT_STATE), wrapped ? parsed.state : parsed);
+          let full = false;
+          if(wrapped && parsed.db){
+            applyDbSnapshot(parsed.db);
+            try{ rebuildAllSheets(); }catch(e){}
+            full = true;
+          }
           ensureMonthsMigration();
           renderMonthSelector();
           renderEverything();
           renderPersonalView();
           scheduleSave();
-          alert("بازیابی با موفقیت انجام شد.");
+          alert(full
+            ? "بازیابی انجام شد: همه‌چیز — ماه‌ها، طرف‌حساب‌ها، اسناد، هزینه‌ها، بانک و بودجه."
+            : "بازیابی انجام شد: ماه‌ها و تنظیمات.\n\n⚠️ این فایل از نسخهٔ قدیمیِ " +
+              "پشتیبان است و طرف‌حساب‌ها، اسناد و بقیهٔ جدول‌ها داخلش نیست؛ " +
+              "آن‌ها دست‌نخورده ماندند.");
         }catch(err){ alert("فایل پشتیبان معتبر نیست."); }
       };
       reader.readAsText(f);

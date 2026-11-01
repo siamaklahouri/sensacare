@@ -2271,6 +2271,20 @@ const worker = {
         'ETag': tag } }));
     }
 
+    /* ---------- /favicon.ico ----------
+       صفحه‌ها نشانهٔ خودشان را با <link rel="icon"> می‌دهند، ولی
+       مرورگرها، خزنده‌ها و بعضی خواننده‌های RSS این مسیر را جدا و
+       بی‌توجه به HTML صدا می‌زنند — و تا امروز ۴۰۴ می‌گرفتند. یک
+       تغییرِ مسیر به نشانهٔ واقعی، به‌جای یک فایلِ تکراریِ دیگر در
+       مخزن.
+
+       فقط برای دامنهٔ sltech: فروشگاه نشانهٔ فایلی ندارد و نشانی به
+       فایلی که نیست، از ۴۰۴ هم بدتر است. */
+    if (req.method === 'GET' && p === '/favicon.ico' && site !== 'shop')
+      return withSecurity(new Response(null, { status: 301, headers: {
+        Location: '/favicon-sl.4.png',
+        'Cache-Control': 'public, max-age=86400' } }));
+
     /* مانیفستِ خودِ برنامه، بی‌بند به هیچ کارتابلی — پوستهٔ اندروید از
        همین ساخته می‌شود. چرایش در siteManifest توضیح داده شده. */
     if (req.method === 'GET' && p === '/app.webmanifest' && site !== 'shop')

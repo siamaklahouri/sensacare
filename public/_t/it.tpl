@@ -4395,7 +4395,11 @@ function setupToolbar(){
 function setupBackup(){
   document.getElementById("connectFolderBtn").addEventListener("click", connectFolder);
   document.getElementById("exportBtn").addEventListener("click", ()=>{
-    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    /* هر دو نیمه: «state» و «db». پیش از این فقط state بیرون می‌رفت و
+       فهرستِ سرورها و تقویمِ بکاپ در فایل نبود. */
+    const blob = new Blob([JSON.stringify(
+      { kartabl: 2, stamp: Date.now(), state: state, db: dbSnapshot() }, null, 2)],
+      {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const stamp = new Date().toISOString().slice(0,10);
@@ -4414,9 +4418,29 @@ function setupBackup(){
     reader.onload = () => {
       try{
         const parsed = JSON.parse(reader.result);
-        state = Object.assign(deepClone(DEFAULT_STATE), parsed);
+        /* دو شکلِ فایل: تازه ({state, db}) و قدیمی (خودِ state).
+           کلیدِ «state» تشخیص می‌دهد کدام است. فایل‌های قدیمی باید تا
+           همیشه باز شوند — کسی که سالِ پیش پشتیبان گرفته، امروز
+           نباید دستش خالی بماند. */
+        const wrapped = parsed && typeof parsed === "object" &&
+                        parsed.state && typeof parsed.state === "object";
+        const st = wrapped ? parsed.state : parsed;
+        state = Object.assign(deepClone(DEFAULT_STATE), st);
+        let halves = "برنامه و چک‌لیست";
+        if(wrapped && parsed.db){
+          applyDbSnapshot(parsed.db);
+          try{ rebuildAllSheets(); }catch(e){}
+          try{ persistDbCacheLocal(); }catch(e){}
+          halves = "همه‌چیز — برنامه، چک‌لیست، سرورها و تقویمِ بکاپ";
+        }
         renderMeta(); renderAll(); scheduleSave();
-        alert("بازیابی با موفقیت انجام شد.");
+        /* می‌گوید چه چیزی برگشت، نه فقط «موفق». فایلِ قدیمی نیمِ
+           کارتابل را دارد و آدم باید بداند، نه اینکه بعداً خودش
+           بفهمد. */
+        alert("بازیابی انجام شد: " + halves + "." +
+              (wrapped && parsed.db ? "" :
+               "\n\n⚠️ این فایل از نسخهٔ قدیمیِ پشتیبان است و سرورها و " +
+               "تقویمِ بکاپ داخلش نیست؛ آن‌ها دست‌نخورده ماندند."));
       }catch(err){
         alert("فایل پشتیبان معتبر نیست.");
       }

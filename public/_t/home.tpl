@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- رنگِ نوارِ بالای مرورگر روی گوشی. بی این، نوار سفیدِ پیش‌فرض بالای
+     صفحهٔ شب می‌نشست و برنامه وصله‌شده به‌نظر می‌رسید. -->
+<meta name="theme-color" content="#EDF1F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B141D" media="(prefers-color-scheme: dark)">
 <script>
 try{ const t = localStorage.getItem("sltech:theme");
   if(t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches))

@@ -456,6 +456,17 @@ export function siteManifest() {
     background_color: '#EEF2F6',
     theme_color: '#EEF2F6',
     categories: ['productivity', 'business'],
+    /* میان‌بُرها: فشارِ طولانی روی نشانهٔ برنامه. کارتابل‌ها از اول
+       داشتند، پنل نه — و پنل همان جایی است که آدم مدام سه‌چهار جای
+       مشخص را باز می‌کند. */
+    shortcuts: [
+      { name: 'کارتابل‌ها', short_name: 'کارتابل‌ها', url: '/login#list',
+        icons: [{ src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png' }] },
+      { name: 'گزارش', short_name: 'گزارش', url: '/login#report',
+        icons: [{ src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png' }] },
+      { name: 'تنظیمات سایت', short_name: 'تنظیمات', url: '/login#site',
+        icons: [{ src: '/app-icon-192.2.png', sizes: '192x192', type: 'image/png' }] }
+    ],
     launch_handler: LAUNCH,
     screenshots: SHOTS,
     icons
@@ -1221,7 +1232,22 @@ export async function buildKartablBackup(env, req, panel, opts = {}) {
   const database = db || {};
 
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-  const stateJson = JSON.stringify(st, null, 1);
+  /* فایلِ پشتیبان تا امروز فقط «state» بود. ولی نیمِ کارتابل در «db»
+     است: فهرستِ سرورها، تقویمِ بکاپ، شرکت‌ها، خطوطِ MVPN و فهرستِ
+     بررسیِ ریموت. یعنی هرکس از این فایل بازیابی می‌کرد، آن نیم را
+     خالی تحویل می‌گرفت — بی هیچ خطایی، چون فایل سالم بود و بازیابی
+     هم «با موفقیت انجام شد» می‌گفت.
+     (دادهٔ کامل در خودِ صفحهٔ HTMLِ داخلِ زیپ و در فایلِ اکسل هست، پس
+     چیزی از دست نرفته؛ ولی فایلی که اسمش «پشتیبان» است باید کامل
+     باشد، نه اینکه آدم بداند کدام یکی از سه تا را بردارد.)
+
+     شکلِ تازه یک پوششِ ساده است. فایل‌های قدیمی — که خودشان همان
+     stateِ لُخت‌اند — همچنان باز می‌شوند؛ بازیابی از روی وجودِ کلیدِ
+     «state» تشخیص می‌دهد با کدام طرف است. */
+  const stateJson = JSON.stringify({
+    kartabl: 2, panel: panel.slug, stamp: Date.now(),
+    state: st, db: database
+  }, null, 1);
   const xlsx = await panel.workbook(st, database);
 
   /* خودِ صفحهٔ کارتابل هم داخل زیپ می‌رود تا پشتیبان کامل باشد.

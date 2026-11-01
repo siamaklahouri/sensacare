@@ -591,7 +591,7 @@ export async function handleAdminPlaner(env, req, p, m, body, helpers) {
 
   /* فراموشیِ رمز از همین صفحه: نام کاربری را می‌گیریم تا بفهمیم کدام
      کارتابل، و بقیه‌اش دقیقاً همان مسیرِ فراموشیِ خودِ کارتابل است —
-     رمزِ تازه فقط به تلگرام می‌رود، نه به این صفحه. */
+     رمزِ تازه فقط به رباتِ پشتیبان می‌رود، نه به این صفحه. */
   if (p === '/forgot' && m === 'POST') {
     const rl = await rateLimit(env, 'adminplaner-forgot:' + clientIp(req), 6, 3600);
     if (!rl.ok) return bad('درخواست‌ها زیاد شد. یک ساعت دیگر.', 429);

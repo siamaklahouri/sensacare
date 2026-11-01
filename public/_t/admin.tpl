@@ -7,6 +7,14 @@
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.4.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.4.png">
 <link rel="apple-touch-icon" href="/app-icon-apple.2.png">
+<!-- مانیفستِ سایت از اول «start_url: /login» داشت — یعنی برای همین پنل
+     ساخته شده بود — ولی هیچ صفحه‌ای لینکش نمی‌کرد، پس پنل روی گوشی نصب
+     نمی‌شد. هر دو کارتابل این خط را داشتند؛ فقط پنل جا مانده بود. -->
+<link rel="manifest" href="/app.webmanifest">
+<!-- رنگِ نوارِ بالای مرورگر، جدا برای روز و شب. یک مقدارِ ثابت در تمِ
+     شب یک نوارِ روشن بالای صفحهٔ تیره می‌گذاشت. -->
+<meta name="theme-color" content="#EDF1F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B141D" media="(prefers-color-scheme: dark)">
 <script>
 try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   document.documentElement.setAttribute("data-theme","dark"); }catch(e){}
@@ -834,7 +842,7 @@ table.inv-tab td.desc{ text-align:right; }
     <input type="password" id="gatePass2" placeholder="تکرار رمز" autocomplete="new-password" hidden>
     <button type="submit" id="gateBtn">ورود</button>
     <button type="button" class="btn" id="gateCodeBtn" style="width:100%; margin-top:8px;" hidden>
-      فرستادن کد به تلگرام</button>
+      فرستادن کد به ربات</button>
     <div class="gate-err" id="gateErr"></div>
     <div class="gate-note" id="gateNote"></div>
     <button type="button" class="gate-forgot" id="gateForgot">رمزم را فراموش کرده‌ام</button>
@@ -1285,7 +1293,7 @@ table.inv-tab td.desc{ text-align:right; }
     <div class="panel">
       <h2>ورود دومرحله‌ای</h2>
       <p class="sub">تا امروز ورود به این پنل فقط رمز بود — هرکس رمز را می‌دانست، همه‌چیز را
-        داشت. با روشن کردنِ این، بعد از رمز یک کدِ شش‌رقمی به همان گفتگوی تلگرامی می‌رود که
+        داشت. با روشن کردنِ این، بعد از رمز یک کدِ شش‌رقمی به همان گفتگوی رباتی می‌رود که
         پشتیبان‌ها می‌روند؛ بی آن کد، ورود انجام نمی‌شود.</p>
       <p class="sub">اگر روزی ربات از کار افتاد و کد نرسید، از روی خودِ سرور خاموشش کنید:
         <b dir="ltr">node server/index.js --admin-2fa off</b></p>
@@ -1506,7 +1514,7 @@ let ADMIN_USER = "admin";
     document.getElementById("gateTitle").textContent = "اولین بار: نام کاربری و رمز ادمین را بگذارید";
     document.getElementById("gateSub").innerHTML =
       "تا وقتی رمزی نیست این پنل بی‌صاحب است، پس رمزِ اول با کدی گذاشته می‌شود " +
-      "که فقط به همان گفتگوی تلگرامیِ پشتیبان‌ها می‌رود.<br>" +
+      "که فقط به همان گفتگوی رباتیِ پشتیبان‌ها می‌رود.<br>" +
       "اول کد را بگیرید، بعد کد و رمزِ تازه را این‌جا بزنید.";
     document.getElementById("gateUser").placeholder = "نام کاربریِ ادمین (پیش‌فرض admin)";
     document.getElementById("gateUser").setAttribute("autocomplete","off");
@@ -1523,7 +1531,7 @@ let ADMIN_USER = "admin";
       b.disabled = true; note.textContent = "در حال فرستادن…";
       const r = await api("/setup-code", { method:"POST", body:"{}" });
       note.textContent = r.ok
-        ? "کد به تلگرام رفت. تا ۱۵ دقیقه معتبر است."
+        ? "کد فرستاده شد. تا ۱۵ دقیقه معتبر است."
         : (r.data.error || "نشد.");
       b.disabled = false;
     });
@@ -1531,7 +1539,7 @@ let ADMIN_USER = "admin";
   document.getElementById("gate").hidden = false;
   setTimeout(()=>{ try{ document.getElementById("gateUser").focus(); }catch(e){} }, 60);
 
-  /* رمزِ تازه فقط به تلگرامِ پشتیبان‌ها می‌رود، نه به این صفحه. */
+  /* رمزِ تازه فقط به رباتِ پشتیبان‌ها می‌رود، نه به این صفحه. */
   document.getElementById("gateForgot").addEventListener("click", async ()=>{
     const b = document.getElementById("gateForgot");
     const err = document.getElementById("gateErr");
@@ -1539,17 +1547,19 @@ let ADMIN_USER = "admin";
     const user = document.getElementById("gateUser").value.trim().toLowerCase();
     err.textContent = ""; note.textContent = "";
     if(!user){ err.textContent = "اول نام کاربری را بنویسید."; return; }
-    if(!confirm("رمزِ تازه ساخته می‌شود و به تلگرام می‌رود. رمزِ فعلی از کار می‌افتد.\n\nادامه؟")) return;
+    if(!confirm("رمزِ تازه ساخته می‌شود و به رباتِ پشتیبان می‌رود. رمزِ فعلی از کار می‌افتد.\n\nادامه؟")) return;
     b.disabled = true; note.textContent = "در حال فرستادن…";
     const r = await api("/forgot", { method:"POST", body: JSON.stringify({ user }) });
     note.textContent = "";
-    if(r.ok) note.textContent = "رمزِ تازه به تلگرام رفت. از همان‌جا بردارید و این‌جا بزنید.";
+    if(r.ok) note.textContent = "رمزِ تازه به " +
+      ((r.data && r.data.to || []).join(" و ") || "رباتِ پشتیبان") +
+      " رفت. از همان‌جا بردارید و این‌جا بزنید.";
     else err.textContent = r.data.error || "نشد.";
     b.disabled = false;
   });
 })();
 
-/* گامِ دومِ ورودِ ادمین: رمز که درست بود، سرور کدی به تلگرام می‌فرستد
+/* گامِ دومِ ورودِ ادمین: رمز که درست بود، سرور کدی به رباتِ پشتیبان می‌فرستد
    و همین فرم تبدیل می‌شود به کادرِ کد. */
 let twoStep = false;
 
@@ -1578,7 +1588,7 @@ document.getElementById("gateForm").addEventListener("submit", async (e)=>{
     if(pass.length < 10){ err.textContent = "رمز ادمین دست‌کم ۱۰ حرف باشد."; return; }
     if(pass !== document.getElementById("gatePass2").value){ err.textContent = "تکرار رمز نمی‌خواند."; return; }
     if(!document.getElementById("gateCode").value.trim()){
-      err.textContent = "اول کد را از تلگرام بگیرید و این‌جا بزنید."; return; }
+      err.textContent = "اول کد را از پیامِ ربات بگیرید و این‌جا بزنید."; return; }
   } else if(!user){
     err.textContent = "نام کاربری را بنویسید."; return;
   }
@@ -1677,6 +1687,9 @@ function openApp(lastLogin){
      پس این فرم دیگر لازم نیست. */
   const g = document.getElementById("gate");
   g.hidden = true;
+  /* میان‌بُرهای نشانهٔ برنامه با «#report» و مانندش می‌آیند. یک پله
+     تأخیر، تا سربرگ‌ها رسم شده باشند. */
+  setTimeout(tabFromHash, 0);
   try{ g.innerHTML = ""; }catch(e){}
   document.getElementById("app").hidden = false;
   /* ورودِ قبلی به زنگوله می‌رود، نه به نوارِ گذرا: آن نوار ۱۲ ثانیه
@@ -2068,6 +2081,21 @@ function paintMsgBadge(){
 /* ---------- «برو همان‌جا» ----------
    خبری که جایی برای رفتن دارد باید با یک زدن آدم را ببرد همان‌جا.
    پیش از این، زدنِ خبر هیچ کاری نمی‌کرد و آدم باید خودش می‌گشت. */
+/* ---------- باز کردنِ یک سربرگ از روی نشانی ----------
+   میان‌بُرهای نشانهٔ برنامه (فشارِ طولانی روی آیکن) «/login#report» و
+   مانندش را باز می‌کنند. بی این، هر سه میان‌بُر همان سربرگِ پیش‌فرض را
+   می‌آوردند — یعنی ظاهراً کار می‌کردند و عملاً نه.
+   سودِ دومش: حالا می‌شود به یک سربرگ لینک داد یا نشانکش کرد. */
+function tabFromHash(){
+  const v = String(location.hash || "").replace(/^#/, "");
+  if(!v || !/^[a-z]+$/.test(v)) return;
+  const btn = document.querySelector('.tabs button[data-tab="' + v + '"]');
+  /* «اگر از قبل باز نیست»: زدنِ دوبارهٔ دکمه یعنی یک بار رسمِ بی‌دلیلِ
+     همان جدول‌ها. */
+  if(btn && !btn.classList.contains("active")) btn.click();
+}
+window.addEventListener("hashchange", tabFromHash);
+
 function goBellTab(tab, focusId){
   const btn = document.querySelector('.tabs button[data-tab="' + tab + '"]');
   if(btn) btn.click();
@@ -3037,7 +3065,7 @@ function openDelete(slug){
   openOverlay(`
     <h2>حذف «${esc(p.name)}»</h2>
     <p class="sub">این کار برگشت ندارد: خودِ کارتابل، همهٔ داده‌هایش، تاریخچه‌اش و
-      دیتای شخصی‌اش پاک می‌شوند. پشتیبان‌های تلگرام سرِ جایشان می‌مانند.</p>
+      دیتای شخصی‌اش پاک می‌شوند. پشتیبان‌هایی که به ربات رفته‌اند سرِ جایشان می‌مانند.</p>
     <div class="row">
       <div class="fld"><label>برای تأیید، <code>${esc(slug)}</code> را تایپ کنید</label>
         <input type="text" id="dSlug" dir="ltr" autocomplete="off" autocorrect="off"
