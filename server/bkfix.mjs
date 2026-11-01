@@ -47,14 +47,67 @@ function unzip(buf) {
     const name = buf.toString('utf8', p + 46, p + 46 + nlen);
     const start = lho + 30 + buf.readUInt16LE(lho + 26) + buf.readUInt16LE(lho + 28);
     const raw = buf.subarray(start, start + csize);
-    out.set(name, method === 8 ? inflateRawSync(raw) : Buffer.from(raw));
+    /* ورودیِ «پوشه» فایل نیست: نامش به / ختم می‌شود و بدنه‌ای ندارد.
+       بی این سطر، ابزار سرِ اولین زیپِ واقعی کرش می‌کرد — سعی می‌کرد
+       پوشه را به‌عنوان فایل بنویسد و EISDIR می‌داد. زیپی که خودمان
+       می‌سازیم این ورودی‌ها را ندارد، پس در آزمون دیده نمی‌شد؛ زیپی
+       که هر ابزارِ دیگری بسازد دارد. */
+    if (!name.endsWith('/'))
+      out.set(name, method === 8 ? inflateRawSync(raw) : Buffer.from(raw));
     p += 46 + nlen + elen + clen;
   }
   return out;
 }
 
-const OLD = unzip(readFileSync(oldZip));
-const NEW = unzip(readFileSync(newZip));
+/* بعضی ابزارها (و فایندرِ مک، وقتی دوباره زیپ می‌کنید) همه‌چیز را
+   داخلِ یک پوشهٔ هم‌نامِ زیپ می‌گذارند. آن وقت نامِ سطحِ اولِ همهٔ
+   فایل‌ها یکی می‌شود و تطبیقِ کارتابل‌ها — که از روی همین نام است —
+   هیچ‌چیز پیدا نمی‌کند.
+
+   ولی «یک پوشهٔ سطحِ اول» به‌تنهایی دلیل نیست: پشتیبانی که فقط یک
+   کارتابل دارد هم همین شکل است، و برداشتنِ لایه‌اش دقیقاً همان
+   تطبیقی را خراب می‌کند که می‌خواستیم درست کنیم (اولین بار همین
+   شد). پس لایه را حدسی برنمی‌داریم: فقط وقتی برمی‌داریم که برداشتنش
+   واقعاً باعث شود پوشه‌های دو زیپ به هم برسند. */
+/* فقط پوشه‌ها، نه فایل‌های سطحِ اول. بی این شرط، زیپی که بعد از
+   برداشتنِ لایه فقط فایل دارد، نامِ فایلش «پوشه» حساب می‌شد؛ دو زیپِ
+   بی‌ربط که هر کدام یک page.html داشتند «هم‌نام» دیده می‌شدند و ابزار
+   دادهٔ یکی را داخلِ نمایشگرِ آن یکی می‌نشاند — همان چیزی که از اول
+   نباید می‌شد. */
+const tops = m => new Set([...m.keys()].filter(k => k.includes('/')).map(k => k.split('/')[0]));
+const strip = m => {
+  const t = tops(m);
+  if (t.size !== 1) return null;
+  const [top] = t;
+  if ([...m.keys()].some(k => !k.startsWith(top + '/'))) return null;
+  const out = new Map();
+  for (const [k, v] of m) out.set(k.slice(top.length + 1), v);
+  return { map: out, top };
+};
+const shared = (x, y) => [...tops(x)].filter(k => tops(y).has(k)).length;
+
+function align(oldM, newM) {
+  if (shared(oldM, newM)) return [oldM, newM];
+  const o = strip(oldM), n = strip(newM);
+  for (const [a, b, why] of [
+    [o && o.map, newM, o && ('لایهٔ پوششیِ پشتیبانِ قدیمی برداشته شد: ' + o.top + '/')],
+    [oldM, n && n.map, n && ('لایهٔ پوششیِ پشتیبانِ تازه برداشته شد: ' + n.top + '/')],
+    [o && o.map, n && n.map, o && n && 'لایهٔ پوششیِ هر دو پشتیبان برداشته شد']
+  ]) {
+    if (a && b && shared(a, b)) { console.log(why); return [a, b]; }
+  }
+  return [oldM, newM];
+}
+
+let OLD = unzip(readFileSync(oldZip));
+let NEW = unzip(readFileSync(newZip));
+
+/* فایل‌هایی که فایندرِ مک کنارِ هر فایل می‌گذارد، نه دادهٔ ما */
+for (const m of [OLD, NEW])
+  for (const k of [...m.keys()])
+    if (k.startsWith('__MACOSX/') || k.endsWith('/.DS_Store') || k === '.DS_Store') m.delete(k);
+
+[OLD, NEW] = align(OLD, NEW);
 
 /* بلوکِ داده، از «window.KARTABL_SEED = » تا پایانِ همان اسکریپت.
    با regex و نه با JSON.parse دنبالِ مرزها گشتن: متن با < فرار
