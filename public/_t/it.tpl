@@ -4394,59 +4394,14 @@ function setupToolbar(){
 
 function setupBackup(){
   document.getElementById("connectFolderBtn").addEventListener("click", connectFolder);
-  document.getElementById("exportBtn").addEventListener("click", ()=>{
-    /* هر دو نیمه: «state» و «db». پیش از این فقط state بیرون می‌رفت و
-       فهرستِ سرورها و تقویمِ بکاپ در فایل نبود. */
-    const blob = new Blob([JSON.stringify(
-      { kartabl: 2, stamp: Date.now(), state: state, db: dbSnapshot() }, null, 2)],
-      {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const stamp = new Date().toISOString().slice(0,10);
-    a.href = url;
-    a.download = `کارتابل-پشتیبان-${stamp}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  });
-  document.getElementById("importBtn").addEventListener("click", ()=>{
-    document.getElementById("importFile").click();
-  });
-  document.getElementById("importFile").addEventListener("change", (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try{
-        const parsed = JSON.parse(reader.result);
-        /* دو شکلِ فایل: تازه ({state, db}) و قدیمی (خودِ state).
-           کلیدِ «state» تشخیص می‌دهد کدام است. فایل‌های قدیمی باید تا
-           همیشه باز شوند — کسی که سالِ پیش پشتیبان گرفته، امروز
-           نباید دستش خالی بماند. */
-        const wrapped = parsed && typeof parsed === "object" &&
-                        parsed.state && typeof parsed.state === "object";
-        const st = wrapped ? parsed.state : parsed;
-        state = Object.assign(deepClone(DEFAULT_STATE), st);
-        let halves = "برنامه و چک‌لیست";
-        if(wrapped && parsed.db){
-          applyDbSnapshot(parsed.db);
-          try{ rebuildAllSheets(); }catch(e){}
-          try{ persistDbCacheLocal(); }catch(e){}
-          halves = "همه‌چیز — برنامه، چک‌لیست، سرورها و تقویمِ بکاپ";
-        }
-        renderMeta(); renderAll(); scheduleSave();
-        /* می‌گوید چه چیزی برگشت، نه فقط «موفق». فایلِ قدیمی نیمِ
-           کارتابل را دارد و آدم باید بداند، نه اینکه بعداً خودش
-           بفهمد. */
-        alert("بازیابی انجام شد: " + halves + "." +
-              (wrapped && parsed.db ? "" :
-               "\n\n⚠️ این فایل از نسخهٔ قدیمیِ پشتیبان است و سرورها و " +
-               "تقویمِ بکاپ داخلش نیست؛ آن‌ها دست‌نخورده ماندند."));
-      }catch(err){
-        alert("فایل پشتیبان معتبر نیست.");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
+  /* نوشتن و خواندنِ فایلِ پشتیبان در هر دو کارتابل یکی است و در
+     بخشِ مشترکِ bkfile نشسته. تا دیروز دو بار نوشته شده بود و
+     نتیجه‌اش را دیدیم: یک باگ که باید دو جا درست می‌شد. */
+  KBK_REDRAW = ()=>{ renderMeta(); renderAll(); };
+  kbkWireButtons({
+    fileName: "کارتابل-پشتیبان-" + new Date().toISOString().slice(0,10) + ".json",
+    fullLabel: "همه‌چیز — برنامه، چک‌لیست، سرورها و تقویمِ بکاپ",
+    halfLabel: "برنامه و چک‌لیست"
   });
 }
 
@@ -4626,6 +4581,7 @@ window.SEARCH_MAP = [
 {{PART:tour}}
 {{PART:demo}}
 {{PART:remind}}
+{{PART:bkfile}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}

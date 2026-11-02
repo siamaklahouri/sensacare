@@ -189,15 +189,29 @@ console.log('\n===== سازگاری با فایلِ قدیمی =====');
 
   /* و همین منطق باید در هر دو قالب باشد، نه فقط یکی */
   const { readFileSync } = await import('node:fs');
+  /* این منطق تا دیروز در هر دو قالب جداگانه نوشته شده بود و همین
+     باعث شد یک باگ دو جا درست شود. حالا یک جاست؛ پس آزمون هم باید
+     همان یک جا را بسنجد، و این‌که هر دو قالب از آن استفاده کنند. */
+  const part = readFileSync(new URL('../public/_t/p/bkfile.tpl', import.meta.url), 'utf8');
+  t(/parsed\.state && typeof parsed\.state === "object"/.test(part),
+    'بخشِ مشترک هر دو شکلِ فایل را می‌شناسد');
+  t(/applyDbSnapshot\(parsed\.db\)/.test(part),
+    'و نیمهٔ db را هم برمی‌گرداند');
+  t(/kartabl: 2, stamp: Date\.now\(\), state: state, db: dbSnapshot\(\)/.test(part),
+    'و خروجی‌اش هر دو نیمه را می‌نویسد');
+
   for (const f of ['it.tpl', 'fin.tpl']) {
     const src = readFileSync(new URL('../public/_t/' + f, import.meta.url), 'utf8');
-    t(/parsed\.state && typeof parsed\.state === "object"/.test(src),
-      f + ': هر دو شکلِ فایل را می‌شناسد');
-    t(/applyDbSnapshot\(parsed\.db\)/.test(src),
-      f + ': و نیمهٔ db را هم برمی‌گرداند');
-    t(/kartabl: 2, stamp: Date\.now\(\), state: state, db: dbSnapshot\(\)/.test(src),
-      f + ': و خروجی‌اش هر دو نیمه را می‌نویسد');
+    t(/\{\{PART:bkfile\}\}/.test(src), f + ': بخشِ مشترک را می‌آورد');
+    t(/kbkWireButtons\(\{/.test(src), f + ': و دکمه‌هایش را به آن می‌بندد');
+    t(/KBK_REDRAW = \(\)=>/.test(src), f + ': و می‌گوید بعدِ بازیابی چه رسم شود');
+    /* و دیگر نسخهٔ خودش را ندارد */
+    t(!/reader\.onload/.test(src), f + ': نسخهٔ تکراریِ خودش را ندارد');
   }
+  /* بخش باید ثبت شده باشد، وگرنه سرِ ساختِ صفحه {{PART:bkfile}} خامِ
+     خودش در HTML می‌نشیند و هیچ‌کس تا بازکردنِ صفحه نمی‌فهمد. */
+  const reg = readFileSync(new URL('../src/templates.js', import.meta.url), 'utf8');
+  t(/\['bkfile', p_bkfile\]/.test(reg), 'و در templates.js ثبت شده');
 }
 
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
