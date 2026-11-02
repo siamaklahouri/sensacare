@@ -1,0 +1,94 @@
+# ==================== پایشِ سلامت، از بیرون ====================
+# تا امروز هیچ‌چیز نمی‌گفت که سایت خوابیده. `Restart=always` در
+# systemd کرشِ پروسه را می‌گیرد، ولی پروسه‌ای که بالاست و ۵۰۳ می‌دهد،
+# دیسکی که پر شده، دیتابیسی که قفل مانده، یا سروری که اصلاً خاموش
+# شده را نمی‌گیرد. و هر چیزی که روی خودِ همان سرور بنشیند، وقتی آن
+# سرور بخوابد با او می‌خوابد. پس باید از بیرون نگاه کند.
+#
+# این‌جا هیچ رازی لازم نیست و هیچ توکنی جایی نمی‌رود: فقط یک درخواستِ
+# عمومی به همان نشانی‌ای که هر بازدیدکننده می‌زند. اگر بیفتد،
+# گیت‌هاب خودش به صاحبِ مخزن ایمیل می‌دهد — همان رفتارِ پیش‌فرضِ
+# «scheduled workflow failed».
+#
+# فاصله: هر نیم‌ساعت. کمترش هم می‌شود (گیت‌هاب تا پنج دقیقه اجازه
+# می‌دهد) ولی هر اجرا یک دقیقه از سهمِ ماهانه برمی‌دارد، و نیم‌ساعت
+# برای فهمیدنِ «خوابیده» کافی است. برای تنگ‌ترش، همین cron را عوض
+# کنید.
+
+name: پایشِ سلامت
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # رازِ اختیاری این‌جا تعریف می‌شود، نه داخلِ گام: «env» در شرطِ
+    # خودِ همان گام در دسترس نیست و شرط همیشه نادرست می‌شد.
+    env:
+      HOOK: ${{ secrets.BALE_WEBHOOK }}
+    steps:
+      # بی checkout: این کار به کدِ مخزن نیاز ندارد و نیاوردنش چند
+      # ثانیه از هر اجرا کم می‌کند.
+      - name: نبضِ سرویس
+        run: |
+          set -u
+          URL=https://sltech.ir
+          fail=0
+
+          # ---- ۱) خودِ نبض. «ok» یعنی دیتابیس هم جواب می‌دهد، نه
+          #         فقط اینکه پروسه بالاست.
+          body=$(curl -sS --max-time 20 --retry 2 --retry-delay 5 \
+                      -w '\n%{http_code}' "$URL/healthz" || echo $'\n000')
+          code=$(printf '%s' "$body" | tail -1)
+          json=$(printf '%s' "$body" | head -n -1)
+          echo "healthz → $code  $json"
+          if [ "$code" != "200" ]; then
+            echo "::error::‏/healthz کدِ $code داد (انتظار ۲۰۰)"
+            fail=1
+          elif ! printf '%s' "$json" | grep -q '"db":true'; then
+            echo "::error::سرویس بالاست ولی دیتابیس جواب نمی‌دهد: $json"
+            fail=1
+          fi
+
+          # ---- ۲) صفحه‌ای که آدم واقعاً باز می‌کند. نبضِ سالم با
+          #         صفحهٔ خراب جمع می‌شود: یک بار قالب شکست و healthz
+          #         همچنان ۲۰۰ می‌داد.
+          for path in / /login; do
+            c=$(curl -sS -o /dev/null --max-time 20 --retry 2 --retry-delay 5 \
+                     -w '%{http_code}' "$URL$path" || echo 000)
+            echo "$path → $c"
+            [ "$c" = "200" ] || { echo "::error::‏$path کدِ $c داد"; fail=1; }
+          done
+
+          # ---- ۳) گواهیِ TLS. انقضایش بی‌صدا می‌رسد و سایت یک‌شبه
+          #         «ناامن» می‌شود؛ دو هفته جا برای کار کردن می‌دهد.
+          end=$(echo | openssl s_client -servername sltech.ir -connect sltech.ir:443 2>/dev/null \
+                | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+          if [ -n "$end" ]; then
+            left=$(( ( $(date -d "$end" +%s) - $(date +%s) ) / 86400 ))
+            echo "گواهی تا $left روز دیگر معتبر است ($end)"
+            [ "$left" -gt 14 ] || { echo "::error::گواهیِ TLS تا $left روز دیگر تمام می‌شود"; fail=1; }
+          else
+            echo "::warning::تاریخِ گواهی خوانده نشد"
+          fi
+
+          exit $fail
+
+      # اختیاری و خاموش: اگر رازی به نامِ BALE_WEBHOOK گذاشته شود،
+      # خبرِ خرابی به آن هم می‌رود. بی آن راز، این گام بی‌صدا رد
+      # می‌شود و ایمیلِ خودِ گیت‌هاب تنها خبررسان می‌مانَد — هیچ توکنی
+      # اجباری نیست.
+      - name: خبر به بله (اگر تنظیم شده باشد)
+        if: failure() && env.HOOK != ''
+        run: |
+          curl -sS --max-time 15 -X POST "$HOOK" \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"⚠️ sltech.ir از بیرون جواب درست نداد — گیت‌هاب اکشنز"}' || true

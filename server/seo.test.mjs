@@ -20,6 +20,50 @@ import { panelHtml } from './where.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 let ok = 0, bad = 0;
+
+/* ---------- یک مقاله برای آزمودن ----------
+   چند سنجهٔ پایین به «دست‌کم یک مقالهٔ منتشرشده» نیاز دارند. روی
+   دیتابیسِ من مقاله بود و سبز می‌شدند؛ روی دیتابیسِ تازهٔ CI نبود و
+   هر بار قرمز می‌شد — و چون محلی سبز بود، کسی نگاه نکرد. آزمونی که
+   به دادهٔ ازپیش‌موجود تکیه کند، همین‌قدر دروغ می‌گوید.
+   پس خودش می‌سازد، و اگر خودش ساخته باشد آخرِ کار برمی‌دارد. */
+const ADMIN_U = process.env.VS_ADMIN || 'admin';
+const ADMIN_P = process.env.VS_ADMIN_PASS || 'adminadminadmin';
+const SEED_SLUG = 'azmoon-seo';
+let seeded = false, seedCall = null;
+
+{
+  let ck = '';
+  const call = async (path, opt) => {
+    const o = Object.assign({ headers: {} }, opt || {});
+    o.headers = Object.assign({ 'Content-Type': 'application/json' }, o.headers,
+      ck ? { cookie: ck } : {});
+    const r = await fetch(BASE + path, o);
+    for (const c of (r.headers.getSetCookie ? r.headers.getSetCookie() : [])) {
+      const kv = c.split(';')[0], k = kv.split('=')[0];
+      ck = ck.split('; ').filter(x => x && x.split('=')[0] !== k).concat([kv]).join('; ');
+    }
+    return { status: r.status, body: await r.json().catch(() => ({})) };
+  };
+  await call('/api/admin.planer/signin',
+    { method: 'POST', body: JSON.stringify({ user: ADMIN_U, password: ADMIN_P }) });
+  const have = await call('/api/admin.planer/articles');
+  const live = (have.body.articles || []).filter(a => a.published);
+  if (!live.length) {
+    const r = await call('/api/admin.planer/articles', { method: 'POST', body: JSON.stringify({
+      slug: SEED_SLUG, title: 'مقالهٔ آزمونِ سئو',
+      excerpt: 'این نوشته را خودِ آزمون ساخته تا سنجه‌های دادهٔ ساختاریافته جایی برای کار داشته باشند.',
+      body: '## سرفصل\n\nمتنِ آزمون.\n\n- یک\n- دو\n',
+      published: true }) });
+    seeded = r.status === 200;
+    seedCall = call;
+    if (!seeded) console.log('   ⚠️  مقالهٔ آزمون ساخته نشد: ' + JSON.stringify(r.body).slice(0, 90));
+  }
+}
+const dropArticle = async () => {
+  if (seeded && seedCall)
+    await seedCall('/api/admin.planer/articles/' + SEED_SLUG, { method: 'DELETE' });
+};
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
 
 /* fetch اجازهٔ دست زدن به Host را نمی‌دهد؛ برای HEAD هم از خودِ نود */
@@ -247,5 +291,6 @@ console.log('— یک صفحهٔ شغلی —');
     t(ty.includes(want), want + ' هست', ty.join(', '));
 }
 
+await dropArticle();
 console.log((bad ? 'BAD ' : '') + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

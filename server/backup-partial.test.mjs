@@ -1,5 +1,9 @@
 /* آیا وقتی فقط یکی از دو ربات پشتیبان را نمی‌گیرد، خبرش می‌رود؟ */
-import { sendAllBackup, sendKartablBackup, PANELS, BK_LAST } from '/home/user/sensacare/src/kartabl.js';
+/* مسیرِ نسبی، نه مطلق. بارِ اول «/home/user/sensacare/…» نوشته بودم —
+   مسیرِ کانتینرِ خودم — و این آزمون فقط همان‌جا اجرا می‌شد. روی CI
+   هر بار کرش می‌کرد و من نگاه نمی‌کردم. همان اشتباهی که pw.mjs
+   سرصفحه‌اش از آن حرف می‌زند. */
+import { sendAllBackup, sendKartablBackup, PANELS, BK_LAST } from '../src/kartabl.js';
 
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
