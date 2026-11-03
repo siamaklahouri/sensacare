@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.4.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.4.png">
 <link rel="apple-touch-icon" href="/app-icon-apple.2.png">
 <!-- مانیفستِ سایت از اول «start_url: /login» داشت — یعنی برای همین پنل
      ساخته شده بود — ولی هیچ صفحه‌ای لینکش نمی‌کرد، پس پنل روی گوشی نصب
@@ -831,7 +830,7 @@ table.inv-tab td.desc{ text-align:right; }
 
 <div id="gate" hidden>
   <form class="gate-card" id="gateForm">
-    <img class="gate-mark" src="/icon-sl.4.png" alt="SLTech" width="68" height="68">
+    <img class="gate-mark" src="/icon-sl-144.1.png" alt="SLTech" width="68" height="68">
     <div class="brandword">SLTech</div>
     <h1 id="gateTitle">ورود به کارتابل</h1>
     <p id="gateSub">نام کاربری و رمزتان را بزنید تا وارد کارتابل خودتان شوید.</p>
@@ -851,7 +850,7 @@ table.inv-tab td.desc{ text-align:right; }
 
 <div class="wrap" id="app" hidden>
   <div class="topbar"><div class="top">
-    <img class="mark" src="/icon-sl.4.png" alt="SLTech" width="42" height="42">
+    <img class="mark" src="/icon-sl-144.1.png" alt="SLTech" width="42" height="42">
     <div class="titles">
       <h1>پنل کارتابل‌ها</h1>
       <p class="sub2" id="topSub"></p>

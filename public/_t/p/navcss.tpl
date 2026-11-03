@@ -14,6 +14,25 @@
      نوارِ افقی دامن می‌زدند. */
   .navbtn{ box-sizing:border-box; max-width:100%; }
 
+  /* محوشدگیِ لبه، فقط وقتی چیزی بیرونِ دید مانده باشد. کلاس‌ها را
+     navmore می‌گذارد، چون سرریز را باید اندازه گرفت و با CSSِ تنها
+     نمی‌شود. «mask» است نه گرادیانِ روی‌هم، تا رنگِ پس‌زمینه در تمِ شب
+     هم خودش درست دربیاید. */
+  .nav-list.more-bottom{
+    -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+            mask-image:linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+  }
+  .nav-list.more-top{
+    -webkit-mask-image:linear-gradient(to top, #000 calc(100% - 28px), transparent);
+            mask-image:linear-gradient(to top, #000 calc(100% - 28px), transparent);
+  }
+  .nav-list.more-top.more-bottom{
+    -webkit-mask-image:linear-gradient(to bottom, transparent, #000 28px,
+                                       #000 calc(100% - 34px), transparent);
+            mask-image:linear-gradient(to bottom, transparent, #000 28px,
+                                       #000 calc(100% - 34px), transparent);
+  }
+
   /* نوارِ هشدارِ همگام‌سازی — همان شکلِ نوارِ تداخل */
   .sync-warn{
     position:fixed; inset-inline:0; bottom:0; z-index:9998;

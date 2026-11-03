@@ -33,7 +33,6 @@ try{
 <title>کارتابل ماهانه SLTech — برنامهٔ ماه هر شغلی، یک‌جا</title>
 <meta name="description" content="کارتابل ماهانه: چک‌لیست آمادهٔ شغل خودتان، برنامهٔ روزانه، داشبورد، و بخش رمزدار شخصی. برای مدیر IT، مالی، منابع انسانی، فروش، انبار، پشتیبانی و ده شغل دیگر.">
 <link rel="icon" type="image/png" sizes="64x64" href="/favicon-sl.4.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-sl.4.png">
 <link rel="apple-touch-icon" href="/app-icon-apple.2.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="کارتابل ماهانه SLTech">
@@ -751,7 +750,7 @@ html.anim details[open] summary::after{
 
 <div class="top"><div class="wrap">
   <a class="brand" href="/">
-    <img src="/icon-sl.4.png" alt="SLTech" width="38" height="38">
+    <img src="/icon-sl-144.1.png" alt="SLTech" width="38" height="38">
     <b>SLTech</b>
   </a>
   <!-- تا پیش از این نوارِ بالا فقط لوگو و دکمهٔ ورود بود. صفحه هشت

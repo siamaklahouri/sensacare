@@ -37,6 +37,7 @@ import p_daycalcss from '../public/_t/p/daycalcss.tpl';
 import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
 import p_bkfile from '../public/_t/p/bkfile.tpl';
+import p_navmore from '../public/_t/p/navmore.tpl';
 import p_find from '../public/_t/p/find.tpl';
 import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
@@ -140,6 +141,7 @@ export const PARTS = new Map([
   ['ktheme', p_ktheme],
   ['kthemecss', p_kthemecss],
   ['bkfile', p_bkfile],
+  ['navmore', p_navmore],
   ['find', p_find],
   ['findcss', p_findcss],
   ['fadigits', p_fadigits],

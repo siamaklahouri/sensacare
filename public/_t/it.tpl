@@ -859,7 +859,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
 <div id="gateScreen">
   <form class="gate-card" id="gateForm" autocomplete="off">
-    <img class="gate-mark" src="/icon-sl.4.png" alt="SLTech" width="68" height="68">
+    <img class="gate-mark" src="/icon-sl-144.1.png" alt="SLTech" width="68" height="68">
     <div class="brandword">SLTech</div>
     <h2>{{TITLE}}</h2>
     <p>برای ورود، رمز عبور کارتابل را وارد کنید.</p>
@@ -876,7 +876,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
 <div class="topbar">
   <div class="brand">
-    <img class="mark" src="/icon-sl.4.png" width="42" height="42" alt="SLTech">
+    <img class="mark" src="/icon-sl-144.1.png" width="42" height="42" alt="SLTech">
     <div class="titles">
       <h1>{{TITLE}}</h1>
       <small>بکاپ، سرورها، امنیت و برنامه‌ی ماه</small>
@@ -4582,6 +4582,7 @@ window.SEARCH_MAP = [
 {{PART:demo}}
 {{PART:remind}}
 {{PART:bkfile}}
+{{PART:navmore}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
