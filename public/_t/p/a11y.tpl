@@ -28,7 +28,13 @@
     ".dp-pop:not([hidden])",
     ".day-picker-popup.open",
     ".attachbox:not([hidden])",
-    ".rowsheet:not([hidden])"
+    ".rowsheet:not([hidden])",
+    /* پنلِ مدیر. این لایه از اول در هر دو کارتابل بود و در پنل نه —
+       و پنجره‌های پنل همان ایراد را داشتند: Tab از داخلشان بیرون
+       می‌رفت و روی دکمه‌های پشتِ پرده می‌چرخید، از جمله «خروج».
+       سنجیده شد: از دوازده Tab، هفت‌تا بیرون می‌افتاد. */
+    ".bell-pop:not([hidden])",
+    ".ov:not([hidden])"
   ].join(", ");
 
   var FOCUS = 'a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), ' +

@@ -1840,9 +1840,35 @@ const worker = {
       once('digest', dailyDigest);
       once('bothealth', botHealth);
     }
-    /* ردیف‌های کهنه لازم نیستند */
-    ctx.waitUntil(run(env, 'DELETE FROM job_runs WHERE at < ?', Date.now() - 30 * 86400000)
-      .catch(() => {}));
+    /* ---- ردیف‌های کهنه ----
+       هر سه جدول فقط نوشته می‌شدند و هیچ‌وقت هرس نمی‌شدند. سیاههٔ کارها
+       از همه بدتر: فقط با «LIMIT 100» خوانده می‌شود، پس هرچه بیش‌تر
+       می‌شد کسی نمی‌دید — ولی در دیتابیس می‌ماند و در هر پشتیبان هم
+       با خودش می‌رفت. (tarikhchهٔ نسخه‌های کارتابل از اول هرس می‌شد.)
+
+       عددها از روی کاری که هر جدول می‌کند آمده‌اند: خطاها برای
+       «الان چه خراب است» هستند و بعدِ یک ماه بی‌معنی‌اند؛ سیاههٔ
+       کارها رد پای ادمین است و یک سال نگه داشتنش معقول است.
+
+       نامِ ستونِ زمان در هر جدول یکی نیست: app_errors «last» دارد نه
+       «at». بارِ اول برای هر سه «at» نوشتم و آن یکی بی‌صدا رد می‌شد —
+       چون خطایش گرفته می‌شود و کسی خبردار نمی‌شد که هرس نشده. */
+    const DAY = 86400000;
+    for (const [table, col, days] of [['job_runs', 'at', 30],
+                                      ['app_errors', 'last', 30],
+                                      ['admin_log', 'at', 365]])
+      ctx.waitUntil(run(env, 'DELETE FROM ' + table + ' WHERE ' + col + ' < ?',
+                        Date.now() - days * DAY).catch(() => {}));
+    /* سنگ‌قبرهای کهنه. عمداً با تأخیر: سی روز فرصتِ پشیمانی، و بعدش
+       هم دادهٔ کارتابلِ حذف‌شده در پشتیبان‌های دیتابیس هست. */
+    ctx.waitUntil((async () => {
+      const olds = await all(env, "SELECT k, v FROM settings WHERE k LIKE 'tomb:%'").catch(() => []);
+      for (const r of (olds || [])) {
+        let at = 0; try { at = JSON.parse(r.v).at || 0; } catch (e) { at = 0; }
+        if (at && Date.now() - at > 30 * DAY)
+          await run(env, 'DELETE FROM settings WHERE k=?', r.k).catch(() => {});
+      }
+    })().catch(() => {}));
   },
 
   async fetch(req, env, ctx) {

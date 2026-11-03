@@ -1250,6 +1250,11 @@ table.inv-tab td.desc{ text-align:right; }
       <p class="sub">پشتیبان‌ها و پیام‌ها به هر دو ربات می‌روند. توکن یک‌طرفه ذخیره
         می‌شود: بعد از ذخیره دیگر نشان داده نمی‌شود و فقط چهار رقمِ آخرش را می‌بینید.
         برای برداشتنِ یک توکن، به‌جایش یک خط تیره <code>-</code> بنویسید.</p>
+      <!-- چه چیزی از این کانال‌ها می‌رود. این خط برای یادآوری نیست،
+           برای جلوگیری از فراموشی است: یک بار تلگرام برداشته شد و
+           هیچ‌کس یادش نبود که کدِ بازیابیِ «دیتای شخصی» هم از همان
+           می‌آمد. -->
+      <p class="sub" id="botsLive" style="margin-top:6px;"></p>
       <div class="row">
         <div class="fld"><label>توکن تلگرام <span id="stTgHas" class="hint2"></span></label>
           <input type="password" id="stTgToken" dir="ltr" autocomplete="off" placeholder="خالی = دست نخورد" data-lpignore="true" data-1p-ignore data-form-type="other"></div>
@@ -4378,9 +4383,20 @@ function readPlans(){
   }).filter(p=> p.name);
 }
 
-function paintBots(bots){
-  const mark = (el, b)=>{
-    el.textContent = b && b.set ? "— گذاشته شده (…" + b.tail + ")" : "— هنوز گذاشته نشده";
+function paintBots(bots, live){
+  const el = document.getElementById("botsLive");
+  if(el){
+    const n = (live || []).length;
+    el.innerHTML = n
+      ? "🔑 کدِ ورودِ دومرحله‌ای، رمزِ تازهٔ کارتابل‌ها، و کدِ بازیابیِ «دیتای شخصی» " +
+        "فقط به <b>" + (live || []).map(esc).join("</b> و <b>") + "</b> می‌روند." +
+        (n === 1 ? " تنها همین یک کانال — اگر بیفتد، هیچ‌کدامِ این کدها نمی‌رسند." : "")
+      : "⛔ هیچ کانالِ زنده‌ای نیست: پشتیبان ساخته می‌شود ولی جایی نمی‌رود، و کدِ " +
+        "ورود و رمزِ تازه و کدِ بازیابی هم به دستِ کسی نمی‌رسد.";
+    el.style.color = n ? "" : "var(--bad-ink, var(--red))";
+  }
+  const mark = (el2, b)=>{
+    el2.textContent = b && b.set ? "— گذاشته شده (…" + b.tail + ")" : "— هنوز گذاشته نشده";
   };
   mark(document.getElementById("stTgHas"), bots && bots.telegram);
   mark(document.getElementById("stBaleHas"), bots && bots.bale);
@@ -4400,7 +4416,7 @@ function paintSite(d){
   document.getElementById("stExtraPrice").value = SITE.extraPrice || "";
   document.getElementById("stCustomPrice").value = SITE.customPrice || "";
   renderViewPrices();
-  paintBots(d.bots);
+  paintBots(d.bots, d.botsLive);
 }
 
 /* ---------- کدهای تخفیف ---------- */
@@ -4886,6 +4902,12 @@ async function loadLog(){
 {{PART:fadigits}}
 {{PART:datepick}}
 {{PART:updown}}
+/* دسترس‌پذیریِ پنجره‌ها: تلهٔ فوکوس، برگشتِ فوکوس، و aria-modal.
+   این لایه از اول در هر دو کارتابل بود و پنل جا مانده بود — همان
+   الگویی که مانیفست و رنگِ نوار هم گرفتارش شدند.
+   کامنتِ جاوااسکریپت، نه HTML: این‌جا داخلِ <script> است و بارِ اول
+   با <!-- نوشتمش و کلِ اسکریپتِ پنل را خواباند. */
+{{PART:a11y}}
 </script>
 </body>
 </html>

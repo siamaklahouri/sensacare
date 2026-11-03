@@ -16,7 +16,8 @@ import {
   json, bad, hashPassword, checkPassword, makeSession, readSession, cookieHeader,
   getSetting, setSetting, all, one, run, newPassword, panelBySlug, allPanels,
   PANELS, kartablBot, tgMessage, botMessage, botsReady, siteBots, FEATURES, VIEWS, isFeature, enabledViews, panelByUser,
-  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf
+  handleKartabl, buildAllBackup, sendAllBackup, BK_LAST, BOT_API, noteBadPass, badPassOf,
+  loadKartabl
 } from './kartabl.js';
 import { JOBS } from './kartabl-jobs.js';
 import { SL_SLUG } from './slnews.js';
@@ -938,6 +939,29 @@ async function handleArticles(env, p, m, body) {
       if (typed !== slug)
         return bad('برای حذف، آدرس کارتابل را دقیقاً تایپ کنید.');
       const keys = panel.keys || {};
+
+      /* ---------- سنگِ قبر ----------
+         حذف تا امروز هیچ راهِ برگشتی نداشت: ردیفِ کارتابل، داده،
+         تنظیمات، و حتی تاریخچهٔ نسخه‌ها — که خودش شبکهٔ ایمنیِ
+         «برگرد به دیروز» است — همه با هم می‌رفتند. تأیید داشت، ولی
+         تأیید جلوی اشتباهِ مطمئن را نمی‌گیرد.
+         حالا پیش از پاک کردن یک نسخهٔ کامل کنار می‌ماند. سی روز.
+         چون در settings می‌نشیند، در پشتیبانِ شبانهٔ دیتابیس هم
+         می‌آید — یعنی حتی اگر همین سی روز هم بگذرد، از آن‌جا
+         درمی‌آید. */
+      try {
+        const row = await one(env, 'SELECT slug, name, kind, cfg, created FROM planners WHERE slug=?', slug);
+        const d = await loadKartabl(env, panel).catch(() => ({ state: null, db: null }));
+        await setSetting(env, 'tomb:' + slug, {
+          at: Date.now(), row: row || null,
+          state: d.state || null, db: d.db || null,
+          /* رمز هم می‌ماند، همان‌طور که هست — درهم‌شده، نه خودش.
+             بی این، کارتابلِ برگشته قفل است و باید رمزِ تازه بگذاری. */
+          pass: await getSetting(env, keys.pass, ''),
+          gen: await getSetting(env, keys.gen, 1)
+        });
+      } catch (e) { /* اگر سنگِ قبر نشد، حذف نباید بخوابد */ }
+
       await run(env, 'DELETE FROM planners WHERE slug=?', slug);
       await run(env, 'DELETE FROM kartabl WHERE k IN (?,?)', keys.state, keys.db);
       try { await run(env, 'DELETE FROM kartabl_hist WHERE k IN (?,?)', keys.state, keys.db); } catch (e) {}
@@ -950,7 +974,9 @@ async function handleArticles(env, p, m, body) {
       try { await dropPlannerFiles(env, slug); } catch (e) { }
       try { await dropPlannerPush(env, slug); } catch (e) { }
       await log(env, 'delete', slug, '');
-      return json({ ok: true });
+      /* صفحه همین را به آدم می‌گوید: حذف شد، ولی تا سی روز برگشتنی
+         است. بی این جمله، کسی که اشتباه کرده فکر می‌کند کار تمام است. */
+      return json({ ok: true, undoDays: 30 });
     }
 
     /* --- غیرفعال یا فعال کردن ---
@@ -1168,7 +1194,12 @@ async function handleArticles(env, p, m, body) {
      توکن را بردارد و ببرد. */
   if (p === '/site' && m === 'GET') {
     const st = await getSetting(env, SITE_KEY, {});
-    return json({ ok: true, site: publicSite(st), bots: botState(st, await oldBot(env)) });
+    /* «توکن گذاشته شده» با «کانالِ زنده» فرق دارد: توکنِ بی‌شناسهٔ
+       گفتگو کانال نیست. و همین چند خط پایین‌تر در صفحه نوشته می‌شود،
+       چون کسی نباید لازم باشد یادش بماند که کدِ بازیابی از کجا
+       می‌آید — یک بار همین فراموش شد. */
+    return json({ ok: true, site: publicSite(st), bots: botState(st, await oldBot(env)),
+                  botsLive: (await siteBots(env)).map(b => b.label || b.kind) });
   }
 
   if (p === '/site' && m === 'PUT') {
@@ -1182,7 +1213,8 @@ async function handleArticles(env, p, m, body) {
       for (const k of OLD_BOT) await setSetting(env, k, '');
     await log(env, 'site', '', Object.keys(body || {}).join(','));
     return json({ ok: true, site: publicSite(next.site),
-                  bots: botState(next.site, await oldBot(env)) });
+                  bots: botState(next.site, await oldBot(env)),
+                  botsLive: (await siteBots(env)).map(b => b.label || b.kind) });
   }
 
   /* پیامِ آزمایشی، تا معلوم شود توکن درست است و ربات جواب می‌دهد */

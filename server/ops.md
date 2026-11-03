@@ -35,6 +35,8 @@
 | روشن کردنش از سرور | `node /opt/sltech/app/server/index.js --admin-2fa on` |
 | دیدنِ کانال‌های پشتیبان | `node /opt/sltech/app/server/index.js --bots` |
 | برداشتنِ یک کانال | `node /opt/sltech/app/server/index.js --bot-off tg` (یا `bale`) |
+| کارتابل‌های حذف‌شده (تا سی روز) | `node /opt/sltech/app/server/index.js --deleted` |
+| برگرداندنِ یک کارتابلِ حذف‌شده | `node /opt/sltech/app/server/index.js --undelete <نشانی>` |
 
 ## فایلِ کلیدها
 

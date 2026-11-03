@@ -287,6 +287,90 @@ if (process.argv.includes('--notify')) {
   process.exit(r.ok ? 0 : 1);
 }
 
+/* ---------- کارتابلِ حذف‌شده: دیدن و برگرداندن ----------
+   حذف حالا پیش از پاک کردن یک نسخهٔ کامل کنار می‌گذارد («سنگِ قبر»)،
+   سی روز. این‌جا دیده و برگردانده می‌شود:
+
+     node server/index.js --deleted             # چه چیزی برگشتنی است
+     node server/index.js --undelete <نشانی>    # برگردانش
+
+   چرا دستور و نه دکمه در پنل: کسی که همین الان اشتباهی حذف کرده،
+   نباید برای برگرداندنش دنبالِ سربرگ بگردد؛ و این مسیر را می‌شود
+   آزمود. دکمه‌اش بعداً، اگر لازم شد. */
+if (process.argv.includes('--deleted') || process.argv.includes('--undelete')) {
+  const { getSetting, setSetting, all, one, run } = await import('../src/kartabl.js');
+  const env2 = env;
+  const rows = await all(env2, "SELECT k, v FROM settings WHERE k LIKE 'tomb:%'").catch(() => []);
+  const tombs = (rows || []).map(r => {
+    let v = null; try { v = JSON.parse(r.v); } catch (e) {}
+    return { slug: String(r.k).slice(5), t: v };
+  }).filter(x => x.t && x.t.row);
+
+  const show = () => {
+    if (!tombs.length) { console.log('[حذف‌شده‌ها] چیزی برای برگرداندن نیست.'); return; }
+    for (const x of tombs) {
+      const days = Math.floor((Date.now() - (x.t.at || 0)) / 86400000);
+      const st = JSON.stringify(x.t.state || {}).length;
+      const db = JSON.stringify(x.t.db || {}).length;
+      /* «۰KB» شبیهِ «خالی» است و آدم را می‌ترساند؛ زیرِ یک کیلوبایت
+         خودِ بایت را می‌گوییم. */
+      const size = (st + db) < 1024 ? (st + db) + ' بایت'
+                                    : Math.round((st + db) / 1024) + ' کیلوبایت';
+      console.log('  ' + (x.slug + '  ').padEnd(20) + ((x.t.row.name || '') + '  ').padEnd(26) +
+        days + ' روز پیش · داده ' + size +
+        (days >= 30 ? '  ⚠️ از سی روز گذشته، نوبتِ بعدیِ نظافت پاکش می‌کند' : ''));
+      void size;
+    }
+  };
+
+  if (!process.argv.includes('--undelete')) {
+    console.log('[حذف‌شده‌ها]');
+    show();
+    DB.close();
+    process.exit(0);
+  }
+
+  const want = String(process.argv[process.argv.indexOf('--undelete') + 1] || '').trim();
+  const hit = tombs.find(x => x.slug === want);
+  if (!want || !hit) {
+    console.error('[حذف‌شده‌ها] «' + (want || '—') + '» پیدا نشد. برگشتنی‌ها:');
+    show();
+    DB.close();
+    process.exit(2);
+  }
+  /* اگر کارتابلی با همین نشانی دوباره ساخته شده باشد، رویش
+     نمی‌نویسیم: دادهٔ زنده از دادهٔ حذف‌شده مهم‌تر است. */
+  const busy = await one(env2, 'SELECT slug FROM planners WHERE slug=?', want);
+  if (busy) {
+    console.error('[حذف‌شده‌ها] «' + want + '» الان وجود دارد. اول آن را ' +
+                  'جابه‌جا یا حذف کنید، بعد برگردانید — رویش نمی‌نویسم.');
+    DB.close();
+    process.exit(3);
+  }
+  const r = hit.t.row;
+  await run(env2, 'INSERT INTO planners(slug,name,kind,cfg,created) VALUES(?,?,?,?,?)',
+    r.slug, r.name, r.kind, r.cfg, r.created || Date.now());
+  const { panelBySlug } = await import('../src/kartabl.js');
+  const panel = await panelBySlug(env2, want);
+  const keys = (panel && panel.keys) || {};
+  /* داده در جدولِ «kartabl» می‌نشیند، نه «settings». بارِ اول با
+     setSetting نوشتمش و کارتابل خالی برمی‌گشت — بی هیچ خطایی، چون
+     ردیف جایی نشسته بود که کسی نمی‌خوانَدش. */
+  const putK = async (k, v) => run(env2,
+    `INSERT INTO kartabl(k,v,rev,updated) VALUES(?,?,1,?)
+     ON CONFLICT(k) DO UPDATE SET v=excluded.v, rev=kartabl.rev+1, updated=excluded.updated`,
+    k, JSON.stringify(v), Date.now());
+  if (hit.t.state != null) await putK(keys.state, hit.t.state);
+  if (hit.t.db != null) await putK(keys.db, hit.t.db);
+  if (hit.t.pass) await setSetting(env2, keys.pass, hit.t.pass);
+  if (hit.t.gen) await setSetting(env2, keys.gen, hit.t.gen);
+  await run(env2, 'DELETE FROM settings WHERE k=?', 'tomb:' + want);
+  console.log('[حذف‌شده‌ها] «' + want + '» برگشت — با داده و رمزِ خودش.');
+  console.log('   تاریخچهٔ نسخه‌هایش برنمی‌گردد؛ آن با حذف رفت.');
+  DB.close();
+  process.exit(0);
+}
+
 /* ---------- ربات‌های پشتیبان: دیدن و برداشتن ----------
 
      node server/index.js --bots           # چه چیزی تنظیم است
