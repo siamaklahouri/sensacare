@@ -808,8 +808,10 @@ function renderPersonalCreds(){
         const ok = await ensureXlsxLib();
         if(!ok){ status.textContent = "⚠️ کتابخانه‌ی خواندن فایل بارگذاری نشد."; return; }
       }
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:"array", raw:true, cellDates:false});
+      /* CSV باید متن داده شود نه بایت؛ درسش یک‌جا در xlsxInput نوشته
+         است و این ورودی «.csv» هم می‌پذیرد. */
+      const inp = await xlsxInput(file);
+      const wb = XLSX.read(inp.data, {type:inp.type, raw:true, cellDates:false});
       let added = 0;
       wb.SheetNames.forEach(sheetName=>{
         const rows2 = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, raw:true, defval:null});

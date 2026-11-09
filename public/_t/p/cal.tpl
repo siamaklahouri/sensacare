@@ -384,6 +384,13 @@
   function paintSide() {
     var box = document.getElementById("calSide");
     if (!box) return;
+    /* تا روزی انتخاب نشده، ستونِ کنار یک کارتِ ۳۰۰ پیکسلی بود با یک
+       جملهٔ راهنما تویش — یعنی یک‌پنجمِ عرضِ صفحه برای چیزی که هنوز
+       حرفی ندارد، و تقویم به‌جای آن تنگ‌تر می‌شد. حالا تا انتخاب نشود
+       ستون جمع می‌شود و تقویم تمامِ عرض را می‌گیرد؛ جمله هم زیرش
+       به‌شکلِ یک خطِ آرام می‌نشیند، نه یک کارتِ خالی. */
+    var main = box.closest(".c2-main");
+    if (main) main.classList.toggle("c2-nosel", !sel);
     if (!sel) {
       box.innerHTML = '<div class="c2-empty">یک روز را انتخاب کنید تا کارها و یادداشتش این‌جا بیاید.</div>';
       return;

@@ -110,8 +110,10 @@
     note("در حال خواندن…");
     if(!(await ensureXlsxLib())){ note("کتابخانهٔ اکسل بار نشد. اینترنت را بررسی کنید.", true); return; }
     try{
-      var buf = await f.arrayBuffer();
-      var wb = XLSX.read(buf, { type:"array", cellDates:true });
+      /* CSV باید متن داده شود نه بایت — وگرنه عنوانِ گزارش «ÙØ¨ÙØº»
+         می‌شود. درسش یک‌جا در xlsxInput نوشته است. */
+      var inp = await xlsxInput(f);
+      var wb = XLSX.read(inp.data, { type:inp.type, cellDates:true });
       if(!wb.SheetNames.length){ note("این فایل برگه‌ای ندارد.", true); return; }
       RP.wb = wb; RP.name = f.name;
       $("rpSheet").innerHTML = wb.SheetNames.map(function(n){

@@ -728,9 +728,15 @@ table.inv-tab td.desc{ text-align:right; }
 
 @media print{
   /* هر چیزی جز پنجره از کاغذ برداشته می‌شود؛ خودِ پنجره هم از حالتِ
-     شناور درمی‌آید وگرنه فقط یک صفحهٔ آن چاپ می‌شد. */
-  body > *{ display:none !important; }
-  body > .ov{ display:block !important; position:static; padding:0;
+     شناور درمی‌آید وگرنه فقط یک صفحهٔ آن چاپ می‌شد.
+
+     «:not([hidden])» دو جا لازم است و نبودش گران بود: «display:block
+     !important» از صفتِ hidden قوی‌تر است، پس با Ctrl+P و پنجرهٔ بسته،
+     کلِ پنل خاموش می‌شد و یک پنجرهٔ خالی — یا ماندهٔ پنجرهٔ قبلی — روی
+     کاغذ می‌رفت. حالا تا پنجره‌ای باز نباشد، این بخش ساکت است و پنل
+     همان‌طور که دیده می‌شود چاپ می‌شود. */
+  body:has(> .ov:not([hidden])) > *{ display:none !important; }
+  body > .ov:not([hidden]){ display:block !important; position:static; padding:0;
     background:none; backdrop-filter:none; animation:none; }
   /* «.ov-box.inv» دو کلاسه است و از این قاعده قوی‌تر؛ اگر اسمش این‌جا
      نیاید، فاکتور روی کاغذ همان ۷۶۰ پیکسل می‌ماند و گوشهٔ صفحه می‌چسبد. */

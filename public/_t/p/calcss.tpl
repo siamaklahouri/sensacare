@@ -27,6 +27,12 @@
     padding:5px 8px; font-family:inherit; font-size:12px; color:var(--ink); cursor:pointer;
   }
   .c2-main{ display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+  /* هیچ روزی انتخاب نشده: ستونِ کنار جمع می‌شود و تقویم تمامِ عرض را
+     می‌گیرد. کلاس را خودِ paintSide می‌گذارد. */
+  .c2-main.c2-nosel{ grid-template-columns:1fr; }
+  .c2-main.c2-nosel .c2-side{
+    position:static; background:transparent; border:0; box-shadow:none;
+    padding:0; text-align:center; }
   .c2-box{
     background:var(--white); border:1px solid var(--card-border);
     border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
@@ -160,14 +166,32 @@
 
   /* ---------- چاپ ----------
      کاغذ نه نوارِ کنار می‌خواهد، نه دکمه، نه رنگِ پس‌زمینه. فقط همان
-     شبکه، با خطوطی که روی کاغذِ سفید هم دیده شوند. */
+     شبکه، با خطوطی که روی کاغذِ سفید هم دیده شوند.
+
+     دو نکتهٔ گران:
+
+     ۱) «.chat-fab» این‌جا نوشته بود و کاغذ را کاملاً سفید می‌کرد.
+        آن نامِ کلاسی است که chat.js روی خودِ body می‌گذارد، نه روی
+        دکمهٔ گفتگو — پس «display:none» می‌خورد به body و هیچ‌چیز
+        چاپ نمی‌شد. همین اشتباه یک‌بار در democss هم افتاده و همان‌جا
+        یادداشت شده بود. نامِ درستِ قابِ شناور «.ch-fab-wrap» است.
+
+     ۲) این قاعده‌ها فقط وقتی درست‌اند که همین تقویم روی صفحه باشد.
+        بی قیدِ زیر، Ctrl+P از هر جای کارتابل تقویم را چاپ می‌کرد، نه
+        آن‌چه کاربر می‌دید. */
   @media print{
     body{ background:#fff; }
-    .sidebar, .topbar, .appbar, .c2-bar, .c2-side, .chat-fab,
-    .reminders-banner, .section-sub{ display:none !important; }
-    .content{ padding:0 !important; }
-    .view{ display:none !important; }
-    .view#view-cal{ display:block !important; }
+    .sidebar, .topbar, .appbar, .ch-fab-wrap,
+    .reminders-banner{ display:none !important; }
+    body:has(#view-cal.active) .c2-bar,
+    body:has(#view-cal.active) .c2-side,
+    body:has(#view-cal.active) .section-sub{ display:none !important; }
+    body:has(#view-cal.active) .content{ padding:0 !important; }
+    body:has(#view-cal.active) .view{ display:none !important; }
+    body:has(#view-cal.active) .view#view-cal{ display:block !important; }
+    /* ستونِ کنار که از کاغذ برداشته شد، جایش هم باید برود؛ وگرنه ۳۰۰
+       پیکسل از عرضِ کاغذ خالی می‌ماند و تقویم جمع می‌شود. */
+    body:has(#view-cal.active) .c2-main{ grid-template-columns:1fr !important; }
     .c2-box{ box-shadow:none; border-color:#999; }
     .c2-cell{ border-color:#bbb; min-height:86px; }
     .c2-cell.off{ background:#f3f3f3 !important; }

@@ -675,19 +675,6 @@ window.KARTABL_IDB      = "{{IDB}}";
      برای وضعیت به‌کار می‌رود، پس چیزِ تازه‌ای به صفحه اضافه نمی‌کند —
      فقط همان را سرِ جای خودش می‌آورد: با یک نگاه روی جدول معلوم است
      کدام ردیف مانده. data-st با خودِ select تازه می‌شود. */
-  select.st-select{
-    font-weight:700; border-radius:999px; text-align:center;
-    font-size:12.2px; padding:6px 2px; border:1px solid var(--line); background:var(--paper);
-    cursor:pointer;
-    transition:background .15s, color .15s;
-  }
-  select.st-select:hover{ border-color:var(--brass); }
-  select.st-select[data-st="انجام شد"]{
-    background:var(--green-bg); color:var(--green-ink); border-color:transparent; }
-  select.st-select[data-st="در حال انجام"]{
-    background:var(--amber-bg); color:var(--amber-ink); border-color:transparent; }
-  select.st-select[data-st="انجام نشده"]{
-    background:var(--red-bg); color:var(--red-ink); border-color:transparent; }
   .pr-high{ color:var(--red-ink); font-weight:800; }
   .pr-mid{ color:var(--amber-ink); font-weight:800; }
   .pr-low{ color:var(--green-ink); font-weight:800; }
@@ -852,6 +839,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:findcss}}
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
+{{PART:selchipcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -1404,11 +1392,7 @@ function repeatLabel(t){
 /* قرصِ وضعیت: رنگش از data-st می‌آید و این‌جا همان لحظه تازه می‌شود.
    یک شنوندهٔ واحد روی document، نه یکی به‌ازای هر ردیف: جدول‌ها از نو
    ساخته می‌شوند و شنونده‌های ردیفی هر بار باید دوباره بسته می‌شدند. */
-document.addEventListener("change", function(e){
-  const el = e.target;
-  if(el && el.classList && el.classList.contains("st-select"))
-    el.setAttribute("data-st", el.value || "");
-});
+/* چیپ‌های وضعیت و اولویت در بخشِ مشترکِ selchip نشسته‌اند. */
 
 const PRIORITY = ["بالا","متوسط","پایین"];
 const CATEGORIES = (window.KARTABL_JOB && window.KARTABL_JOB.categories)
@@ -2454,7 +2438,8 @@ function renderChecklist(){
         </select>
       </td>
       <td class="col-hide-s">
-        <select data-field="priority" aria-label="اولویت">
+        <select data-field="priority" class="pr-select" aria-label="اولویت"
+                data-pr="${escapeHtml(t.priority||'')}">
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
@@ -4583,6 +4568,7 @@ window.SEARCH_MAP = [
 {{PART:remind}}
 {{PART:bkfile}}
 {{PART:navmore}}
+{{PART:selchip}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}

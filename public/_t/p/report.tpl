@@ -239,12 +239,25 @@
   @media print{
     /* هر چیزی که نه خودِ گزارش است، نه توی آن، نه والدش — از صفحه
        برداشته می‌شود. «visibility» به‌تنهایی کافی نبود: عنصرِ نامرئی
-       جایش را نگه می‌داشت و کاغذ با نیم‌صفحه سفید شروع می‌شد. */
-    *:not(:has(#rpPaper)):not(#rpPaper):not(#rpPaper *){ display:none !important; }
-    body *{ visibility:hidden !important; }
-    #rpPaper, #rpPaper *{ visibility:visible !important; }
+       جایش را نگه می‌داشت و کاغذ با نیم‌صفحه سفید شروع می‌شد.
+
+       قیدِ «body:has(#view-report.active)» بعداً اضافه شد و لازم است:
+       بی آن، این قاعده برای همهٔ چاپ‌های کارتابل اجرا می‌شد — ویژگیِ
+       گزینشگر سه شناسه است و از «.view#view-cal» قوی‌تر، پس دکمهٔ
+       چاپِ تقویم هم کاغذِ خالی می‌داد. حالا فقط وقتی برگهٔ گزارش
+       باز است حرف می‌زند. */
+    body:has(#view-report.active) *:not(:has(#rpPaper)):not(#rpPaper):not(#rpPaper *){
+      display:none !important; }
+    body:has(#view-report.active) *{ visibility:hidden !important; }
+    body:has(#view-report.active) #rpPaper,
+    body:has(#view-report.active) #rpPaper *{ visibility:visible !important; }
     #rpPaper{ width:100%; padding:0; margin:0; }
-    /* مرورگرِ بدونِ ‎:has()‎ همان راهِ قبلی را می‌رود */
+    /* مرورگرِ بدونِ ‎:has()‎ هیچ‌کدام از قاعده‌های بالا را نمی‌بیند —
+       نه قیدِ تازه، نه خودِ پنهان‌کردن — پس کلِ صفحه چاپ می‌شود؛
+       شلوغ، ولی نه خالی. این بد نیست و همان رفتارِ «چاپِ صفحه» است.
+       قاعدهٔ زیر برای همان مرورگر است تا اگر روزی قاعده‌ای بی ‎:has()‎
+       اضافه شد، برگه از بالای کاغذ شروع شود. ‎:has()‎ از ۲۰۲۳ در هر
+       سه مرورگرِ اصلی هست. */
     @supports not (selector(:has(*))){
       #rpPaper{ position:absolute; inset-block-start:0; inset-inline-start:0; }
     }

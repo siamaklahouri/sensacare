@@ -468,19 +468,6 @@ window.KARTABL_IDB      = "{{IDB}}";
      برای وضعیت به‌کار می‌رود، پس چیزِ تازه‌ای به صفحه اضافه نمی‌کند —
      فقط همان را سرِ جای خودش می‌آورد: با یک نگاه روی جدول معلوم است
      کدام ردیف مانده. data-st با خودِ select تازه می‌شود. */
-  select.st-select{
-    font-weight:700; border-radius:999px; text-align:center;
-    font-size:12.2px; padding:6px 2px; border:1px solid var(--line); background:var(--paper);
-    cursor:pointer;
-    transition:background .15s, color .15s;
-  }
-  select.st-select:hover{ border-color:var(--brass); }
-  select.st-select[data-st="انجام شد"]{
-    background:var(--green-bg); color:var(--green-ink); border-color:transparent; }
-  select.st-select[data-st="در حال انجام"]{
-    background:var(--amber-bg); color:var(--amber-ink); border-color:transparent; }
-  select.st-select[data-st="انجام نشده"]{
-    background:var(--red-bg); color:var(--red-ink); border-color:transparent; }
   .badge.done{ background:var(--green-bg); color:var(--green-ink); }
   .badge.doing{ background:var(--teal-bg); color:var(--teal-ink); }
   .badge.todo{ background:var(--red-bg); color:var(--red-ink); }
@@ -594,6 +581,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:findcss}}
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
+{{PART:selchipcss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -3125,8 +3113,7 @@ function repeatLabel(t){
    ساخته می‌شوند و شنونده‌های ردیفی هر بار باید دوباره بسته می‌شدند. */
 document.addEventListener("change", function(e){
   const el = e.target;
-  if(el && el.classList && el.classList.contains("st-select"))
-    el.setAttribute("data-st", el.value || "");
+  /* چیپ‌ها در بخشِ مشترکِ selchip. */
 });
 
 const PRIORITY = ["بالا","متوسط","پایین"];
@@ -3383,7 +3370,8 @@ function renderChecklist(){
         </select>
       </td>
       <td class="col-hide-s">
-        <select data-field="priority" aria-label="اولویت">
+        <select data-field="priority" class="pr-select" aria-label="اولویت"
+                data-pr="${escapeHtml(t.priority||'')}">
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
@@ -4123,6 +4111,7 @@ window.SEARCH_MAP = [
 {{PART:remind}}
 {{PART:bkfile}}
 {{PART:navmore}}
+{{PART:selchip}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}

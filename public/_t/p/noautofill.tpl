@@ -128,6 +128,28 @@ function pickFile(accept){
   });
 }
 
+/* CSV و xlsx دو جورند و این تفاوت یک بار ما را زمین زد:
+   xlsx یک زیپ است و متنش داخلش UTF-8 است، پس بایتِ خام درست خوانده
+   می‌شود. ولی CSV خودش یک فایلِ متنی است و اگر بایت‌بایت بدهیمش،
+   کتابخانه هر بایت را یک نویسه حساب می‌کند و «نام» می‌شود «ÙØ§Ù».
+   پس CSV را با متنِ رمزگشایی‌شده می‌دهیم، نه با بایت.
+
+   این یک جا نوشته شده چون سه جا فایلِ اکسل می‌گیرند — واردکردنِ
+   دیتابیس، گنجه، و گزارش — و دو تایشان همین درس را نگرفته بودند:
+   هر CSVِ فارسی در گزارش با عنوانِ «ÙØ¨ÙØº» بالا می‌آمد.
+
+   «raw» و «cellDates» را این‌جا نمی‌چینیم: هر سه جا نیازِ خودشان را
+   دارند — گزارش تاریخ می‌خواهد، آن دو خیر. */
+async function xlsxInput(file){
+  const isCsv = /\.csv$/i.test(file.name || "") || /csv|text\/plain/i.test(file.type || "");
+  if(isCsv){
+    let txt = await file.text();
+    if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);   /* BOM ویندوز */
+    return { data: txt, type: "string" };
+  }
+  return { data: await file.arrayBuffer(), type: "array" };
+}
+
 /* فایل را می‌خواند و کتابِ اکسل را برمی‌گرداند. اگر کتابخانه نیامد یا
    فایل خراب بود، پیامِ روشن می‌دهد و null برمی‌گرداند. */
 async function readWorkbook(file){
@@ -137,19 +159,8 @@ async function readWorkbook(file){
     if(!ok){ alert("کتابخانهٔ خواندن اکسل بارگذاری نشد. اینترنت را بررسی کنید."); return null; }
   }
   try{
-    /* CSV و xlsx دو جورند و این تفاوت یک بار ما را زمین زد:
-       xlsx یک زیپ است و متنش داخلش UTF-8 است، پس بایتِ خام درست خوانده
-       می‌شود. ولی CSV خودش یک فایلِ متنی است و اگر بایت‌بایت بدهیمش،
-       کتابخانه هر بایت را یک نویسه حساب می‌کند و «نام» می‌شود «ÙØ§Ù».
-       پس CSV را با متنِ رمزگشایی‌شده می‌دهیم، نه با بایت. */
-    const isCsv = /\.csv$/i.test(file.name || "") || /csv|text\/plain/i.test(file.type || "");
-    if(isCsv){
-      let txt = await file.text();
-      if(txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);   /* BOM ویندوز */
-      return XLSX.read(txt, { type:"string", raw:true });
-    }
-    const buf = await file.arrayBuffer();
-    return XLSX.read(buf, { type:"array", raw:true, cellDates:false });
+    const inp = await xlsxInput(file);
+    return XLSX.read(inp.data, { type:inp.type, raw:true, cellDates:false });
   }catch(e){
     console.error(e);
     alert("این فایل خوانده نشد. مطمئن شوید یک فایل اکسل یا CSV سالم است.");

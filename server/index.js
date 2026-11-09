@@ -62,6 +62,20 @@ const env = { ...cfg, DB, ASSETS: makeAssets(PUBLIC), FILES: makeFiles(FILES_DIR
    نبودنش پیام روشن دارد؛ پس چیزی نمی‌شکند، فقط دستیار خاموش است. */
 delete env.AI;
 
+/* ---------- راهِ ربات‌ها، همین اول ----------
+   این دو خط داخلِ worker.fetch و worker.scheduled هم هستند — آن‌جا
+   لازم‌اند چون روی کلادفلر پروسه‌ای نیست که پیش از درخواست چیزی
+   بچیند. ولی این‌جا بودنشان فقط آن‌جا یک سوراخ می‌گذاشت: هر دستورِ
+   خط‌فرمانی که پیام می‌فرستد پیش از اولین درخواست اجرا می‌شود، پس
+   __TGBASE خالی بود و مستقیم سراغِ api.telegram.org می‌رفت — همان
+   میزبانی که از این سرور باز نمی‌شود. یعنی «سنجیدنِ کانال» از راهی
+   می‌رفت که پشتیبانِ واقعی از آن نمی‌رود، و درست وقتی به جوابش
+   احتیاج داشتیم دروغ می‌گفت.
+
+   حالا یک بار، سرِ بالا آمدنِ پروسه. */
+if (cfg.TG_BASE) globalThis.__TGBASE = cfg.TG_BASE;
+if (cfg.BALE_BASE) globalThis.__BALEBASE = cfg.BALE_BASE;
+
 const worker = (await import('../src/index.js')).default;
 
 /* ---------- ctx ----------
@@ -395,8 +409,9 @@ const BOT_SLOTS = [
     where: 'settings',   keys: ['kartablBotToken', 'kartablChatId'] }
 ];
 
-if (process.argv.includes('--bots') || process.argv.includes('--bot-off')) {
-  const { getSetting, setSetting, siteBots } = await import('../src/kartabl.js');
+if (process.argv.includes('--bots') || process.argv.includes('--bot-off') ||
+    process.argv.includes('--bot-on') || process.argv.includes('--bot-test')) {
+  const { getSetting, setSetting, siteBots, BOT_API } = await import('../src/kartabl.js');
   const tail = t => { const x = String(t || ''); return x ? '…' + x.slice(-4) : '—'; };
 
   const slotValues = async (slot) => {
@@ -423,7 +438,143 @@ if (process.argv.includes('--bots') || process.argv.includes('--bot-off')) {
     console.log('  ——');
     console.log('  پشتیبان الان به ' + live.length + ' کانال می‌رود' +
                 (live.length ? ': ' + live.map(b => b.label).join('، ') : ''));
+    /* و از کدام راه. وقتی تلگرام ساکت می‌شود این اولین سؤال است، و
+       تا حالا جوابش فقط در لاگِ بالا آمدنِ سرویس بود — جایی که کسی
+       سرِ خرابی سراغش نمی‌رود. فقط نامِ میزبان: رمزِ رله داخلِ مسیرِ
+       TG_BASE است. */
+    if (live.some(b => b.kind === 'telegram')) {
+      let via = 'api.telegram.org (مستقیم — از سرورِ ایران باز نمی‌شود)';
+      if (cfg.TG_BASE) {
+        try { via = new URL(cfg.TG_BASE).host + ' (رله)'; } catch { via = 'رله'; }
+      }
+      console.log('  تلگرام از راهِ: ' + via);
+    }
   };
+
+  const slotById = id => BOT_SLOTS.find(x => x.id === id) || null;
+
+  const writeSlot = async (slot, token, chat) => {
+    if (slot.where === 'sltechSite') {
+      const st = (await getSetting(env, 'sltechSite', {})) || {};
+      st[slot.keys[0]] = token; st[slot.keys[1]] = chat;
+      await setSetting(env, 'sltechSite', st);
+    } else {
+      await setSetting(env, slot.keys[0], token);
+      await setSetting(env, slot.keys[1], chat);
+    }
+  };
+
+  /* ---------- روشن کردنِ یک کانال ----------
+     از خطِ فرمان، نه از پنل: توکن نباید در هیچ فایلی از مخزن بنشیند و
+     کادرِ وب هم روی گوشی و با چسباندنِ یک رشتهٔ ۴۶ نویسه‌ای کارِ راحتی
+     نیست. چاپ هم نمی‌شود — فقط چهار رقمِ آخر.
+
+     و توکن به‌جای آرگومان می‌تواند از ورودیِ استاندارد بیاید («-»):
+     آرگومان در تاریخِ شل می‌ماند و در «ps» هم دیده می‌شود، یعنی روی
+     سروری که چند نفر دسترسی دارند یک رمز لو رفته است. */
+  if (process.argv.includes('--bot-on')) {
+    const i = process.argv.indexOf('--bot-on');
+    const which = String(process.argv[i + 1] || '').toLowerCase();
+    let token = String(process.argv[i + 2] || '').trim();
+    const chat  = String(process.argv[i + 3] || '').trim();
+    if (token === '-') {
+      const chunks = [];
+      for await (const c of process.stdin) chunks.push(c);
+      token = Buffer.concat(chunks).toString('utf8').trim();
+    }
+    const slot = which === 'tg' || which === 'telegram' ? slotById('tg')
+               : which === 'bale' ? slotById('bale')
+               : which === 'old' ? slotById('old') : null;
+    if (!slot || !token || !chat) {
+      console.error('[ربات‌ها] روشن کردن: --bot-on <tg|bale|old> <توکن> <شناسهٔ گفتگو>');
+      console.error('          مثال: node server/index.js --bot-on tg 123456:AA… -1001234567890');
+      console.error('          یا بی آنکه توکن در تاریخِ شل بماند، با «-» و ورودیِ استاندارد:');
+      console.error('          printf %s "123456:AA…" | node server/index.js --bot-on tg - -1001234567890');
+      DB.close();
+      process.exit(2);
+    }
+    /* شناسهٔ گفتگو عددی است (گروه با منفی شروع می‌شود). اگر کسی نامِ
+       کاربری بدهد، تلگرام «chat not found» می‌دهد و پشتیبان بی‌صدا
+       نمی‌رود — پس همین‌جا جلویش گرفته می‌شود. */
+    if (!/^-?[0-9]+$/.test(chat)) {
+      console.error('[ربات‌ها] شناسهٔ گفتگو باید عدد باشد (گروه با «-» شروع می‌شود)، نه «' + chat + '».');
+      DB.close();
+      process.exit(2);
+    }
+    if (!/:/.test(token) || token.length < 20) {
+      console.error('[ربات‌ها] این توکن به توکنِ ربات نمی‌خورد؛ شکلش «۱۲۳۴۵۶:AA…» است.');
+      DB.close();
+      process.exit(2);
+    }
+    await writeSlot(slot, token, chat);
+    console.log('[ربات‌ها] ' + slot.label + ': گذاشته شد (توکن …' + token.slice(-4) +
+                ' · گفتگو ' + chat + ').');
+    await show();
+    console.log('  ——');
+    console.log('  حالا درستی‌اش را بسنج:  node server/index.js --bot-test ' + slot.id);
+    DB.close();
+    process.exit(0);
+  }
+
+  /* ---------- سنجیدنِ کانال ----------
+     «سکوت» چند علت دارد و از بیرون همه یکی‌اند. این دستور از همان
+     مسیرِ واقعیِ پشتیبان می‌رود — همان BOT_API، همان رله — و اگر نشد
+     می‌گوید چه چیزی نشد: راه بسته بود، توکن رد شد، یا گفتگو پیدا نشد. */
+  if (process.argv.includes('--bot-test')) {
+    const which = String(process.argv[process.argv.indexOf('--bot-test') + 1] || 'all').toLowerCase();
+    const live = await siteBots(env);
+    const pick = which === 'all' ? live
+      : which === 'tg' || which === 'telegram' ? live.filter(b => b.kind === 'telegram')
+      : which === 'bale' ? live.filter(b => b.kind === 'bale') : null;
+    if (!pick) {
+      console.error('[ربات‌ها] کدام کانال؟ tg، bale، یا all.');
+      DB.close();
+      process.exit(2);
+    }
+    if (!pick.length) {
+      console.error('[ربات‌ها] این کانال تنظیم نیست. اول: --bot-on ' +
+                    (which === 'all' ? '<tg|bale>' : which) + ' <توکن> <گفتگو>');
+      DB.close();
+      process.exit(1);
+    }
+    /* نامِ میزبان بس است. رمزِ رله داخلِ مسیرِ TG_BASE است و این خروجی
+       جایی است که کپی می‌شود و دست‌به‌دست می‌گردد. */
+    const hostOf = u => { try { return new URL(u).host; } catch { return '؟'; } };
+    let bad = 0;
+    for (const bot of pick) {
+      const base = BOT_API[bot.kind](bot.token);
+      const via = hostOf(base);
+      const relay = bot.kind === 'telegram' && via !== 'api.telegram.org';
+      console.log('[ربات‌ها] ' + (bot.label || bot.kind) + ' — از راهِ ' + via +
+                  (relay ? ' (رله)' : bot.kind === 'telegram' ? ' (مستقیم)' : ''));
+      try {
+        const r = await fetch(base + '/sendMessage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: bot.chat,
+            text: 'آزمونِ کانال — ' + new Date().toLocaleString('fa-IR') +
+                  '\nاگر این را می‌بینی، پشتیبان هم از همین راه می‌رود.' })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (d.ok) { console.log('   ✓ رسید.'); continue; }
+        bad++;
+        console.log('   ✗ نپذیرفت: ' + (d.description || ('HTTP ' + r.status)));
+        if (/chat not found/i.test(d.description || ''))
+          console.log('     شناسهٔ گفتگو درست نیست، یا ربات هنوز به آن گروه اضافه نشده.');
+        if (/unauthorized/i.test(d.description || ''))
+          console.log('     توکن رد شد. از BotFather دوباره بگیرید و --bot-on را دوباره بزنید.');
+      } catch (e) {
+        bad++;
+        console.log('   ✗ راه بسته است: ' + (e.message || e));
+        if (bot.kind === 'telegram' && !relay)
+          console.log('     api.telegram.org از این سرور باز نمی‌شود. TG_BASE در ' +
+                      '/etc/sltech/env باید به رله اشاره کند.');
+        else
+          console.log('     میزبانِ ' + via + ' از این سرور جواب نداد.');
+      }
+    }
+    DB.close();
+    process.exit(bad ? 1 : 0);
+  }
 
   if (!process.argv.includes('--bot-off')) {
     console.log('[ربات‌ها]');

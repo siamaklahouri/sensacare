@@ -38,6 +38,8 @@ import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
 import p_bkfile from '../public/_t/p/bkfile.tpl';
 import p_navmore from '../public/_t/p/navmore.tpl';
+import p_selchip from '../public/_t/p/selchip.tpl';
+import p_selchipcss from '../public/_t/p/selchipcss.tpl';
 import p_find from '../public/_t/p/find.tpl';
 import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
@@ -142,6 +144,8 @@ export const PARTS = new Map([
   ['kthemecss', p_kthemecss],
   ['bkfile', p_bkfile],
   ['navmore', p_navmore],
+  ['selchip', p_selchip],
+  ['selchipcss', p_selchipcss],
   ['find', p_find],
   ['findcss', p_findcss],
   ['fadigits', p_fadigits],
