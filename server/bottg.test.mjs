@@ -78,18 +78,38 @@ const idx = new URL('./index.js', import.meta.url).pathname;
    آزمون توکن را در دیتابیسِ مشترکِ مجموعه می‌نوشت و خودش هم همان‌جا
    دو کانال می‌دید. تنها راهِ مطمئن این است که فایلِ env حرفِ آخر را
    بزند، پس چیزی که با آن می‌جنگد به پروسه نمی‌رسد. */
-function cli(args, stdin) {
+function cli(args, stdin, extra) {
   return new Promise(res => {
     const p = spawn(process.execPath, [idx, ...args],
       { env: { PATH: process.env.PATH, HOME: process.env.HOME,
                NODE_OPTIONS: process.env.NODE_OPTIONS || '',
-               SLTECH_ENV: envFile } });
+               SLTECH_ENV: envFile, ...(extra || {}) } });
     let out = '';
     p.stdout.on('data', d => out += d);
     p.stderr.on('data', d => out += d);
     if (stdin !== undefined) p.stdin.end(stdin);
     p.on('close', code => res({ code, out }));
   });
+}
+
+/* ================= IPv4 اول ================= */
+console.log('===== ترتیبِ آدرس =====');
+{
+  /* این سنجه از یک خرابیِ واقعی درآمد: فایلِ پشتیبان به تلگرام
+     نمی‌رسید و پیامِ کوتاه می‌رفت. میزبانِ رله هم IPv4 دارد هم IPv6 و
+     مسیرِ IPv6ِ آن سرور بستهٔ کوچک را رد می‌کرد ولی انتقالِ بزرگ را
+     می‌خواباند. Node هم فقط برقراریِ اتصال را مسابقه می‌دهد، نه
+     انتقال را — پس IPv6 را می‌گرفت و فایل معلق می‌ماند.
+
+     از خودِ پروسه می‌پرسیم، نه از روی کد: چیزی که در فایل نوشته
+     شده ولی اجرا نشده، هیچ است. */
+  const r = await cli(['--dns-order']);
+  t(/ipv4first/.test(r.out), 'پروسه IPv4 را اول می‌گذارد',
+    (r.out.match(/ترتیبِ آدرس.*/) || [r.out.slice(0, 60)])[0]);
+
+  const r2 = await cli(['--dns-order'], undefined, { DNS_ORDER: 'verbatim' });
+  t(/verbatim/.test(r2.out), 'و DNS_ORDER=verbatim رفتارِ پیش‌فرض را برمی‌گرداند',
+    (r2.out.match(/ترتیبِ آدرس.*/) || [r2.out.slice(0, 60)])[0]);
 }
 
 /* ================= روشن کردن ================= */
