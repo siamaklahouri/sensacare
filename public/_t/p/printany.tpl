@@ -26,6 +26,17 @@
 (function () {
   var HTML = document.documentElement;
 
+  /* چاپگر، با همان خط‌های قلمِ صفحه. «stroke-width» کمی بیشتر از یک
+     است تا روی صفحه‌نمایشِ معمولی هم محو نشود. */
+  var PRINTER_SVG =
+    '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M7 9V4h10v5"/>' +
+    '<path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/>' +
+    '<rect x="7" y="14" width="10" height="7" rx="1"/>' +
+    '</svg>';
+
   /* بخش‌هایی که جدولِ پهن دارند، روی کاغذِ خوابیده جا می‌شوند. بقیه
      ایستاده بهترند — متنِ یک ستونه روی کاغذِ خوابیده کشیده و بدریخت
      می‌شود. */
@@ -255,16 +266,34 @@
       b.className = 'kb-print-btn';
       b.title = 'چاپ یا ذخیرهٔ PDF از همین بخش';
       b.setAttribute('aria-label', 'چاپ بخشِ ' + titleOf(v));
-      b.textContent = '🖨';
+      /* آیکن برداری است، نه شکلک. «🖨» روی ویندوز در قلمِ شکلکِ
+         سیستم نیست و یک مربعِ خالی می‌شد — کاربر عکسش را فرستاد.
+         شکلکِ متنی هیچ تضمینی ندارد؛ SVG همه‌جا یک شکل است و رنگش
+         را هم از «currentColor» می‌گیرد، پس با تم می‌چرخد. */
+      b.innerHTML = PRINTER_SVG;
       b.addEventListener('click', function () { kbPrint(v); });
       ttl.appendChild(b);
     });
     /* «همه‌ی بخش‌ها» در تنظیمات می‌نشیند، نه کنارِ عنوان‌ها: کارِ
        روزمره چاپِ یک بخش است و دکمهٔ دومِ کنارِ هر عنوان فقط شلوغی
        بود. */
+    /* دکمه‌های چاپِ قدیمی — تقویم و گزارش‌ساز — هم شکلکِ «🖨» داشتند
+       و روی ویندوز همان مربعِ خالی می‌شدند. حالا همه یک آیکن دارند،
+       از یک جا. */
+    [].forEach.call(document.querySelectorAll('[data-print-ic]'), function (btn) {
+      if (btn.dataset.kbIc) return;
+      btn.dataset.kbIc = '1';
+      btn.classList.add('kb-print-all');
+      btn.insertAdjacentHTML('afterbegin', PRINTER_SVG + ' ');
+    });
+
     var all = document.getElementById('printAllBtn');
     if (all && !all.dataset.kbWired) {
       all.dataset.kbWired = '1';
+      /* همان آیکنِ برداری، نه شکلک: در قالب هم نوشته نمی‌شود تا دو
+         جا دو جور نباشد. */
+      all.insertAdjacentHTML('afterbegin', PRINTER_SVG + ' ');
+      all.classList.add('kb-print-all');
       all.addEventListener('click', function () { kbPrint('all'); });
     }
   }

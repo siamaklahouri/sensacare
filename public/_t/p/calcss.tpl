@@ -47,7 +47,7 @@
   .c2-wd span:last-child{ color:var(--red-ink); }
   .c2-grid{ display:grid; grid-template-columns:repeat(7,1fr); }
   .c2-cell{
-    min-height:92px; border-left:1px solid var(--line); border-bottom:1px solid var(--line);
+    min-height:112px; border-left:1px solid var(--line); border-bottom:1px solid var(--line);
     padding:5px 6px 6px; cursor:pointer; position:relative; overflow:hidden;
     transition:background .12s;
   }
@@ -58,9 +58,15 @@
   .c2-top{ display:flex; align-items:center; justify-content:space-between; gap:4px; }
   .c2-num{ font-weight:800; font-size:14px; color:var(--ink); }
   .c2-note{ font-size:10.5px; opacity:.85; }
-  .c2-cell.off{ background:var(--red-bg); }
+  /* تعطیلی: نشانه، نه رنگِ پر.
+     پیش از این کلِ خانه با «red-bg» شسته می‌شد. در یک ماهِ معمولی
+     ستونِ جمعه و چند روزِ دیگر یعنی یک‌پنجمِ تقویم صورتی — و چشم
+     به‌جای کارها می‌رفت سراغِ آن. حالا رنگ فقط روی عددِ روز و نامِ
+     تعطیلی است، با یک شستِ بسیار ملایم که «این‌جا کار نیست» را
+     می‌گوید بی‌آنکه فریاد بزند. */
+  .c2-cell.off{ background:color-mix(in srgb, var(--red-bg) 42%, var(--white)); }
   .c2-cell.off .c2-num{ color:var(--red-ink); }
-  .c2-cell.off:hover{ background:var(--red-bg); filter:brightness(.98); }
+  .c2-cell.off:hover{ background:var(--red-bg); }
   .c2-hol{
     font-size:10px; color:var(--red-ink); font-weight:700; margin-top:1px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -69,14 +75,46 @@
   /* امروز: حلقه، نه رنگِ پر — وگرنه با تعطیلی قاطی می‌شد */
   .c2-cell.today{ box-shadow:inset 0 0 0 2px var(--c2); }
   .c2-cell.sel{ background:var(--c2-soft); }
-  .c2-items{ display:flex; flex-direction:column; gap:2px; margin-top:4px; }
+  /* ---------- کارهای هر روز ----------
+     قرصِ خاکستریِ تمام‌عرض بودند با یک خطِ رنگی لبه‌شان. سه ایراد
+     داشت: پس‌زمینه تقریباً هم‌رنگِ خانه بود پس فقط یک اسلبِ مات
+     می‌ساخت، قابِ گرد و خطِ کناری دو حرف از عرضِ مفید را می‌خورد،
+     و کنارِ هم مثل دکمه‌های غیرفعال به نظر می‌رسیدند.
+
+     حالا نقطه و متن: سبک‌تر، جای بیشتری برای خودِ نام، و رنگ همان
+     کاری را می‌کند که قبلاً خطِ کناری می‌کرد. */
+  .c2-items{ display:flex; flex-direction:column; gap:1px; margin-top:5px; }
   .c2-it{
-    font-size:10.5px; line-height:1.5; color:var(--ink-soft); background:var(--paper);
-    border-radius:5px; padding:1px 5px; white-space:nowrap; overflow:hidden;
-    text-overflow:ellipsis; border-right:2px solid var(--c2);
+    position:relative; display:block; padding-inline-start:11px;
+    font-size:10.5px; line-height:1.62; color:var(--ink-soft);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .c2-it.tsk{ border-right-color:var(--amber); }
-  .c2-more{ font-size:10px; color:var(--ink-faint); padding-right:4px; }
+  .c2-it::before{
+    content:""; position:absolute; inset-inline-start:1px; top:.62em;
+    width:5px; height:5px; border-radius:50%; background:var(--c2);
+  }
+  .c2-it.tsk::before{ background:var(--amber); }
+  .c2-cell:hover .c2-it{ color:var(--ink); }
+  /* ---------- مناسبت ----------
+     تعطیلی قرمز است و معنایش «کار نیست». مناسبت یک روزِ کاری است که
+     اسم دارد، پس نه قرمز می‌شود نه پررنگ.
+
+     اول رنگِ برند را گذاشتم و روی تمِ غروب اشتباه شد: برندِ آن تم
+     نارنجیِ سوخته است و کنارِ قرمزِ «جمعه» عملاً یکی به نظر می‌رسید.
+     رنگی که در یک تم درست باشد و در تمِ دیگر نه، درست نیست. خاکستریِ
+     کم‌رنگ در هر پنج تم از قرمز جداست و ادعایی هم ندارد. */
+  .c2-ev{
+    font-size:9.5px; line-height:1.45; color:var(--ink-faint);
+    margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .c2-cell.wide .c2-ev{ white-space:normal; font-size:11px; }
+  .c2-sh-e{
+    font-size:12px; color:var(--brass-ink); margin-top:4px; font-weight:600;
+  }
+  .c2-more{
+    font-size:9.5px; color:var(--ink-faint); margin-top:2px;
+    padding-inline-start:11px; font-weight:600;
+  }
 
   /* ---------- کنارهٔ روز ---------- */
   .c2-side{
@@ -203,5 +241,8 @@
     .c2-cell.off .c2-num, .c2-hol{ color:#000 !important; }
     .c2-it{ background:#fff; border-right:2px solid #666; color:#000; }
     .c2-legend{ font-size:10px; color:#444; }
+    /* مناسبت روی کاغذ هم می‌ماند، ولی خاکستری: برگه باید بگوید امروز
+       چه روزی است، بی آنکه با تعطیلی قاتی شود. */
+    .c2-ev{ color:#444 !important; font-size:9px; white-space:normal; }
     .c2-items{ display:flex !important; }
   }

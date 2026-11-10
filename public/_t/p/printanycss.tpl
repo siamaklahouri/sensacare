@@ -9,10 +9,19 @@
   .kb-print-btn{
     margin-inline-start:10px; border:1px solid var(--line); background:var(--white);
     color:var(--ink-soft); border-radius:8px; cursor:pointer;
-    font-size:12.5px; line-height:1; padding:5px 8px; font-family:inherit;
-    vertical-align:middle; opacity:.65; transition:opacity .15s, border-color .15s, background .15s;
+    padding:5px 7px; font-family:inherit;
+    display:inline-flex; align-items:center; justify-content:center;
+    vertical-align:middle; opacity:.65; transition:opacity .15s, border-color .15s, background .15s, color .15s;
   }
-  .kb-print-btn:hover{ opacity:1; border-color:var(--brass); background:var(--brass-bg); }
+  /* آیکن برداری است و رنگش از دکمه می‌آید، پس با تم می‌چرخد و روی
+     هیچ سیستمی به مربعِ خالی تبدیل نمی‌شود. */
+  .kb-print-btn svg{ display:block; width:14px; height:14px; }
+  /* «nowrap» لازم است: دکمه‌های قدیمی عرضشان برای یک کلمهٔ تنها کوک
+     شده بود و با آمدنِ آیکن، «چاپ» دو خط می‌شد. */
+  .kb-print-all{ display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+  .kb-print-all svg{ width:15px; height:15px; flex:none; }
+  .kb-print-btn:hover{ opacity:1; border-color:var(--brass);
+    background:var(--brass-bg); color:var(--brass-ink); }
   .kb-print-btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; opacity:1; }
 
   /* سربرگ فقط مالِ کاغذ است. روی صفحه ساخته می‌شود ولی دیده نمی‌شود،

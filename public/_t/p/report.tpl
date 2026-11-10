@@ -94,7 +94,7 @@
           </select>
           <button type="button" class="btn btn-sm" id="rpPng">⬇ تصویر</button>
           <button type="button" class="btn btn-sm" id="rpXlsx">⬇ اکسلِ خلاصه</button>
-          <button type="button" class="btn btn-sm" id="rpPrint">🖨 چاپ</button>
+          <button type="button" class="btn btn-sm" id="rpPrint" data-print-ic>چاپ</button>
         </span>
       </div>
       <!-- فقط همین تکه چاپ می‌شود. سرصفحه‌اش در حالتِ عادی پنهان است

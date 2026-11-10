@@ -1090,7 +1090,7 @@ window.KARTABL_IDB      = "{{IDB}}";
         <button type="button" class="c2-nav" data-cal-step="1" title="ماهِ بعد">›</button>
         <button type="button" class="c2-today-btn" id="calToday">امروز</button>
         <button type="button" class="c2-today-btn" id="calMode">نمای هفته</button>
-        <button type="button" class="c2-today-btn c2-print" id="calPrint" title="چاپ یا PDF">🖨 چاپ</button>
+        <button type="button" class="c2-today-btn c2-print" id="calPrint" title="چاپ یا PDF" data-print-ic>چاپ</button>
         <span class="c2-shift">تعطیلی‌های قمری:
           <select id="calShift" title="اگر اعلامِ رسمی یک روز جلوتر یا عقب‌تر بود، از همین‌جا جابه‌جا کنید">
             <option value="-1">یک روز عقب</option>
@@ -1108,6 +1108,8 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="c2-legend">
         <span><span class="sw" style="background:var(--red-bg);border:1px solid var(--red-ink);"></span> تعطیل</span>
         <span><span class="sw" style="border:2px solid var(--c2);"></span> امروز</span>
+        <span><span class="sw" style="background:var(--brass-bg);border:1px solid var(--brass);"></span>
+          مناسبت — روزِ کاری است، فقط اسم دارد</span>
         <span>📝 یادداشت دارد</span>
         <span class="c2-exact">تاریخ‌ها از تقویمِ رسمیِ همین سال‌اند، نه حساب‌شده.
           اگر روزی را جور دیگری می‌خواهید، خودِ آن روز را تعطیل یا کاری کنید.</span>

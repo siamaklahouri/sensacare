@@ -210,6 +210,26 @@ console.log('===== هر بخش، و سربرگش =====');
   const btns = await p.evaluate(() => document.querySelectorAll('.kb-print-btn').length);
   t(btns >= 10, 'هر بخش دکمهٔ چاپِ خودش را دارد', btns + ' دکمه');
 
+  /* هیچ دکمهٔ چاپی نباید به شکلکِ سیستم تکیه کند. «🖨» (U+1F5A8) در
+     قلمِ شکلکِ ویندوز نیست و آن‌جا یک مربعِ خالی می‌شود — کاربر عکسش
+     را فرستاد. آیکنِ برداری همه‌جا یک شکل است و رنگش را هم از متنِ
+     دکمه می‌گیرد، پس با تم می‌چرخد. */
+  const ic = await p.evaluate(() => {
+    const all = [...document.querySelectorAll('.kb-print-btn, [data-print-ic], #printAllBtn')];
+    return {
+      total: all.length,
+      noSvg: all.filter(e => !e.querySelector('svg')).length,
+      emoji: all.filter(e => /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(e.textContent)).length,
+      noLabel: all.filter(e => !e.getAttribute('aria-label') && !e.textContent.trim()).length,
+      wrapped: all.filter(e => e.getBoundingClientRect().height > 44).length
+    };
+  });
+  t(ic.total > 10, 'همهٔ دکمه‌های چاپ شمرده شدند', ic.total + ' دکمه');
+  t(ic.noSvg === 0, 'و همه آیکنِ برداری دارند', ic.noSvg + ' بی آیکن');
+  t(ic.emoji === 0, 'و هیچ‌کدام شکلکِ متنی ندارند', ic.emoji + ' با شکلک');
+  t(ic.noLabel === 0, 'و هرکدام یا متن دارد یا نامِ دسترس‌پذیری', ic.noLabel + ' بی‌نام');
+  t(ic.wrapped === 0, 'و متنِ هیچ‌کدام با آمدنِ آیکن دو خط نشده', ic.wrapped + ' دوخطی');
+
   /* بخشی که اصلاً باز نیست هم باید چاپ شود — این همان چیزی است که
      قبلاً ممکن نبود. */
   await p.evaluate(() => kbPrint('view-servers'));

@@ -173,6 +173,56 @@
     "10/25": "شهادت امام صادق",
     "12/10": "عید قربان", "12/18": "عید غدیر"
   };
+  /* ---------- مناسبت‌ها ----------
+     این‌ها تعطیل **نیستند** و همین نکتهٔ اصلی است: «روز حسابدار» یک
+     روزِ کاریِ معمولی است که اسم دارد. اگر با تعطیلی‌ها در یک خانه
+     می‌نشستند، تقویم دروغ می‌گفت — پس جدولشان جداست، تابعشان جداست،
+     و روی صفحه هم رنگ و جای دیگری دارند.
+
+     فقط خورشیدی: مناسبت‌های قمری هر سال جابه‌جا می‌شوند و «تقریبی»
+     بودنشان برای یک روزِ کاری ارزشی ندارد.
+
+     اگر تاریخی را اشتباه دیدید، همین‌جا یک خط است. «روز حسابدار»
+     (۱۵ آذر، مصوبِ شورای فرهنگ عمومی) و «روز مهندس»، «روز پزشک» و
+     «روز معلم» راستی‌آزمایی شده‌اند؛ بقیه از تقویم‌های رایج‌اند. */
+  var EVENTS = {
+    "1/20": "روز ملی فناوری هسته‌ای",
+    "2/10": "روز ملی خلیج فارس",
+    "2/11": "روز کارگر",
+    "2/12": "روز معلم",
+    "2/25": "بزرگداشت فردوسی",
+    "2/27": "روز ارتباطات و روابط عمومی",
+    "2/28": "بزرگداشت خیام",
+    "3/3": "آزادسازی خرمشهر",
+    "5/14": "روز مشروطه",
+    "5/17": "روز خبرنگار",
+    "6/1": "روز پزشک",
+    "6/5": "روز داروسازی",
+    "6/13": "روز تعاون",
+    "6/27": "روز شعر و ادب فارسی",
+    "6/31": "آغاز هفتهٔ دفاع مقدس",
+    "7/8": "بزرگداشت مولوی",
+    "7/13": "روز نیروی انتظامی",
+    "7/20": "بزرگداشت حافظ",
+    "8/1": "روز آمار و برنامه‌ریزی",
+    "8/13": "روز دانش‌آموز",
+    "8/24": "روز کتاب و کتاب‌خوانی",
+    "9/5": "روز بسیج",
+    "9/7": "روز نیروی دریایی",
+    "9/13": "روز بیمه",
+    "9/15": "روز حسابدار",
+    "9/16": "روز دانشجو",
+    "9/25": "روز پژوهش",
+    "9/26": "روز حمل‌ونقل",
+    "11/19": "روز نیروی هوایی",
+    "12/5": "روز مهندس",
+    "12/15": "روز درختکاری",
+    "12/25": "بزرگداشت پروین اعتصامی"
+  };
+  /* نامِ مناسبتِ یک روز، یا رشتهٔ خالی. تعطیلی این‌جا دخالتی ندارد:
+     یک روز می‌تواند هم تعطیل باشد هم مناسبت داشته باشد. */
+  function occasion(jy, jm, jd) { return EVENTS[jm + "/" + jd] || ""; }
+
   function exact(jy) { return !!OFFICIAL[jy]; }
 
   var hFmt, hCache = {};
@@ -331,23 +381,33 @@
   function cellHtml(jy, jm, jd, long){
     var k = keyOf(jy, jm, jd);
     var hol = holiday(jy, jm, jd);
+    var ev = occasion(jy, jm, jd);
     var it = dayItems(jy, jm, jd);
     var note = notes()[k] || "";
     var t2 = today();
     var isToday = (t2.jy === jy && t2.jm === jm && t2.jd === jd);
-    var cap = long ? 8 : 3;
+    /* سه تا کم بود و کاربر همین را گفت: «لیستِ کارهای آن روز نصف و
+       نیمه نشان داده می‌شود.» با چیپ‌های سبک‌ترِ تازه، پنج تا در همان
+       خانه جا می‌شود. نمای هفته که جا دارد، ده تا. */
+    var cap = long ? 10 : 5;
     return '<div class="c2-cell' + (hol.off ? " off" : "") + (isToday ? " today" : "") +
       (sel === k ? " sel" : "") + (long ? " wide" : "") +
       '" data-cal-day="' + jd + '" data-cal-key="' + k + '" role="button" tabindex="0"' +
-      (hol.name ? ' title="' + esc(hol.name) + (hol.approx ? " (تقریبی)" : "") + '"' : "") + '>' +
+      (hol.name || ev ? ' title="' +
+        esc([hol.name + (hol.approx ? " (تقریبی)" : ""), ev].filter(Boolean).join(" · ")) +
+        '"' : "") + '>' +
       '<div class="c2-top"><span class="c2-num">' + faN(jd) +
         (long ? ' <i>' + esc(WD[wdOf(jy, jm, jd)]) + "</i>" : "") + '</span>' +
         (note ? '<span class="c2-note" title="یادداشت دارد">📝</span>' : "") + '</div>' +
       (hol.name ? '<div class="c2-hol">' + esc(label(hol.name)) +
          (hol.approx ? "<i>*</i>" : "") + '</div>' : "") +
+      (ev ? '<div class="c2-ev">' + esc(long ? ev : label(ev)) + '</div>' : "") +
       (it.length ? '<div class="c2-items">' + it.slice(0, cap).map(function (x) {
-          return '<span class="c2-it' + (x.t === "task" ? " tsk" : "") + '">' + esc(x.text) + '</span>';
-        }).join("") + (it.length > cap ? '<span class="c2-more">+' + faN(it.length - cap) + '</span>' : "") +
+          /* نام روی موشواره کامل می‌آید: خانهٔ تقویم هر چقدر هم پهن
+             باشد، یک اسمِ بلند بالاخره بریده می‌شود. */
+          return '<span class="c2-it' + (x.t === "task" ? " tsk" : "") +
+            '" title="' + esc(x.text) + '">' + esc(x.text) + '</span>';
+        }).join("") + (it.length > cap ? '<span class="c2-more">' + faN(it.length - cap) + ' مورد دیگر</span>' : "") +
         '</div>' : "") +
       (long && note ? '<div class="c2-cnote">' + esc(note) + '</div>' : "") +
       '</div>';
@@ -396,7 +456,7 @@
       return;
     }
     var p = sel.split("/"), jy = +p[0], jm = +p[1], jd = +p[2];
-    var hol = holiday(jy, jm, jd), it = dayItems(jy, jm, jd);
+    var hol = holiday(jy, jm, jd), ev = occasion(jy, jm, jd), it = dayItems(jy, jm, jd);
     var hj = hol.hijri;
     var g = null;
     try { g = DatePick.toG(jy, jm, jd); } catch (e) { }
@@ -410,6 +470,9 @@
         "</div>" +
         (hol.name ? '<div class="c2-sh-h">' + esc(hol.name) +
            (hol.approx ? ' <span class="c2-ap">تقریبی</span>' : "") + "</div>" : "") +
+        /* مناسبت زیرِ تعطیلی می‌آید و رنگِ خودش را دارد — چون «روز
+           حسابدار» خبر است، نه تعطیلی، و نباید با آن اشتباه شود. */
+        (ev ? '<div class="c2-sh-e">' + esc(ev) + "</div>" : "") +
       "</div>" +
       '<div class="c2-sw">' +
         '<button type="button" class="c2-btn" id="calOffBtn">' +
@@ -563,5 +626,5 @@
 
   window.CAL = { init: init, render: render, go: goDaily, show: show,
                  mode: function (m) { if (m) { mode = m; render(); } return mode; },
-                 holiday: holiday, items: dayItems };
+                 holiday: holiday, occasion: occasion, events: EVENTS, items: dayItems };
 })();

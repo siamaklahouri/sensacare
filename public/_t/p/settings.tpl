@@ -59,14 +59,14 @@
       </div>
 
       <div class="panel">
-        <h3 class="set-h">🖨 چاپ و خروجیِ PDF</h3>
-        <p class="set-p">کنارِ عنوانِ هر بخش یک دکمهٔ <b>🖨</b> هست که همان بخش را
+        <h3 class="set-h">چاپ و خروجیِ PDF</h3>
+        <p class="set-p">کنارِ عنوانِ هر بخش یک دکمهٔ کوچکِ چاپگر هست که همان بخش را
           تنها چاپ می‌کند — با سربرگی که می‌گوید کدام کارتابل، کدام بخش، و چه
           تاریخی. پنجرهٔ چاپِ مرورگر گزینهٔ «ذخیره به‌صورت PDF» هم دارد، پس
           همین دکمه خروجیِ PDF هم هست.</p>
         <p class="set-p">و اگر همه را یک‌جا خواستید:</p>
         <div class="set-row">
-          <button type="button" class="btn" id="printAllBtn">🖨 چاپِ همهٔ بخش‌ها</button>
+          <button type="button" class="btn" id="printAllBtn">چاپِ همهٔ بخش‌ها</button>
           <span class="set-state">هر بخش روی صفحهٔ خودش، پشتِ سرِ هم.</span>
         </div>
       </div>
