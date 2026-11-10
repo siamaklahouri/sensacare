@@ -84,13 +84,20 @@ async function send(how, mb) {
     req = { body: m.body, headers: m.headers };
   }
   try {
+    /* مهلت لازم است و نبودنش یک بار گران تمام شد: نسخهٔ اول این ابزار
+       بی‌مهلت بود و روی سرورِ کاربر به‌جای خطا دادن، معلق ماند — یعنی
+       ابزارِ تشخیص خودش همان‌جا خوابید. هر تلاش حداکثر یک دقیقه. */
     const r = await fetch(base + '/sendDocument',
-      { method: 'POST', body: req.body, headers: req.headers });
+      { method: 'POST', body: req.body, headers: req.headers,
+        signal: AbortSignal.timeout(60000) });
     const d = await r.json().catch(() => ({}));
     return { ok: !!d.ok, note: d.ok ? '' : (d.description || ('HTTP ' + r.status)),
              s: (Date.now() - t0) / 1000 };
   } catch (e) {
-    return { ok: false, note: why(e), s: (Date.now() - t0) / 1000 };
+    const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return { ok: false, timeout: timedOut,
+             note: timedOut ? 'معلق ماند — یک دقیقه جوابی نیامد' : why(e),
+             s: (Date.now() - t0) / 1000 };
   }
 }
 
