@@ -25,7 +25,10 @@
     html.kb-printing body{ background:#fff !important; }
     html.kb-printing .sidebar, html.kb-printing .topbar,
     html.kb-printing .appbar, html.kb-printing .ch-fab-wrap,
-    html.kb-printing .reminders-banner{ display:none !important; }
+    html.kb-printing .reminders-banner,
+    /* پانویسِ «نسخهٔ دیجیتال پلنر» روی صفحه امضاست، روی کاغذ یک خطِ
+       سرگردان بود که گاهی تنهایی می‌افتاد صفحهٔ دوم. */
+    html.kb-printing .appfoot{ display:none !important; }
     html.kb-printing .content{ padding:0 !important; margin:0 !important; }
 
     /* فقط بخش‌های نشان‌شده */
@@ -97,6 +100,13 @@
     }
 
     html.kb-printing .kb-print .kb-pskip{ display:none !important; }
+    /* «col-hide-s» در عرضِ زیر ۷۶۰ ستونِ جدول را برمی‌دارد — برای
+       گوشی درست است. ولی عرضِ رسانه در چاپ عرضِ کاغذ است، و کاغذِ
+       کوچک‌تر یا حاشیهٔ بزرگ‌تر می‌تواند زیر ۷۶۰ بیاورَدش. آن‌وقت
+       ستون‌هایی بی‌صدا از برگه می‌افتند و کسی نمی‌فهمد چیزی کم است.
+       روی کاغذ هیچ ستونی پنهان نمی‌شود؛ اگر جا کم باشد، متن می‌شکند. */
+    html.kb-printing .kb-print th.col-hide-s,
+    html.kb-printing .kb-print td.col-hide-s{ display:table-cell !important; }
     /* ردیفِ جست‌وجوی بالای جدول ابزار است، نه داده: روی کاغذ یک ردیفِ
        کاملاً خالی می‌شد که آدم را دنبالِ خودش می‌فرستاد. */
     html.kb-printing .kb-print tr:has(.col-filter){ display:none !important; }
@@ -121,6 +131,27 @@
       box-shadow:none !important; border-color:#bbb !important;
       -webkit-print-color-adjust:exact; print-color-adjust:exact;
     }
+    /* ---- تقویم: کارِ هر روز باید خوانده شود ----
+       کمربند و بندِ شلوار. قاعدهٔ «صفحهٔ باریک» در calcss حالا فقط
+       مالِ screen است، ولی اگر روزی قاعدهٔ باریکِ دیگری اضافه شود،
+       این‌ها از آن قوی‌ترند و متن سرِ جایش می‌ماند. */
+    html.kb-printing .kb-print .c2-items{
+      flex-direction:column !important; flex-wrap:nowrap !important; gap:2px !important;
+    }
+    html.kb-printing .kb-print .c2-it{
+      width:auto !important; height:auto !important; border-radius:5px !important;
+      font-size:10px !important; line-height:1.55 !important;
+      padding:1px 5px !important; background:transparent !important;
+      white-space:normal !important; overflow:visible !important;
+      border-right:2px solid #777 !important; color:#000 !important;
+    }
+    html.kb-printing .kb-print .c2-more{
+      font-size:9.5px !important; line-height:1.5 !important; padding:0 4px !important;
+    }
+    html.kb-printing .kb-print .c2-cell{ min-height:74px; }
+    html.kb-printing .kb-print .c2-wd span{ font-size:11px !important; }
+    html.kb-printing .kb-print .c2-wd span::after{ content:none !important; }
+
     /* نمودار از ارتفاعِ صفحه نزند بیرون */
     html.kb-printing .kb-print .chart-box{ max-height:118mm; }
     html.kb-printing .kb-print canvas{ max-height:118mm !important; }

@@ -41,6 +41,17 @@
   /* عنوان را پیش از چسباندنِ دکمه برمی‌داریم و کنارِ خودِ عنصر نگه
      می‌داریم. بی این، سربرگِ کاغذ «سرورها و بکاپ🖨» می‌شد — شکلکِ
      دکمه‌ای که خودمان همان‌جا گذاشته بودیم. */
+  /* شکلک روی کاغذ، به‌ویژه در ویندوز، بد در می‌آید: قلمِ شکلکِ رنگی
+     موقعِ چاپ یا تخت و مات می‌شود یا یک مربعِ خالی. سربرگِ کاغذ مالِ
+     ماست و باید متنِ خالص باشد — عنوانِ تقویم شکلکِ فصل را با خودش
+     می‌آورد («🍂 آبان ۱۴۰۴») و همان روی برگهٔ کاربر زشت افتاده بود.
+     داخلِ خودِ بخش‌ها دست نمی‌زنیم؛ آن‌جا شکلک بخشی از محتواست. */
+  function noEmoji(t) {
+    return String(t == null ? '' : t)
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+
   function titleOf(v) {
     var el = v.querySelector('.section-title');
     if (!el) return '';
@@ -59,10 +70,15 @@
     return t.replace(/\s+/g, ' ').trim() || 'کارتابل';
   }
 
+  /* «dateStyle:full» رشته‌ای می‌داد که ماه و سال را دوباره می‌گفت و
+     کنارِ ماهِ تقویم تکراری می‌شد. این‌طور کوتاه‌تر و خواناتر است. */
   function now() {
+    var d = new Date();
     try {
-      return new Date().toLocaleString('fa-IR', { dateStyle: 'full', timeStyle: 'short' });
-    } catch (e) { return new Date().toLocaleString('fa-IR'); }
+      var day = d.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' });
+      var hm = d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+      return day + ' — ساعت ' + hm;
+    } catch (e) { return d.toLocaleString('fa-IR'); }
   }
 
   /* چیزی که روی صفحه هست ولی روی کاغذ نمی‌رود و نبودش برگه را گنگ
@@ -71,7 +87,7 @@
   function noteOf(v) {
     var bits = [];
     var cal = v.querySelector('#calTtl');
-    if (cal && cal.textContent.trim()) bits.push(cal.textContent.trim());
+    if (cal && noEmoji(cal.textContent)) bits.push(noEmoji(cal.textContent));
     var rows = v.querySelectorAll('tbody tr');
     if (rows.length) bits.push(faNum(rows.length) + ' ردیف');
     return bits.join(' · ');
@@ -87,17 +103,17 @@
     d.className = 'kb-phead';
     var who = document.createElement('div');
     who.className = 'kb-phead-who';
-    who.textContent = kartablName();
+    who.textContent = noEmoji(kartablName());
     var h = document.createElement('div');
     h.className = 'kb-phead-ttl';
-    h.textContent = titleOf(v);
+    h.textContent = noEmoji(titleOf(v));
     d.appendChild(who);
     d.appendChild(h);
     var sub = subOf(v), note = noteOf(v);
     if (sub) {
       var s = document.createElement('div');
       s.className = 'kb-phead-sub';
-      s.textContent = sub;
+      s.textContent = noEmoji(sub);
       d.appendChild(s);
     }
     var foot = document.createElement('div');

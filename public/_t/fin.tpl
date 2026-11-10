@@ -3779,7 +3779,7 @@ async function renderCharts(){
     const sums = cats.map(c=> expensesData.filter(e=>e.category===c).reduce((s,e)=>s+(e.amount||0),0));
     charts.expenseCategory = new Chart(document.getElementById("chartExpenseCategory"), {
       type:"bar",
-      data:{ labels:cats, datasets:[{ data:sums, backgroundColor:chartTone().cat[1], hoverBackgroundColor:chartHover([chartTone().cat[1]])[0], borderRadius:4 }] },
+      data:{ labels:cats, datasets:[{ data:sums, backgroundColor:chartTone().cat[0], hoverBackgroundColor:chartHover([chartTone().cat[0]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
@@ -3817,7 +3817,7 @@ async function renderCharts(){
   (function(){
     charts.bankBalances = new Chart(document.getElementById("chartBankBalances"), {
       type:"bar",
-      data:{ labels:bankData.map(b=>b.accountName), datasets:[{ data:bankData.map(b=>b.balance||0), backgroundColor:chartTone().cat[2], hoverBackgroundColor:chartHover([chartTone().cat[2]])[0], borderRadius:4 }] },
+      data:{ labels:bankData.map(b=>b.accountName), datasets:[{ data:bankData.map(b=>b.balance||0), backgroundColor:chartTone().cat[0], hoverBackgroundColor:chartHover([chartTone().cat[0]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
@@ -3835,7 +3835,7 @@ async function renderCharts(){
     const paired = Object.entries(byCustomer).map(([customer,remaining])=>({customer,remaining})).sort((a,b)=>b.remaining-a.remaining).slice(0,8);
     charts.topDebtors = new Chart(document.getElementById("chartTopDebtors"), {
       type:"bar",
-      data:{ labels:paired.map(p=>p.customer), datasets:[{ data:paired.map(p=>p.remaining), backgroundColor:chartTone().cat[3], hoverBackgroundColor:chartHover([chartTone().cat[3]])[0], borderRadius:4 }] },
+      data:{ labels:paired.map(p=>p.customer), datasets:[{ data:paired.map(p=>p.remaining), backgroundColor:chartTone().cat[0], hoverBackgroundColor:chartHover([chartTone().cat[0]])[0], borderRadius:4 }] },
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },

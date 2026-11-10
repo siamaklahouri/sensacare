@@ -293,6 +293,68 @@ console.log('===== هر بخش، و سربرگش =====');
   await ctx.close();
 }
 
+/* ================= کاغذِ تنگ نیست ================= */
+console.log('===== تقویم روی کاغذِ ایستاده =====');
+{
+  /* این یکی از روی یک PDFِ واقعی درآمد. کاربر تقویم را چاپ کرد و
+     خانه‌های روز فقط چند نقطهٔ بی‌معنی داشتند، بی هیچ نامی.
+
+     علت: calcss یک قاعدهٔ «@media (max-width:900px)» داشت که کارهای
+     هر روز را به نقطهٔ شش‌پیکسلی با «font-size:0» تبدیل می‌کند — که
+     روی گوشی درست است. ولی در چاپ، عرضِ رسانه عرضِ کاغذ است و A4ِ
+     ایستاده ۷۹۴ پیکسل است، یعنی زیر ۹۰۰. پس همان قاعده روی کاغذ هم
+     اجرا می‌شد.
+
+     درسش از خودِ ایراد بزرگ‌تر است: هر قاعدهٔ «صفحهٔ باریک» که
+     «screen and» نداشته باشد، روی کاغذ هم می‌افتد. پس این آزمون در
+     عرضِ کاغذِ ایستاده می‌سنجد، نه در عرضِ دسکتاپ. */
+  const ctx = await b.newContext({ viewport: { width: 794, height: 794 } });
+  await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(4000);
+  await p.evaluate(() => { window.print = () => {}; kbPrint('view-cal'); });
+  await p.waitForTimeout(1700);
+  await p.emulateMedia({ media: 'print' });
+  await p.waitForTimeout(400);
+
+  const o = await p.evaluate(() => {
+    const its = [...document.querySelectorAll('#calGrid .c2-it')];
+    const rect = e => e.getBoundingClientRect();
+    return {
+      items: its.length,
+      dots: its.filter(e => parseFloat(getComputedStyle(e).fontSize) < 5).length,
+      narrow: its.filter(e => rect(e).width < 20).length,
+      clipped: its.filter(e => getComputedStyle(e).overflow === 'hidden').length,
+      wd: getComputedStyle(document.querySelector('.c2-wd span')).fontSize,
+      head: (document.querySelector('#view-cal .kb-phead') || {}).innerText || ''
+    };
+  });
+  t(o.items > 3, 'تقویم کار دارد', o.items + ' کار');
+  t(o.dots === 0, 'و هیچ‌کدام روی کاغذ نقطه نشده‌اند', o.dots + ' نقطه');
+  t(o.narrow === 0, 'و همه عرضِ واقعی دارند', o.narrow + ' باریک');
+  t(o.clipped === 0, 'و متنشان بریده نمی‌شود — کاغذ اسکرول ندارد', o.clipped + ' بریده');
+  t(parseFloat(o.wd) > 5, 'نامِ روزهای هفته هم کامل است، نه یک حرف', o.wd);
+
+  /* شکلک روی کاغذِ ویندوز بد در می‌آید؛ سربرگ باید متنِ خالص باشد. */
+  t(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(o.head),
+    'و سربرگِ کاغذ هیچ شکلکی ندارد', JSON.stringify(o.head.split('\n')[0]));
+  t(/تقویم/.test(o.head) && /ساعت/.test(o.head),
+    'ولی نام و تاریخش را دارد', o.head.split('\n').pop().slice(0, 44));
+
+  /* پانویسِ امضا روی کاغذ یک خطِ سرگردان بود که صفحهٔ دوم می‌ساخت */
+  const foot = await p.evaluate(() => {
+    const f = document.querySelector('.appfoot');
+    return f ? Math.round(f.getBoundingClientRect().height) : 0;
+  });
+  t(foot === 0, 'و پانویسِ امضا صفحهٔ دومِ خالی نمی‌سازد', foot + 'px');
+
+  t(errs.length === 0, 'و خطایی نداد', errs[0] || '—');
+  await ctx.close();
+}
+
 await b.close();
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

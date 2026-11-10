@@ -132,6 +132,111 @@ console.log('===== تقویم =====');
   await ctx.close();
 }
 
+/* ================= تم باید یک‌دست باشد ================= */
+console.log('===== یک رنگ، نه شش رنگ =====');
+{
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 1100 } });
+  await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(3800);
+
+  /* فاصلهٔ دو رنگ روی چرخِ رنگ. رنگِ خاکستری فام ندارد و حساب نمی‌شود. */
+  const probe = `(() => {
+    const num = c => (String(c).match(/[\\d.]+/g) || []).map(Number);
+    const hue = c => { const v = num(c); if (v.length < 3) return null;
+      let [r, g, b] = v.slice(0, 3);
+      if (r <= 1 && g <= 1 && b <= 1) { r *= 255; g *= 255; b *= 255; }
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (mx - mn < 14) return null;
+      let h; if (mx === r) h = (g - b) / (mx - mn);
+      else if (mx === g) h = 2 + (b - r) / (mx - mn); else h = 4 + (r - g) / (mx - mn);
+      return ((h * 60) + 360) % 360; };
+    const stripes = [];
+    for (const el of document.querySelectorAll('.panel')) {
+      const m = getComputedStyle(el, '::after').backgroundImage.match(/rgba?\\([^)]*\\)|color\\([^)]*\\)/);
+      if (m) { const h = hue(m[0]); if (h !== null) stripes.push(h); }
+    }
+    const nav = [];
+    for (const el of document.querySelectorAll('.nav-list .navbtn .ic')) {
+      const h = hue(getComputedStyle(el).backgroundColor); if (h !== null) nav.push(h);
+    }
+    const brand = hue(getComputedStyle(document.documentElement)
+      .getPropertyValue('--brass').trim().replace(/^#(..)(..)(..)$/,
+        (_, r, g, b) => 'rgb(' + parseInt(r, 16) + ',' + parseInt(g, 16) + ',' + parseInt(b, 16) + ')'));
+    const far = list => list.length
+      ? Math.max(...list.map(h => { const d = Math.abs(h - brand); return Math.min(d, 360 - d); })) : 0;
+    return { brand, stripes: stripes.length, navs: nav.length,
+             stripeFar: Math.round(far(stripes)), navFar: Math.round(far(nav)) };
+  })()`;
+
+  for (const th of ['sea', 'mint', 'sunset']) {
+    await p.evaluate(t => KTHEME.set(t), th);
+    await p.waitForTimeout(1100);
+    const o = await p.evaluate(probe);
+    t(o.stripes > 3, th + ': نوارِ قاب‌ها هست', o.stripes + ' نوار');
+    /* ۲۵ درجه جا برای محوشدگی و گردکردن می‌گذارد؛ یک رنگِ بیگانه
+       دست‌کم ۶۰ درجه دور می‌افتد. */
+    t(o.stripeFar < 25, th + ': و همه هم‌خانوادهٔ رنگِ برندند',
+      'دورترین ' + o.stripeFar + '°');
+    t(o.navFar < 25, th + ': چیپ‌های فهرست هم', 'دورترین ' + o.navFar + '°');
+  }
+
+  /* نمودارِ تک‌سری رنگِ تم را می‌گیرد. این یکی از روی عکسِ کاربر
+     درآمد: نوارِ قاب‌ها یک رنگ بود و میله‌های داخلش رنگِ دیگر. */
+  await p.evaluate(() => KTHEME.set('sunset'));
+  await p.waitForTimeout(1400);
+  /* «charts» روی window نیست، پس از خودِ بوم می‌پرسیم: پررنگ‌ترین
+     رنگِ غیرخاکستریِ نمودار باید همان فامِ برند باشد. این سنجه از
+     مسیرِ واقعی می‌گذرد — آن‌چه کاربر می‌بیند، نه آن‌چه کد می‌گوید. */
+  await p.waitForTimeout(600);
+  const bar = await p.evaluate(() => {
+    const hx = getComputedStyle(document.documentElement)
+      .getPropertyValue('--brass').trim();
+    const m = hx.match(/^#(..)(..)(..)$/);
+    const brand = m ? [1, 2, 3].map(i => parseInt(m[i], 16)) : null;
+    const hue = ([r, g, b]) => {
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      /* آستانه عمداً بالاست: حلقهٔ خاکستریِ «نمودارِ خالی» رنگش
+         #CFD7E0 است و فامِ ۲۱۰ درجه دارد — با آستانهٔ کم، همان
+         خاکستری پررنگ‌ترین «رنگِ» بوم می‌شد و آزمون را گمراه می‌کرد. */
+      if (mx - mn < 45) return null;
+      let h; if (mx === r) h = (g - b) / (mx - mn);
+      else if (mx === g) h = 2 + (b - r) / (mx - mn); else h = 4 + (r - g) / (mx - mn);
+      return ((h * 60) + 360) % 360;
+    };
+    const cv = document.getElementById('chartTopCompanies');
+    if (!cv || !brand) return null;
+    let px;
+    try { px = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; }
+    catch (e) { return { err: e.message }; }
+    const tally = {};
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 200) continue;
+      const h = hue([px[i], px[i + 1], px[i + 2]]);
+      if (h === null) continue;
+      const k = Math.round(h / 10) * 10;
+      tally[k] = (tally[k] || 0) + 1;
+    }
+    const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+    const bh = hue(brand);
+    if (!top || bh === null) return null;
+    const d = Math.abs(Number(top[0]) - bh);
+    return { brand: hx, brandHue: Math.round(bh), chartHue: Number(top[0]),
+             off: Math.round(Math.min(d, 360 - d)), px: top[1] };
+  });
+  if (bar && !bar.err)
+    t(bar.off < 25, 'و میله‌های نمودارِ تک‌سری رنگِ برندند — روی خودِ بوم',
+      bar.brand + ' (' + bar.brandHue + '°) ↔ نمودار ' + bar.chartHue + '° — فاصله ' + bar.off + '°');
+  else
+    t(false, 'بومِ نمودار خوانده نشد', bar ? bar.err : 'نمودار پیدا نشد');
+
+  t(errs.length === 0, 'و عوض کردنِ تم خطا نداد', errs[0] || '—');
+  await ctx.close();
+}
+
 await b.close();
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

@@ -130,7 +130,15 @@
   #view-cal[data-exact="0"] .c2-exact{ display:none; }
   .c2-legend .sw{ display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:-1px; margin-left:4px; }
 
-  @media (max-width:900px){
+  /* «screen and» عمدی است و گران تمام شد. در چاپ، عرضِ رسانه عرضِ
+     کاغذ است: A4ِ ایستاده ۷۹۴ پیکسل، یعنی زیر ۹۰۰. پس همهٔ این
+     قاعده‌ها روی کاغذ هم اجرا می‌شدند — و یکی‌شان کارهای هر روز را
+     به نقطهٔ شش‌پیکسلی با «font-size:0» تبدیل می‌کند. نتیجه این بود
+     که چاپِ تقویم خانه‌هایی می‌داد با چند نقطهٔ بی‌معنی و هیچ نامی.
+
+     این قاعده‌ها برای ستونی به پهنای انگشت نوشته شده‌اند. کاغذ تنگ
+     نیست و اسکرول هم ندارد، پس هیچ‌کدامشان آن‌جا درست نیستند. */
+  @media screen and (max-width:900px){
     .c2-main{ grid-template-columns:1fr; }
     .c2-side{ position:static; }
     .c2-cell{ min-height:62px; padding:4px 4px 5px; }

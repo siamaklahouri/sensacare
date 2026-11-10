@@ -2295,7 +2295,7 @@ function renderCharts(){
       });
       charts.remoteStatus = new Chart(document.getElementById("chartRemoteStatus"), {
         type:"bar",
-        data:{ labels:paired.map(p=>p.server), datasets:[{ data:paired.map(p=>p.pct), backgroundColor:chartTone().cat[2], hoverBackgroundColor:chartHover([chartTone().cat[2]])[0], borderRadius:4 }] },
+        data:{ labels:paired.map(p=>p.server), datasets:[{ data:paired.map(p=>p.pct), backgroundColor:chartTone().cat[0], hoverBackgroundColor:chartHover([chartTone().cat[0]])[0], borderRadius:4 }] },
         options:{
           indexAxis:"y",
           plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{ label:(ctx)=> " "+fa(ctx.parsed.x)+"٪ بررسی‌شده" } } },
