@@ -29,6 +29,7 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { newsFor as releaseNews } from './news.js';
+import { multipart } from './multipart.js';
 
 /* ---------- کارتابل‌ها ----------
    سه کارتابل داریم و هر سه از همین کد استفاده می‌کنند: سیامک روی
@@ -1558,6 +1559,27 @@ export async function siteBots(env) {
    دو ربات پشتِ در بماند. */
 export const botsReady = async env => (await siteBots(env)).length > 0;
 
+/* ---------- چرا نرفت ----------
+   «fetch failed» تمامِ چیزی است که Node می‌گوید و تقریباً هیچ است:
+   قطعِ ارتباط، تمام‌شدنِ مهلت، DNS، و گواهیِ بد همه همین یک جمله را
+   می‌دهند. علتِ واقعی زیرِ «cause» نشسته و ما ثبتش نمی‌کردیم — پس
+   گزارشِ «تلگرام — fetch failed» ما را یک روز عقب انداخت.
+
+   حالا کدِ زیرین هم می‌آید: ECONNRESET، UND_ERR_BODY_TIMEOUT،
+   ETIMEDOUT — هرکدام یک تشخیصِ متفاوت است. */
+function why(e) {
+  var bits = [];
+  var m = (e && e.message) || String(e);
+  if (m) bits.push(m);
+  var c = e && e.cause;
+  for (var i = 0; i < 3 && c; i++) {
+    var t = c.code || c.message || '';
+    if (t && bits.indexOf(t) < 0) bits.push(t);
+    c = c.cause;
+  }
+  return bits.join(' ← ');
+}
+
 export async function botMessage(env, text) {
   const bots = await siteBots(env);
   /* «تنظیم نشده» با «نپذیرفت» فرق دارد: اولی ۵۰۳ است و دومی ۵۰۲،
@@ -1578,7 +1600,7 @@ export async function botMessage(env, text) {
          صفحه باید بتواند بگوید «به بله رفت»، نه «به bale رفت». */
       if (d.ok) sent.push(bot.label || bot.kind);
       else failed.push((bot.label || bot.kind) + ': ' + (d.description || 'نپذیرفت'));
-    } catch (e) { failed.push((bot.label || bot.kind) + ': ' + e.message); }
+    } catch (e) { failed.push((bot.label || bot.kind) + ': ' + why(e)); }
   }
   return sent.length ? { ok: true, to: sent, failed }
                      : { ok: false, error: failed.join(' — ') || 'هیچ رباتی نگرفت.' };
@@ -1621,17 +1643,23 @@ export async function sendKartablBackup(env, req, panel, note = '') {
      پشتیبانی که به یک جا رسیده باشد از هیچ بهتر است. */
   const sent = [], failed = [], okBots = [];
   for (const bot of bots) {
-    const fd = new FormData();
-    fd.append('chat_id', bot.chat);
-    fd.append('caption', bot.kind === 'bale' ? plainText(caption) : caption);
-    if (bot.kind !== 'bale') fd.append('parse_mode', 'HTML');
-    fd.append('document', new Blob([zip], { type: 'application/zip' }), name);
+    /* بدنه را خودمان می‌سازیم، نه FormData. علتش در src/multipart.js
+       نوشته است؛ خلاصه‌اش اینکه پشتیبانِ تلگرام با «fetch failed»
+       می‌افتاد در حالی که همان فایل با curl از همان رله می‌رفت، و
+       تنها تفاوت شکلِ بدنه بود. این‌طور بدنه یک Buffer است با طولِ
+       معلوم — همان چیزی که curl می‌فرستد. */
+    const m = multipart({
+      chat_id: bot.chat,
+      caption: bot.kind === 'bale' ? plainText(caption) : caption,
+      parse_mode: bot.kind === 'bale' ? null : 'HTML'
+    }, { field: 'document', name, type: 'application/zip', data: zip });
     try {
-      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
+      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`,
+        { method: 'POST', body: m.body, headers: m.headers });
       const d = await r.json().catch(() => ({}));
       if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); }
       else failed.push((bot.label || bot.kind) + ' — ' + (d.description || 'نپذیرفت'));
-    } catch (e) { failed.push((bot.label || bot.kind) + ' — ' + e.message); }
+    } catch (e) { failed.push((bot.label || bot.kind) + ' — ' + why(e)); }
   }
   if (!sent.length) {
     /* با « — » به هم می‌چسبیدند و از «تلگرام — chat not found — بله —
