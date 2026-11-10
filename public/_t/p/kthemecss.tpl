@@ -7,6 +7,27 @@
 
      تمِ شب هم برای هر کدام جدا نوشته شده، نه وارونهٔ خودکارِ روز.
 
+     ---- هاله این‌جا نیست، و عمدی ----
+
+     هر تم یک «body{ background: … }» داشت با هالهٔ خودش. دو چیز را
+     خراب می‌کرد:
+
+     ۱) میان‌بُرِ «background» هر چیزی را که ننویسی به پیش‌فرض
+        برمی‌گرداند — از جمله «background-attachment» را به «scroll».
+        colorcss آن را «fixed» گذاشته بود، ولی این قاعده‌ها ویژگیِ
+        بیشتری داشتند و رویش می‌نشستند. نتیجه: هالهٔ ۵۲۰ پیکسلی با
+        متن می‌لغزید و چون صفحه بلندتر از آن است، **تکرار** می‌شد.
+        کاربر موقعِ اسکرول نوار نوار می‌دید — «انگار چند صفحه‌ای
+        می‌شود». روی صفحهٔ کوتاه هیچ‌وقت دیده نمی‌شد.
+
+     ۲) رنگِ دومِ هر هاله دستی نوشته شده بود و به تمِ خودش نمی‌خورد:
+        تمِ دریا یک هالهٔ فیروزه‌ای داشت، تمِ بنفشه یک هالهٔ آبی.
+
+     حالا یک هالهٔ واحد در colorcss هست که از «--brass» و
+     «--brass-deep» ساخته می‌شود — و هر تم همین دو را عوض می‌کند. پس
+     هاله خودبه‌خود رنگِ تم را می‌گیرد، یک‌بار «fixed» تعریف شده، و
+     تمِ تازه هم هیچ‌چیزی برای نوشتن ندارد جز همان چند متغیر.
+
      چرا «:not([data-theme="dark"])» روی گزینشگرها: پوستهٔ مشترک
      (themecss) همین متغیرها را با همان وزن می‌نویسد؛ بی این، کاغذِ تم
      اصلاً نمی‌نشست و فقط رنگِ برند عوض می‌شد. */
@@ -15,12 +36,6 @@
   html[data-kt="sea"]:not([data-theme="dark"]){
     --paper:#EAF2FA; --paper-deep:#D8E6F4;
     --brass:#1E7FD6; --brass-deep:#1663AA; --brass-bg:#DCEBFA; --brass-ink:#145FA6;
-  }
-  html[data-kt="sea"]:not([data-theme="dark"]) body{
-    background:
-      radial-gradient(1100px 520px at 100% -6%, rgba(30,127,214,.14), transparent 60%),
-      radial-gradient(900px 460px at -8% 2%, rgba(15,168,156,.10), transparent 58%),
-      var(--paper);
   }
   html[data-kt="sea"][data-theme="dark"]{
     --paper:#0A1722; --paper-deep:#0E1E2C;
@@ -32,12 +47,6 @@
     --paper:#EAF4EE; --paper-deep:#D9EBE1;
     --brass:#19876A; --brass-deep:#116B54; --brass-bg:#DCEFE7; --brass-ink:#116B54;
   }
-  html[data-kt="mint"]:not([data-theme="dark"]) body{
-    background:
-      radial-gradient(1100px 520px at 100% -6%, rgba(25,135,106,.13), transparent 60%),
-      radial-gradient(900px 460px at -8% 2%, rgba(176,120,19,.07), transparent 58%),
-      var(--paper);
-  }
   html[data-kt="mint"][data-theme="dark"]{
     --paper:#081611; --paper-deep:#0D2019;
     --brass:#3FBE92; --brass-deep:#2A9A74; --brass-bg:#0F2C23; --brass-ink:#7FD9B8;
@@ -47,12 +56,6 @@
   html[data-kt="sunset"]:not([data-theme="dark"]){
     --paper:#FBF0E8; --paper-deep:#F3E1D4;
     --brass:#D2662F; --brass-deep:#AE4F22; --brass-bg:#FAE6D8; --brass-ink:#A8491F;
-  }
-  html[data-kt="sunset"]:not([data-theme="dark"]) body{
-    background:
-      radial-gradient(1100px 520px at 100% -6%, rgba(210,102,47,.13), transparent 60%),
-      radial-gradient(900px 460px at -8% 2%, rgba(176,60,110,.08), transparent 58%),
-      var(--paper);
   }
   html[data-kt="sunset"][data-theme="dark"]{
     --paper:#1A0F0A; --paper-deep:#23160F;
@@ -64,12 +67,6 @@
     --paper:#F1EDF9; --paper-deep:#E2DAF2;
     --brass:#6B46C7; --brass-deep:#54349F; --brass-bg:#E8E1F7; --brass-ink:#54349F;
   }
-  html[data-kt="violet"]:not([data-theme="dark"]) body{
-    background:
-      radial-gradient(1100px 520px at 100% -6%, rgba(107,70,199,.13), transparent 60%),
-      radial-gradient(900px 460px at -8% 2%, rgba(30,127,214,.08), transparent 58%),
-      var(--paper);
-  }
   html[data-kt="violet"][data-theme="dark"]{
     --paper:#120C1F; --paper-deep:#191130;
     --brass:#9D7CF0; --brass-deep:#7B5AD6; --brass-bg:#211741; --brass-ink:#C0ABF8;
@@ -80,11 +77,6 @@
   html[data-kt="graphite"]:not([data-theme="dark"]){
     --paper:#EFF1F3; --paper-deep:#E2E5E9;
     --brass:#4A5A6B; --brass-deep:#36434F; --brass-bg:#E3E7EB; --brass-ink:#36434F;
-  }
-  html[data-kt="graphite"]:not([data-theme="dark"]) body{
-    background:
-      radial-gradient(1100px 520px at 100% -6%, rgba(74,90,107,.09), transparent 60%),
-      var(--paper);
   }
   html[data-kt="graphite"][data-theme="dark"]{
     --paper:#101418; --paper-deep:#161B21;

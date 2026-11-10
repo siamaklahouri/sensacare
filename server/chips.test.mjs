@@ -237,6 +237,53 @@ console.log('===== یک رنگ، نه شش رنگ =====');
   await ctx.close();
 }
 
+/* ================= هاله نباید تکرار شود ================= */
+console.log('===== زمینه موقعِ اسکرول =====');
+{
+  /* این از دستِ خودمان در رفت و کاربر گرفتش: «وقتی اسکرول می‌شود
+     انگار چند صفحه‌ای می‌شود.»
+
+     هر تم یک «body{ background: … }» داشت. میان‌بُرِ background هر
+     چیزی را که ننویسی به پیش‌فرض برمی‌گرداند — از جمله
+     background-attachment را به scroll. پس هالهٔ ۵۲۰ پیکسلی با متن
+     می‌لغزید و روی صفحهٔ بلند تکرار می‌شد: نوار، نوار، نوار.
+
+     روی صفحهٔ کوتاه هیچ‌وقت دیده نمی‌شد — و آزمون‌های ما همه روی
+     صفحهٔ کوتاه بودند. پس این یکی عمداً صفحه را بلند می‌کند و دو
+     جای دور از هم را با هم می‌سنجد. */
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
+  await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(3800);
+
+  for (const th of ['sea', 'mint', 'sunset', 'violet', 'graphite']) {
+    await p.evaluate(x => KTHEME.set(x), th);
+    await p.waitForTimeout(800);
+    const att = await p.evaluate(() => getComputedStyle(document.body).backgroundAttachment);
+    t(/^(fixed)(,\s*fixed)*$/.test(att.trim()),
+      th + ': هر لایهٔ زمینه به قاب چسبیده، نه به متن', att);
+  }
+  await ctx.close();
+}
+
+/* و ریشه‌اش، در خودِ فایل. سنجیدنِ پیکسل‌ها را امتحان کردم و کنار
+   گذاشتم: دو عکس از یک زمینهٔ صاف هم چند بایت فرق می‌کنند و آزمونی
+   که به آن تکیه کند، روزی بی‌دلیل قرمز می‌شود. آن‌چه ایراد را گرفت
+   خودِ «attachment» بود، و این دو خط ریشه‌اش را می‌بندند. */
+{
+  /* توضیح‌ها را اول برمی‌داریم: خودِ یادداشتی که همین درس را نوشته،
+     عبارتِ «body{ background: … }» را در خودش دارد و آزمون را قرمز
+     می‌کرد — یعنی آزمون از روی حرف قضاوت می‌کرد، نه از روی قاعده. */
+  const kt = readFileSync(new URL('../public/_t/p/kthemecss.tpl', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  t(!/body\s*\{[^}]*background\s*:/.test(kt),
+    'و هیچ تمی زمینهٔ خودش را از نو نمی‌نویسد — میان‌بُرِ background همان attachment را می‌پراند');
+  const cc = readFileSync(new URL('../public/_t/p/colorcss.tpl', import.meta.url), 'utf8');
+  t(/background-attachment\s*:\s*fixed/.test(cc),
+    'و هالهٔ مشترک به قاب چسبیده است');
+}
+
 await b.close();
 console.log('\n' + ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);
