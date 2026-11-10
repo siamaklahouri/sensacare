@@ -5,7 +5,26 @@
      فقط رنگ اضافه می‌کند — هیچ اندازه و چیدمانی را دست نمی‌زند، و هرچه
      می‌گذارد از توکن‌های خودِ شیوه‌نامه می‌آید، پس تمِ شب خودش درمی‌آید.
 
-     بعد از navcss می‌آید تا حرفش روی قاعده‌های پیش از خودش بنشیند. */
+     بعد از navcss می‌آید تا حرفش روی قاعده‌های پیش از خودش بنشیند.
+
+     ---- بازنگری ----
+
+     نسخهٔ اول شش رنگ را می‌چرخاند: آیکن‌های فهرست، سربرگِ هر نما، و
+     نوارِ بالای هر قاب. روی کاغذِ سفید جان‌دار بود، ولی کارتابل تم
+     دارد — و تم فقط «--paper» و «--brass» را عوض می‌کند. یعنی با تمِ
+     دریا صفحه آبی می‌شد و شش کارتِ کنارِ هم هنوز فیروزه‌ای، بنفش،
+     سبز، کهربایی و قرمز بودند. کاربر همین را دید و اسمش را گذاشت
+     «بریده بریده رنگی».
+
+     قاعده‌اش را خودِ kthemecss نوشته بود و این پاره رعایتش نکرده بود:
+     رنگِ معنادار ثابت می‌ماند (سبزِ «انجام شد»، کهربایی «نشده»، قرمزِ
+     هشدار — اگر این‌ها با تم عوض شوند، معنی عوض می‌شود)، و رنگِ
+     تزئینی از برندِ تم می‌آید. حالا هالهٔ زمینه، نوارِ قاب‌ها، خطِ
+     سربرگ و چیپ‌های فهرست همه یک خانواده‌اند و با تم می‌چرخند.
+
+     چیزی که از چرخش می‌رفت، به‌جایش برنگشت: ترتیبِ فهرست و شکلکِ هر
+     بخش همان نشانه را می‌دهند، و «دیتای شخصی» بنفشِ خودش را نگه
+     داشته چون قفل بودن معناست، نه تزئین. */
 
   /* ---------- ۱) هالهٔ زمینه ----------
      دو هاله بود با شفافیتِ ۰٫۰۵ — عملاً دیده نمی‌شد. سه تا شد، کمی
@@ -13,17 +32,17 @@
      این فقط یک خاکستریِ تخت بود). */
   body{
     background:
-      radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--teal) 13%, transparent), transparent 62%),
-      radial-gradient(900px 460px at -8% 2%, color-mix(in srgb, var(--purple) 11%, transparent), transparent 58%),
-      radial-gradient(780px 420px at 45% 108%, color-mix(in srgb, var(--brass) 9%, transparent), transparent 60%),
+      radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--brass) 13%, transparent), transparent 62%),
+      radial-gradient(900px 460px at -8% 2%, color-mix(in srgb, var(--brass-deep) 9%, transparent), transparent 58%),
+      radial-gradient(780px 420px at 45% 108%, color-mix(in srgb, var(--brass) 7%, transparent), transparent 60%),
       var(--paper);
     background-attachment:fixed;
   }
   [data-theme="dark"] body{
     background:
-      radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--teal) 20%, transparent), transparent 62%),
-      radial-gradient(900px 460px at -8% 2%, color-mix(in srgb, var(--purple) 17%, transparent), transparent 58%),
-      radial-gradient(780px 420px at 45% 108%, color-mix(in srgb, var(--brass) 14%, transparent), transparent 60%),
+      radial-gradient(1100px 520px at 100% -8%, color-mix(in srgb, var(--brass) 20%, transparent), transparent 62%),
+      radial-gradient(900px 460px at -8% 2%, color-mix(in srgb, var(--brass-deep) 15%, transparent), transparent 58%),
+      radial-gradient(780px 420px at 45% 108%, color-mix(in srgb, var(--brass) 11%, transparent), transparent 60%),
       var(--paper);
     background-attachment:fixed;
   }
@@ -33,12 +52,7 @@
      یک رنگ نمی‌شوند و چشم می‌تواند «سومی از بالا، سبز» را به خاطر
      بسپارد. آیکنِ پنهان‌شده هم نوبتش را نگه می‌دارد، پس با باز و بسته
      شدنِ بخش‌ها رنگ‌ها جابه‌جا نمی‌شوند. */
-  .nav-list .navbtn:nth-of-type(6n+1){ --nv:var(--brass);  --nv-bg:var(--brass-bg); }
-  .nav-list .navbtn:nth-of-type(6n+2){ --nv:var(--green);  --nv-bg:var(--green-bg); }
-  .nav-list .navbtn:nth-of-type(6n+3){ --nv:var(--amber);  --nv-bg:var(--amber-bg); }
-  .nav-list .navbtn:nth-of-type(6n+4){ --nv:var(--teal);   --nv-bg:var(--teal-bg); }
-  .nav-list .navbtn:nth-of-type(6n+5){ --nv:var(--purple); --nv-bg:var(--purple-bg); }
-  .nav-list .navbtn:nth-of-type(6n+6){ --nv:var(--red);    --nv-bg:var(--red-bg); }
+  .nav-list .navbtn{ --nv:var(--brass); --nv-bg:var(--brass-bg); }
   /* بخشِ قفل‌دار رنگِ خودش را دارد، هرجای فهرست که بیفتد */
   .nav-list .navbtn-lock{ --nv:var(--purple); --nv-bg:var(--purple-bg); }
 
@@ -82,12 +96,7 @@
      خطِ کنارِ عنوان همه‌جا یک آبی بود. حالا هر نما رنگِ خودش را دارد،
      همان رنگی که در فهرستِ کنار هم دیده — پس جابه‌جایی بینشان یک
      پیوستگیِ رنگی دارد. */
-  .content > .view:nth-of-type(6n+1){ --vw:var(--brass); }
-  .content > .view:nth-of-type(6n+2){ --vw:var(--green); }
-  .content > .view:nth-of-type(6n+3){ --vw:var(--amber); }
-  .content > .view:nth-of-type(6n+4){ --vw:var(--teal); }
-  .content > .view:nth-of-type(6n+5){ --vw:var(--purple); }
-  .content > .view:nth-of-type(6n+6){ --vw:var(--red); }
+  .content > .view{ --vw:var(--brass); }
   .section-title::before{
     background:linear-gradient(180deg, var(--vw, var(--brass)),
                color-mix(in srgb, var(--vw, var(--brass)) 45%, transparent));
@@ -103,12 +112,7 @@
     background:linear-gradient(90deg, var(--pn, var(--brass)),
                color-mix(in srgb, var(--pn, var(--brass)) 35%, transparent));
   }
-  .panel:nth-of-type(6n+1){ --pn:var(--teal); }
-  .panel:nth-of-type(6n+2){ --pn:var(--brass); }
-  .panel:nth-of-type(6n+3){ --pn:var(--purple); }
-  .panel:nth-of-type(6n+4){ --pn:var(--green); }
-  .panel:nth-of-type(6n+5){ --pn:var(--amber); }
-  .panel:nth-of-type(6n+6){ --pn:var(--red); }
+  .panel{ --pn:var(--brass); }
   .panel h3{ border-bottom-color:color-mix(in srgb, var(--pn, var(--brass)) 22%, transparent); }
 
   /* ---------- ۶) کارتِ خوش‌آمد و نوارِ بالا ----------
@@ -116,14 +120,14 @@
      از جدولِ زیرشان جدا شوند. */
   .dash-hero{
     background:
-      linear-gradient(115deg, color-mix(in srgb, var(--brass) 8%, transparent),
-                      color-mix(in srgb, var(--teal) 6%, transparent) 55%, transparent 80%),
+      linear-gradient(115deg, color-mix(in srgb, var(--brass) 9%, transparent),
+                      color-mix(in srgb, var(--brass-deep) 5%, transparent) 55%, transparent 80%),
       var(--white);
   }
   .topbar{
     background:
       linear-gradient(90deg, color-mix(in srgb, var(--brass) 6%, transparent),
-                      transparent 40%, color-mix(in srgb, var(--purple) 5%, transparent)),
+                      transparent 40%, color-mix(in srgb, var(--brass-deep) 4%, transparent)),
       var(--white);
   }
   .sidebar{

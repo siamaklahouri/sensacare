@@ -148,12 +148,29 @@ const dashEmpty = {
     /* کلِ بوم پاک می‌شود، نه فقط ناحیهٔ نمودار: وگرنه عددهای محورِ
        «۰ تا ۱» دورِ یک قابِ خالی می‌ماندند. */
     g.clearRect(0, 0, c.width, c.height);
+    const k = window.devicePixelRatio || 1;
+    const cx = c.width / (2 * k), cy = c.height / (2 * k);
+    /* یک حلقهٔ خط‌چینِ کم‌رنگ پشتِ جمله. کارتِ خالی پیش از این یک قابِ
+       بلند بود با یک خطِ خاکستری وسطش و کنارِ دوناتِ پُرِ بغلی شبیهِ
+       چیزی بود که نیامده — نه چیزی که هنوز داده ندارد. حلقه همان
+       شکلِ دوناتِ همسایه را می‌گیرد، پس کارت تمام‌شده به نظر می‌رسد. */
+    const r = Math.max(0, Math.min(cx, cy) - 34);
+    if (r > 26) {
+      g.beginPath();
+      g.arc(cx, cy - 8, r, 0, Math.PI * 2);
+      g.lineWidth = Math.max(8, r * 0.22);
+      g.strokeStyle = t.none;
+      g.globalAlpha = 0.28;
+      g.setLineDash([Math.max(6, r * 0.14), Math.max(7, r * 0.16)]);
+      g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = 1;
+    }
     g.textAlign = "center"; g.textBaseline = "middle";
     g.fillStyle = t.inkFaint;
     g.font = "12.5px " + chartFont();
     g.fillText(o.text || "هنوز داده‌ای برای این نمودار ثبت نشده",
-               c.width / (2 * (window.devicePixelRatio || 1)),
-               c.height / (2 * (window.devicePixelRatio || 1)));
+               cx, r > 26 ? cy + r + 18 : cy);
     g.restore();
   }
 };

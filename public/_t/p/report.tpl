@@ -246,11 +246,12 @@
        گزینشگر سه شناسه است و از «.view#view-cal» قوی‌تر، پس دکمهٔ
        چاپِ تقویم هم کاغذِ خالی می‌داد. حالا فقط وقتی برگهٔ گزارش
        باز است حرف می‌زند. */
-    body:has(#view-report.active) *:not(:has(#rpPaper)):not(#rpPaper):not(#rpPaper *){
+    /* printanycss بیرونِ بخش را برداشته؛ این‌جا فقط داخلِ خودِ بخش
+       می‌ماند: از کلِ گزارش‌ساز، تنها برگه روی کاغذ می‌رود — نه کادرِ
+       فایل، نه کشویی‌ها، نه دکمه‌ها. */
+    #view-report.kb-print > *:not(:has(#rpPaper)):not(#rpPaper):not(.kb-phead){
       display:none !important; }
-    body:has(#view-report.active) *{ visibility:hidden !important; }
-    body:has(#view-report.active) #rpPaper,
-    body:has(#view-report.active) #rpPaper *{ visibility:visible !important; }
+    #view-report.kb-print .rp-size{ display:none !important; }
     #rpPaper{ width:100%; padding:0; margin:0; }
     /* مرورگرِ بدونِ ‎:has()‎ هیچ‌کدام از قاعده‌های بالا را نمی‌بیند —
        نه قیدِ تازه، نه خودِ پنهان‌کردن — پس کلِ صفحه چاپ می‌شود؛

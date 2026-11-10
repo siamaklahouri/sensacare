@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* تنظیم سرویس پیامک */
-const { spawnSync, execSync } = require('child_process');
-const readline = require('readline');
+import { spawnSync, execSync } from 'node:child_process';
+import readline from 'node:readline';
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = q => new Promise(r => rl.question(q, a => r(a.trim())));
 const WR = process.platform === 'win32' ? 'npx.cmd wrangler' : 'npx wrangler';

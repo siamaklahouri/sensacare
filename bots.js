@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* راه‌اندازی ربات تلگرام و بله */
-const { execSync, spawnSync } = require('child_process');
-const readline = require('readline');
-const crypto = require('crypto');
+import { execSync, spawnSync } from 'node:child_process';
+import readline from 'node:readline';
+import crypto from 'node:crypto';
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = q => new Promise(r => rl.question(q, a => r(a.trim())));
 const WR = process.platform === 'win32' ? 'npx.cmd wrangler' : 'npx wrangler';

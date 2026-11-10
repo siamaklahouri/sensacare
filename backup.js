@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* گرفتن پشتیبان کامل از دیتابیس */
-const { execSync } = require('child_process');
+import { execSync } from 'node:child_process';
 const WR = process.platform === 'win32' ? 'npx.cmd wrangler' : 'npx wrangler';
 const G='\x1b[32m', R='\x1b[0m', B='\x1b[1m';
 const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');

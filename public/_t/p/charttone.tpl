@@ -39,6 +39,19 @@
    رنگ‌های شب «وارونهٔ» روز نیستند؛ جداگانه روی سطحِ تیره انتخاب
    شده‌اند. مقدارهای قبلیِ شب برای «متن» ساخته شده بودند و برای پر
    کردنِ نمودار از باندِ مجاز روشن‌تر بودند. */
+/* رنگِ برندِ تم، همان‌طور که CSS می‌بیندش.
+   «cat[0]» رنگِ نمودارهای تک‌سری است — نمودارِ میله‌ایِ شرکت‌ها، مثلاً —
+   و هیچ معنایی ندارد جز «این داده». پس باید با تم بچرخد، وگرنه روی
+   تمِ بنفش یک ستونِ آبیِ یادگار می‌ماند. بقیهٔ cat سرجایشان‌اند: آن‌ها
+   وقتی به کار می‌آیند که چند دسته باید از هم تفکیک شوند، و تفکیک‌پذیری
+   کارِ داده است نه تزئین. */
+function brandTone(fallback){
+  try{
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue("--brass").trim();
+    return v || fallback;
+  }catch(e){ return fallback; }
+}
 function chartTone(){
   const dark = document.documentElement.getAttribute("data-theme") === "dark";
   /* «ink» و «inkFaint» رنگِ نوشته‌اند، نه رنگِ داده: عددی که روی بوم
@@ -49,11 +62,11 @@ function chartTone(){
     ? { done:"#3FBE79", doing:"#5AA8FF", todo:"#F2C033", none:"#3A4653",
         bad:"#F06A72", surface:"#121E29",
         ink:"#E7EEF4", inkFaint:"#8DA0B2",
-        cat:["#7FC2FF","#F2C033","#1FAFA0","#8257D8","#FF9080"] }
+        cat:[brandTone("#7FC2FF"),"#F2C033","#1FAFA0","#8257D8","#FF9080"] }
     : { done:"#1FA05C", doing:"#2E86F0", todo:"#E8A200", none:"#CFD7E0",
         bad:"#E0484F", surface:"#FFFFFF",
         ink:"#0B2545", inkFaint:"#5B6E82",
-        cat:["#2E86F0","#E8A200","#0FA89C","#7C5CD6","#F2624F"] };
+        cat:[brandTone("#2E86F0"),"#E8A200","#0FA89C","#7C5CD6","#F2624F"] };
 }
 /* کمی روشن‌تر برای وقتی موشواره رویش می‌رود */
 function chartHover(list){ return list.map(c=> c + "D9"); }

@@ -132,9 +132,15 @@ const v = await p.evaluate(() => {
     editable: sec.querySelectorAll('[contenteditable="true"]').length,
     /* دکمهٔ بستنِ پنجرهٔ جزئیات حساب نمی‌شود: آن یکی چیزی نمی‌نویسد،
        فقط پنجره‌ای را که خودِ کاربر باز کرده می‌بندد. مقصودِ این سنجه
-       این است که در این بخش هیچ راهی برای نوشتن یا افزودن نباشد. */
+       این است که در این بخش هیچ راهی برای نوشتن یا افزودن نباشد.
+
+       دکمهٔ چاپ هم به همین دلیل بیرون است: سامانهٔ چاپ کنارِ عنوانِ
+       هر بخش یک دکمه می‌گذارد و این یکی هم فقط می‌خوانَد. اگر روزی
+       این استثنا را برداشتید، یادتان باشد که آینه بودنِ این بخش را
+       «contenteditable» و کادرهای ورودی می‌سنجند، نه شمارشِ خامِ
+       دکمه‌ها. */
     inputs: [...sec.querySelectorAll('input, select, button')]
-      .filter(el => !el.closest('.vpop')).length
+      .filter(el => !el.closest('.vpop') && !el.classList.contains('kb-print-btn')).length
   };
 });
 t(v.active, 'نما باز شد');

@@ -180,18 +180,15 @@
         بی قیدِ زیر، Ctrl+P از هر جای کارتابل تقویم را چاپ می‌کرد، نه
         آن‌چه کاربر می‌دید. */
   @media print{
-    body{ background:#fff; }
-    .sidebar, .topbar, .appbar, .ch-fab-wrap,
-    .reminders-banner{ display:none !important; }
-    body:has(#view-cal.active) .c2-bar,
-    body:has(#view-cal.active) .c2-side,
-    body:has(#view-cal.active) .section-sub{ display:none !important; }
-    body:has(#view-cal.active) .content{ padding:0 !important; }
-    body:has(#view-cal.active) .view{ display:none !important; }
-    body:has(#view-cal.active) .view#view-cal{ display:block !important; }
+    /* «چه چیزی چاپ شود» دیگر کارِ این‌جا نیست: printanycss بخشِ
+       نشان‌شده را نگه می‌دارد و بقیه را برمی‌دارد، و @page را هم خودِ
+       printany می‌سازد چون تقویم کاغذِ خوابیده می‌خواهد و متن ایستاده.
+       این‌جا فقط ظاهرِ خودِ تقویم روی کاغذ می‌ماند. */
+    #view-cal.kb-print .c2-bar,
+    #view-cal.kb-print .c2-side{ display:none !important; }
     /* ستونِ کنار که از کاغذ برداشته شد، جایش هم باید برود؛ وگرنه ۳۰۰
        پیکسل از عرضِ کاغذ خالی می‌ماند و تقویم جمع می‌شود. */
-    body:has(#view-cal.active) .c2-main{ grid-template-columns:1fr !important; }
+    #view-cal.kb-print .c2-main{ grid-template-columns:1fr !important; }
     .c2-box{ box-shadow:none; border-color:#999; }
     .c2-cell{ border-color:#bbb; min-height:86px; }
     .c2-cell.off{ background:#f3f3f3 !important; }
@@ -199,5 +196,4 @@
     .c2-it{ background:#fff; border-right:2px solid #666; color:#000; }
     .c2-legend{ font-size:10px; color:#444; }
     .c2-items{ display:flex !important; }
-    @page{ size:A4 landscape; margin:10mm; }
   }

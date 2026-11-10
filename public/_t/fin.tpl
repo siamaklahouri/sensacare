@@ -582,6 +582,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
 {{PART:selchipcss}}
+{{PART:printanycss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -4112,6 +4113,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:printany}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}

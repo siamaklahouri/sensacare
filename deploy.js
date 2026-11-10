@@ -18,9 +18,9 @@
      D1_DATABASE_ID         اگر دیتابیس را از قبل ساخته‌اید
      RESET_DB=yes           جدول‌ها را پاک و از نو می‌سازد (خطرناک)
    ========================================================== */
-const { execSync, spawnSync } = require('child_process');
-const fs = require('fs');
-const crypto = require('crypto');
+import { execSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const R = '\x1b[0m', B = '\x1b[1m', G = '\x1b[32m', Y = '\x1b[33m',
       C = '\x1b[36m', RED = '\x1b[31m', DIM = '\x1b[2m';

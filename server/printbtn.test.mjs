@@ -44,6 +44,21 @@ async function session(api, pass) {
 /* «روی کاغذ دیده می‌شود» یعنی قابِ واقعی دارد — نه اینکه display اش
    none نیست. عنصری که والدش پنهان است، خودش display:block دارد و
    با خواندنِ style سالم به نظر می‌رسد. */
+/* Ctrl+P در مرورگرِ واقعی رویدادِ «beforeprint» می‌فرستد و سامانهٔ
+   چاپ همان‌جا بخشِ باز را آماده می‌کند. emulateMedia این رویداد را
+   نمی‌فرستد، پس آزمون باید خودش بفرستد — وگرنه چیزی را می‌سنجد که
+   هیچ کاربری نمی‌بیند. */
+const asPrint = async p => {
+  await p.emulateMedia({ media: 'print' });
+  await p.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await p.waitForTimeout(400);
+};
+const unPrint = async p => {
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await p.emulateMedia({ media: 'screen' });
+  await p.waitForTimeout(250);
+};
+
 const box = sel => `(()=>{ const e=document.querySelector(${JSON.stringify(sel)});
   if(!e) return null; const r=e.getBoundingClientRect();
   return { w:Math.round(r.width), h:Math.round(r.height) }; })()`;
@@ -72,8 +87,7 @@ for (const [label, api, pass, path] of [
   await p.waitForTimeout(700);
   t(!!(await p.$('#calPrint')), 'دکمهٔ چاپِ تقویم هست');
 
-  await p.emulateMedia({ media: 'print' });
-  await p.waitForTimeout(400);
+  await asPrint(p);
   const cal = await p.evaluate(box('.c2-box'));
   t(cal && cal.h > 200 && cal.w > 600, 'و روی کاغذ خودِ تقویم می‌رود، نه کاغذِ سفید',
     cal ? cal.w + '×' + cal.h : 'نیست');
@@ -86,8 +100,7 @@ for (const [label, api, pass, path] of [
   /* ستونِ برداشته‌شده نباید جایش را نگه دارد */
   const cols = await p.evaluate(() => getComputedStyle(document.querySelector('.c2-main')).gridTemplateColumns);
   t(!/\b300px/.test(cols), 'و ۳۰۰ پیکسلِ آن ستون از عرضِ کاغذ کم نمی‌شود', cols);
-  await p.emulateMedia({ media: 'screen' });
-  await p.waitForTimeout(250);
+  await unPrint(p);
 
   /* ---- گزارش: بی فایل چاپ نمی‌شود، با برگهٔ باز تنها چیزِ کاغذ است ---- */
   await p.evaluate(() => document.querySelector('.nav-list .navbtn[data-view="report"]').click());
@@ -113,8 +126,7 @@ for (const [label, api, pass, path] of [
      حساب می‌شد. پس نامِ ستون باید خوانا باشد، نه فقط موجود. */
   t(/[\u0600-\u06FF]/.test(fed.ttl) && !/[\u00C0-\u00FF]{2}/.test(fed.ttl),
     'و نامِ ستونِ فارسی خوانا است، نه بایت‌های به‌هم‌ریخته', fed.ttl.slice(0, 40));
-  await p.emulateMedia({ media: 'print' });
-  await p.waitForTimeout(500);
+  await asPrint(p);
   const rp = await p.evaluate(box('#rpPaper'));
   t(rp && rp.w > 400 && rp.h > 100, 'و با گزارشِ ساخته‌شده، کاغذ همان برگه است',
     rp ? rp.w + '×' + rp.h : 'نیست');
@@ -122,7 +134,7 @@ for (const [label, api, pass, path] of [
   t(!navOnPaper || !navOnPaper.w, 'و نوارِ کنار روی کاغذِ گزارش نمی‌آید');
   const calOnPaper = await p.evaluate(box('#view-cal'));
   t(!calOnPaper || !calOnPaper.h, 'و تقویم هم روی کاغذِ گزارش نمی‌آید');
-  await p.emulateMedia({ media: 'screen' });
+  await unPrint(p);
 
   /* ---- خروجیِ روزانه: کاغذِ خودش را در iframe می‌سازد ---- */
   t(await p.evaluate(() => !!(window.dayExport && window.dayExport.pdf)),
@@ -145,7 +157,9 @@ console.log('===== پنلِ ادمین =====');
   await p.goto(BASE + '/login', { waitUntil: 'networkidle' });
   await p.waitForTimeout(1900);
 
-  /* بی پنجره، Ctrl+P باید خودِ پنل را بدهد نه یک پنجرهٔ خالی */
+  /* بی پنجره، Ctrl+P باید خودِ پنل را بدهد نه یک پنجرهٔ خالی.
+     پنلِ ادمین سامانهٔ چاپِ کارتابل را ندارد — شیوه‌نامهٔ خودش را
+     دارد — پس این‌جا رویدادی لازم نیست. */
   await p.emulateMedia({ media: 'print' });
   await p.waitForTimeout(400);
   const shell = await p.evaluate(box('body'));
@@ -177,6 +191,105 @@ console.log('===== پنلِ ادمین =====');
     `(()=>{ const s=document.querySelector('.sidebar')||document.querySelector('nav');
        if(!s) return 0; return Math.round(s.getBoundingClientRect().width); })()`);
   t(!sidebarOnPaper, 'و بقیهٔ پنل کنار رفته', sidebarOnPaper + 'px');
+  await ctx.close();
+}
+
+/* ================= چاپ از هر بخش ================= */
+console.log('===== هر بخش، و سربرگش =====');
+{
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
+  await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(4000);
+  /* پنجرهٔ چاپ در آزمون باز نمی‌شود؛ فقط آماده‌سازی را می‌سنجیم. */
+  await p.evaluate(() => { window.print = () => {}; });
+
+  const btns = await p.evaluate(() => document.querySelectorAll('.kb-print-btn').length);
+  t(btns >= 10, 'هر بخش دکمهٔ چاپِ خودش را دارد', btns + ' دکمه');
+
+  /* بخشی که اصلاً باز نیست هم باید چاپ شود — این همان چیزی است که
+     قبلاً ممکن نبود. */
+  await p.evaluate(() => kbPrint('view-servers'));
+  await p.waitForTimeout(1200);
+  await p.emulateMedia({ media: 'print' });
+  await p.waitForTimeout(400);
+  const o = await p.evaluate(() => {
+    const h = Math.round(document.getElementById('view-servers').getBoundingClientRect().height);
+    const head = document.querySelector('#view-servers .kb-phead');
+    const others = [...document.querySelectorAll('.content > .view')]
+      .filter(v => v.id !== 'view-servers' && v.getBoundingClientRect().height > 0).length;
+    return { h, others, text: head ? head.innerText : '',
+      page: (document.getElementById('kbPageStyle') || {}).textContent || '' };
+  });
+  t(o.h > 200, 'بخشِ بسته هم روی کاغذ می‌رود', o.h + 'px');
+  t(o.others === 0, 'و هیچ بخشِ دیگری با آن چاپ نمی‌شود', o.others + ' بخشِ اضافه');
+  t(/سرورها/.test(o.text), 'سربرگ نامِ بخش را دارد');
+  t(/کارتابل/.test(o.text), 'و نامِ کارتابل را');
+  t(/ردیف/.test(o.text), 'و می‌گوید چند ردیف است');
+  t(/\d|[۰-۹]/.test(o.text), 'و تاریخِ چاپ را', o.text.split('\n').pop().slice(0, 48));
+  t(/landscape/.test(o.page), 'و جدولِ پهن روی کاغذِ خوابیده می‌رود', o.page.trim());
+
+  /* ردیفِ جست‌وجوی سرِ جدول ابزار است، نه داده */
+  const filt = await p.evaluate(() => {
+    const r = document.querySelector('#view-servers tr:has(.col-filter)');
+    return r ? Math.round(r.getBoundingClientRect().height) : 0;
+  });
+  t(filt === 0, 'ردیفِ جست‌وجو روی کاغذ نمی‌آید', filt + 'px');
+  await p.emulateMedia({ media: 'screen' });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await p.waitForTimeout(300);
+
+  /* متنِ خانه‌ها نباید بریده شود. چک‌لیست را می‌سنجیم چون خانه‌هایش
+     واقعاً <input> اند — جدولِ سرورها دادهٔ خودش را به شکلِ متن در
+     <td> می‌گذارد و کادرهایش فقط ردیفِ جست‌وجوست. */
+  await p.evaluate(() => kbPrint('view-checklist'));
+  await p.waitForTimeout(1300);
+  await p.emulateMedia({ media: 'print' });
+  await p.waitForTimeout(400);
+  const cells = await p.evaluate(() => {
+    const vals = [...document.querySelectorAll('#view-checklist tbody .kb-pval')];
+    const shown = [...document.querySelectorAll('#view-checklist tbody input[type="text"], #view-checklist tbody input:not([type])')]
+      .filter(i => getComputedStyle(i).display !== 'none').length;
+    const wrap = vals.length ? getComputedStyle(vals[0]).whiteSpace : '';
+    return { vals: vals.length, filled: vals.filter(v => v.textContent.trim()).length, shown, wrap };
+  });
+  t(cells.filled > 0, 'متنِ خانه‌ها روی کاغذ می‌آید',
+    cells.filled + ' از ' + cells.vals + ' پُر');
+  t(cells.shown === 0, 'و خودِ کادرها روی کاغذ نیستند', cells.shown + ' کادر');
+  t(cells.wrap === 'normal', 'و متن می‌شکند، پس بریده نمی‌شود', cells.wrap);
+  await p.emulateMedia({ media: 'screen' });
+  await p.waitForTimeout(300);
+
+  /* و بعدِ چاپ، صفحه باید دقیقاً همان‌طور که بود برگردد */
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await p.waitForTimeout(400);
+  const after = await p.evaluate(() => ({
+    pvals: document.querySelectorAll('.kb-pval').length,
+    marks: document.querySelectorAll('.kb-print, .kb-pskip, .kb-phead').length,
+    cls: document.documentElement.classList.contains('kb-printing'),
+    style: !!document.getElementById('kbPageStyle')
+  }));
+  t(after.pvals === 0 && after.marks === 0 && !after.cls && !after.style,
+    'و بعدِ چاپ هیچ ردی از آن روی صفحه نمی‌ماند', JSON.stringify(after));
+
+  /* «همه‌ی بخش‌ها» */
+  await p.evaluate(() => kbPrint('all'));
+  await p.waitForTimeout(1500);
+  const all = await p.evaluate(() => ({
+    printed: document.querySelectorAll('.view.kb-print').length,
+    heads: document.querySelectorAll('.kb-phead').length,
+    last: document.querySelectorAll('.kb-print-last').length
+  }));
+  t(all.printed > 5, 'چاپِ همهٔ بخش‌ها همه را می‌گیرد', all.printed + ' بخش');
+  t(all.heads === all.printed, 'و هر کدام سربرگِ خودش را دارد', all.heads + ' سربرگ');
+  t(all.last === 1, 'و فقط آخری شکستِ صفحه ندارد', all.last + '');
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+
+  t(errs.length === 0, 'و هیچ‌کدام خطای جاوااسکریپت نداد', errs[0] || '—');
   await ctx.close();
 }
 

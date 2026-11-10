@@ -465,18 +465,22 @@ window.KARTABL_IDB      = "{{IDB}}";
   .stat .val{ font-family:var(--font-display); font-size:30px; font-weight:700;
     margin-top:7px; color:var(--tone, var(--brass)); line-height:1.25; }
   .stat .sub{ font-size:11.5px; font-weight:600; color:var(--ink-faint); margin-top:2px; }
-  .stat.blue  { --tone:#1A4FA3; }
+  /* آبی و بنفش معنایی ندارند — «کل وظایف» و «درصد پیشرفت» شمارش‌اند،
+     نه وضعیت. پس رنگِ برندِ تم را می‌گیرند تا با عوض شدنِ تم همراه
+     شوند. سبز و کهربایی و قرمز و فیروزه‌ای می‌مانند: آن‌ها وضعیت را
+     می‌گویند و با تم نباید معنی‌شان عوض شود. */
+  .stat.blue  { --tone:var(--brass); }
   .stat.green { --tone:#1E7A4A; }
   .stat.teal  { --tone:#0A8F88; }
   .stat.amber { --tone:#B5791B; }
   .stat.red   { --tone:#A6222B; }
-  .stat.purple{ --tone:#6E45B0; }
-  :root[data-theme="dark"] .stat.blue  { --tone:#6AA3FF; }
+  .stat.purple{ --tone:var(--brass-deep); }
+  :root[data-theme="dark"] .stat.blue  { --tone:var(--brass); }
   :root[data-theme="dark"] .stat.green { --tone:#5FB07E; }
   :root[data-theme="dark"] .stat.teal  { --tone:#1FA298; }
   :root[data-theme="dark"] .stat.amber { --tone:#DFA94F; }
   :root[data-theme="dark"] .stat.red   { --tone:#E8737C; }
-  :root[data-theme="dark"] .stat.purple{ --tone:#A88FD8; }
+  :root[data-theme="dark"] .stat.purple{ --tone:var(--brass); }
 
   /* ---------- Panels / grid ---------- */
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
@@ -840,6 +844,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:selchipcss}}
+{{PART:printanycss}}
 {{PART:pwacss}}
 </style>
 </head>
@@ -4569,6 +4574,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:printany}}
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
