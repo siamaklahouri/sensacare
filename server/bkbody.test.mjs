@@ -10,6 +10,7 @@
    می‌سازیم، اگر یک بایت در مرزش جابه‌جا باشد، فایلِ پشتیبان خراب
    می‌رسد و کسی تا روزِ بازیابی نمی‌فهمد. */
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { multipart } from '../src/multipart.js';
 
 let ok = 0, bad = 0;
@@ -102,6 +103,88 @@ console.log('===== مرز تکراری نیست =====');
   const bb = multipart({ x: '1' }, { field: 'd', name: 'a', type: 't', data: Buffer.from('1') });
   t(a.headers['Content-Type'] !== bb.headers['Content-Type'],
     'هر درخواست مرزِ خودش را دارد');
+}
+
+/* ================= لینکِ پُرنوسان ================= */
+console.log('===== تلاشِ دوباره =====');
+{
+  /* اندازه‌گیریِ روی سرورِ واقعی: همان فایل یک بار در ۴٫۸ ثانیه رفت و
+     بار دیگر یک دقیقه هیچ جوابی نیامد. پس «یک بار فرستادن» کافی
+     نیست — ولی تکرارِ کورکورانه هم غلط است: اگر تلگرام خودش جواب
+     داده و نپذیرفته، تکرار فقط وقت تلف می‌کند.
+
+     این‌جا رفتارِ واقعی را می‌سنجیم، نه خودِ کد را: یک سرور که اولین
+     بار سکوت می‌کند و دومین بار می‌پذیرد، و یکی که صریح رد می‌کند. */
+  let hits = 0;
+  const flaky = createServer((req, res) => {
+    hits++;
+    req.resume();
+    req.on('end', () => {
+      if (hits === 1) return;                 /* سکوت: هیچ پاسخی */
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, result: { message_id: hits } }));
+    });
+  });
+  await new Promise(r => flaky.listen(0, '127.0.0.1', r));
+  const furl = 'http://127.0.0.1:' + flaky.address().port + '/x';
+
+  /* همان حلقه‌ای که sendKartablBackup دارد، با مهلتِ کوتاه‌تر تا
+     آزمون معطل نماند. */
+  async function post(url, body, headers, tries, waitMs) {
+    let last = '';
+    for (let n = 1; n <= tries; n++) {
+      try {
+        const r = await fetch(url, { method: 'POST', body, headers,
+          signal: AbortSignal.timeout(waitMs) });
+        const d = await r.json().catch(() => ({}));
+        if (d.ok) return { ok: true, tries: n };
+        return { ok: false, tries: n, err: d.description || 'نپذیرفت' };
+      } catch (e) {
+        last = e && e.name === 'TimeoutError' ? 'جوابی نیامد' : (e.message || String(e));
+        if (n < tries) await new Promise(r2 => setTimeout(r2, 60));
+      }
+    }
+    return { ok: false, tries, err: last };
+  }
+
+  const m = multipart({ chat_id: '1' },
+    { field: 'document', name: 'b.zip', type: 'application/zip', data: Buffer.alloc(1000, 3) });
+  const r = await post(furl, m.body, m.headers, 3, 700);
+  t(r.ok, 'سکوتِ بارِ اول با تلاشِ دوم جبران می‌شود', 'تلاشِ ' + r.tries);
+  t(r.tries === 2, 'و همان تلاشِ دوم کافی بود', r.tries + ' تلاش');
+  flaky.close();
+
+  /* ردِ صریح نباید تکرار شود */
+  let noCount = 0;
+  const no = createServer((req, res) => {
+    noCount++;
+    req.resume();
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, description: 'Bad Request: chat not found' }));
+    });
+  });
+  await new Promise(r2 => no.listen(0, '127.0.0.1', r2));
+  const nurl = 'http://127.0.0.1:' + no.address().port + '/x';
+  const r2 = await post(nurl, m.body, m.headers, 3, 700);
+  t(!r2.ok && /chat not found/.test(r2.err), 'ردِ صریح همان‌طور گزارش می‌شود', r2.err);
+  t(noCount === 1, 'و تکرار نمی‌شود — تکرارِ کورکورانه فقط وقت تلف می‌کند',
+    noCount + ' بار فرستاده شد');
+  no.close();
+
+  /* و در کدِ واقعی: یک تابع، نه دو تا.
+
+     این سنجه از یک اشتباهِ واقعی درآمد. مهلت و تلاشِ دوباره اول فقط
+     به پشتیبانِ تکی اضافه شد، در حالی که پشتیبانِ شبانه — همانی که
+     هر شب کار می‌کند — از راهِ دیگری می‌رفت و بی‌مهلت ماند. دو نسخه
+     از یک کار، یعنی روزی یکی‌شان اصلاح می‌شود و آن یکی نه. */
+  const src = readFileSync(new URL('../src/kartabl.js', import.meta.url), 'utf8');
+  t(/AbortSignal\.timeout\(SEND_WAIT\)/.test(src), 'ارسالِ فایل مهلت دارد');
+  t(/const SEND_TRY = 3, SEND_WAIT = 90000;/.test(src), 'سه تلاش، هر کدام نود ثانیه');
+  const uses = (src.match(/await sendDocToBots\(/g) || []).length;
+  t(uses >= 2, 'و هر دو مسیرِ پشتیبان از همان یک تابع می‌روند', uses + ' جا');
+  t(!/new FormData\(\)[\s\S]{0,400}sendDocument/.test(src),
+    'و هیچ مسیری نسخهٔ دستیِ خودش را ندارد');
 }
 
 srv.close();

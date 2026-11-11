@@ -1619,6 +1619,51 @@ export async function tgMessage(token, chat, text) {
   }
 }
 
+/* ---------- فرستادنِ یک فایل به ربات‌ها ----------
+   این تابع یکی است و باید یکی بماند. پیش از این دو نسخه بود —
+   یکی برای پشتیبانِ یک کارتابل و یکی برای پشتیبانِ همه — و وقتی
+   مهلت و تلاشِ دوباره اضافه شد، فقط به یکی‌شان رسید. یعنی همان
+   مسیری که هر شب کار می‌کند بی‌مهلت ماند.
+
+   مهلت و تکرار از اندازه‌گیریِ روی سرورِ واقعی آمده‌اند: همان فایل
+   یک بار در پنج ثانیه می‌رود و بار دیگر یک دقیقه هیچ جوابی نمی‌آید.
+   نود ثانیه دو برابرِ بدترین زمانِ سالمی است که دیدیم.
+
+   ردِ صریح تکرار نمی‌شود: «chat not found» یا توکنِ ردشده با تلاشِ
+   دوم درست نمی‌شود و فقط وقت تلف می‌کند. */
+const SEND_TRY = 3, SEND_WAIT = 90000;
+
+async function sendDocToBots(bots, { zip, name, caption }) {
+  const sent = [], failed = [], okBots = [];
+  for (const bot of bots) {
+    const m = multipart({
+      chat_id: bot.chat,
+      caption: bot.kind === 'bale' ? plainText(caption) : caption,
+      parse_mode: bot.kind === 'bale' ? null : 'HTML'
+    }, { field: 'document', name, type: 'application/zip', data: zip });
+
+    let lastErr = '';
+    for (let n = 1; n <= SEND_TRY; n++) {
+      try {
+        const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`,
+          { method: 'POST', body: m.body, headers: m.headers,
+            signal: AbortSignal.timeout(SEND_WAIT) });
+        const d = await r.json().catch(() => ({}));
+        if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); lastErr = ''; break; }
+        lastErr = d.description || 'نپذیرفت';
+        break;
+      } catch (e) {
+        const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+        lastErr = (timedOut ? 'جوابی نیامد (' + (SEND_WAIT / 1000) + ' ثانیه)' : why(e)) +
+                  (n > 1 ? ' — تلاشِ ' + n : '');
+        if (n < SEND_TRY) await new Promise(r2 => setTimeout(r2, 2000 * n));
+      }
+    }
+    if (lastErr) failed.push((bot.label || bot.kind) + ' — ' + lastErr);
+  }
+  return { sent, failed, okBots };
+}
+
 export async function sendKartablBackup(env, req, panel, note = '') {
   const bots = await siteBots(env);
   if (!bots.length) return { ok: false,
@@ -1641,26 +1686,7 @@ export async function sendKartablBackup(env, req, panel, note = '') {
 
   /* به هر ربات جداگانه. اگر یکی نگرفت، آن یکی نباید قربانی شود —
      پشتیبانی که به یک جا رسیده باشد از هیچ بهتر است. */
-  const sent = [], failed = [], okBots = [];
-  for (const bot of bots) {
-    /* بدنه را خودمان می‌سازیم، نه FormData. علتش در src/multipart.js
-       نوشته است؛ خلاصه‌اش اینکه پشتیبانِ تلگرام با «fetch failed»
-       می‌افتاد در حالی که همان فایل با curl از همان رله می‌رفت، و
-       تنها تفاوت شکلِ بدنه بود. این‌طور بدنه یک Buffer است با طولِ
-       معلوم — همان چیزی که curl می‌فرستد. */
-    const m = multipart({
-      chat_id: bot.chat,
-      caption: bot.kind === 'bale' ? plainText(caption) : caption,
-      parse_mode: bot.kind === 'bale' ? null : 'HTML'
-    }, { field: 'document', name, type: 'application/zip', data: zip });
-    try {
-      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`,
-        { method: 'POST', body: m.body, headers: m.headers });
-      const d = await r.json().catch(() => ({}));
-      if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); }
-      else failed.push((bot.label || bot.kind) + ' — ' + (d.description || 'نپذیرفت'));
-    } catch (e) { failed.push((bot.label || bot.kind) + ' — ' + why(e)); }
-  }
+  const { sent, failed, okBots } = await sendDocToBots(bots, { zip, name, caption });
   if (!sent.length) {
     /* با « — » به هم می‌چسبیدند و از «تلگرام — chat not found — بله —
        chat not found» کسی سر در نمی‌آورد کدام جمله مالِ کدام ربات است. */
@@ -1831,20 +1857,10 @@ export async function sendAllBackup(env, req, note = '') {
     `\n\nداخلِ زیپ یک پوشه برای هر کارتابل است. فایلِ HTML هر پوشه را ` +
     `باز کن — پُر و آفلاین بالا می‌آید، بدون اینترنت و بدون رمز. اکسترکت هم لازم نیست.`;
 
-  const sent = [], bad = [], okBots = [];
-  for (const bot of bots) {
-    const fd = new FormData();
-    fd.append('chat_id', bot.chat);
-    fd.append('caption', bot.kind === 'bale' ? plainText(caption) : caption);
-    if (bot.kind !== 'bale') fd.append('parse_mode', 'HTML');
-    fd.append('document', new Blob([zip], { type: 'application/zip' }), name);
-    try {
-      const r = await fetch(`${BOT_API[bot.kind](bot.token)}/sendDocument`, { method: 'POST', body: fd });
-      const d = await r.json().catch(() => ({}));
-      if (d.ok) { sent.push(bot.label || bot.kind); okBots.push(bot); }
-      else bad.push((bot.label || bot.kind) + ' — ' + (d.description || 'نپذیرفت'));
-    } catch (e) { bad.push((bot.label || bot.kind) + ' — ' + e.message); }
-  }
+  /* همان تابعی که پشتیبانِ تکی استفاده می‌کند — با مهلت و تلاشِ
+     دوباره. این‌جا مهم‌تر است، چون همین مسیر است که هر شب می‌رود. */
+  const r0 = await sendDocToBots(bots, { zip, name, caption });
+  const sent = r0.sent, bad = r0.failed, okBots = r0.okBots;
   /* هر کارتابل وضعیتِ خودش را نگه می‌دارد، تا پنل مثل قبل بتواند
      بگوید آخرین پشتیبانِ هرکدام کِی رفت. همان «at»ِ ابتدای تلاش، تا
      ثبتِ هر کارتابل و ثبتِ کلی یک زمان داشته باشند. */

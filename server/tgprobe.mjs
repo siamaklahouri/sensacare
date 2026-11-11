@@ -102,20 +102,35 @@ async function send(how, mb) {
 }
 
 const pad = (s, n) => (s + '                 ').slice(0, n);
-let formBad = 0, bufBad = 0;
+const times = [];
+let bad = 0;
 
 for (const mb of SIZES) {
   for (const how of ['form', 'buf']) {
     const r = await send(how, mb);
-    if (!r.ok) (how === 'form' ? formBad++ : bufBad++);
+    if (!r.ok) bad++; else times.push(r.s);
     console.log('  ' + pad(mb + ' مگابایت', 12) +
       pad(how === 'form' ? 'FormData' : 'بدنهٔ دستی', 12) +
       (r.ok ? '✓ رسید' : '✗ ' + r.note) + '   (' + r.s.toFixed(2) + 's)');
   }
 }
 
+/* ---------- نتیجه ----------
+   نسخهٔ اول این‌جا می‌گفت «FormData می‌افتد، بدنهٔ دستی می‌رود» و این
+   از روی یک نمونه بود: در همان اجرا FormData در هشت مگابایت رفت،
+   یعنی بزرگ‌تر از همانی که افتاد. یک شکستِ تکی روی لینکِ پُرنوسان
+   قاعده نیست، و ابزاری که از یک نمونه قاعده بسازد بدتر از بی‌ابزاری
+   است — آدم را مطمئن می‌کند که اشتباه می‌کند.
+
+   پس حالا فقط آن‌چه دیده شده گزارش می‌شود: چند شکست، و پراکندگیِ
+   زمان‌ها. قضاوت با آدم. */
 console.log('');
-if (!formBad && !bufBad) console.log('هر دو راه سالم‌اند — مشکل جای دیگری است.');
-else if (formBad && !bufBad) console.log('FormData می‌افتد، بدنهٔ دستی می‌رود. همان تغییری که داده شد درست است.');
-else if (!formBad && bufBad) console.log('برعکسِ انتظار: بدنهٔ دستی می‌افتد. این را بفرست تا برگردانمش.');
-else console.log('هر دو راه می‌افتند — پس بدنه مقصر نیست؛ مسیر یا اندازه است. خروجیِ بالا را بفرست.');
+if (times.length) {
+  const lo = Math.min(...times), hi = Math.max(...times);
+  console.log('زمانِ ارسال: از ' + lo.toFixed(1) + ' تا ' + hi.toFixed(1) + ' ثانیه' +
+    (hi > lo * 4 ? '  ← پُرنوسان؛ لینک پایدار نیست' : ''));
+}
+console.log(bad === 0
+  ? 'همه رسید.'
+  : bad + ' تلاش از ' + (SIZES.length * 2) + ' نرسید. اگر در اندازه‌های بزرگ‌تر رفته و ' +
+    'در کوچک‌تر افتاده، یعنی اندازه مقصر نیست — نوسانِ لینک است.');
