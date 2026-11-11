@@ -37,7 +37,14 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
    ========================================================================== */
 :root{
   --paper:#EDF1F6; --paper-2:#F7F9FB;
-  --ink:#0B2545; --ink-soft:#43586D; --ink-faint:#8697A8;
+  /* «ink-faint» پیش از این #8697A8 بود و روی سفید نسبتِ ۲٫۹۳ می‌داد —
+     زیرِ ۴٫۵ که برای متنِ ریز لازم است. اندازه‌گیری ۶۲ متن را زیرِ حد
+     نشان داد و بیشترشان از همین یک توکن می‌آمدند: زیرنویسِ نشانی،
+     برچسبِ کاشی‌ها، و هر «—»ی که جای دادهٔ خالی نشسته.
+
+     #64748B نسبتِ ۴٫۷۶ می‌دهد و هنوز از ink-soft (۷٫۴) روشن‌تر است،
+     پس سلسله‌مراتب سرِ جایش می‌ماند. */
+  --ink:#0B2545; --ink-soft:#43586D; --ink-faint:#64748B;
   /* رنگِ هویت از خودِ لوگو می‌آید: آبیِ SLTech. «btn» جدا از «brass»
      است چون متنِ دکمه سفید است و در تمِ شب یک آبیِ روشن، متنِ سفید را
      ناخوانا می‌کرد — این‌طور هم لینک خوانا می‌ماند هم دکمه. */
@@ -58,8 +65,13 @@ try{ if(localStorage.getItem("admin-planer:theme") === "dark")
   --glow:0 0 0 3px rgba(26,79,163,.18);
   /* رنگِ هویتِ سه نوع کارتابل. این سه با سنجهٔ کوررنگی بررسی شده‌اند:
      نزدیک‌ترین جفتشان در دید عادی ΔE ۱۹٫۶ و در پروتان ۱۲٫۸ فاصله دارد.
-     جای ثابتی دارند و هیچ‌وقت چرخانده نمی‌شوند. */
-  --s-it:#0A8F88; --s-fin:#B5791B; --s-gen:#6E45B0;
+     جای ثابتی دارند و هیچ‌وقت چرخانده نمی‌شوند.
+
+     فام دست نخورده و فقط روشنی کم شده: چیپِ «مدیر IT» روی زمینهٔ
+     خودش نسبتِ ۳٫۴۶ می‌داد و «مالی» ۳٫۲۵ — هر دو زیرِ ۴٫۵ که برای
+     متنِ ده‌پیکسلی لازم است. حالا ۴٫۸۴ و ۵٫۲۳. چون فام عوض نشده،
+     همان فاصلهٔ کوررنگی سرِ جایش است. */
+  --s-it:#0A7570; --s-fin:#8A5A12; --s-gen:#6E45B0;
   --s-it-bg:#E2F3F2; --s-fin-bg:#FAF0DD; --s-gen-bg:#EDE7F6;
   --bar:#0A8F88; --bar-soft:#E2F3F2;
 }
@@ -285,8 +297,19 @@ a{ color:var(--brass-ink); }
 }
 
 /* ---------- نوار آمار ---------- */
-.stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
-  gap:11px; margin-bottom:18px; }
+/* کاشی‌ها کش نمی‌آیند. با «1fr» چهار کاشی تمامِ عرضِ صفحه را پر
+   می‌کردند — یعنی روی نمایشگرِ پهن هر کاشی پانصد پیکسل می‌شد برای
+   محتوایی که صد پیکسل است، و دوسومش خالی می‌ماند. سقفِ ۲۴۰ پیکسل
+   یعنی کاشی به اندازهٔ حرفش جا می‌گیرد و بقیهٔ عرض برای چیزی می‌ماند
+   که واقعاً به آن احتیاج دارد. */
+.stats{ display:grid; gap:11px; margin-bottom:18px;
+  grid-template-columns:repeat(auto-fit, minmax(160px,240px));
+  justify-content:start; }
+/* روی صفحهٔ باریک همان کشِ قبلی درست است: آن‌جا عرضِ اضافه‌ای نیست
+   که هدر برود، و کاشیِ ۲۴۰ پیکسلی کنارِ لبه بدریخت می‌افتد. */
+@media (max-width:760px){
+  .stats{ grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); }
+}
 .stat{ position:relative; display:flex; align-items:center; gap:13px;
   background:var(--white); border:1px solid var(--line); border-radius:var(--r);
   padding:15px 17px; box-shadow:var(--sh-1); overflow:hidden;
@@ -2370,31 +2393,44 @@ function renderPlannersNow(){
         </div>
       </div>
       <div class="meta">
-        <div class="m"><span>نام کاربری</span><span dir="ltr">${esc(p.user || p.slug)}
-          <button class="copy" data-copy="${esc(p.user || p.slug)}" title="رونوشتِ نام کاربری">${ICON.copy}</button></span></div>
-        <div class="m"><span>چک‌لیست آماده</span><span>${p.job ? esc(jobLabel(p.job)) : "—"}</span></div>
-        <div class="m"><span>بخش‌های شخصی</span><span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">${
-          esc((p.vault||[]).map(v=>v.title).join("، ") || "—")}</span></div>
-        <div class="m"><span>آخرین استفاده</span><span title="${
-          esc(p.lastSeen ? faDateTime(p.lastSeen) : "")}">${esc(seenText(p.lastSeen))}</span></div>
-        <div class="m"><span>آخرین ورود با رمز</span><span>${esc(faDateTime(p.lastLogin))}</span></div>
-        <div class="m"><span>رمز شخصی نزد شما</span><span>${p.hasEscrow ? "بله" : "نه"}</span></div>
-        <div class="m"><span>مقصد بله</span><span dir="ltr">${
-          esc(p.bale || p.phone || "—")}</span></div>
-        <div class="m${p.until && daysLeft(p.until) <= 7 ? " warn" : ""}"><span>مهلت</span><span>${
-          untilText(p)}</span></div>
-        <div class="m"><span>بخش‌های کارتابل</span><span>${
-          ((DATA.views||{})[p.kind]||[]).length
+        ${[
+          /* ردیفی که مقدارش «—» است چیزی نمی‌گوید جز «خالی»، و نصفِ
+             ارتفاعِ هر کارت را همین‌ها می‌گرفتند. پس ردیفِ اختیاری
+             وقتی خالی است اصلاً نمی‌آید.
+
+             ولی همه‌شان اختیاری نیستند: نبودنِ «مقصد بله» یعنی
+             نمی‌شود مشخصات را برایش فرستاد، و نبودنِ مهلت یعنی
+             بی‌مهلت. این‌ها خودِ خبرند و با «—» هم می‌مانند. */
+          ['نام کاربری', `<span dir="ltr">${esc(p.user || p.slug)}` +
+            `<button class="copy" data-copy="${esc(p.user || p.slug)}" ` +
+            `title="رونوشتِ نام کاربری">${ICON.copy}</button></span>`, true],
+          ['چک‌لیست آماده', p.job ? esc(jobLabel(p.job)) : ''],
+          ['بخش‌های شخصی', (p.vault||[]).length
+            ? `<span title="${esc((p.vault||[]).map(v=>v.title).join("، "))}">` +
+              `${esc((p.vault||[]).map(v=>v.title).join("، "))}</span>` : ''],
+          ['آخرین استفاده', `<span title="${esc(p.lastSeen ? faDateTime(p.lastSeen) : "")}">` +
+            `${esc(seenText(p.lastSeen))}</span>`, true],
+          ['آخرین ورود با رمز', esc(faDateTime(p.lastLogin)), true],
+          ['رمز شخصی نزد شما', p.hasEscrow ? 'بله' : 'نه', true],
+          ['مقصد بله', `<span dir="ltr">${esc(p.bale || p.phone || "—")}</span>`, true],
+          ['مهلت', untilText(p), true, p.until && daysLeft(p.until) <= 7 ? ' warn' : ''],
+          ['بخش‌های کارتابل', ((DATA.views||{})[p.kind]||[]).length
             ? ((p.views||[]).length
                 ? esc(((DATA.views||{})[p.kind]||[])
                     .filter(v=> (p.views||[]).includes(v.id)).map(v=>v.label).join("، "))
-                : "هیچ‌کدام")
-            : "—"}</span></div>
-        <div class="m"><span>دسترسی‌های بسته</span><span>${(p.off||[]).length
-          ? esc((p.off||[]).map(featLabel).join("، ")) : "—"}</span></div>
+                : 'هیچ‌کدام')
+            : ''],
+          ['دسترسی‌های بسته', (p.off||[]).length
+            ? esc((p.off||[]).map(featLabel).join("، ")) : '']
+        ].filter(r => r[2] || (r[1] !== '' && r[1] != null))
+         .map(r => `<div class="m${r[3] || ''}"><span>${r[0]}</span><span>${r[1]}</span></div>`)
+         .join('')}
       </div>
       <div class="acts">
-        <button class="btn" data-edit="${esc(p.slug)}">ویرایش</button>
+        <!-- «ویرایش» کارِ هر روز است و بقیه گاه‌به‌گاه. وقتی پنج دکمهٔ
+             هم‌وزن کنارِ هم بنشینند، چشم باید هر بار هر پنج‌تا را
+             بخواند تا همان یکی را پیدا کند. -->
+        <button class="btn btn-main" data-edit="${esc(p.slug)}">ویرایش</button>
         <button class="btn" data-pw="${esc(p.slug)}">رمز ورود</button>
         <button class="btn" data-creds="${esc(p.slug)}"
           title="فرستادنِ نام کاربری و رمز برای خودِ این شخص، با بله">ارسال مشخصات</button>
