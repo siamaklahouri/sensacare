@@ -582,6 +582,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
 {{PART:selchipcss}}
+{{PART:pacecss}}
 {{PART:printanycss}}
 {{PART:pwacss}}
 </style>
@@ -1339,6 +1340,16 @@ function formatMoney(n){
   n = Math.round(parseFloat(n)||0);
   const s = Math.abs(n).toLocaleString("en-US");
   return (n<0?"-":"") + fa(s);
+}
+/* برای پانویسِ نوارِ «کجای ماهی»: عددِ میلیاردی در یک سطرِ کوچک جا
+   نمی‌شود، پس خلاصه‌اش می‌کنیم. جاهای دیگر همان formatMoney سرِ جایش است. */
+function shortMoney(n){
+  n = Math.round(parseFloat(n)||0);
+  const a = Math.abs(n);
+  const trim = v => String(v.toFixed(1)).replace(/\.0$/,"");
+  if(a >= 1e9) return fa(trim(n/1e9)) + " میلیارد";
+  if(a >= 1e6) return fa(trim(n/1e6)) + " میلیون";
+  return formatMoney(n);
 }
 function getTodayJalaliStr(){
   try{
@@ -3620,11 +3631,23 @@ function renderDashHero(){
   const parts = todayStr.split("/");
   const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
   const monthName = parts[1] ? monthNames[parseInt(parts[1],10)-1] : "";
+  /* نوارِ «کجای ماهی» وسطِ قاب می‌نشیند — همان‌جایی که خالی بود و چشم
+     اول رویش می‌افتاد. در کارتابلِ مالی «پیشرفت» یعنی وصولِ مطالبات:
+     چقدر از آن‌چه فاکتور شده گرفته شده، کنارِ این‌که چقدر از ماه گذشته. */
+  const billed = invoicesData.reduce((t,i)=> t + Math.max(0, i.amount||0), 0);
+  const got = invoicesData.reduce((t,i)=> t + Math.min(Math.max(0, i.paid||0), Math.max(0, i.amount||0)), 0);
+  const pace = typeof paceHtml === "function"
+    ? paceHtml(got, billed,
+        parseInt(parts[0],10), parseInt(parts[1],10), parseInt(parts[2],10),
+        { foot: shortMoney(got) + " از " + shortMoney(billed) + " تومان وصول شده",
+          full: "همه وصول شد" })
+    : "";
   el.innerHTML = `
     <div>
       <div class="dh-greet">👋 ${greet}، ${window.KARTABL_NAME}</div>
       <div class="dh-sub">خلاصه‌ی وضعیت مالی امروز و این ماه، همه‌جا یک نگاه</div>
     </div>
+    ${pace}
     <div class="dh-date">امروز<b>${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</b></div>
     <div class="dh-clock">ساعت اکنون<b id="dashHeroClock">--:--:--</b></div>
   `;
@@ -3663,6 +3686,10 @@ function renderCards(){
     money("🏦", "موجودی نقدی کل",         s.totalCash,       "#1E7A4A", "#E3EFE7") +
     overdue("فاکتورهای معوق", s.overdueInvoices, "همه به‌موقع") +
     overdue("بدهی‌های معوق",  s.overduePayables, "چیزی عقب نیفتاده");
+
+  /* نوارِ وصول هم از همین داده می‌خواند؛ هر جا کارت‌ها تازه می‌شوند
+     آن هم تازه شود، وگرنه قابِ بالا و کارت‌های پایین دو حرف می‌زنند. */
+  renderDashHero();
 }
 {{PART:charttone}}
 async function renderCharts(){
@@ -4115,6 +4142,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:pace}}
 {{PART:printany}}
 {{PART:pwa}}
 {{PART:bell}}

@@ -38,6 +38,8 @@ import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
 import p_bkfile from '../public/_t/p/bkfile.tpl';
 import p_navmore from '../public/_t/p/navmore.tpl';
+import p_pace from '../public/_t/p/pace.tpl';
+import p_pacecss from '../public/_t/p/pacecss.tpl';
 import p_printany from '../public/_t/p/printany.tpl';
 import p_printanycss from '../public/_t/p/printanycss.tpl';
 import p_selchip from '../public/_t/p/selchip.tpl';
@@ -146,6 +148,8 @@ export const PARTS = new Map([
   ['kthemecss', p_kthemecss],
   ['bkfile', p_bkfile],
   ['navmore', p_navmore],
+  ['pace', p_pace],
+  ['pacecss', p_pacecss],
   ['printany', p_printany],
   ['printanycss', p_printanycss],
   ['selchip', p_selchip],

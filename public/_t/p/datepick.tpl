@@ -321,7 +321,9 @@
     return j ? fmt(j.jy, j.jm, j.jd) : "";
   }
 
+  /* «monthLen» بیرون داده می‌شود چون جای دیگری هم لازم شد و نسخهٔ
+     دوم نوشتنش یعنی روزی یکی‌شان اسفندِ کبیسه را اشتباه بگوید. */
   window.DatePick = { open: open, close: close, parse: parse, fmt: fmt,
-                      today: today, scan: scan, FIELDS: FIELDS,
+                      today: today, scan: scan, FIELDS: FIELDS, monthLen: monthLen,
                       toG: toG, toStamp: toStamp, fromStamp: fromStamp };
 })();

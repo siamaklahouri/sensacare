@@ -844,6 +844,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:selchipcss}}
+{{PART:pacecss}}
 {{PART:printanycss}}
 {{PART:pwacss}}
 </style>
@@ -1897,11 +1898,20 @@ function renderDashHero(){
   const parts = todayStr.split("/");
   const monthNames = ["فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور","مهر","آبان","آذر","دی","بهمن","اسفند"];
   const monthName = parts[1] ? monthNames[parseInt(parts[1],10)-1] : "";
+  /* نوارِ «کجای ماهی» وسطِ قاب می‌نشیند — همان‌جایی که تا امروز خالی
+     بود و چشم اول رویش می‌افتاد. دو عددی که هر دو روی صفحه بودند ولی
+     کنارِ هم نبودند: چقدر کار شده، چقدر ماه گذشته. */
+  const s = computeStats();
+  const pace = typeof paceHtml === "function"
+    ? paceHtml(s.done, s.total,
+        parseInt(parts[0],10), parseInt(parts[1],10), parseInt(parts[2],10))
+    : "";
   el.innerHTML = `
     <div>
       <div class="dh-greet">👋 ${greet}، ${window.KARTABL_NAME}</div>
       <div class="dh-sub">خلاصه‌ی وضعیت امروز و این ماه، همه‌جا یک نگاه</div>
     </div>
+    ${pace}
     <div class="dh-date">امروز<b>${parts[2]?fa(parts[2]):""} ${monthName} ${parts[0]?fa(parts[0]):""}</b></div>
     <div class="dh-clock">ساعت اکنون<b id="dashHeroClock">--:--:--</b></div>
   `;
@@ -2472,7 +2482,8 @@ function renderChecklist(){
       const idx = parseInt(box.getAttribute("data-idx"));
       openDayPicker(box, state.tasks[idx].deadline, day=>{
         state.tasks[idx].deadline = day;
-        renderChecklist(); renderCards(); renderDeadlines(); renderCharts(); scheduleSave();
+        renderChecklist(); renderCards(); renderDeadlines(); renderCharts();
+        renderDashHero(); scheduleSave();
       });
     });
   });
@@ -2515,7 +2526,11 @@ function onTaskFieldChange(e){
   let val = e.target.value;
   if(field==="deadline") val = val === "" ? "" : parseInt(val);
   state.tasks[idx][field] = val;
-  renderCards(); renderDeadlines(); renderCharts(); renderRemindersBanner();
+  /* نوارِ «کجای ماهی» هم از همین آمار می‌آید، پس هرجا کاشی‌ها
+     تازه می‌شوند این هم باید تازه شود — وگرنه عددِ قابِ بالا با
+     عددِ کاشیِ زیرش نمی‌خواند و همان بی‌اعتمادی را می‌سازد.
+     (ساعتِ زندهٔ داخلِ قاب خودش دوباره راه می‌افتد.) */
+  renderCards(); renderDeadlines(); renderCharts(); renderDashHero(); renderRemindersBanner();
   scheduleSave();
 }
 
@@ -4576,6 +4591,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:pace}}
 {{PART:printany}}
 {{PART:pwa}}
 {{PART:bell}}
