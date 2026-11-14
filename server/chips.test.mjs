@@ -13,6 +13,7 @@
    ۲) در تقویم، ستونِ کنار یک کارتِ ۳۰۰ پیکسلی بود با یک جملهٔ راهنما
       تویش — یعنی یک‌پنجمِ عرضِ صفحه برای چیزی که هنوز حرفی ندارد. */
 import { launch } from './pw.mjs';
+import { ensureTasks, PRIORITY_ROWS } from './seed.mjs';
 import { readFileSync } from 'node:fs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
@@ -48,11 +49,18 @@ console.log('===== بی‌تکرار =====');
 }
 
 /* ================= چیپ‌ها در مرورگر ================= */
+/* کارتابلِ خالی چیپی ندارد که سنجیده شود. اگر ردیفی با اولویت نباشد،
+   خودمان می‌کاریم — وگرنه این آزمون فقط وقتی قبول می‌شد که آزمونِ
+   دیگری پیش از آن داده گذاشته باشد. */
+const needPr = ts => ts.filter(x => x && x.priority).length >= 3;
+
 for (const [label, api, pass, path] of [
   ['کارتابلِ فنی', 'kartabl', process.env.VS_IT_PASS || 'siamaksiamak', '/siamak/'],
   ['کارتابلِ مالی', 'sina', process.env.VS_FIN_PASS || 'sinasinasina', '/sina/']
 ]) {
   console.log('===== ' + label + ' =====');
+  const planted = await ensureTasks(BASE, HOST, api, pass, needPr, PRIORITY_ROWS);
+  if (planted) console.log('   (' + planted + ' ردیفِ آزمون کاشته شد)');
   const ctx = await b.newContext({ viewport: { width: 1500, height: 1000 } });
   await ctx.addCookies(await session(api, pass));
   const p = await ctx.newPage();

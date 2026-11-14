@@ -22,6 +22,7 @@
    یک معیارِ ساده همهٔ این‌ها را می‌گیرد: روی کاغذ، چیزی که کاربر
    می‌خواهد چاپ شود باید ارتفاع و عرضِ واقعی داشته باشد. */
 import { launch } from './pw.mjs';
+import { ensureTasks, ensureCurrentMonth, DATED_ROWS } from './seed.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const HOST = 'sltech.ir', PORT = new URL(BASE).port || '80';
@@ -397,6 +398,17 @@ console.log('===== تقویم روی کاغذِ ایستاده =====');
      درسش از خودِ ایراد بزرگ‌تر است: هر قاعدهٔ «صفحهٔ باریک» که
      «screen and» نداشته باشد، روی کاغذ هم می‌افتد. پس این آزمون در
      عرضِ کاغذِ ایستاده می‌سنجد، نه در عرضِ دسکتاپ. */
+  /* تقویمِ خالی چیزی برای سنجیدن ندارد. کارِ مهلت‌دار اگر نبود،
+     خودمان می‌کاریم — این آزمون نباید به این وابسته باشد که آزمونِ
+     دیگری پیش از آن تاریخ گذاشته باشد. */
+  {
+    const pass = process.env.VS_IT_PASS || 'siamaksiamak';
+    const m = await ensureCurrentMonth(BASE, HOST, 'kartabl', pass);
+    if (m) console.log('   (ماهِ کاری روی ' + m + ' تنظیم شد)');
+    const n = await ensureTasks(BASE, HOST, 'kartabl', pass,
+      ts => ts.filter(x => x && x.deadline).length >= 4, DATED_ROWS);
+    if (n) console.log('   (' + n + ' کارِ مهلت‌دار کاشته شد)');
+  }
   const ctx = await b.newContext({ viewport: { width: 794, height: 794 } });
   await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
   const p = await ctx.newPage();
