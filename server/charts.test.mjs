@@ -182,7 +182,25 @@ for (const [label, api, pass, path] of [
     document.getElementById('ccfAgg').dispatchEvent(new Event('change', { bubbles: true }));
     document.getElementById('ccfTitle').value = 'نمودارِ آزمون';
   });
-  await p.click('#ccfAdd');
+  /* کلیک برنامه‌ای، نه کلیکِ موشواره: در اجرای کاملِ مجموعه یک بار
+     همین‌جا تایم‌اوت داد چون چیزی روی دکمه افتاده بود. بقیهٔ
+     آزمون‌های این مجموعه هم به همین دلیل برنامه‌ای کلیک می‌کنند.
+
+     ولی «نمی‌بینمش» را بی‌صدا رد نمی‌کنیم: اگر واقعاً چیزی روی دکمه
+     باشد، کاربر هم نمی‌تواند بزندش. پس همان‌جا می‌پرسیم چه چیزی
+     رویش است و نامش را می‌گوییم. */
+  const cover = await p.evaluate(() => {
+    const b = document.getElementById('ccfAdd');
+    if (!b) return 'دکمه نیست';
+    b.scrollIntoView({ block: 'center' });
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!top || b.contains(top) || top === b) return '';
+    return (top.tagName + (top.id ? '#' + top.id : '') +
+            (top.className ? '.' + String(top.className).split(' ')[0] : ''));
+  });
+  t(cover === '', 'چیزی روی دکمهٔ ساختن نیفتاده', cover || 'هیچ');
+  await p.evaluate(() => document.getElementById('ccfAdd').click());
   await p.waitForTimeout(600);
   t(await p.evaluate(() => (state.chartCfg.custom || []).length === 1), 'نمودارِ دلخواه ساخته شد');
 
