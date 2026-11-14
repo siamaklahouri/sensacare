@@ -161,7 +161,20 @@
     html.kb-printing .kb-print .c2-wd span{ font-size:11px !important; }
     html.kb-printing .kb-print .c2-wd span::after{ content:none !important; }
 
-    /* نمودار از ارتفاعِ صفحه نزند بیرون */
-    html.kb-printing .kb-print .chart-box{ max-height:118mm; }
-    html.kb-printing .kb-print canvas{ max-height:118mm !important; }
+    /* ---- نمودارها روی کاغذ ----
+       کارتی که نمودارش داده ندارد اصلاً چاپ نمی‌شود. روی صفحه جایش
+       درست است — می‌گوید «این بخش هنوز پر نشده» — ولی روی کاغذ
+       یک‌سومِ صفحه می‌گیرد برای یک جملهٔ خالی. در داشبوردِ واقعی
+       چهار تا از این‌ها دو صفحهٔ کامل بودند و کلِ برگه را چهار صفحه
+       کرده بودند. */
+    html.kb-printing .kb-print .panel:has(canvas[data-empty="1"]){ display:none !important; }
+    /* عنوانِ گروه نباید تهِ صفحه تنها بماند و کارت‌هایش بروند صفحهٔ
+       بعد — سرفصلی که از زیرِ خودش جدا شده، سرفصل نیست. */
+    html.kb-printing .kb-print .dash-group-label{
+      break-after:avoid; page-break-after:avoid;
+    }
+    /* و بقیه کوتاه‌تر می‌شوند تا بیشترشان در یک صفحه جا شوند: روی
+       صفحه ارتفاع برای خواندنِ راحت است، روی کاغذ برای شمردن. */
+    html.kb-printing .kb-print .chart-box{ max-height:62mm; }
+    html.kb-printing .kb-print canvas{ max-height:62mm !important; }
   }

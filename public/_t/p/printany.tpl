@@ -189,6 +189,26 @@
     });
   }
 
+  /* ---------- گروهی که چیزی برایش نمانده ----------
+     نمودارِ بی‌داده روی کاغذ چاپ نمی‌شود. ولی عنوانِ گروهش —
+     «زیرساخت و ارتباطات» — می‌ماند و بالای یک جای خالی می‌نشیند.
+
+     در CSS نمی‌شود نوشت: شرطش «عنوانی که گروهِ بعدش هیچ کارتِ
+     چاپ‌شدنی ندارد» است و این یعنی :has داخلِ :has، که مجاز نیست.
+     پس همین‌جا، با همان منطقی که شیوه‌نامه دارد. */
+  function hideEmptyGroups(root) {
+    [].forEach.call(root.querySelectorAll('.dash-group-label'), function (lab) {
+      var next = lab.nextElementSibling;
+      if (!next) return;
+      var panels = next.querySelectorAll('.panel');
+      if (!panels.length) return;
+      var any = [].some.call(panels, function (pn) {
+        return !pn.querySelector('canvas[data-empty="1"]');
+      });
+      if (!any) lab.classList.add('kb-pskip');
+    });
+  }
+
   function rebox(root) {
     [].forEach.call((root || document).querySelectorAll('.kb-pskip'),
       function (c) { c.classList.remove('kb-pskip'); });
@@ -219,6 +239,7 @@
       if (i === list.length - 1) v.classList.add('kb-print-last');
       unbox(v);
       dropActionCols(v);
+      hideEmptyGroups(v);
       v.insertBefore(makeHead(v, i, list.length), v.firstChild);
     });
     HTML.classList.add('kb-printing');

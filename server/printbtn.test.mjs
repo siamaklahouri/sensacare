@@ -313,6 +313,75 @@ console.log('===== هر بخش، و سربرگش =====');
   await ctx.close();
 }
 
+/* ================= داشبورد روی کاغذ ================= */
+console.log('===== نمودارهای داشبورد =====');
+{
+  /* برگهٔ داشبورد چهار صفحه می‌شد که نصفش سفید بود: چهار کارتِ
+     نموداری که هنوز داده ندارند، هر کدام یک‌سومِ صفحه، برای یک
+     جملهٔ «هنوز داده‌ای ثبت نشده». روی صفحه جایشان درست است — خبر
+     می‌دهند که این بخش هنوز پر نشده — ولی روی کاغذ هیچ‌اند. */
+  const ctx = await b.newContext({ viewport: { width: 1123, height: 794 } });
+  await ctx.addCookies(await session('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(4200);
+
+  const onScreen = await p.evaluate(() => ({
+    panels: [...document.querySelectorAll('#view-dashboard .panel')]
+      .filter(x => x.getBoundingClientRect().height > 0).length,
+    empty: document.querySelectorAll('#view-dashboard canvas[data-empty="1"]').length
+  }));
+  t(onScreen.empty > 0, 'داشبوردِ آزمون نمودارِ بی‌داده دارد', onScreen.empty + ' تا');
+  t(onScreen.panels > 4, 'و روی صفحه همه‌شان دیده می‌شوند', onScreen.panels + ' قاب');
+
+  await p.evaluate(() => { window.print = () => {}; kbPrint('view-dashboard'); });
+  await p.waitForTimeout(1800);
+  await p.emulateMedia({ media: 'print' });
+  await p.waitForTimeout(500);
+
+  const onPaper = await p.evaluate(() => {
+    const vis = e => e.getBoundingClientRect().height > 0;
+    const panels = [...document.querySelectorAll('#view-dashboard .panel')];
+    return {
+      shown: panels.filter(vis).length,
+      emptyShown: panels.filter(x => vis(x) && x.querySelector('canvas[data-empty="1"]')).length,
+      orphanLabels: [...document.querySelectorAll('#view-dashboard .dash-group-label')]
+        .filter(lab => {
+          if (!vis(lab)) return false;
+          const next = lab.nextElementSibling;
+          if (!next) return false;
+          const ps = [...next.querySelectorAll('.panel')];
+          return ps.length > 0 && !ps.some(vis);
+        }).length,
+      chartH: (() => { const c = document.querySelector('#view-dashboard .chart-box');
+        return c ? Math.round(c.getBoundingClientRect().height) : 0; })()
+    };
+  });
+  t(onPaper.emptyShown === 0, 'ولی روی کاغذ هیچ نمودارِ بی‌داده‌ای نمی‌رود',
+    onPaper.emptyShown + ' تا');
+  t(onPaper.shown > 0, 'و نمودارهای دارای داده می‌مانند', onPaper.shown + ' قاب');
+  t(onPaper.shown < onScreen.panels, 'یعنی برگه کوتاه‌تر از صفحه است',
+    onScreen.panels + ' → ' + onPaper.shown);
+  t(onPaper.orphanLabels === 0,
+    'و عنوانِ گروهی که همهٔ کارت‌هایش رفته‌اند، خودش هم می‌رود',
+    onPaper.orphanLabels + ' عنوانِ بی‌کارت');
+  /* ارتفاعِ نمودار روی کاغذ از ۶۲ میلی‌متر بیشتر نشود — وگرنه در هر
+     صفحه فقط یکی جا می‌شود. ۶۲ میلی‌متر حدودِ ۲۳۴ پیکسل است. */
+  t(onPaper.chartH > 0 && onPaper.chartH <= 240,
+    'و نمودار روی کاغذ کوتاه‌تر است تا چند تا در یک صفحه جا شوند',
+    onPaper.chartH + 'px');
+
+  const bar = await p.evaluate(() => {
+    try { return Chart.defaults.datasets.bar.maxBarThickness; } catch (e) { return null; }
+  });
+  t(bar && bar <= 60, 'و میلهٔ تنها تمامِ قاب را پر نمی‌کند', 'سقف ' + bar + 'px');
+
+  t(errs.length === 0, 'و خطایی نداد', errs[0] || '—');
+  await ctx.close();
+}
+
 /* ================= کاغذِ تنگ نیست ================= */
 console.log('===== تقویم روی کاغذِ ایستاده =====');
 {

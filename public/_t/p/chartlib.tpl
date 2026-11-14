@@ -142,6 +142,11 @@ const dashEmpty = {
         if(typeof n === "number" && n) has = true;
       });
     });
+    /* نشانهٔ «این نمودار داده ندارد» روی خودِ بوم می‌نشیند تا
+       شیوه‌نامهٔ چاپ بتواند ببیندش. روی کاغذ، کارتی که فقط می‌گوید
+       «هنوز داده‌ای ثبت نشده» یک‌سومِ صفحه می‌گیرد برای هیچ — در
+       داشبوردِ آزمایشی چهار کارت از این‌ها دو صفحهٔ کامل بودند. */
+    try { c.canvas.dataset.empty = has ? '' : '1'; } catch(e){}
     if(has) return;
     const g = c.ctx, t = chartTone();
     g.save();
@@ -194,6 +199,10 @@ function tuneChartDefaults(){
   });
   Chart.defaults.elements.bar.borderRadius = 6;
   Chart.defaults.elements.bar.borderSkipped = false;
+  /* میله‌ای که تنهاست نباید تمامِ قاب را پر کند. با یک دسته، نمودارِ
+     «پربازدیدترین شرکت‌ها» یک تختهٔ رنگیِ تمام‌قد می‌شد — روی صفحه
+     زشت و روی کاغذ یک لکهٔ جوهر. */
+  Chart.defaults.datasets.bar.maxBarThickness = 46;
   Chart.defaults.elements.point.radius = 3.5;
   Chart.defaults.elements.point.hoverRadius = 6;
   Chart.defaults.elements.line.tension = .3;
