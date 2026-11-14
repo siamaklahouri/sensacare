@@ -210,6 +210,40 @@ async function noteError(method, rawPath, msg) {
   }
 }
 
+/* ---------- کاربری که رفت، خطای سرور نیست ----------
+   «Premature close» روی GET /api/kartabl/me هر چند وقت یک بار هشدار
+   می‌داد. دنبالش که رفتم، ایرادِ سرور نبود: pipeline وقتی مقصدش —
+   سوکتِ مرورگر — نیمهٔ راه بسته شود همین را می‌اندازد. یعنی کاربر
+   تب را بست یا شبکه‌اش قطع شد وسطِ پاسخ. هیچ‌کس خطایی ندید، چیزی
+   خراب نشد، ولی ربات هشدار داد.
+
+   هشدارِ دروغ بدتر از نبودنِ هشدار است: چند بار که بیاید، آدم دیگر
+   بازش نمی‌کند، و آن روزی که خطای واقعی بیاید هم همان‌جا می‌ماند.
+
+   ولی «قطع شد» را نمی‌شود فقط از متنِ خطا فهمید: همین خطا وقتی هم
+   می‌آید که خودِ ما جریان را نیمه‌کاره رها کرده باشیم، و آن ایرادِ
+   ماست و باید گزارش شود. فرقشان یک چیزِ ساده است — اگر سوکت واقعاً
+   رفته باشد، کاربر رفته؛ اگر نه، ما شکسته‌ایم. */
+const GONE_CODES = new Set([
+  'ERR_STREAM_PREMATURE_CLOSE', 'ECONNRESET', 'EPIPE',
+  'ERR_STREAM_DESTROYED', 'ERR_STREAM_WRITE_AFTER_END', 'ABORT_ERR',
+]);
+
+function clientGone(e, nreq, nres) {
+  const code = e?.code || e?.cause?.code;
+  const msg  = String(e?.message || e?.cause?.message || '');
+  const known = GONE_CODES.has(code) ||
+    /premature close|socket hang up|aborted|ECONNRESET|EPIPE/i.test(msg);
+  if (!known) return false;
+  return !!(nres?.destroyed || nres?.socket?.destroyed ||
+            nreq?.destroyed || nreq?.aborted);
+}
+
+/* شمارنده در همین فرایند می‌ماند و کنارِ هر خط چاپ می‌شود، تا اگر
+   روزی عددش تند بالا رفت — مثلاً پروکسی وسطِ اتصال‌ها را ببرد — در
+   journald دیده شود. پیامی به ربات نمی‌رود؛ این خطا نیست. */
+let goneCount = 0;
+
 const server = createServer(async (nreq, nres) => {
   try {
     const wres = await worker.fetch(toRequest(nreq), env, ctx);
@@ -217,6 +251,14 @@ const server = createServer(async (nreq, nres) => {
       ctx.waitUntil(noteError(nreq.method, nreq.url, 'پاسخ ' + wres.status));
     await send(nres, wres);
   } catch (e) {
+    if (clientGone(e, nreq, nres)) {
+      goneCount++;
+      /* پرسمان نمی‌آید: همان‌جایی است که رمز رد می‌شود. */
+      console.log('[قطعِ کاربر]', nreq.method,
+        String(nreq.url || '').split('?')[0].slice(0, 120), '#' + goneCount);
+      try { nres.destroyed || nres.destroy(); } catch {}
+      return;
+    }
     console.error('[fetch]', nreq.method, nreq.url, e?.stack || e?.message || e);
     ctx.waitUntil(noteError(nreq.method, nreq.url, e?.message || String(e)));
     if (!nres.headersSent) {
