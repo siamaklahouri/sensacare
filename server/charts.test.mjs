@@ -189,6 +189,22 @@ for (const [label, api, pass, path] of [
      ولی «نمی‌بینمش» را بی‌صدا رد نمی‌کنیم: اگر واقعاً چیزی روی دکمه
      باشد، کاربر هم نمی‌تواند بزندش. پس همان‌جا می‌پرسیم چه چیزی
      رویش است و نامش را می‌گوییم. */
+  /* یادآورِ روی صفحه یک مودالِ واقعی است و تا بسته نشود جلوی هر
+     کلیکی را می‌گیرد — همان‌طور که باید. در مجموعهٔ کامل، آزمون‌های
+     پیش از این یادآور می‌سازند و همین‌جا روی دکمه می‌افتاد. مثلِ
+     آدم می‌بندیمش، نه این‌که دورش بزنیم؛ صف هم دارد، پس چند بار. */
+  for (let i = 0; i < 6; i++) {
+    const open = await p.evaluate(() => {
+      const ov = document.querySelector('.reminder-modal-overlay.open');
+      if (!ov) return false;
+      const ok = ov.querySelector('.rm-ok');
+      if (ok) ok.click(); else ov.classList.remove('open');
+      return true;
+    });
+    if (!open) break;
+    await p.waitForTimeout(450);
+  }
+
   const cover = await p.evaluate(() => {
     const b = document.getElementById('ccfAdd');
     if (!b) return 'دکمه نیست';
