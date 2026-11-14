@@ -1346,7 +1346,9 @@ function formatMoney(n){
 function shortMoney(n){
   n = Math.round(parseFloat(n)||0);
   const a = Math.abs(n);
-  const trim = v => String(v.toFixed(1)).replace(/\.0$/,"");
+  /* جداکنندهٔ اعشارِ فارسی «٫» است، نه نقطهٔ لاتین: «۱.۳ میلیارد»
+     وسطِ یک سطرِ فارسی غلط دیده می‌شود. */
+  const trim = v => String(v.toFixed(1)).replace(/\.0$/,"").replace(".","٫");
   if(a >= 1e9) return fa(trim(n/1e9)) + " میلیارد";
   if(a >= 1e6) return fa(trim(n/1e6)) + " میلیون";
   return formatMoney(n);
