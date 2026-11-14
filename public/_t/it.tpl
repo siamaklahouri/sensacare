@@ -844,6 +844,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:selchipcss}}
+{{PART:chartcfgcss}}
 {{PART:pacecss}}
 {{PART:printanycss}}
 {{PART:pwacss}}
@@ -1007,6 +1008,9 @@ window.KARTABL_IDB      = "{{IDB}}";
         </div>
       </div>
       </div>
+
+      <div class="dash-group-label g-blue" id="customChartsLabel" hidden><span class="dgl-ic">📊</span> نمودارهای خودتان</div>
+      <div class="grid-auto" id="customCharts" hidden></div>
 
       <div class="panel">
         <h3>🕒 مهلت‌های نزدیک</h3>
@@ -2196,6 +2200,10 @@ function renderCharts(){
   renderCompanyLastVisits();
   const ids = ["chartStatus","chartMvpnStage","chartDaily","chartTopCompanies","chartRemoteStatus","chartVisitType","chartBackupSuccessRate"];
 
+  /* پنهان‌کردنِ نمودارهای خاموش پیش از هر چیزِ دیگر: به Chart.js کاری
+     ندارد، پس اگر کتابخانه هم نیامد باز هم درست است. */
+  try{ applyBuiltinCharts(); }catch(e){ console.error('[چیدنِ نمودارها]', e); }
+
   if(!chartsReady()){
     noteLoadingCharts(ids);
     chartLibPromise.then(ok=>{
@@ -2430,6 +2438,8 @@ function renderCharts(){
   }catch(e){
     noteNoCharts(ids);
   }
+
+  try{ renderCustomCharts(); }catch(e){ console.error('[نمودارهای دلخواه]', e); }
 }
 
 function renderChecklist(){
@@ -4358,6 +4368,45 @@ function refreshEverything(){
   safe(window.cellPopScan);
 }
 {{PART:noautofill}}
+/* ---------------- نمودارهای داشبورد ----------------
+   این دو فهرست تنها چیزی است که موتورِ «چیدنِ نمودارها» از کارتابل
+   می‌خواهد: نمودارهای آماده‌اش، و جدول‌هایی که می‌شود از رویشان
+   نمودار ساخت. موتور خودش در جزوِ chartcfg است و برای هر دو کارتابل
+   یکی است. */
+window.CHART_BUILT = [
+  { id:"status",    canvas:"chartStatus",            label:"وضعیت وظایف ماه" },
+  { id:"daily",     canvas:"chartDaily",             label:"وضعیت برنامه روزانه" },
+  { id:"backup",    canvas:"chartBackupSuccessRate", label:"نرخ موفقیت بکاپ روزانه" },
+  { id:"topco",     canvas:"chartTopCompanies",      label:"پربازدیدترین شرکت‌ها" },
+  { id:"visittype", canvas:"chartVisitType",         label:"نسبت نوع بازدید شرکت‌ها" },
+  { id:"mvpn",      canvas:"chartMvpnStage",         label:"وضعیت خطوط MVPN" },
+  { id:"remote",    canvas:"chartRemoteStatus",      label:"وضعیت چک‌لیست ریموت" }
+];
+
+window.CHART_SRC = [
+  { id:"tasks", label:"چک‌لیست ماهانه",
+    rows:()=> (state && state.tasks) || [],
+    fields:[{k:"category",label:"دسته‌بندی"},{k:"status",label:"وضعیت"},
+            {k:"priority",label:"اولویت"},{k:"owner",label:"مسئول"},
+            {k:"deadline",label:"روزِ مهلت"}],
+    nums:[] },
+  { id:"days", label:"برنامهٔ روزانه",
+    rows:()=> (state && state.days) || [],
+    fields:[{k:"status",label:"وضعیت"},{k:"company",label:"شرکت"},
+            {k:"type",label:"نوع"},{k:"main",label:"عنوان"}],
+    nums:[] },
+  { id:"vm", label:"سرورها و بکاپ",
+    rows:()=> (typeof backupData !== "undefined" && backupData && backupData.vm) || [],
+    fields:[{k:"storage",label:"استوریج"},{k:"schedule",label:"زمان‌بندی"},
+            {k:"status",label:"وضعیت"},{k:"name",label:"نام سرور"}],
+    nums:[{k:"sizeUsed",label:"حجمِ vbk"},{k:"sizeVib",label:"حجمِ vib"}] },
+  { id:"mvpnlines", label:"خطوط MVPN",
+    rows:()=> (typeof mvpnData !== "undefined" && mvpnData && mvpnData.lines) || [],
+    fields:[{k:"stage",label:"مرحله"},{k:"owner",label:"تحویل‌گیرنده"},
+            {k:"plan",label:"طرح"}],
+    nums:[] }
+];
+
 /* ---------------- Navigation ---------------- */
 function setupNav(){
   document.querySelectorAll(".navbtn").forEach(btn=>{
@@ -4368,6 +4417,7 @@ function setupNav(){
       document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
       document.getElementById("view-"+view).classList.add("active");
       if(view==="dashboard"){ renderCharts(); renderRemindersBanner(); }
+      if(view==="settings"){ renderChartSettings(); wireChartSettings(); }
       if(view==="servers"){ renderServers(); renderRemoteChecklist(); }
       if(view==="companies") renderCompanies();
       if(view==="mvpn") renderMvpn();
@@ -4591,6 +4641,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:chartcfg}}
 {{PART:pace}}
 {{PART:printany}}
 {{PART:pwa}}

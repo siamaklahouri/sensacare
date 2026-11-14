@@ -22,11 +22,29 @@
   .set-p{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:2; }
   .set-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:12px; }
   .set-grid label{ display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--ink-soft); }
-  .set-grid input{
+  /* select هم همان‌جاست و تا امروز از قلم افتاده بود: بی این، فهرستِ
+     کشویی با قلم و قابِ پیش‌فرضِ مرورگر می‌آمد و وسطِ فرمِ فارسی
+     وصله می‌زد. appearance را هم برمی‌داریم تا فلشش از خودمان باشد. */
+  .set-grid input, .set-grid select{
     font-family:var(--font-body); font-size:13px; padding:9px 11px;
     border:1px solid var(--line); border-radius:9px; background:var(--paper); color:var(--ink);
   }
-  .set-grid input:focus{ outline:none; border-color:var(--brass); background:var(--white); }
+  .set-grid select{
+    -webkit-appearance:none; appearance:none; cursor:pointer;
+    padding-inline-end:32px;
+    /* فلش یک SVGِ درون‌خطی است، نه دو مثلثِ گرادیانی: آن‌ها در این
+       اندازه دو لکهٔ کج می‌شدند، نه یک فلش. رنگش خاکستریِ میانه است
+       تا در هر دو تم خوانده شود. */
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2 6 6.2 10.5 2' fill='none' stroke='%238DA0B2' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-size:11px 7px;
+    background-position:left 12px center;
+    background-repeat:no-repeat;
+  }
+  .set-grid input:focus, .set-grid select:focus{
+    outline:none; border-color:var(--brass); background-color:var(--white);
+  }
+  .set-grid select:hover{ border-color:var(--brass); }
+  .set-grid option{ font-family:var(--font-body); color:var(--ink); background:var(--white); }
   .set-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   /* تیکِ کنارِ توضیح: متن کنارِ خودِ تیک بماند، نه زیرش */
   .set-chk{ display:flex; align-items:flex-start; gap:8px; font-size:12.5px;

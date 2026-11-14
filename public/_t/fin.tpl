@@ -582,6 +582,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
 {{PART:selchipcss}}
+{{PART:chartcfgcss}}
 {{PART:pacecss}}
 {{PART:printanycss}}
 {{PART:pwacss}}
@@ -746,6 +747,9 @@ window.KARTABL_IDB      = "{{IDB}}";
           <div class="chart-box"><canvas id="chartTopDebtors"></canvas></div>
         </div>
       </div>
+
+      <div class="dash-group-label g-blue" id="customChartsLabel" hidden><span class="dgl-ic">📊</span> نمودارهای خودتان</div>
+      <div class="grid2" id="customCharts" hidden></div>
     </section>
 
     <!-- CHECKLIST -->
@@ -3694,9 +3698,68 @@ function renderCards(){
   renderDashHero();
 }
 {{PART:charttone}}
+/* ---------------- نمودارهای داشبورد ----------------
+   این دو فهرست تنها چیزی است که موتورِ «چیدنِ نمودارها» از کارتابل
+   می‌خواهد: نمودارهای آماده‌اش، و جدول‌هایی که می‌شود از رویشان
+   نمودار ساخت. موتور خودش در جزوِ chartcfg است و با کارتابلِ فنی
+   یکی است. */
+window.CHART_BUILT = [
+  { id:"chk",     canvas:"chartChecklistStatus", label:"وضعیت وظایف چک‌لیست" },
+  { id:"daily",   canvas:"chartDailyStatus",     label:"وضعیت برنامه روزانه" },
+  { id:"inv",     canvas:"chartInvoiceStatus",   label:"وضعیت فاکتورها" },
+  { id:"pay",     canvas:"chartPayableStatus",   label:"وضعیت بدهی‌ها" },
+  { id:"expcat",  canvas:"chartExpenseCategory", label:"هزینه‌ها بر اساس دسته‌بندی" },
+  { id:"budget",  canvas:"chartBudgetVsActual",  label:"بودجه در مقابل هزینه" },
+  { id:"bank",    canvas:"chartBankBalances",    label:"موجودی حساب‌های بانکی" },
+  { id:"debtors", canvas:"chartTopDebtors",      label:"بیشترین مطالبات به تفکیک مشتری" }
+];
+
+window.CHART_SRC = [
+  { id:"tasks", label:"چک‌لیست ماهانه",
+    rows:()=> (state && state.tasks) || [],
+    fields:[{k:"category",label:"دسته‌بندی"},{k:"status",label:"وضعیت"},
+            {k:"priority",label:"اولویت"},{k:"owner",label:"مسئول"}],
+    nums:[] },
+  { id:"days", label:"برنامهٔ روزانه",
+    rows:()=> (state && state.days) || [],
+    fields:[{k:"status",label:"وضعیت"},{k:"company",label:"طرف‌حساب"},
+            {k:"type",label:"نوع"}],
+    nums:[] },
+  { id:"invoices", label:"اسناد دریافتنی از مشتری",
+    rows:()=> invoicesData || [],
+    fields:[{k:"status",label:"وضعیت"},{k:"party",label:"مشتری"},
+            {k:"importer",label:"واردکننده"},{k:"due",label:"سررسید"}],
+    nums:[{k:"amount",label:"مبلغ کل"},{k:"paid",label:"پرداخت‌شده"}] },
+  { id:"payables", label:"بدهی‌ها و پرداخت‌ها",
+    rows:()=> payablesData || [],
+    fields:[{k:"status",label:"وضعیت"},{k:"party",label:"تامین‌کننده"},
+            {k:"due",label:"سررسید"}],
+    nums:[{k:"amount",label:"مبلغ کل"},{k:"paid",label:"پرداخت‌شده"}] },
+  { id:"expenses", label:"منابع و مصارف",
+    rows:()=> expensesData || [],
+    fields:[{k:"category",label:"دسته‌بندی"},{k:"kind",label:"نوع"},
+            {k:"party",label:"طرف‌حساب"},{k:"date",label:"تاریخ"}],
+    nums:[{k:"amount",label:"مبلغ"}] },
+  { id:"bank", label:"حساب‌های بانکی",
+    rows:()=> bankData || [],
+    fields:[{k:"bank",label:"بانک"},{k:"title",label:"عنوان حساب"}],
+    nums:[{k:"balance",label:"موجودی"}] },
+  { id:"parties", label:"طرف‌حساب‌ها",
+    rows:()=> partiesData || [],
+    fields:[{k:"kind",label:"نوع"},{k:"city",label:"شهر"},{k:"name",label:"نام"}],
+    nums:[] },
+  { id:"budget", label:"بودجه‌بندی ماهانه",
+    rows:()=> budgetData || [],
+    fields:[{k:"category",label:"دسته‌بندی"}],
+    nums:[{k:"planned",label:"بودجه"},{k:"actual",label:"واقعی"}] }
+];
+
 async function renderCharts(){
   const ok = await chartLibPromise;
   const ids = ["chartChecklistStatus","chartDailyStatus","chartInvoiceStatus","chartPayableStatus","chartExpenseCategory","chartBudgetVsActual","chartBankBalances","chartTopDebtors"];
+  /* پنهان‌کردنِ نمودارهای خاموش به Chart.js کاری ندارد، پس پیش از
+     بررسیِ کتابخانه انجام می‌شود تا اگر هم نیامد درست بماند. */
+  try{ applyBuiltinCharts(); }catch(e){ console.error('[چیدنِ نمودارها]', e); }
   if(!ok){
     ids.forEach(id=>{
       const el = document.getElementById(id);
@@ -3879,6 +3942,7 @@ async function renderCharts(){
       }
     });
   })();
+  try{ renderCustomCharts(); }catch(e){ console.error('[نمودارهای دلخواه]', e); }
 }
 
 function renderEverything(){
@@ -3906,6 +3970,7 @@ function setupNav(){
       document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
       document.getElementById("view-"+view).classList.add("active");
       if(view==="dashboard"){ renderDashHero(); renderCards(); renderCharts(); }
+      if(view==="settings"){ renderChartSettings(); wireChartSettings(); }
       /* بخش شخصی هر بار که باز می‌شود دوباره کشیده می‌شود: اگر قفل باشد
          صفحهٔ رمز و اگر باز باشد محتوایش. */
       if(view==="personal") renderPersonalView();
@@ -4144,6 +4209,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:chartcfg}}
 {{PART:pace}}
 {{PART:printany}}
 {{PART:pwa}}
