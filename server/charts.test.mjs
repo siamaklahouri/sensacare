@@ -138,7 +138,7 @@ for (const [label, api, pass, path] of [
      قالب هم وجود ندارد. پس نام‌های واقعیِ قالب را هم می‌دهیم. */
   const tplKeys = [...new Set((readFileSync(new URL(
       '../public/_t/' + (api === 'kartabl' ? 'it' : 'fin') + '.tpl', import.meta.url), 'utf8')
-    .match(/data-field="[a-zA-Z]+"/g) || []).map(x => x.slice(13, -1)))];
+    .match(/data-field="[a-zA-Z]+"/g) || []).map(x => x.slice(12, -1)))];
   const keys = await p.evaluate((tplKeys) => {
     const out = [];
     (window.CHART_SRC || []).forEach(src => {

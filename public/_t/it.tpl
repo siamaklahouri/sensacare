@@ -2522,12 +2522,19 @@ function renderChecklist(){
       </td>
       <td>
         <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(t.status||'')}">
+          ${t.status ? "" : '<option value="" selected>—</option>'}
           ${STATUS.map(s=>`<option value="${s}" ${t.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
       <td class="col-hide-s">
+        <!-- خانهٔ خالی گزینهٔ خالی می‌خواهد: اگر ردیفی اولویت نداشته
+             باشد و گزینهٔ خالی نباشد، مرورگر اولین گزینه («بالا») را
+             نشان می‌دهد در حالی که در داده چیزی نیست — یعنی صفحه
+             چیزی می‌گوید که راست نیست. چیپِ رنگی هم خنثی می‌ماند و
+             همین ناهماهنگی لوش داد. -->
         <select data-field="priority" class="pr-select" aria-label="اولویت"
                 data-pr="${escapeHtml(t.priority||'')}">
+          ${t.priority ? "" : '<option value="" selected>—</option>'}
           ${PRIORITY.map(p=>`<option value="${p}" ${t.priority===p?"selected":""}>${p}</option>`).join("")}
         </select>
       </td>
