@@ -92,7 +92,12 @@ for (const [label, w, api, pass, path] of [
   t(m.past === now.jd - 2, 'شمارِ روزهای گذشته درست است', m.past + '');
   t(m.done === 0, 'کارِ انجام‌شده عقب‌افتاده شمرده نمی‌شود');
   t(m.soon === 0, 'کارِ آینده هم نه');
-  t(m.count === 2, 'شمارِ کلِ عقب‌افتاده‌ها درست است', m.count + '');
+  /* شمارِ کل به آن‌چه از قبل در کارتابل هست بستگی دارد (در مجموعهٔ
+     کامل، چک‌لیستِ نمونه خودش ده‌ها کارِ گذشته دارد). پس عددِ ثابت
+     نمی‌سنجیم؛ می‌سنجیم که شمارش با خودِ ردیف‌ها بخواند. */
+  const real = await p.evaluate(() => (state.tasks || []).filter(x => odDays(x) > 0).length);
+  t(m.count === real, 'شمارش با ردیف‌های واقعی می‌خواند', m.count + '/' + real);
+  t(m.count >= 2, 'و دستِ‌کم دو کارِ آزمونِ ما را می‌شمارد', m.count + '');
 
   /* ۲) نوارِ داشبورد */
   const bar = await p.evaluate(() => {
@@ -101,7 +106,9 @@ for (const [label, w, api, pass, path] of [
                  go: !!e.querySelector('.od-go') } : null;
   });
   t(bar && !bar.hidden, 'نوارِ داشبورد باز است');
-  t(bar && /۲ کار/.test(bar.text), 'و شمار را با رقمِ فارسی می‌گوید', bar ? bar.text : '—');
+  const faCount = String(m.count).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
+  t(bar && bar.text.indexOf(faCount + ' کار') >= 0, 'و همان شمار را با رقمِ فارسی می‌گوید',
+    bar ? bar.text : '—');
   t(bar && bar.go, 'و دکمهٔ رفتن به چک‌لیست دارد');
 
   /* ۳) چیپِ مهلت در چک‌لیست */
@@ -153,11 +160,12 @@ if (canTest) {
     const rows = [...document.querySelectorAll('#deadlinesBody tr')];
     return { first: rows.slice(0, 2).map(r => r.cells[0].textContent.trim()),
              cells: rows.filter(r => r.querySelector('.od-cell')).length,
+             firstIsOverdue: !!(rows[0] && rows[0].querySelector('.od-cell')),
              note: (document.querySelector('#deadlinesBody .od-cell small') || {}).textContent || '' };
   });
   t(d.cells >= 2, 'خانهٔ مهلتِ عقب‌افتاده‌ها نشانه دارد', d.cells + ' تا');
   t(/روز از مهلتش گذشته/.test(d.note), 'و با حرف می‌گوید، نه فقط با رنگ', d.note);
-  t(/کارِ گذشته/.test(d.first[0] || ''), 'و عقب‌افتاده‌ها اولِ جدول‌اند', (d.first[0] || '—'));
+  t(d.firstIsOverdue, 'و عقب‌افتاده‌ها اولِ جدول‌اند', (d.first[0] || '—'));
   await ctx.close();
 }
 

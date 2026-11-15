@@ -53,13 +53,21 @@ for (const [label, api, pass, path] of [
   t(login.status === 200, 'ورود برای ساختنِ وضعیتِ آزمون');
   const H = { Cookie: login.cookies };
   const got = await call('/api/' + api + '/state', { headers: H });
-  const stray = { tasks: [{ category: 'آزمون', task: 'کارِ ماهِ بی‌نام', owner: '', deadline: '4',
+  const have = (got.data && got.data.state) || {};
+  /* آن‌چه در کارتابل هست دست نمی‌خورد: سرور نوشتنِ ویرانگر را رد
+     می‌کند (و درست هم می‌کند)، و آزمونی که دادهٔ آزمون‌های دیگر را
+     پاک کند، مجموعه را از خودش خراب‌تر می‌کند. فقط ماه را بی‌نام
+     می‌کنیم و یک ماهِ بایگانیِ «?|?» کنارش می‌گذاریم. */
+  const MARK = 'کارِ ماهِ بی‌نام';
+  const stray = { tasks: [{ category: 'آزمون', task: MARK, owner: '', deadline: '4',
                             status: 'انجام نشده', priority: 'متوسط', note: '' }], days: [] };
+  const before = (have.tasks || []).length;
   const put = await call('/api/' + api + '/state', { method: 'PUT', headers: H,
-    body: JSON.stringify({ state: { meta: { month: '', year: '' }, currentMonthKey: '?|?',
-      monthsData: { '?|?': stray }, tasks: stray.tasks, days: [] },
-      rev: (got.data && got.data.rev) || 0 }) });
-  t(put.status === 200, 'وضعیتِ «ماهِ بی‌نام» روی سرور نشست');
+    body: JSON.stringify({ state: { ...have, meta: { month: '', year: '' }, currentMonthKey: '?|?',
+      monthsData: { ...(have.monthsData || {}), '?|?': stray } },
+      baseRev: (got.data && got.data.rev) || 0 }) });
+  t(put.status === 200, 'وضعیتِ «ماهِ بی‌نام» روی سرور نشست',
+    put.status === 200 ? '' : JSON.stringify(put.data));
 
   const ctx = await b.newContext({ viewport: { width: 1400, height: 900 } });
   await ctx.addCookies(await cookiesFor(api, pass));
@@ -80,13 +88,15 @@ for (const [label, api, pass, path] of [
   t(o.meta && o.meta.month === now.name && String(o.meta.year) === String(now.jy),
     'و meta هم پر شد', JSON.stringify(o.meta));
   t(!o.keys.includes('?|?'), 'کلیدِ «?|?» دیگر نیست', o.keys.join('، ') || 'خالی');
-  t(o.tasks.includes('کارِ ماهِ بی‌نام'), 'و کارِ آن ماه گم نشد — به ماهِ جاری پیوست',
-    o.tasks.join('، '));
+  t(o.tasks.includes(MARK), 'و کارِ آن ماه گم نشد — به ماهِ جاری پیوست',
+    o.tasks.length + ' ردیف');
+  t(o.tasks.length >= before, 'و کارهای پیشینِ کارتابل هم سرِ جایشان‌اند',
+    before + ' → ' + o.tasks.length);
   /* و دو تا هم نشد: وقتی کلیدِ بی‌نام خودش ماهِ کاری بوده، همان
      ردیف‌ها هم در state.tasks بودند و پیوستنِ کورکورانه تکرارشان
      می‌کرد — در نسخهٔ اولِ همین اصلاح دقیقاً همین شد. */
-  t(o.tasks.filter(x => x === 'کارِ ماهِ بی‌نام').length === 1,
-    'و تکرار نشد', o.tasks.length + ' ردیف');
+  t(o.tasks.filter(x => x === MARK).length === 1,
+    'و تکرار نشد', o.tasks.filter(x => x === MARK).length + ' بار');
   t(!/؟/.test(o.chip), 'چیپِ بالای صفحه «؟» نشان نمی‌دهد', o.chip.trim() || '—');
 
   /* و تقویم که کارهای همین ماه را از همین کلید می‌گیرد */

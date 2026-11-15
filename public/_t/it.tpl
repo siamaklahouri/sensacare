@@ -1615,6 +1615,7 @@ function ensureMonthsMigration(){
 
      کارتابلِ مالی همین را از قبل درست کرده بود؛ این‌جا نشده بود.
      دادهٔ کلیدِ بی‌نام دور ریخته نمی‌شود: به ماهِ جاری می‌پیوندد. */
+  const hadKey = state.currentMonthKey;
   const stray = state.monthsData["?|?"];
   if(stray){
     delete state.monthsData["?|?"];
@@ -1628,12 +1629,19 @@ function ensureMonthsMigration(){
         month: JALALI_MONTH_NAMES[parseInt(todayParts[1],10)-1], year: todayParts[0] });
     }
     const key = monthKeyOf(state.meta.month, state.meta.year);
-    if(!state.monthsData[key]){
+    /* ردیف‌های زنده یا مالِ همین ماه‌اند یا مالِ ماهی که نامش گم
+       شده. در هر دو حال «نسخهٔ کاری»اند و تازه‌تر از بایگانی:
+       بایگانیِ هر ماه فقط موقعِ عوض‌کردنِ ماه به‌روز می‌شود، پس
+       نشاندنِ بایگانی روی ردیف‌های زنده یعنی پاک‌کردنِ کارِ امروز.
+       یک بار همین شد و آزمون «۴ ردیف → ۱ ردیف» را گرفت. */
+    const lost = !hadKey || hadKey === "?|?";
+    if(!state.monthsData[key] || lost){
       state.monthsData[key] = { tasks: state.tasks, days: state.days };
+    } else {
+      state.tasks = state.monthsData[key].tasks;
+      state.days = state.monthsData[key].days;
     }
     state.currentMonthKey = key;
-    state.tasks = state.monthsData[key].tasks;
-    state.days = state.monthsData[key].days;
   }
   if(stray){
     /* ردیفی که همین حالا در ماهِ جاری هست، دوباره اضافه نمی‌شود:

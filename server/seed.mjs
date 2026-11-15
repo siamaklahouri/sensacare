@@ -44,7 +44,7 @@ export async function ensureTasks(base, host, api, pass, enough, extra) {
   const put = await call(base, host, '/api/' + api + '/state', {
     method: 'PUT', headers: H,
     body: JSON.stringify({ state: { ...state, tasks: tasks.concat(extra) },
-      rev: (got.data && got.data.rev) || 0 })
+      baseRev: (got.data && got.data.rev) || 0 })
   });
   if (put.status !== 200) throw new Error('کاشتنِ داده نشد: ' + put.status);
   return extra.length;
@@ -90,7 +90,7 @@ export async function ensureCurrentMonth(base, host, api, pass) {
   };
   const put = await call(base, host, '/api/' + api + '/state', {
     method: 'PUT', headers: H,
-    body: JSON.stringify({ state: next, rev: (got.data && got.data.rev) || 0 })
+    body: JSON.stringify({ state: next, baseRev: (got.data && got.data.rev) || 0 })
   });
   if (put.status !== 200) throw new Error('تنظیمِ ماه نشد: ' + put.status);
   return now.name + ' ' + now.jy;
