@@ -3,7 +3,7 @@
    همان چیزی باشد که روی صفحه دیده می‌شود (نه بیشتر، نه کمتر)، و
    نامِ فایل اَسکی بماند — کروم نامِ غیرِاَسکی را دور می‌ریزد و فایل
    با نامِ «download» و بی‌پسوند ذخیره می‌شود. */
-import { launch } from './pw.mjs';
+import { launch, calm } from './pw.mjs';
 import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -15,6 +15,9 @@ for (const [tag, url] of [['IT', IT], ['مالی', FIN]]) {
   p.on('dialog', d => d.accept());
   await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1600);
+  /* یادآورِ روی صفحه یک پنجرهٔ واقعی است و تا بسته نشود جلوی کلیک
+     را می‌گیرد — همان‌طور که برای کاربر هم می‌گیرد. */
+  await calm(p);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(400);
   console.log('\n===== کارتابل ' + tag + ' =====');

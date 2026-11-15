@@ -10,7 +10,7 @@
 
    این آزمون صفحه را بی هیچ قلمی بار می‌کند: هر چیزی که با قلم کشیده
    می‌شد ناپدید می‌شود و فقط آنچه واقعاً مستقل است می‌ماند. */
-import { launch } from './pw.mjs';
+import { launch, calm } from './pw.mjs';
 import { ADMIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -22,6 +22,9 @@ const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
 const errs = []; p.on('pageerror', e => errs.push(String(e).slice(0, 180)));
 await p.goto(ADMIN, { waitUntil: 'networkidle' });
 await p.waitForTimeout(1200);
+/* یادآورِ روی صفحه یک پنجرهٔ واقعی است و تا بسته نشود جلوی کلیک
+   را می‌گیرد — همان‌طور که برای کاربر هم می‌گیرد. */
+await calm(p);
 await p.evaluate(() => {
   const g = document.getElementById('gate'); if (g) { g.hidden = true; g.innerHTML = ''; }
   document.getElementById('app').hidden = false;
@@ -72,6 +75,9 @@ for (const [tag, url, view, fields] of [
   q.on('dialog', d => d.accept());
   await q.goto(url, { waitUntil: 'networkidle' });
   await q.waitForTimeout(1500);
+  /* یادآورِ روی صفحه یک پنجرهٔ واقعی است و تا بسته نشود جلوی کلیک
+     را می‌گیرد — همان‌طور که برای کاربر هم می‌گیرد. */
+  await calm(q);
   await q.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await q.waitForTimeout(300);
   await q.evaluate(x => document.querySelector(`[data-view="${x}"]`).click(), view);

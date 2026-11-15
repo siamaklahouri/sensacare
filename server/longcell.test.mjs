@@ -8,7 +8,7 @@
      یک) ردیف با متنِ بلند هم کوتاه می‌ماند،
      دو) متنِ کامل از راهِ پنجره در دسترس است،
      سه) و مهم‌تر از همه: نشانهٔ «⌄» وارد خودِ داده نمی‌شود. */
-import { launch } from './pw.mjs';
+import { launch, calm } from './pw.mjs';
 import { FIN, IT } from './where.mjs';
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -28,6 +28,9 @@ for (const [tag, url, view, fields, store] of [
   p.on('dialog', d => d.accept());
   await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
+  /* یادآورِ روی صفحه یک پنجرهٔ واقعی است و تا بسته نشود جلوی کلیک
+     را می‌گیرد — همان‌طور که برای کاربر هم می‌گیرد. */
+  await calm(p);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   await p.waitForTimeout(300);
   console.log('\n===== کارتابل ' + tag + ' / ' + view + ' =====');

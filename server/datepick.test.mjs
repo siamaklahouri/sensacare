@@ -1,6 +1,6 @@
 /* تقویمِ شمسی کنارِ خانه‌های تاریخ. نشانه یک ::after است، پس زدنش یعنی
    کلیک روی نوارِ باریکِ لبهٔ خانه — همان کاری که کاربر می‌کند. */
-import { launch } from './pw.mjs';
+import { launch, calm } from './pw.mjs';
 import { FIN, IT } from './where.mjs';
 const OUT = '/tmp/claude-0/-home-user-Panel/baecccd1-044f-55d8-b6c3-2f90602c9aae/scratchpad/kt/';
 let ok = 0, bad = 0;
@@ -38,6 +38,9 @@ async function open(url) {
   p.on('dialog', d => d.accept());
   await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1500);
+  /* یادآورِ روی صفحه یک پنجرهٔ واقعی است و تا بسته نشود جلوی کلیک
+     را می‌گیرد — همان‌طور که برای کاربر هم می‌گیرد. */
+  await calm(p);
   await p.evaluate(() => { const g = document.getElementById('gateScreen'); if (g) { g.hidden = true; g.innerHTML = ''; } });
   return p;
 }

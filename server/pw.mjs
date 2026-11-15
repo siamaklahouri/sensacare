@@ -43,3 +43,31 @@ export function launch(opts) {
   o.args = (o.args || []).concat(['--host-resolver-rules=' + HOSTMAP]);
   return chromium.launch(o);
 }
+
+/* ---------- صفحهٔ آرام ----------
+   گشتِ اولِ کار و یادآورِ روی صفحه هر دو پنجره‌های واقعی‌اند و روی
+   محتوا می‌نشینند — همان‌طور که برای کاربر هم می‌نشینند. آزمونی که
+   می‌خواهد روی خودِ صفحه کار کند، باید اول مثلِ آدم ببنددشان، نه
+   این‌که دورشان بزند.
+
+   این تابع همین را می‌کند و می‌گوید چه چیزی را بست. */
+export async function calm(page) {
+  const closed = [];
+  for (let i = 0; i < 6; i++) {
+    const what = await page.evaluate(() => {
+      var pop = document.querySelector('.tourbox:not([hidden]) .tr-skip');
+      if (pop) { pop.click(); return 'گشت'; }
+      var ov = document.querySelector('.reminder-modal-overlay.open');
+      if (ov) {
+        var ok = ov.querySelector('.rm-ok');
+        if (ok) ok.click(); else ov.classList.remove('open');
+        return 'یادآور';
+      }
+      return '';
+    });
+    if (!what) break;
+    closed.push(what);
+    await page.waitForTimeout(400);
+  }
+  return closed;
+}

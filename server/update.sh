@@ -81,11 +81,26 @@ fi
 say "۴ · سرویس"
 if [ -n "$SKIP_SVC" ]; then ok "راه‌اندازیِ سرویس رد شد (آزمون)"; else
 systemctl restart sltech || die "سرویس راه نیفتاد."
-sleep 3
-if [ "$(systemctl is-active sltech)" = active ]; then
-  ok "سرویس بالاست"
+# «active» یعنی پراسس شروع شده، نه این‌که پورت را گرفته. یک بار
+# همین‌جا گیر کرد: سرویس ساعت ۱۱:۲۸:۰۶ راه افتاد و ۱۱:۲۸:۱۰ پورت را
+# گرفت، ولی curlِ قدمِ بعد ثانیهٔ نهم زده شد و «000» گرفت — یعنی
+# «وصل نشدم»، نه «خطا داد». پس به‌جای خوابِ ثابت، منتظرِ خودِ پورت
+# می‌مانیم.
+UP=""
+for i in $(seq 1 30); do
+  if [ "$(systemctl is-active sltech)" != active ]; then
+    bad "سرویس بالا نیامد:"
+    journalctl -u sltech -n 25 --no-pager
+    die "کدِ تازه بالا نیامد."
+  fi
+  if curl -s -o /dev/null --max-time 2 -H 'Host: sltech.ir' "http://127.0.0.1:$PORT/"; then
+    UP="$i"; break
+  fi
+  sleep 1
+done
+if [ -n "$UP" ]; then ok "سرویس بالاست (بعد از ${UP} ثانیه)"
 else
-  bad "سرویس بالا نیامد:"
+  bad "سرویس تا ۳۰ ثانیه پورت را نگرفت:"
   journalctl -u sltech -n 25 --no-pager
   die "کدِ تازه بالا نیامد."
 fi
