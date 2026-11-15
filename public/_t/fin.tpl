@@ -2297,8 +2297,12 @@ function renderInvoices(){
 
   const list = applyInvoiceFilters(invoicesData);
   /* «late» تعدادِ روزهای گذشته از سررسید است؛ صفر یعنی نگذشته. */
+  /* نشانه فقط رنگ و عنوانِ موشواره است، نه متنِ داخلِ خانه: این
+     خانه contenteditable است و هر چیزی که تویش بگذاریم، موقعِ
+     ویرایش جزوِ خودِ مقدار می‌شود. یک بار همین شد و آزمونِ
+     «تاریخ در ردیفِ تازه نشست» گرفتش. */
   const editableTd = (value, idx, field, late)=>
-    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(value==null?"":value)}${late ? '<small>'+escapeHtml(odTitle(late))+'</small>' : ''}</td>`;
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
 
   const bodyRows = list.map((inv)=>{
     const idx = invoicesData.indexOf(inv);
@@ -2442,8 +2446,12 @@ function renderPayables(){
   `;
 
   const list = applyPayableFilters(payablesData);
+  /* نشانه فقط رنگ و عنوانِ موشواره است، نه متنِ داخلِ خانه: این
+     خانه contenteditable است و هر چیزی که تویش بگذاریم، موقعِ
+     ویرایش جزوِ خودِ مقدار می‌شود. یک بار همین شد و آزمونِ
+     «تاریخ در ردیفِ تازه نشست» گرفتش. */
   const editableTd = (value, idx, field, late)=>
-    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(value==null?"":value)}${late ? '<small>'+escapeHtml(odTitle(late))+'</small>' : ''}</td>`;
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
 
   const bodyRows = list.map((p)=>{
     const idx = payablesData.indexOf(p);

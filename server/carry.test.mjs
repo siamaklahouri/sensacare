@@ -86,13 +86,18 @@ for (const [label, api, pass, path] of [
     state.tasks = prev.tasks; state.days = prev.days;
     state.meta = { month: pm, year: py };
     delete state.autoMonth;
-    scheduleSave();
-    try { if (window.Cloud && Cloud.pushNow) Cloud.pushNow(); } catch (e) {}
     return { key: state.currentMonthKey };
   }, MARK);
+  /* با force: نسخهٔ سرور ردیف‌های دیگری دارد و نگهبانِ «از دست رفتنِ
+     ردیف» جلوی ذخیرهٔ معمولی را می‌گیرد — یک بار همین‌جا گیر کرد و
+     آزمون روی وضعیتِ قدیمی اجرا شد و بی‌جهت افتاد. */
+  const saved = await p.evaluate(async () => {
+    try { await Cloud.pushNow(true, true); return true; } catch (e) { return false; }
+  });
+  t(saved, 'وضعیتِ آزمون روی سرور نشست');
   t(!!before.key, 'ماهِ کاری برای آزمون عقب برده شد', before.key);
 
-  await p.waitForTimeout(3500);
+  await p.waitForTimeout(1200);
   await p.reload({ waitUntil: 'load' });
   await p.waitForTimeout(4200); await calm(p);
 
