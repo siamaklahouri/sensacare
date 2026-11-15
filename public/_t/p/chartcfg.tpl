@@ -216,6 +216,25 @@ function renderChartSettings() {
   syncChartFields();
 }
 
+/* ستونی که در دادهٔ واقعی نیست، نباید پیشنهاد شود.
+   یک بار نامِ چند ستون را اشتباه نوشته بودم («party» به‌جای
+   «customer»، «due» به‌جای «dueDate») و نمودارش بی‌صدا یک ستونِ
+   «نامشخص» می‌داد — بدترین جورِ خرابی، چون شبیهِ دادهٔ واقعی است.
+   حالا تا وقتی جدول ردیفی دارد، فقط ستون‌هایی می‌مانند که در
+   ردیف‌ها هستند؛ جدولِ خالی همه را نشان می‌دهد چون چیزی برای
+   سنجیدن نیست. */
+function presentFields(src, list) {
+  var rows = [];
+  try { rows = src.rows() || []; } catch (e) { rows = []; }
+  if (!rows.length) return list;
+  var seen = {};
+  rows.slice(0, 200).forEach(function (r) {
+    if (r) Object.keys(r).forEach(function (k) { seen[k] = 1; });
+  });
+  var kept = list.filter(function (f) { return seen[f.k]; });
+  return kept.length ? kept : list;
+}
+
 /* ستون‌های هر بخش با خودش عوض می‌شود. */
 function syncChartFields() {
   const s = chartSrcOf((document.getElementById("ccfSrc") || {}).value);
@@ -228,10 +247,10 @@ function syncChartFields() {
      شود» هم صدا زده می‌شود، و اگر فهرست را کور بسازیم، ستونی که
      کاربر انتخاب کرده بود به اولی برمی‌گردد — بی آن‌که ببیند. */
   const keepBy = by.value, keepNum = num.value;
-  by.innerHTML = (s.fields || []).map(f =>
+  by.innerHTML = presentFields(s, s.fields || []).map(f =>
     '<option value="' + escapeHtml(f.k) + '">' + escapeHtml(f.label) + '</option>').join("");
   if ([...by.options].some(o => o.value === keepBy)) by.value = keepBy;
-  const nums = s.nums || [];
+  const nums = presentFields(s, s.nums || []);
   num.innerHTML = nums.map(f =>
     '<option value="' + escapeHtml(f.k) + '">' + escapeHtml(f.label) + '</option>').join("");
   if ([...num.options].some(o => o.value === keepNum)) num.value = keepNum;

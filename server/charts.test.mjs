@@ -128,6 +128,32 @@ for (const [label, api, pass, path] of [
   t(look.radius !== '0px', 'و قابش گرد است مثلِ بقیه', look.radius);
   t(look.arrow, 'و فلشِ خودش را دارد، نه فلشِ مرورگر');
 
+  /* ۲ب) ستون‌هایی که معرفی شده‌اند باید در دادهٔ واقعی باشند.
+     یک بار نامِ چند ستون اشتباه نوشته شده بود («party» به‌جای
+     «customer»، «due» به‌جای «dueDate») و نمودار بی‌صدا یک ستونِ
+     «نامشخص» می‌داد — خرابی‌ای که شبیهِ دادهٔ واقعی است و به چشم
+     نمی‌آید. این سنجه همان را می‌گیرد. */
+  const keys = await p.evaluate(() => {
+    const out = [];
+    (window.CHART_SRC || []).forEach(src => {
+      let rows = [];
+      try { rows = src.rows() || []; } catch (e) { rows = []; }
+      if (!rows.length) return;
+      const seen = new Set();
+      rows.slice(0, 200).forEach(r => { if (r) Object.keys(r).forEach(k => seen.add(k)); });
+      const miss = [...(src.fields || []), ...(src.nums || [])]
+        .filter(f => !seen.has(f.k)).map(f => f.k);
+      out.push({ id: src.id, rows: rows.length, miss });
+    });
+    return out;
+  });
+  const checked = keys.filter(x => x.rows);
+  t(checked.length > 0, 'دست‌کم یک بخش داده دارد تا ستون‌هایش سنجیده شود',
+    checked.map(x => x.id + '(' + x.rows + ')').join('، ') || 'هیچ');
+  const wrong = checked.filter(x => x.miss.length);
+  t(wrong.length === 0, 'هر ستونی که معرفی شده در دادهٔ واقعی هست',
+    wrong.map(x => x.id + ': ' + x.miss.join('،')).join(' / ') || 'همه درست');
+
   /* ۳) خاموش‌کردنِ یک نمودارِ آماده */
   const first = await p.evaluate(() => document.querySelector('[data-ccf-built]').getAttribute('data-ccf-built'));
   await p.evaluate(id => {
