@@ -38,6 +38,8 @@ import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
 import p_bkfile from '../public/_t/p/bkfile.tpl';
 import p_navmore from '../public/_t/p/navmore.tpl';
+import p_overdue from '../public/_t/p/overdue.tpl';
+import p_overduecss from '../public/_t/p/overduecss.tpl';
 import p_chartcfg from '../public/_t/p/chartcfg.tpl';
 import p_chartcfgcss from '../public/_t/p/chartcfgcss.tpl';
 import p_pace from '../public/_t/p/pace.tpl';
@@ -150,6 +152,8 @@ export const PARTS = new Map([
   ['kthemecss', p_kthemecss],
   ['bkfile', p_bkfile],
   ['navmore', p_navmore],
+  ['overdue', p_overdue],
+  ['overduecss', p_overduecss],
   ['chartcfg', p_chartcfg],
   ['chartcfgcss', p_chartcfgcss],
   ['pace', p_pace],

@@ -582,6 +582,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
 {{PART:selchipcss}}
+{{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
 {{PART:printanycss}}
@@ -698,6 +699,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
       <div class="dash-hero" id="dashHero"></div>
 
+      <div class="od-bar" id="odBar" hidden></div>
       <div class="cards" id="statCards"></div>
 
       <div class="dash-group-label g-blue"><span class="dgl-ic">📋</span> وظایف و برنامه‌ی این ماه</div>
@@ -3245,14 +3247,25 @@ function ensureMonthsMigration(){
     state.days = state.monthsData[key].days;
   }
   if(stray){
+    /* ردیفی که همین حالا در ماهِ جاری هست، دوباره اضافه نمی‌شود:
+       وقتی کلیدِ بی‌نام خودش ماهِ کاری بوده، state.tasks همان
+       ردیف‌هاست و پیوستنِ کورکورانه هر کار را دو تا می‌کرد. */
     const target = state.monthsData[state.currentMonthKey];
-    if(stray.tasks && stray.tasks.length){
-      target.tasks = (target.tasks||[]).concat(stray.tasks);
+    const sigOf = r => [r && r.task, r && r.category, r && r.deadline,
+                        r && r.status, r && r.owner].join("\u0000");
+    const haveT = new Set((target.tasks||[]).map(sigOf));
+    const addT = (stray.tasks||[]).filter(r=> r && !haveT.has(sigOf(r)));
+    if(addT.length){
+      target.tasks = (target.tasks||[]).concat(addT);
       state.tasks = target.tasks;
     }
-    const strayDays = (stray.days||[]).filter(d=> d.main || d.meet || d.status || d.company);
-    if(strayDays.length){
-      target.days = (target.days||[]).concat(strayDays);
+    const dSig = d => [d && d.createdDate, d && d.main, d && d.meet,
+                       d && d.company, d && d.status].join("\u0000");
+    const haveD = new Set((target.days||[]).map(dSig));
+    const addD = (stray.days||[]).filter(d=> d && (d.main || d.meet || d.status || d.company))
+      .filter(d=> !haveD.has(dSig(d)));
+    if(addD.length){
+      target.days = (target.days||[]).concat(addD);
       state.days = target.days;
     }
   }
@@ -3378,8 +3391,8 @@ function renderChecklist(){
       <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text col-hide-s"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
-        <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
-                title="انتخابِ روزِ مهلت">
+        <button type="button" class="date-box${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
+                title="${odDays(t) ? escapeHtml(odTitle(odDays(t))) : 'انتخابِ روزِ مهلت'}">
           <span class="cal-ic">📅</span>
           <span class="dv">${t.deadline ? fa(t.deadline)+' ام' : 'بی‌مهلت'}</span>
         </button>
@@ -3760,6 +3773,7 @@ async function renderCharts(){
   /* پنهان‌کردنِ نمودارهای خاموش به Chart.js کاری ندارد، پس پیش از
      بررسیِ کتابخانه انجام می‌شود تا اگر هم نیامد درست بماند. */
   try{ applyBuiltinCharts(); }catch(e){ console.error('[چیدنِ نمودارها]', e); }
+  try{ renderOverdueBar(); }catch(e){ console.error('[نوارِ عقب‌افتاده]', e); }
   if(!ok){
     ids.forEach(id=>{
       const el = document.getElementById(id);
@@ -3969,7 +3983,7 @@ function setupNav(){
       const view = btn.getAttribute("data-view");
       document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
       document.getElementById("view-"+view).classList.add("active");
-      if(view==="dashboard"){ renderDashHero(); renderCards(); renderCharts(); }
+      if(view==="dashboard"){ renderDashHero(); renderCards(); renderCharts(); renderOverdueBar(); }
       if(view==="settings"){ renderChartSettings(); wireChartSettings(); }
       /* بخش شخصی هر بار که باز می‌شود دوباره کشیده می‌شود: اگر قفل باشد
          صفحهٔ رمز و اگر باز باشد محتوایش. */
@@ -4209,6 +4223,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:overdue}}
 {{PART:chartcfg}}
 {{PART:pace}}
 {{PART:printany}}

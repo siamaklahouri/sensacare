@@ -88,13 +88,38 @@
     box.querySelector(".tr-next").textContent = (i === steps.length - 1) ? "تمام" : "بعدی";
     box.hidden = false;
     /* پنجره کنارِ همان چیزی می‌نشیند که دربارهٔ آن حرف می‌زند — روی
-       گوشی وسطِ صفحه، چون نوارِ کنار اصلاً نیست. */
+       گوشی وسطِ صفحه، چون نوارِ کنار اصلاً نیست.
+
+       این‌جا عمداً left/right فیزیکی گذاشته می‌شود، نه inset-inline:
+       در صفحهٔ راست‌به‌چپ، inset-inline-end یعنی «چپ»، و کدِ قبلی
+       فاصله را از لبهٔ راست حساب می‌کرد و به آن می‌داد. نتیجه این
+       بود که پنجره آینه‌وار آن‌طرفِ صفحه می‌افتاد: دکمهٔ هدف روی
+       ۱۲۹۹ و پنجره روی ۲۱۵ — ۷۵۴ پیکسل دورتر از چیزی که نشان
+       می‌داد. حلقه‌ای که به چیزی اشاره می‌کند و آن‌طرفِ صفحه
+       می‌نشیند، از نبودنش بدتر است. */
     var pop = box.querySelector(".tr-pop");
     pop.style.cssText = "";
     if (el && window.innerWidth > 900) {
+      /* اگر هدف پایین‌ترِ قاب باشد، نه حلقه‌اش دیده می‌شود و نه
+         پنجره می‌تواند کنارش بنشیند — مهار شدنِ پنجره آن را سیصد
+         پیکسل بالاتر می‌انداخت. پس اول هدف را می‌آوریم توی قاب. */
+      try { el.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {}
       var r = el.getBoundingClientRect();
-      pop.style.top = Math.max(12, Math.min(r.top - 10, innerHeight - 220)) + "px";
-      pop.style.insetInlineEnd = Math.max(12, innerWidth - r.left + 14) + "px";
+      var pw = pop.offsetWidth || 330, ph = pop.offsetHeight || 200;
+      pop.style.insetInlineStart = "auto";
+      pop.style.insetInlineEnd = "auto";
+      /* کنارِ عنصر، آن‌طرف که جا دارد */
+      if (r.left - 14 - pw >= 12) {
+        pop.style.right = (innerWidth - r.left + 14) + "px";
+        pop.style.left = "auto";
+      } else if (r.right + 14 + pw <= innerWidth - 12) {
+        pop.style.left = (r.right + 14) + "px";
+        pop.style.right = "auto";
+      } else {
+        pop.style.right = "16px";
+        pop.style.left = "auto";
+      }
+      pop.style.top = Math.max(12, Math.min(r.top - 10, innerHeight - ph - 12)) + "px";
     }
   }
 

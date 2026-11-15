@@ -844,6 +844,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:selchipcss}}
+{{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
 {{PART:printanycss}}
@@ -957,6 +958,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="dash-hero" id="dashHero"></div>
 
       <div class="reminders-banner" id="remindersBanner"></div>
+      <div class="od-bar" id="odBar" hidden></div>
 
       <div class="cards" id="statCards"></div>
 
@@ -1605,13 +1607,56 @@ function monthLabelOf(key){
 function ensureMonthsMigration(){
   if(!state.monthsData || typeof state.monthsData!=="object") state.monthsData = {};
   normalizeMonthKeys();
+  /* ماهِ بی‌نام: در کارتابلِ تازه meta خالی است، و کلیدِ ماه «?|?»
+     می‌شد. سه چیز از همان‌جا خراب می‌شد — چیپِ بالای صفحه «؟ ؟»
+     نشان می‌داد، تقویم هرچقدر هم کارِ مهلت‌دار بود خالی می‌ماند
+     (چون کارهای «همین ماه» را از همین کلید می‌گیرد)، و کارهای ماهِ
+     اول برای همیشه زیرِ یک کلیدِ بی‌معنی بایگانی می‌شدند.
+
+     کارتابلِ مالی همین را از قبل درست کرده بود؛ این‌جا نشده بود.
+     دادهٔ کلیدِ بی‌نام دور ریخته نمی‌شود: به ماهِ جاری می‌پیوندد. */
+  const stray = state.monthsData["?|?"];
+  if(stray){
+    delete state.monthsData["?|?"];
+    if(state.currentMonthKey === "?|?") state.currentMonthKey = null;
+  }
   if(!state.currentMonthKey || !state.monthsData[state.currentMonthKey]){
-    // first run after upgrade, or missing key: adopt whatever tasks/days are already loaded as "the current month"
-    const key = monthKeyOf(state.meta && state.meta.month, state.meta && state.meta.year);
+    if(!state.meta || !state.meta.month || !state.meta.year ||
+       state.meta.month==="?" || state.meta.year==="?"){
+      const todayParts = getTodayJalaliStr().split("/");
+      state.meta = Object.assign({}, state.meta, {
+        month: JALALI_MONTH_NAMES[parseInt(todayParts[1],10)-1], year: todayParts[0] });
+    }
+    const key = monthKeyOf(state.meta.month, state.meta.year);
     if(!state.monthsData[key]){
       state.monthsData[key] = { tasks: state.tasks, days: state.days };
     }
     state.currentMonthKey = key;
+    state.tasks = state.monthsData[key].tasks;
+    state.days = state.monthsData[key].days;
+  }
+  if(stray){
+    /* ردیفی که همین حالا در ماهِ جاری هست، دوباره اضافه نمی‌شود:
+       وقتی کلیدِ بی‌نام خودش ماهِ کاری بوده، state.tasks همان
+       ردیف‌هاست و پیوستنِ کورکورانه هر کار را دو تا می‌کرد. */
+    const target = state.monthsData[state.currentMonthKey];
+    const sigOf = r => [r && r.task, r && r.category, r && r.deadline,
+                        r && r.status, r && r.owner].join("\u0000");
+    const haveT = new Set((target.tasks||[]).map(sigOf));
+    const addT = (stray.tasks||[]).filter(r=> r && !haveT.has(sigOf(r)));
+    if(addT.length){
+      target.tasks = (target.tasks||[]).concat(addT);
+      state.tasks = target.tasks;
+    }
+    const dSig = d => [d && d.createdDate, d && d.main, d && d.meet,
+                       d && d.company, d && d.status].join("\u0000");
+    const haveD = new Set((target.days||[]).map(dSig));
+    const addD = (stray.days||[]).filter(d=> d && (d.main || d.meet || d.status || d.company))
+      .filter(d=> !haveD.has(dSig(d)));
+    if(addD.length){
+      target.days = (target.days||[]).concat(addD);
+      state.days = target.days;
+    }
   }
   /* سطرهای قدیمیِ بی‌تاریخ: روزِ اولِ ماهِ خودشان را می‌گیرند */
   try{ if(backfillCreatedDates() > 0) scheduleSave(); }catch(e){}
@@ -1960,15 +2005,22 @@ function renderCards(){
 
 function renderDeadlines(){
   const body = document.getElementById("deadlinesBody");
+  /* عقب‌افتاده‌ها اول، بعد بقیه به ترتیبِ روز: جدولی که «مهلت‌های
+     نزدیک» نام دارد باید از آن‌چه گذشته شروع کند، نه از روزِ یک. */
   const rows = [...state.tasks]
     .map((t,i)=>({...t, idx:i}))
-    .sort((a,b)=>(a.deadline||0)-(b.deadline||0))
+    .sort((a,b)=>{
+      const oa = odDays(a), ob = odDays(b);
+      if(oa !== ob) return ob - oa;
+      return (a.deadline||0)-(b.deadline||0);
+    })
     .slice(0,10);
   body.innerHTML = rows.map(t=>`
     <tr>
       <td style="text-align:right;">${escapeHtml(t.task)}</td>
       <td>${escapeHtml(t.category)}</td>
-      <td>${t.deadline!==""&&t.deadline!=null ? fa(t.deadline) : ""}</td>
+      <td${odDays(t) ? ' class="od-cell"' : ''}>${t.deadline!==""&&t.deadline!=null ? fa(t.deadline) : ""}${
+        odDays(t) ? '<small>' + escapeHtml(odTitle(odDays(t))) + '</small>' : ''}</td>
       <td><span class="badge ${statusBadgeClass(t.status)}">${t.status}</span></td>
       <td class="${priorityClass(t.priority)}">${t.priority}</td>
     </tr>
@@ -2203,6 +2255,7 @@ function renderCharts(){
   /* پنهان‌کردنِ نمودارهای خاموش پیش از هر چیزِ دیگر: به Chart.js کاری
      ندارد، پس اگر کتابخانه هم نیامد باز هم درست است. */
   try{ applyBuiltinCharts(); }catch(e){ console.error('[چیدنِ نمودارها]', e); }
+  try{ renderOverdueBar(); }catch(e){ console.error('[نوارِ عقب‌افتاده]', e); }
 
   if(!chartsReady()){
     noteLoadingCharts(ids);
@@ -2453,8 +2506,8 @@ function renderChecklist(){
       <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text col-hide-s"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
-        <button type="button" class="date-box${t.deadline ? '' : ' empty'}" data-idx="${i}"
-                title="انتخاب روزِ مهلت">
+        <button type="button" class="date-box${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
+                title="${odDays(t) ? escapeHtml(odTitle(odDays(t))) : 'انتخاب روزِ مهلت'}">
           <span class="cal-ic">📅</span>
           <span class="dv">${t.deadline ? fa(t.deadline)+' ام' : 'بی‌مهلت'}</span>
         </button>
@@ -4416,7 +4469,7 @@ function setupNav(){
       const view = btn.getAttribute("data-view");
       document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
       document.getElementById("view-"+view).classList.add("active");
-      if(view==="dashboard"){ renderCharts(); renderRemindersBanner(); }
+      if(view==="dashboard"){ renderCharts(); renderRemindersBanner(); renderOverdueBar(); }
       if(view==="settings"){ renderChartSettings(); wireChartSettings(); }
       if(view==="servers"){ renderServers(); renderRemoteChecklist(); }
       if(view==="companies") renderCompanies();
@@ -4641,6 +4694,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:overdue}}
 {{PART:chartcfg}}
 {{PART:pace}}
 {{PART:printany}}
