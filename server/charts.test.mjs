@@ -133,7 +133,13 @@ for (const [label, api, pass, path] of [
      «customer»، «due» به‌جای «dueDate») و نمودار بی‌صدا یک ستونِ
      «نامشخص» می‌داد — خرابی‌ای که شبیهِ دادهٔ واقعی است و به چشم
      نمی‌آید. این سنجه همان را می‌گیرد. */
-  const keys = await p.evaluate(() => {
+  /* ستونی که در هیچ ردیفی نیست لزوماً غلط نیست: می‌تواند ستونی
+     باشد که کاربر پرش نکرده. آن‌چه غلط است، نامی است که در خودِ
+     قالب هم وجود ندارد. پس نام‌های واقعیِ قالب را هم می‌دهیم. */
+  const tplKeys = [...new Set((readFileSync(new URL(
+      '../public/_t/' + (api === 'kartabl' ? 'it' : 'fin') + '.tpl', import.meta.url), 'utf8')
+    .match(/data-field="[a-zA-Z]+"/g) || []).map(x => x.slice(13, -1)))];
+  const keys = await p.evaluate((tplKeys) => {
     const out = [];
     (window.CHART_SRC || []).forEach(src => {
       let rows = [];
@@ -142,11 +148,11 @@ for (const [label, api, pass, path] of [
       const seen = new Set();
       rows.slice(0, 200).forEach(r => { if (r) Object.keys(r).forEach(k => seen.add(k)); });
       const miss = [...(src.fields || []), ...(src.nums || [])]
-        .filter(f => !seen.has(f.k)).map(f => f.k);
+        .filter(f => !seen.has(f.k) && tplKeys.indexOf(f.k) < 0).map(f => f.k);
       out.push({ id: src.id, rows: rows.length, miss });
     });
     return out;
-  });
+  }, tplKeys);
   const checked = keys.filter(x => x.rows);
   t(checked.length > 0, 'دست‌کم یک بخش داده دارد تا ستون‌هایش سنجیده شود',
     checked.map(x => x.id + '(' + x.rows + ')').join('، ') || 'هیچ');

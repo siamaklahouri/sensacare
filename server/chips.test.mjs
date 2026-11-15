@@ -86,7 +86,11 @@ for (const [label, api, pass, path] of [
          دارد. اگر رنگی شود، همان دو-آژیرِ کنارِ هم برمی‌گردد. */
       prBorders: [...new Set(pr.map(x => getComputedStyle(x).borderTopColor))].length,
       prColors: [...new Set(pr.filter(x => x.value).map(x => getComputedStyle(x).color))].length,
-      values: [...new Set(pr.map(x => x.value).filter(Boolean))]
+      values: [...new Set(pr.map(x => x.value).filter(Boolean))],
+      /* اگر شمارِ رنگ‌ها با شمارِ اولویت‌ها نخواند، باید بشود فهمید
+         کدام ردیف رنگِ دیگری دارد — وگرنه فقط یک عددِ بی‌نشانی است. */
+      pairs: [...new Set(pr.filter(x => x.value)
+        .map(x => (x.getAttribute('data-pr') || '—') + '→' + getComputedStyle(x).color))]
     };
   });
   t(o.pr > 0, 'ستونِ اولویت چیپ دارد', o.pr + ' تا');
@@ -97,7 +101,9 @@ for (const [label, api, pass, path] of [
     o.prBorders + ' رنگِ قاب');
   if (o.values.length > 1)
     t(o.prColors === o.values.length, 'و هر اولویت رنگِ متنِ خودش را دارد',
-      o.values.join('، ') + ' → ' + o.prColors + ' رنگ');
+      o.prColors === o.values.length
+        ? o.values.join('، ') + ' → ' + o.prColors + ' رنگ'
+        : o.pairs.join(' | '));
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await ctx.close();
 }
