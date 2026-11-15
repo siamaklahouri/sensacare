@@ -4753,7 +4753,7 @@ async function init(){
     }
     /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود.
        یک‌بار همین اتفاق افتاد و نیمی از صفحه بی‌صدا راه نیفتاد. */
-    [renderMeta, setupNav, setupMeta, setupToolbar, setupTheme, setupAssistant,
+    [odAutoMonth, renderMeta, setupNav, setupMeta, setupToolbar, setupTheme, setupAssistant,
      setupAiSettings, showLastLogin, showExpiryWarning, setupBackup, setupServers, setupCompanies,
      setupMvpn, setupRemote, setupChartModal, setupDateTools, setupConvert, setupSettings,
      renderAll, renderServers, renderCompanies, renderMvpn, renderRemoteChecklist,

@@ -2284,7 +2284,7 @@ function renderInvoices(){
   const cardsWrap = document.getElementById("invoiceCards");
   const total = invoicesData.reduce((s,i)=>s+ (i.amount||0), 0);
   const outstanding = invoicesData.filter(i=>i.status!=="پرداخت‌شده").reduce((s,i)=>s+ Math.max(0,(i.amount||0)-(i.paid||0)), 0);
-  const overdueCount = invoicesData.filter(i=>i.status==="معوق").length;
+  const overdueCount = invoicesData.filter(i=> i.status==="معوق" || invoiceLate(i) > 0).length;
   if(cardsWrap) cardsWrap.innerHTML = `
     <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">🧾</span><span class="stat-lbl">تعداد فاکتورها</span></div><div class="stat-val">${fa(invoicesData.length)}</div></div>
     <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل فاکتورها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
@@ -2296,8 +2296,9 @@ function renderInvoices(){
   if(statusSel) renderMultiFilter(statusSel, invoicesData.map(i=>i.status), invoiceFilters, "status", renderInvoices);
 
   const list = applyInvoiceFilters(invoicesData);
-  const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+  /* «late» تعدادِ روزهای گذشته از سررسید است؛ صفر یعنی نگذشته. */
+  const editableTd = (value, idx, field, late)=>
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(value==null?"":value)}${late ? '<small>'+escapeHtml(odTitle(late))+'</small>' : ''}</td>`;
 
   const bodyRows = list.map((inv)=>{
     const idx = invoicesData.indexOf(inv);
@@ -2306,7 +2307,7 @@ function renderInvoices(){
       ${editableTd(inv.invoiceNo, idx, "invoiceNo")}
       ${editableTd(inv.customer, idx, "customer")}
       ${editableTd(inv.date, idx, "date")}
-      ${editableTd(inv.dueDate, idx, "dueDate")}
+      ${editableTd(inv.dueDate, idx, "dueDate", invoiceLate(inv))}
       ${editableTd(inv.amount, idx, "amount")}
       ${editableTd(inv.paid, idx, "paid")}
       <td>
@@ -2430,8 +2431,10 @@ function renderPayables(){
   if(!body) return;
   const cardsWrap = document.getElementById("payableCards");
   const total = payablesData.reduce((s,p)=>s+ (p.amount||0), 0);
-  const today = getTodayJalaliStr();
-  const overdueCount = payablesData.filter(p=> p.dueDate && p.dueDate < today).length;
+  /* مقایسهٔ متنی بود و هیچ‌وقت درست نمی‌شد: تاریخ‌ها با رقمِ فارسی
+     ذخیره می‌شوند و «۱۴۰۵/۰۸/۲۰» هیچ‌وقت از «1405/08/24» کوچک‌تر
+     نیست. یعنی این کارت از روزِ اول صفر نشان می‌داد. */
+  const overdueCount = payablesData.filter(p=> payableLate(p) > 0).length;
   if(cardsWrap) cardsWrap.innerHTML = `
     <div class="stat" style="--accent:var(--c1); --tint:var(--t1)"><div class="stat-head"><span class="stat-ic">💳</span><span class="stat-lbl">تعداد ردیف‌ها</span></div><div class="stat-val">${fa(payablesData.length)}</div></div>
     <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع کل بدهی‌ها</span></div><div class="stat-val">${formatMoney(total)}</div></div>
@@ -2439,8 +2442,8 @@ function renderPayables(){
   `;
 
   const list = applyPayableFilters(payablesData);
-  const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+  const editableTd = (value, idx, field, late)=>
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(value==null?"":value)}${late ? '<small>'+escapeHtml(odTitle(late))+'</small>' : ''}</td>`;
 
   const bodyRows = list.map((p)=>{
     const idx = payablesData.indexOf(p);
@@ -2448,7 +2451,7 @@ function renderPayables(){
       <td>${fa(idx+1)}</td>
       ${editableTd(p.beneficiary, idx, "beneficiary")}
       ${editableTd(p.project, idx, "project")}
-      ${editableTd(p.dueDate, idx, "dueDate")}
+      ${editableTd(p.dueDate, idx, "dueDate", payableLate(p))}
       ${editableTd(p.subject, idx, "subject")}
       ${editableTd(p.amount, idx, "amount")}
       ${editableTd(p.enteredBy, idx, "enteredBy")}
@@ -3638,13 +3641,40 @@ function renderChecklistAndDaily(){
 let charts = {};
 function destroyChart(key){ if(charts[key]){ charts[key].destroy(); delete charts[key]; } }
 
+/* ---------- سررسیدی که گذشته ----------
+   «معوق» تا امروز فقط یک وضعیتِ دستی بود: فاکتوری که سررسیدش رد
+   شده بود، تا وقتی کسی خودش وضعیتش را عوض نکند، هیچ‌جا شمرده
+   نمی‌شد. همان حفره‌ای که در کارها بسته شد، این‌جا برای پول باز
+   بود — و این یکی گران‌تر تمام می‌شود.
+
+   مانده‌دار بودن شرط است: فاکتورِ تسویه‌شده هرچقدر هم سررسیدش
+   گذشته باشد، کاری با کسی ندارد. */
+function remainOf(x){ return Math.max(0, (x.amount||0) - (x.paid||0)); }
+function invoiceLate(i){ return i && remainOf(i) > 0 ? odPastDate(i.dueDate) : 0; }
+function payableLate(p){ return p && remainOf(p) > 0 ? odPastDate(p.dueDate) : 0; }
+function lateInvoices(){ return (invoicesData||[]).filter(i=> invoiceLate(i) > 0); }
+function latePayables(){ return (payablesData||[]).filter(p=> payableLate(p) > 0); }
+
+/* خط‌های اضافیِ نوارِ خبر — موتورش در جزوِ overdue است. */
+function odMoreLines(){
+  const out = [];
+  const inv = lateInvoices().length, pay = latePayables().length;
+  if(inv) out.push({ icon:"🧾", html:"<b>"+faDigits(inv)+" فاکتور</b> سررسیدش گذشته و هنوز وصول نشده.",
+                     btn:"دیدنشان", view:"invoices" });
+  if(pay) out.push({ icon:"💳", html:"<b>"+faDigits(pay)+" بدهی</b> سررسیدش گذشته و هنوز پرداخت نشده.",
+                     btn:"دیدنشان", view:"payables" });
+  return out;
+}
+
 function computeFinanceStats(){
   const totalReceivable = invoicesData.filter(i=>i.status!=="پرداخت‌شده").reduce((s,i)=>s+Math.max(0,(i.amount||0)-(i.paid||0)),0);
   const totalPayable = payablesData.filter(p=>p.status!=="پرداخت‌شده").reduce((s,p)=>s+Math.max(0,(p.amount||0)-(p.paid||0)),0);
   const totalCash = bankData.reduce((s,b)=>s+(b.balance||0),0);
   const totalExpenses = expensesData.reduce((s,e)=>s+(e.amount||0),0);
-  const overdueInvoices = invoicesData.filter(i=>i.status==="معوق").length;
-  const overduePayables = payablesData.filter(p=>p.status==="معوق").length;
+  /* «معوق» یعنی یا خودِ کاربر گفته، یا سررسیدش گذشته و مانده دارد.
+     پیش از این فقط حالتِ اول شمرده می‌شد. */
+  const overdueInvoices = invoicesData.filter(i=> i.status==="معوق" || invoiceLate(i) > 0).length;
+  const overduePayables = payablesData.filter(p=> p.status==="معوق" || payableLate(p) > 0).length;
   return { totalReceivable, totalPayable, totalCash, totalExpenses, overdueInvoices, overduePayables };
 }
 
@@ -4286,7 +4316,7 @@ async function init(){
       try{ await Cloud.pull(); }catch(e){ /* آفلاین — با نسخهٔ محلی ادامه */ }
     }
     /* هر کدام جدا: اگر یکی بخورد زمین، بقیهٔ کارتابل نباید با آن برود. */
-    [renderMonthSelector, setupNav, setupMeta, setupChartModal, setupDateTools, setupConvert, setupChecklist,
+    [odAutoMonth, renderMonthSelector, setupNav, setupMeta, setupChartModal, setupDateTools, setupConvert, setupChecklist,
      setupDaily, setupReminders, setupParties, setupInvoices, setupPayables,
      setupPayableNotes, setupReceivableNotes, setupExpenses, setupBank,
      setupBudget, setupSettings, setupToolbar, setupTheme, setupAssistant,

@@ -18,10 +18,12 @@
 
   /* نوارِ بالای داشبورد: یک خطِ کوتاه، نه یک هشدارِ تمام‌صفحه. */
   .od-bar{
-    display:flex; align-items:center; gap:9px; margin-bottom:14px;
+    display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
     background:var(--red-bg); border:1px solid var(--red);
     border-radius:12px; padding:10px 14px; font-size:12.5px; color:var(--ink);
   }
+  .od-line{ display:flex; align-items:center; gap:9px; }
+  .od-line + .od-line{ border-top:1px dashed var(--red); padding-top:8px; }
   .od-bar[hidden]{ display:none !important; }
   .od-bar b{ color:var(--red); font-weight:800; }
   .od-bar .od-go{
