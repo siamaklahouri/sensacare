@@ -2663,9 +2663,9 @@ function renderDaily(){
     <tr data-idx="${d.idx}"${isToday(d)?' class="is-today"':''}>
       <td><strong>${fa(displayIdx+1)}</strong></td>
       <td class="daily-date-cell col-hide-s" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}${isToday(d)?'<span class="today-tag">امروز</span>':''}</td>
-      <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}"${displayIdx===hintIdx?' placeholder="وظایف اصلی امروز"':''}></td>
-      <td class="editable-text col-hide-s"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}"${displayIdx===hintIdx?' placeholder="جلسات"':''}></td>
-      <td class="editable-text col-hide-s"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}"${displayIdx===hintIdx?' placeholder="نام شرکت"':''} list="dailyCompanyOptions"></td>
+      <td class="editable-text"><input type="text" data-field="main" aria-label="وظایف اصلی" value="${escapeHtml(d.main)}"${displayIdx===hintIdx?' placeholder="وظایف اصلی امروز"':''}></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="meet" aria-label="جلسات" value="${escapeHtml(d.meet)}"${displayIdx===hintIdx?' placeholder="جلسات"':''}></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="company" aria-label="نام شرکت" value="${escapeHtml(d.company||'')}"${displayIdx===hintIdx?' placeholder="نام شرکت"':''} list="dailyCompanyOptions"></td>
       <td>
         <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
