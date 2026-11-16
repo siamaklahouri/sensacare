@@ -58,7 +58,10 @@ for (const w of WHO) {
   const where = await p.evaluate(() => {
     const v = document.getElementById('view-daily');
     const j = v && v.querySelector('.day-jump');
-    const btn = j && j.querySelector('.btn');
+    /* با متن، نه با ترتیب: نوار بعدها دکمهٔ «امروز» هم گرفت و
+       انتخابِ «اولین دکمه» ناگهان دکمهٔ دیگری را برداشت. */
+    const btn = j && [...j.querySelectorAll('.btn')]
+      .find(b => /پایینِ لیست/.test(b.textContent));
     const tbl = v && v.querySelector('.tbl-wrap');
     const ttl = v && v.querySelector('.section-title');
     if (!j || !btn || !tbl) return { miss: true, hasJump: !!j, hasBtn: !!btn };
@@ -97,7 +100,11 @@ for (const w of WHO) {
 
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.waitForTimeout(200);
-  await p.evaluate(() => document.querySelector('.day-jump .btn').click());
+  await p.evaluate(() => {
+    const b = [...document.querySelectorAll('.day-jump .btn')]
+      .find(x => /پایینِ لیست/.test(x.textContent));
+    if (b) b.click();
+  });
   await p.waitForTimeout(1400);
   const down = await p.evaluate(() => {
     const ab = document.querySelector('#view-daily .visit-add-bar').getBoundingClientRect();
