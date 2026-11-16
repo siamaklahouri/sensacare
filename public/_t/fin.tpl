@@ -582,6 +582,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowsheetcss}}
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:tourcss}} {{PART:democss}} {{PART:daypickcss}}
 {{PART:selchipcss}}
+{{PART:tidycss}}
 {{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
@@ -3443,7 +3444,13 @@ function renderChecklist(){
       </td>
       <td><button class="btn-del" data-del="${i}" title="حذف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="12" style="color:var(--ink-faint);">وظیفه‌ای ثبت نشده — با دکمه‌ی «افزودن وظیفه» شروع کنید.</td></tr>`;
+  `).join("") || `<tr class="tbl-empty"><td colspan="11">
+         <span class="te-ic">✅</span>
+         <div class="te-h">هنوز کاری در چک‌لیست نیست</div>
+         <div class="te-p">چک‌لیستِ ماهانه کارهای تکرارشونده‌ی مالی است.<br>
+           با <b>«افزودن وظیفه»</b> پایینِ جدول یکی بسازید، یا با
+           <b>«بازنشانی چک‌لیست»</b> فهرستِ آماده را برگردانید.</div>
+       </td></tr>`;
 
   /* تیکِ تکرار: بی‌رسمِ دوبارهٔ جدول، تا فهرست بالا و پایین نپرد. */
   /* مهلت: تا حالا یک کادرِ عدد بود و آدم باید می‌دانست چندمِ ماه
@@ -3552,13 +3559,22 @@ function renderDaily(){
   const msfPartyEl = document.getElementById("msfDailyParty");
   if(msfPartyEl) renderMultiFilter(msfPartyEl, state.days.map(d=>d.company).filter(Boolean), dailyFilters, "company", renderDaily);
 
+  /* امروز کدام ردیف است، و راهنما کجا لازم است — توضیحش در جزوِ
+     tidycss. متنِ راهنما در همهٔ ردیف‌های خالی تکرار می‌شد؛ حالا
+     فقط جایی می‌آید که آدم می‌خواهد تویش بنویسد. */
+  const todayStr = getTodayJalaliStr();
+  const isToday = d => String(d.createdDate||"") === todayStr;
+  const emptyRow = d => !(d.main||d.meet||d.company||d.status);
+  let hintIdx = rowsToShow.findIndex(d=> isToday(d) && emptyRow(d));
+  if(hintIdx < 0) hintIdx = rowsToShow.findIndex(emptyRow);
+
   body.innerHTML = rowsToShow.map((d,displayIdx)=>`
-    <tr data-idx="${d.idx}">
+    <tr data-idx="${d.idx}"${isToday(d)?' class="is-today"':''}>
       <td><strong>${fa(displayIdx+1)}</strong></td>
-      <td class="daily-date-cell col-hide-s" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}</td>
-      <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}" placeholder="وظایف اصلی امروز"></td>
-      <td class="editable-text col-hide-s"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}" placeholder="توضیحات"></td>
-      <td class="editable-text col-hide-s"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}" placeholder="نام طرف‌حساب" list="dailyPartyOptions"></td>
+      <td class="daily-date-cell col-hide-s" title="تاریخِ ثبتِ این ردیف">${escapeHtml(fa(d.createdDate||"—"))}${isToday(d)?'<span class="today-tag">امروز</span>':''}</td>
+      <td class="editable-text"><input type="text" data-field="main" value="${escapeHtml(d.main)}"${displayIdx===hintIdx?' placeholder="وظایف اصلی امروز"':''}></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="meet" value="${escapeHtml(d.meet)}"${displayIdx===hintIdx?' placeholder="توضیحات"':''}></td>
+      <td class="editable-text col-hide-s"><input type="text" data-field="company" value="${escapeHtml(d.company||'')}"${displayIdx===hintIdx?' placeholder="نام طرف‌حساب"':''} list="dailyPartyOptions"></td>
       <td>
         <select data-field="status" class="st-select" aria-label="وضعیت" data-st="${escapeHtml(d.status||'')}">
           <option value="" ${d.status===""?"selected":""}>—</option>
@@ -3572,7 +3588,14 @@ function renderDaily(){
       </td>
       <td><button class="btn-del" data-remove-day="${d.idx}" title="حذف این ردیف">✕</button></td>
     </tr>
-  `).join("") || `<tr><td colspan="10" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`;
+  `).join("") || (state.days.length
+    ? `<tr><td colspan="10" style="color:var(--ink-faint);">موردی با این وضعیت پیدا نشد</td></tr>`
+    : `<tr class="tbl-empty"><td colspan="10">
+         <span class="te-ic">🗓️</span>
+         <div class="te-h">برنامهٔ این ماه هنوز خالی است</div>
+         <div class="te-p">هر روز یک ردیف: کارِ اصلی، توضیحات، و طرف‌حساب.<br>
+           با <b>«افزودن روز»</b> پایینِ همین جدول شروع کنید.</div>
+       </td></tr>`);
 
   const partyNames = partiesData.map(p=>p.name);
   const dl = document.getElementById("dailyPartyOptions");

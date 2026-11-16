@@ -26,6 +26,16 @@
     return b;
   }
 
+  /* یک چشمکِ کوتاه، تا وقتی صفحه می‌لغزد چشم بداند کجا ایستاد. */
+  function flash(el) {
+    try {
+      el.classList.remove("row-flash");
+      void el.offsetWidth;
+      el.classList.add("row-flash");
+      setTimeout(function () { el.classList.remove("row-flash"); }, 1400);
+    } catch (e) {}
+  }
+
   function build() {
     var v = document.getElementById("view-daily");
     if (!v || v.querySelector(".day-jump")) return;
@@ -50,6 +60,18 @@
 
     var bar = document.createElement("div");
     bar.className = "day-ex day-jump";
+
+    /* «امروز» پیش از «پایینِ لیست»: جدول تا سی‌ویک ردیف دارد و
+       چیزی که آدم بیشتر از همه دنبالش می‌گردد امروز است، نه تهِ
+       لیست. اگر امروز ردیفی ندارد، می‌برد همان‌جا که می‌شود ساختش. */
+    var today = mk("● امروز", "برو به ردیفِ امروز");
+    today.addEventListener("click", function () {
+      var row = v.querySelector("#dailyBody tr.is-today");
+      if (row) { go(row, "center"); flash(row); }
+      else go(endOf(), "end");
+    });
+    bar.appendChild(today);
+
     var down = mk("↓ پایینِ لیست", "برو تهِ جدول، جایی که دکمهٔ افزودن است");
     down.addEventListener("click", function () { go(endOf(), "end"); });
     bar.appendChild(down);
