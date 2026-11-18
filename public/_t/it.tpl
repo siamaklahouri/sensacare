@@ -845,6 +845,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:attachcss}} {{PART:calcss}} {{PART:newscss}} {{PART:notescss}} {{PART:tourcss}} {{PART:democss}}
 {{PART:selchipcss}}
 {{PART:tidycss}}
+{{PART:polishcss}}
 {{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
