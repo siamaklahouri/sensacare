@@ -201,7 +201,10 @@
     var fr = filterRow(tb), made = false;
     if (!fr) {
       fr = document.createElement("tr");
-      fr.className = "filter-row";
+      /* «ts-fr» یعنی این ردیف را ما ساخته‌ایم — روی گوشی کلاً
+         برداشته می‌شود، بی آنکه ردیفِ فیلترِ خودِ جدول‌های قدیمی
+         دست بخورد. */
+      fr.className = "filter-row ts-fr";
       var k;
       for (k = 0; k < hr.cells.length; k++) fr.appendChild(document.createElement("th"));
       made = true;
@@ -229,6 +232,9 @@
         var inp = document.createElement("input");
         inp.type = "text";
         inp.className = "ts-f";
+        /* بی این، کمینه‌عرضِ ذاتیِ input (بیستِ نویسه) ستونِ کناری را
+           له می‌کرد: «وظیفه» روی صفحهٔ ۳۹۰ پیکسلی ۱۸ پیکسل می‌شد. */
+        inp.setAttribute("size", "1");
         inp.setAttribute("data-col", String(i));
         inp.placeholder = "جستجو...";
         inp.setAttribute("aria-label", "فیلترِ " + th.textContent.trim());

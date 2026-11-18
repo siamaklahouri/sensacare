@@ -93,6 +93,10 @@ const b = await launch();
                  return (f ? f.value : td.textContent).trim(); }), col);
 
   const before = await read();
+  /* کارتابلِ آزمون ممکن است سه وظیفه داشته باشد یا بیست — بسته به
+     اینکه کدام آزمون‌ها پیش از این روی همین دیتابیس دویده‌اند. پس
+     هیچ عددی ثابت فرض نمی‌شود. */
+  const total = await p.evaluate(() => state.tasks.length);
   const data0 = await p.evaluate(() => state.tasks.map(x => x.task).join('|'));
 
   await p.evaluate(c => document.getElementById('checklistBody').closest('table')
@@ -134,9 +138,10 @@ const b = await launch();
   }, col);
   await p.waitForTimeout(400);
   const few = await read();
-  t(few.length === 1 && few[0] === 'الف اول', 'فیلترِ ستونی فقط همان را می‌گذارد',
-    few.join(' | '));
-  t(await p.evaluate(() => state.tasks.length) === 3, 'و داده را حذف نمی‌کند');
+  t(few.length && few.length < total && few.every(x => x.indexOf('الف') >= 0),
+    'فیلترِ ستونی فقط همخوان‌ها را می‌گذارد',
+    few.length + ' از ' + total + ': ' + few.join(' | '));
+  t(await p.evaluate(() => state.tasks.length) === total, 'و داده را حذف نمی‌کند');
 
   await p.evaluate(c => {
     const i = document.getElementById('checklistBody').closest('table')
@@ -155,7 +160,7 @@ const b = await launch();
   await p.keyboard.press('Escape');
   await p.waitForTimeout(400);
   const all = await read();
-  t(all.length === 3, 'Escape فیلتر را پاک می‌کند', all.length + ' ردیف');
+  t(all.length === total, 'Escape فیلتر را پاک می‌کند', all.length + ' ردیف');
 
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await ctx.close();
