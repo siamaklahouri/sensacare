@@ -66,9 +66,18 @@ console.log('— صفِ اعلانِ گوشی —');
     const shape = l => ({ bodies: l.map(x => x.body), tags: l.map(x => x.tag),
                           ids: l.map(x => x.id), future: l.every(x => x.at > Date.now()) });
 
-    /* الف — هر دو نشانه در آینده */
-    window.allMonthsSnapshot = () => mk(d.day + 5);
-    state.personalDue = [d.year + '/' + d.monthNum + '/' + (d.day + 5)];
+    /* الف — هر دو نشانه در آینده.
+
+       روزِ هدف باید داخلِ همین ماه بماند: «امروز + ۵» در پنج روزِ
+       آخرِ ماه از ماه بیرون می‌زد (۲۷ آبان + ۵ = ۳۲) و هیچ اعلانی
+       ساخته نمی‌شد. آزمون پنج روزِ آخرِ هر ماه قرمز می‌شد، بی آن‌که
+       چیزی خراب شده باشد. */
+    const len = (window.DatePick && DatePick.monthLen)
+      ? DatePick.monthLen(+d.year, d.monthNum) : 30;
+    const far1 = Math.min(d.day + 5, len);
+    if (far1 - d.day < 3) return { skip: len - d.day };
+    window.allMonthsSnapshot = () => mk(far1);
+    state.personalDue = [d.year + '/' + d.monthNum + '/' + far1];
     const far = REMIND.build() || [];
 
     /* ب — سررسیدِ امروز: هر دو نشانه پشتِ سر */
@@ -80,6 +89,10 @@ console.log('— صفِ اعلانِ گوشی —');
              pastChk: pick(past, 'c|').length, pastVault: pick(past, 'v|').length };
   });
 
+  if (r.skip !== undefined) {
+    t(true, 'تا پایانِ ماه کمتر از سه روز مانده — این بخش امروز سنجیدنی نیست',
+      r.skip + ' روز مانده');
+  } else {
   t(r.chk.bodies.length === 2, 'چک‌لیست دو اعلان در صف می‌گذارد', String(r.chk.bodies.length));
   t(r.chk.bodies.some(x => /۲ روز دیگر/.test(x)) && r.chk.bodies.some(x => /فردا/.test(x)),
     'یکی «۲ روز دیگر» و یکی «فردا»', r.chk.bodies.join(' | ').slice(0, 90));
@@ -97,6 +110,7 @@ console.log('— صفِ اعلانِ گوشی —');
   t(r.pastChk === 0 && r.pastVault === 0,
     'و سررسیدی که نشانه‌هایش گذشته، هیچ اعلانی نمی‌دهد',
     `چک‌لیست ${r.pastChk}، دیتای شخصی ${r.pastVault}`);
+  }
 }
 
 t(errs.length === 0, 'هیچ خطای صفحه‌ای نبود', errs.join(' | ') || 'پاک');
