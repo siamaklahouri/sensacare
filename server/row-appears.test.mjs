@@ -63,8 +63,12 @@ const ck = await p.evaluate(n => ({
 }), n0);
 t(ck.grew, 'وظیفهٔ تازه همان لحظه در جدول آمد', n0 + ' → ' + ck.rows);
 
-/* ---- حذف هم همان‌طور ---- */
+/* ---- حذف هم همان‌طور ----
+   حذف از کادرِ پرسشِ خودمان می‌گذرد (undo.tpl)، پس این‌جا هم مثلِ
+   کاربر «حذف کن» را می‌زنیم. خودِ کادر جای دیگری سنجیده می‌شود. */
 await p.evaluate(() => document.querySelectorAll('#checklistBody .btn-del')[0].click());
+await p.waitForTimeout(400);
+await p.evaluate(() => document.querySelector('.dq-yes').click());
 await p.waitForTimeout(600);
 t(await p.evaluate(n => document.querySelectorAll('#checklistBody tr').length === n, n0),
   'و حذف هم همان لحظه نشست');
