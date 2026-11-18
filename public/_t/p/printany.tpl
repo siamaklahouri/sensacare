@@ -229,11 +229,104 @@
     if (ps) ps.remove();
   }
 
-  function setup(list) {
+  /* ---------- ایستاده یا خوابیده ----------
+     تا امروز خودِ کارتابل تصمیم می‌گرفت: جدول‌های پهن خوابیده،
+     بقیه ایستاده. و چون «@page{size:…}» در مرورگر بر انتخابِ کاربر
+     در پنجرهٔ چاپ می‌چربد، کاربر عملاً هیچ راهی نداشت — گزارش هم
+     همین بود.
+
+     پس انتخاب می‌آید این‌جا، پیش از بازشدنِ پنجرهٔ چاپ. حدسِ قبلی
+     حذف نشد؛ همان از پیش انتخاب‌شده است، و اگر کسی عوضش کند برای
+     همان بخش یادمان می‌ماند. */
+  var ORIENT_KEY = 'kb-print-orient-v1';
+
+  function orientGuess(list) {
+    return list.some(function (v) { return WIDE[v.id]; }) ? 'landscape' : 'portrait';
+  }
+  function orientKeyOf(list) {
+    return list.map(function (v) { return v.id; }).join(',') || 'all';
+  }
+  function orientSaved(list) {
+    try {
+      var all = JSON.parse(localStorage.getItem(ORIENT_KEY) || '{}');
+      var v = all[orientKeyOf(list)];
+      return v === 'landscape' || v === 'portrait' ? v : '';
+    } catch (e) { return ''; }
+  }
+  function orientRemember(list, orient) {
+    try {
+      var all = JSON.parse(localStorage.getItem(ORIENT_KEY) || '{}');
+      all[orientKeyOf(list)] = orient;
+      localStorage.setItem(ORIENT_KEY, JSON.stringify(all));
+    } catch (e) { }
+  }
+
+  function askOrient(list, done) {
+    var pick = orientSaved(list) || orientGuess(list);
+    var ov = document.createElement('div');
+    ov.className = 'kb-orient-ov';
+    ov.innerHTML =
+      '<div class="kb-orient" role="dialog" aria-modal="true" aria-label="جهتِ کاغذ">' +
+        '<div class="ko-h">چاپِ «' + esc(list.length === 1 ? titleOf(list[0]) : 'همهٔ بخش‌ها') + '»</div>' +
+        '<div class="ko-p">کاغذ را چطور می‌خواهید؟</div>' +
+        '<div class="ko-opts">' +
+          '<button type="button" class="ko-opt" data-o="portrait" aria-pressed="false">' +
+            '<span class="ko-ic ko-p-ic"></span><span>ایستاده</span></button>' +
+          '<button type="button" class="ko-opt" data-o="landscape" aria-pressed="false">' +
+            '<span class="ko-ic ko-l-ic"></span><span>خوابیده</span></button>' +
+        '</div>' +
+        '<div class="ko-f">' +
+          '<button type="button" class="ko-cancel">بی‌خیال</button>' +
+          '<button type="button" class="ko-go">چاپ</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+
+    function paint() {
+      [].forEach.call(ov.querySelectorAll('.ko-opt'), function (b) {
+        var on = b.getAttribute('data-o') === pick;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    paint();
+
+    function close() {
+      document.removeEventListener('keydown', onKey, true);
+      ov.remove();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'Enter') { e.preventDefault(); go(); }
+    }
+    function go() {
+      orientRemember(list, pick);
+      close();
+      done(pick);
+    }
+    ov.addEventListener('click', function (e) {
+      var opt = e.target.closest('.ko-opt');
+      if (opt) { pick = opt.getAttribute('data-o'); paint(); return; }
+      if (e.target.closest('.ko-go')) { go(); return; }
+      if (e.target.closest('.ko-cancel') || e.target === ov) close();
+    });
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(function () {
+      try { ov.querySelector('.ko-go').focus(); } catch (e) { }
+    }, 30);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function setup(list, orient) {
     cleanup();
     if (!list.length) return false;
-    var wide = list.some(function (v) { return WIDE[v.id]; });
-    pageStyle(wide ? 'landscape' : 'portrait');
+    pageStyle(orient === 'landscape' || orient === 'portrait'
+      ? orient : orientGuess(list));
     list.forEach(function (v, i) {
       v.classList.add('kb-print');
       if (i === list.length - 1) v.classList.add('kb-print-last');
@@ -251,7 +344,7 @@
   }
 
   /* چاپ. «all» یعنی همهٔ بخش‌ها پشتِ سرِ هم. */
-  function kbPrint(which) {
+  function kbPrint(which, orient) {
     var list;
     if (which === 'all') list = views();
     else if (which && which.nodeType === 1) list = [which];
@@ -268,11 +361,16 @@
 
        پس اول می‌کشیم (تا نمودارها در اندازهٔ کاغذ تار نباشند)، بعد
        آماده می‌کنیم. */
-    try { if (typeof redrawAfterTheme === 'function') redrawAfterTheme(); } catch (e) { }
-    setTimeout(function () {
-      if (!setup(list)) return;
-      setTimeout(function () { window.print(); }, 140);
-    }, 140);
+    /* جهت اگر صریح داده شده باشد، بی‌پرسش. وگرنه یک بار می‌پرسیم. */
+    var run = function (o) {
+      try { if (typeof redrawAfterTheme === 'function') redrawAfterTheme(); } catch (e) { }
+      setTimeout(function () {
+        if (!setup(list, o)) return;
+        setTimeout(function () { window.print(); }, 140);
+      }, 140);
+    };
+    if (orient === 'landscape' || orient === 'portrait') run(orient);
+    else askOrient(list, run);
   }
 
   /* دکمه‌ها، یکی سرِ هر بخش. کنارِ عنوان می‌نشینند، نه داخلِ نوارهای

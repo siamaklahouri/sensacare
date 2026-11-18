@@ -233,7 +233,7 @@ console.log('===== هر بخش، و سربرگش =====');
 
   /* بخشی که اصلاً باز نیست هم باید چاپ شود — این همان چیزی است که
      قبلاً ممکن نبود. */
-  await p.evaluate(() => kbPrint('view-servers'));
+  await p.evaluate(() => kbPrint('view-servers', 'landscape'));
   await p.waitForTimeout(1200);
   await p.emulateMedia({ media: 'print' });
   await p.waitForTimeout(400);
@@ -267,7 +267,7 @@ console.log('===== هر بخش، و سربرگش =====');
   /* متنِ خانه‌ها نباید بریده شود. چک‌لیست را می‌سنجیم چون خانه‌هایش
      واقعاً <input> اند — جدولِ سرورها دادهٔ خودش را به شکلِ متن در
      <td> می‌گذارد و کادرهایش فقط ردیفِ جست‌وجوست. */
-  await p.evaluate(() => kbPrint('view-checklist'));
+  await p.evaluate(() => kbPrint('view-checklist', 'landscape'));
   await p.waitForTimeout(1300);
   await p.emulateMedia({ media: 'print' });
   await p.waitForTimeout(400);
@@ -298,7 +298,7 @@ console.log('===== هر بخش، و سربرگش =====');
     'و بعدِ چاپ هیچ ردی از آن روی صفحه نمی‌ماند', JSON.stringify(after));
 
   /* «همه‌ی بخش‌ها» */
-  await p.evaluate(() => kbPrint('all'));
+  await p.evaluate(() => kbPrint('all', 'landscape'));
   await p.waitForTimeout(1500);
   const all = await p.evaluate(() => ({
     printed: document.querySelectorAll('.view.kb-print').length,
@@ -337,7 +337,7 @@ console.log('===== نمودارهای داشبورد =====');
   t(onScreen.empty > 0, 'داشبوردِ آزمون نمودارِ بی‌داده دارد', onScreen.empty + ' تا');
   t(onScreen.panels > 4, 'و روی صفحه همه‌شان دیده می‌شوند', onScreen.panels + ' قاب');
 
-  await p.evaluate(() => { window.print = () => {}; kbPrint('view-dashboard'); });
+  await p.evaluate(() => { window.print = () => {}; kbPrint('view-dashboard', 'portrait'); });
   await p.waitForTimeout(1800);
   await p.emulateMedia({ media: 'print' });
   await p.waitForTimeout(500);
@@ -416,7 +416,7 @@ console.log('===== تقویم روی کاغذِ ایستاده =====');
   p.on('pageerror', e => errs.push(String(e).slice(0, 140)));
   await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
   await p.waitForTimeout(4000);
-  await p.evaluate(() => { window.print = () => {}; kbPrint('view-cal'); });
+  await p.evaluate(() => { window.print = () => {}; kbPrint('view-cal', 'landscape'); });
   await p.waitForTimeout(1700);
   await p.emulateMedia({ media: 'print' });
   await p.waitForTimeout(400);

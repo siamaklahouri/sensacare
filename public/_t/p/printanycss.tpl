@@ -178,3 +178,49 @@
     html.kb-printing .kb-print .chart-box{ max-height:62mm; }
     html.kb-printing .kb-print canvas{ max-height:62mm !important; }
   }
+
+  /* ---------- انتخابِ جهتِ کاغذ ----------
+     «@page{size:…}» بر انتخابِ کاربر در پنجرهٔ چاپ می‌چربد، پس
+     انتخاب باید پیش از آن پنجره گرفته شود. این یک پنجرهٔ کوچک است
+     با همان زبانِ بقیهٔ کارتابل، نه یک فرمِ تنظیمات. */
+  .kb-orient-ov{
+    position:fixed; inset:0; z-index:600; display:flex;
+    align-items:center; justify-content:center; padding:16px;
+    background:rgba(11,20,33,.5);
+  }
+  .kb-orient{
+    background:var(--white); border-radius:16px; padding:22px 22px 16px;
+    width:min(340px, 100%); box-shadow:0 20px 50px rgba(0,0,0,.3);
+    text-align:center; color:var(--ink);
+  }
+  .ko-h{ font-family:var(--font-display); font-size:15px; font-weight:800; margin-bottom:4px; }
+  .ko-p{ font-size:12px; color:var(--ink-soft); margin-bottom:14px; }
+  .ko-opts{ display:flex; gap:10px; justify-content:center; margin-bottom:16px; }
+  .ko-opt{
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:7px;
+    background:var(--paper); border:1.5px solid var(--card-border); border-radius:12px;
+    padding:12px 8px; cursor:pointer; font-family:inherit; font-size:12px;
+    font-weight:700; color:var(--ink-soft); transition:border-color .15s, color .15s, background .15s;
+  }
+  .ko-opt:hover{ border-color:var(--brass); }
+  .ko-opt.on{ border-color:var(--brass); color:var(--brass-ink); background:var(--brass-bg); }
+  .ko-opt:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  /* شکلِ کاغذ، نه شکلک: یک مستطیل که خودش می‌گوید ایستاده است یا
+     خوابیده. رنگش از متن می‌آید، پس با انتخاب و با تم می‌چرخد. */
+  .ko-ic{ display:block; border:2px solid currentColor; border-radius:3px; opacity:.85; }
+  .ko-p-ic{ width:22px; height:30px; }
+  .ko-l-ic{ width:30px; height:22px; }
+  .ko-f{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .ko-cancel{
+    background:none; border:none; color:var(--ink-faint); cursor:pointer;
+    font-family:inherit; font-size:12px; padding:6px 4px;
+  }
+  .ko-cancel:hover{ color:var(--ink); text-decoration:underline; }
+  .ko-go{
+    background:var(--brass); color:#fff; border:none; border-radius:10px;
+    padding:9px 26px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
+  }
+  .ko-go:hover{ filter:brightness(1.05); }
+  .ko-go:focus-visible, .ko-cancel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  /* روی کاغذ خودش هم نباید بیفتد */
+  @media print{ .kb-orient-ov{ display:none !important; } }

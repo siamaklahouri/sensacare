@@ -582,7 +582,16 @@
         render();
         return;
       }
-      if (e.target.closest && e.target.closest("#calPrint")) { window.print(); return; }
+      /* از همان راهِ بقیهٔ بخش‌ها: هم چیدمانِ کاغذ درست می‌شود
+         (شیوه‌نامهٔ چاپِ تقویم روی «#view-cal.kb-print» نوشته شده) و
+         هم جهتِ کاغذ پرسیده می‌شود. پیش از این این دکمه خامِ
+         window.print می‌زد و دو دکمهٔ چاپ در یک صفحه دو رفتارِ
+         متفاوت داشتند. */
+      if (e.target.closest && e.target.closest("#calPrint")) {
+        if (typeof kbPrint === "function") kbPrint("view-cal");
+        else window.print();
+        return;
+      }
       var c = e.target.closest ? e.target.closest("[data-cal-day]") : null;
       if (c) {
         sel = c.getAttribute("data-cal-key") ||
