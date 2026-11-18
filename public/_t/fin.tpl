@@ -584,6 +584,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:selchipcss}}
 {{PART:tidycss}}
 {{PART:polishcss}}
+{{PART:undocss}}
 {{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
@@ -2195,10 +2196,10 @@ function renderParties(){
   });
   body.querySelectorAll("[data-remove-party]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این طرف‌حساب حذف شود؟")) return;
-      partiesData.splice(parseInt(btn.getAttribute("data-remove-party")),1);
-      savePartiesSheet();
-      renderParties();
+      const i = parseInt(btn.getAttribute("data-remove-party"));
+      const nm = String((partiesData[i]||{}).name || "").trim();
+      delRow(partiesData, i, nm ? `طرف‌حسابِ «${nm}»` : "این ردیف",
+        ()=>{ savePartiesSheet(); renderParties(); });
     });
   });
   const addBtn = document.getElementById("addPartyBtn");
@@ -2354,10 +2355,10 @@ function renderInvoices(){
   });
   body.querySelectorAll("[data-remove-invoice]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این فاکتور حذف شود؟")) return;
-      invoicesData.splice(parseInt(btn.getAttribute("data-remove-invoice")),1);
-      saveInvoicesSheet();
-      renderInvoices();
+      const i = parseInt(btn.getAttribute("data-remove-invoice"));
+      const nm = String((invoicesData[i]||{}).invoiceNo || "").trim();
+      delRow(invoicesData, i, nm ? `فاکتورِ «${nm}»` : "این ردیف",
+        ()=>{ saveInvoicesSheet(); renderInvoices(); });
     });
   });
   const addBtn = document.getElementById("addInvoiceBtn");
@@ -2490,10 +2491,10 @@ function renderPayables(){
   });
   body.querySelectorAll("[data-remove-payable]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این ردیف حذف شود؟")) return;
-      payablesData.splice(parseInt(btn.getAttribute("data-remove-payable")),1);
-      savePayablesSheet();
-      renderPayables();
+      const i = parseInt(btn.getAttribute("data-remove-payable"));
+      const nm = String((payablesData[i]||{}).beneficiary || "").trim();
+      delRow(payablesData, i, nm ? `بدهیِ «${nm}»` : "این ردیف",
+        ()=>{ savePayablesSheet(); renderPayables(); });
     });
   });
   const addBtn = document.getElementById("addPayableBtn");
@@ -2611,10 +2612,10 @@ function renderPayableNotes(){
   });
   body.querySelectorAll("[data-remove-payablenote]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این سند حذف شود؟")) return;
-      payableNotesData.splice(parseInt(btn.getAttribute("data-remove-payablenote")),1);
-      savePayableNotesSheet();
-      renderPayableNotes();
+      const i = parseInt(btn.getAttribute("data-remove-payablenote"));
+      const nm = String((payableNotesData[i]||{}).beneficiary || "").trim();
+      delRow(payableNotesData, i, nm ? `سندِ «${nm}»` : "این ردیف",
+        ()=>{ savePayableNotesSheet(); renderPayableNotes(); });
     });
   });
   const addBtn = document.getElementById("addPayableNoteBtn");
@@ -2732,10 +2733,10 @@ function renderReceivableNotes(){
   });
   body.querySelectorAll("[data-remove-receivablenote]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این سند حذف شود؟")) return;
-      receivableNotesData.splice(parseInt(btn.getAttribute("data-remove-receivablenote")),1);
-      saveReceivableNotesSheet();
-      renderReceivableNotes();
+      const i = parseInt(btn.getAttribute("data-remove-receivablenote"));
+      const nm = String((receivableNotesData[i]||{}).customer || "").trim();
+      delRow(receivableNotesData, i, nm ? `سندِ «${nm}»` : "این ردیف",
+        ()=>{ saveReceivableNotesSheet(); renderReceivableNotes(); });
     });
   });
   const addBtn = document.getElementById("addReceivableNoteBtn");
@@ -2902,10 +2903,10 @@ function renderExpenses(){
   });
   body.querySelectorAll("[data-remove-expense]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این ردیف حذف شود؟")) return;
-      expensesData.splice(parseInt(btn.getAttribute("data-remove-expense")),1);
-      saveExpensesSheet();
-      renderExpenses();
+      const i = parseInt(btn.getAttribute("data-remove-expense"));
+      const nm = String((expensesData[i]||{}).description || "").trim();
+      delRow(expensesData, i, nm ? `ردیفِ «${nm}»` : "این ردیف",
+        ()=>{ saveExpensesSheet(); renderExpenses(); });
     });
   });
   const addBtn = document.getElementById("addExpenseBtn");
@@ -3008,10 +3009,10 @@ function renderBank(){
   });
   body.querySelectorAll("[data-remove-bank]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این حساب حذف شود؟")) return;
-      bankData.splice(parseInt(btn.getAttribute("data-remove-bank")),1);
-      saveBankSheet();
-      renderBank();
+      const i = parseInt(btn.getAttribute("data-remove-bank"));
+      const nm = String((bankData[i]||{}).accountName || "").trim();
+      delRow(bankData, i, nm ? `حسابِ «${nm}»` : "این ردیف",
+        ()=>{ saveBankSheet(); renderBank(); });
     });
   });
   const addBtn = document.getElementById("addBankBtn");
@@ -3105,10 +3106,10 @@ function renderBudget(){
   });
   body.querySelectorAll("[data-remove-budget]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این ردیف بودجه حذف شود؟")) return;
-      budgetData.splice(parseInt(btn.getAttribute("data-remove-budget")),1);
-      saveBudgetSheet();
-      renderBudget();
+      const i = parseInt(btn.getAttribute("data-remove-budget"));
+      const nm = String((budgetData[i]||{}).category || "").trim();
+      delRow(budgetData, i, nm ? `بودجهٔ «${nm}»` : "این ردیف",
+        ()=>{ saveBudgetSheet(); renderBudget(); });
     });
   });
   const addBtn = document.getElementById("addBudgetBtn");
@@ -3493,11 +3494,8 @@ function renderChecklist(){
     btn.addEventListener("click", ()=>{
       const idx = parseInt(btn.getAttribute("data-del"));
       const name = ((state.tasks[idx]||{}).task || "").trim();
-      if(!confirm(name ? `وظیفهٔ «${name}» از چک‌لیست حذف شود؟`
-                       : "این وظیفه از چک‌لیست حذف شود؟")) return;
-      state.tasks.splice(idx,1);
-      renderChecklist(); renderCards(); renderCharts();
-      scheduleSave();
+      delRow(state.tasks, idx, name ? `وظیفهٔ «${name}»` : "وظیفه",
+        ()=>{ renderChecklist(); renderCards(); renderCharts(); scheduleSave(); });
     });
   });
 }
@@ -3612,11 +3610,10 @@ function renderDaily(){
   });
   body.querySelectorAll("[data-remove-day]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این ردیف از برنامه حذف شود؟")) return;
       const idx = parseInt(btn.getAttribute("data-remove-day"));
-      state.days.splice(idx,1);
-      renderDaily(); renderCharts();
-      scheduleSave();
+      const nm = ((state.days[idx]||{}).main || "").trim();
+      delRow(state.days, idx, nm ? `روزِ «${nm}»` : "این ردیف از برنامه",
+        ()=>{ renderDaily(); renderCharts(); scheduleSave(); });
     });
   });
   /* نشانِ «این روز» بالای جدول: چه فیلتر از تقویم آمده باشد چه از
@@ -4301,6 +4298,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:undo}}
 {{PART:overdue}}
 {{PART:chartcfg}}
 {{PART:pace}}

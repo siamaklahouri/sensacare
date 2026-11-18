@@ -38,6 +38,8 @@ import p_ktheme from '../public/_t/p/ktheme.tpl';
 import p_kthemecss from '../public/_t/p/kthemecss.tpl';
 import p_bkfile from '../public/_t/p/bkfile.tpl';
 import p_navmore from '../public/_t/p/navmore.tpl';
+import p_undo from '../public/_t/p/undo.tpl';
+import p_undocss from '../public/_t/p/undocss.tpl';
 import p_polishcss from '../public/_t/p/polishcss.tpl';
 import p_tidycss from '../public/_t/p/tidycss.tpl';
 import p_overdue from '../public/_t/p/overdue.tpl';
@@ -154,6 +156,8 @@ export const PARTS = new Map([
   ['kthemecss', p_kthemecss],
   ['bkfile', p_bkfile],
   ['navmore', p_navmore],
+  ['undo', p_undo],
+  ['undocss', p_undocss],
   ['polishcss', p_polishcss],
   ['tidycss', p_tidycss],
   ['overdue', p_overdue],

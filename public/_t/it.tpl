@@ -846,6 +846,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:selchipcss}}
 {{PART:tidycss}}
 {{PART:polishcss}}
+{{PART:undocss}}
 {{PART:overduecss}}
 {{PART:chartcfgcss}}
 {{PART:pacecss}}
@@ -2595,10 +2596,8 @@ function renderChecklist(){
     btn.addEventListener("click", ()=>{
       const idx = parseInt(btn.getAttribute("data-del"));
       const name = ((state.tasks[idx]||{}).task || "").trim();
-      if(!confirm(name ? `وظیفهٔ «${name}» از چک‌لیست حذف شود؟`
-                       : "این وظیفه از چک‌لیست حذف شود؟")) return;
-      state.tasks.splice(idx,1);
-      renderAll(); scheduleSave();
+      delRow(state.tasks, idx, name ? `وظیفهٔ «${name}»` : "وظیفه",
+        ()=>{ renderAll(); scheduleSave(); });
     });
   });
 }
@@ -2700,12 +2699,10 @@ function renderDaily(){
   });
   body.querySelectorAll("[data-remove-day]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این روز از برنامه حذف شود؟")) return;
       const idx = parseInt(btn.getAttribute("data-remove-day"));
-      state.days.splice(idx,1);
-      renderDaily();
-      renderCharts();
-      scheduleSave();
+      const nm = ((state.days[idx]||{}).main || "").trim();
+      delRow(state.days, idx, nm ? `روزِ «${nm}»` : "این روز از برنامه",
+        ()=>{ renderDaily(); renderCharts(); scheduleSave(); });
     });
   });
   body.querySelectorAll("[data-star-idx]").forEach(btn=>{
@@ -3566,9 +3563,8 @@ function addNewCompany(name){
 
 function removeCompanyVisit(name, idx){
   if(!companiesData || !companiesData.companies[name]) return;
-  companiesData.companies[name].splice(idx,1);
-  saveCompaniesSheet();
-  renderCompanies();
+  delRow(companiesData.companies[name], idx, `بازدیدِ «${name}»`,
+    ()=>{ saveCompaniesSheet(); renderCompanies(); });
 }
 
 /* ---------------- MVPN sheet ---------------- */
@@ -3675,21 +3671,36 @@ function addRemoteDay(label){
 }
 
 function removeRemoteDay(idx){
-  state.remoteCheckDates.splice(idx,1);
-  // شماره‌ی روزهای بعد از ستون حذف‌شده یک واحد عقب کشیده می‌شود تا با موقعیت ستون‌ها هماهنگ بماند
-  Object.keys(state.remoteChecks).forEach(server=>{
-    const checks = state.remoteChecks[server] || {};
-    const shifted = {};
-    Object.keys(checks).forEach(dayStr=>{
-      const day = parseInt(dayStr);
-      if(day === idx+1) return; // حذف تیک همان روز
-      shifted[day > idx+1 ? day-1 : day] = checks[dayStr];
+  /* این یکی هم برگشت‌پذیر است، ولی برگرداندنش با splice نمی‌شود:
+     شماره‌ی روزهای بعدی یک واحد عقب کشیده می‌شوند. ساده‌ترین راهِ
+     درست، نگه‌داشتنِ یک نسخهٔ کاملِ پیش از دست‌کاری است — این دو
+     خانه کوچک‌اند و کپی‌شان چیزی نیست. */
+  const snapDates = state.remoteCheckDates.slice();
+  const snapChecks = JSON.parse(JSON.stringify(state.remoteChecks || {}));
+  const label = snapDates[idx] || ('روز ' + toPersianDigits(idx+1));
+  ASKDEL('ستونِ «' + label + '»', ()=>{
+    state.remoteCheckDates.splice(idx,1);
+    // شماره‌ی روزهای بعد از ستون حذف‌شده یک واحد عقب کشیده می‌شود تا با موقعیت ستون‌ها هماهنگ بماند
+    Object.keys(state.remoteChecks).forEach(server=>{
+      const checks = state.remoteChecks[server] || {};
+      const shifted = {};
+      Object.keys(checks).forEach(dayStr=>{
+        const day = parseInt(dayStr);
+        if(day === idx+1) return; // حذف تیک همان روز
+        shifted[day > idx+1 ? day-1 : day] = checks[dayStr];
+      });
+      state.remoteChecks[server] = shifted;
     });
-    state.remoteChecks[server] = shifted;
+    const after = ()=>{ saveRemoteChecklistSheet(); scheduleSave(); renderRemoteChecklist(); };
+    after();
+    try{
+      UNDO.show('ستونِ «' + label + '» حذف شد', ()=>{
+        state.remoteCheckDates = snapDates;
+        state.remoteChecks = snapChecks;
+        after();
+      });
+    }catch(e){ console.error('[حذفِ ستونِ ریموت]', e); }
   });
-  saveRemoteChecklistSheet();
-  scheduleSave();
-  renderRemoteChecklist();
 }
 
 /* ---------------- Rendering: Servers & daily calendar ---------------- */
@@ -3866,10 +3877,10 @@ function renderServers(){
   });
   body.querySelectorAll("[data-remove-server]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این سرور از فهرست حذف شود؟")) return;
-      backupData.vm.splice(parseInt(btn.getAttribute("data-remove-server")),1);
-      saveServersSheet();
-      renderServers();
+      const i = parseInt(btn.getAttribute("data-remove-server"));
+      const nm = ((backupData.vm[i]||{}).server || "").trim();
+      delRow(backupData.vm, i, nm ? `سرورِ «${nm}»` : "این سرور",
+        ()=>{ saveServersSheet(); renderServers(); });
     });
   });
   const addBtn = document.getElementById("addServerBtn");
@@ -4086,7 +4097,6 @@ function renderCompanies(){
   wrap.querySelectorAll("[data-remove-visit]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const [name, idx] = btn.getAttribute("data-remove-visit").split("|");
-      if(!confirm("این بازدید حذف شود؟")) return;
       removeCompanyVisit(name, parseInt(idx));
     });
   });
@@ -4235,10 +4245,10 @@ function renderMvpn(){
   });
   body.querySelectorAll("[data-remove-mvpn]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این خط از فهرست حذف شود؟")) return;
-      mvpnData.lines.splice(parseInt(btn.getAttribute("data-remove-mvpn")),1);
-      saveMvpnSheet();
-      renderMvpn();
+      const i = parseInt(btn.getAttribute("data-remove-mvpn"));
+      const nm = ((mvpnData.lines[i]||{}).phone || "").trim();
+      delRow(mvpnData.lines, i, nm ? `خطِ «${nm}»` : "این خط",
+        ()=>{ saveMvpnSheet(); renderMvpn(); });
     });
   });
   const addBtn = document.getElementById("addMvpnBtn");
@@ -4283,11 +4293,27 @@ function setupMvpn(){
 
 function removeRemoteServer(server){
   if(!remoteBackupData) return;
-  remoteBackupData.roster = remoteBackupData.roster.filter(m=>m.server!==server);
-  delete state.remoteChecks[server];
-  saveRemoteChecklistSheet();
-  scheduleSave();
-  renderRemoteChecklist();
+  /* این یکی دو چیز می‌برد: ردیفِ سرور، و تیک‌هایی که برایش ثبت
+     شده. برگرداندنش باید هر دو را برگرداند، وگرنه سرور برمی‌گردد
+     و کارِ ثبت‌شده‌اش نه — که بدتر از نبودنش است. */
+  const at = remoteBackupData.roster.findIndex(m=>m.server===server);
+  if(at < 0) return;
+  ASKDEL(`سرورِ «${server}»`, ()=>{
+    const row = remoteBackupData.roster[at];
+    if(!row || row.server !== server) return;
+    const ticks = state.remoteChecks[server];
+    remoteBackupData.roster.splice(at,1);
+    delete state.remoteChecks[server];
+    const after = ()=>{ saveRemoteChecklistSheet(); scheduleSave(); renderRemoteChecklist(); };
+    after();
+    try{
+      UNDO.show(`سرورِ «${server}» حذف شد`, ()=>{
+        remoteBackupData.roster.splice(at, 0, row);
+        if(ticks !== undefined) state.remoteChecks[server] = ticks;
+        after();
+      });
+    }catch(e){ console.error('[حذفِ سرورِ ریموت]', e); }
+  });
 }
 
 function commitRemoteServerName(oldServer, newServer){
@@ -4370,8 +4396,6 @@ function renderRemoteChecklist(){
     btn.addEventListener("click", ()=>{
       if(!editMode.remote) return;
       const idx = parseInt(btn.getAttribute("data-remove-day"));
-      const label = state.remoteCheckDates[idx] || `روز ${toPersianDigits(idx+1)}`;
-      if(!confirm(`ستون «${label}» حذف شود؟ تیک‌های ثبت‌شده برای این روز هم پاک می‌شوند.`)) return;
       removeRemoteDay(idx);
     });
   });
@@ -4384,7 +4408,6 @@ function renderRemoteChecklist(){
 
   wrap.querySelectorAll("[data-remove-remote]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      if(!confirm("این سرور از چک‌لیست حذف شود؟")) return;
       removeRemoteServer(btn.getAttribute("data-remove-remote"));
     });
   });
@@ -4736,6 +4759,7 @@ window.SEARCH_MAP = [
 {{PART:bkfile}}
 {{PART:navmore}}
 {{PART:selchip}}
+{{PART:undo}}
 {{PART:overdue}}
 {{PART:chartcfg}}
 {{PART:pace}}
