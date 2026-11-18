@@ -13,9 +13,16 @@
     flex:1 1 260px; min-width:240px; max-width:460px;
     position:relative; z-index:1;
   }
+  /* فاصلهٔ زیرِ سطرِ بالا جا باز می‌کند برای برچسبِ «امروز» که روی
+     ریل می‌نشیند.
+
+     با هفت پیکسل، آن برچسب می‌رفت توی سطرِ بالا و وقتی نشانه نزدیکِ
+     انتهای ماه بود، درست روی «عقب از برنامه» می‌افتاد — دو نوشته
+     روی هم. اندازه‌گیری نشانش داد: برچسب ۲۰۶ تا ۲۱۷ و آن نوشته ۲۰۰
+     تا ۲۱۸. */
   .dh-pace-top{
     display:flex; align-items:baseline; justify-content:space-between;
-    gap:10px; margin-bottom:7px;
+    gap:10px; margin-bottom:21px;
   }
   .dh-pace-num{
     font-family:var(--font-display); font-size:21px; font-weight:800;
@@ -45,6 +52,10 @@
     inset-inline-start:50%; transform:translateX(50%);
     font-size:9px; font-weight:700; color:var(--ink-soft); white-space:nowrap;
   }
+  /* سرِ ماه و تهِ ماه، نشانه به لبه می‌چسبد و برچسبش از قاب بیرون
+     می‌زند (قابِ خوش‌آمد overflow:hidden دارد، پس بریده می‌شد).
+     آن‌جا فقط خودِ خط می‌ماند؛ عددش در پانویس هست. */
+  .dh-rail-now[data-day=""]::after{ content:none; }
   .dh-pace-foot{
     margin-top:7px; font-size:11px; color:var(--ink-faint);
     display:flex; justify-content:space-between; gap:10px;

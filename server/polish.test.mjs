@@ -17,6 +17,7 @@
       سراغش نرفته قاب و زمینه ندارد. */
 import { launch, calm } from './pw.mjs';
 import { readFileSync } from 'node:fs';
+import { ensureTasks, PRIORITY_ROWS } from './seed.mjs';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const HOST = 'sltech.ir', PORT = new URL(BASE).port || '80';
@@ -56,6 +57,9 @@ for (const [label, api, pass, path] of [
   ['کارتابلِ مالی', 'sina', process.env.VS_FIN_PASS || 'sinasinasina', '/sina/']
 ]) {
   console.log('===== ' + label + ' =====');
+  /* چک‌لیستِ خالی خانه‌ای ندارد که فوکوسش را بسنجیم — و حالا که
+     جدولِ خالی پیامِ خودش را دارد، واقعاً هیچ input ای نیست. */
+  await ensureTasks(BASE, HOST, api, pass, ts => ts.length >= 1, PRIORITY_ROWS);
   const ctx = await b.newContext({ viewport: { width: 1500, height: 1000 } });
   await ctx.addCookies(await cookiesFor(api, pass));
   const p = await ctx.newPage();
@@ -137,6 +141,58 @@ for (const [label, api, pass, path] of [
     'نوارِ لغزشِ جدول باریک است');
 
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
+  await ctx.close();
+}
+
+/* ---------- نوارِ «کجای ماهی»: نوشته‌ها روی هم نیفتند ----------
+   برچسبِ «امروز» روی ریل می‌نشیند و بالای ریل هم «عقب از برنامه»
+   است. با فاصلهٔ کمِ قبلی، وقتی نشانه نزدیکِ انتهای ماه بود این دو
+   درست روی هم می‌افتادند — کاربر گزارش داد و اندازه‌گیری نشانش داد:
+   برچسب ۲۰۶ تا ۲۱۷ و آن نوشته ۲۰۰ تا ۲۱۸.
+
+   چون ::after جعبهٔ قابلِ اندازه‌گیری ندارد، جای خالیِ بالای ریل
+   سنجیده می‌شود: برچسب همان‌جا می‌نشیند، پس اگر آن فاصله از بلندیِ
+   برچسب کمتر شود، دوباره روی هم می‌افتند. */
+console.log('===== نوارِ ماه در عرض‌های مختلف =====');
+{
+  const ctx = await b.newContext({ viewport: { width: 1500, height: 950 } });
+  await ctx.addCookies(await cookiesFor('kartabl', process.env.VS_IT_PASS || 'siamaksiamak'));
+  const p = await ctx.newPage();
+  await p.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p.waitForTimeout(3600); await calm(p);
+
+  for (const W of [1920, 1280, 980, 700]) {
+    await p.setViewportSize({ width: W, height: 950 });
+    await p.waitForTimeout(400);
+    const m = await p.evaluate(() => {
+      const pace = document.querySelector('.dh-pace');
+      if (!pace) return null;
+      const R = e => { const b = e.getBoundingClientRect();
+        return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: b.width }; };
+      const say = R(pace.querySelector('.dh-pace-say'));
+      const num = R(pace.querySelector('.dh-pace-num'));
+      const rail = R(pace.querySelector('.dh-rail'));
+      const foot = [...pace.querySelectorAll('.dh-pace-foot span')].map(R);
+      const box = pace.getBoundingClientRect();
+      const over = (a, c) => !(a.r <= c.l || c.r <= a.l || a.b <= c.t || c.b <= a.t);
+      const lbl = parseFloat(getComputedStyle(pace.querySelector('.dh-rail-now'), '::after').fontSize) || 9;
+      return {
+        gap: Math.round(rail.t - say.b),
+        need: Math.round(lbl * 1.4),
+        topOver: over(say, num),
+        footOver: foot.length > 1 ? over(foot[0], foot[1]) : false,
+        bleed: Math.round(Math.max(0, box.right - (foot[0] ? foot[0].r : box.right),
+                                   (foot[1] ? box.left - foot[1].l : 0))),
+        pageOver: document.body.scrollWidth > window.innerWidth + 1
+      };
+    });
+    if (!m) { t(true, W + ': نوار نیست — این عرض رد شد'); continue; }
+    t(m.gap >= m.need, W + ': بالای ریل برای برچسبِ «امروز» جا هست',
+      m.gap + 'px ≥ ' + m.need + 'px');
+    t(!m.topOver, W + ': درصد و عبارتِ وضعیت روی هم نیستند');
+    t(!m.footOver, W + ': دو نوشتهٔ پانویس روی هم نیستند');
+    t(!m.pageOver, W + ': صفحه افقی نمی‌لغزد');
+  }
   await ctx.close();
 }
 

@@ -39,8 +39,11 @@ function paceHtml(done, total, jy, jm, jd, opt) {
 
   /* جملهٔ پایین عدد می‌دهد، نه صفت: «۱ از ۱۶ کار» و «۷ روز مانده»
      دو چیزی‌اند که آدم بعدش دنبالشان می‌گردد. */
+  /* جداکننده «،» است نه «·»: نقطهٔ وسط در این اندازه تقریباً دیده
+     نمی‌شد و دو جمله به هم می‌چسبید. ویرگولِ فارسی هم خوانده می‌شود
+     هم جایش در متنِ راست‌به‌چپ روشن است. */
   var foot = (opt.foot || faN(done) + ' از ' + faN(total) + ' کار') +
-    (left > 0 ? ' · ' + faN(left) + ' روز تا پایان ماه' : ' · آخرین روزِ ماه');
+    (left > 0 ? '، ' + faN(left) + ' روز تا پایان ماه' : '، آخرین روزِ ماه');
 
   return '' +
     '<div class="dh-pace ' + cls + '">' +
@@ -51,7 +54,7 @@ function paceHtml(done, total, jy, jm, jd, opt) {
       '<div class="dh-rail">' +
         '<div class="dh-rail-fill" style="width:' + workPct + '%"></div>' +
         '<div class="dh-rail-now" style="inset-inline-start:' + timePct + '%" ' +
-          'data-day="امروز"></div>' +
+          'data-day="' + (timePct > 8 && timePct < 92 ? 'امروز' : '') + '"></div>' +
       '</div>' +
       '<div class="dh-pace-foot"><span>' + foot + '</span>' +
         '<span>' + faN(timePct) + '٪ از ماه</span></div>' +
