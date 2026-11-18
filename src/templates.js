@@ -55,6 +55,8 @@ import p_selchipcss from '../public/_t/p/selchipcss.tpl';
 import p_find from '../public/_t/p/find.tpl';
 import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
+import p_tsort from '../public/_t/p/tsort.tpl';
+import p_tsortcss from '../public/_t/p/tsortcss.tpl';
 import p_gatecss from '../public/_t/p/gatecss.tpl';
 import p_gatejs from '../public/_t/p/gatejs.tpl';
 import p_idb from '../public/_t/p/idb.tpl';
@@ -173,6 +175,8 @@ export const PARTS = new Map([
   ['find', p_find],
   ['findcss', p_findcss],
   ['fadigits', p_fadigits],
+  ['tsort', p_tsort],
+  ['tsortcss', p_tsortcss],
   ['gatecss', p_gatecss],
   ['gatejs', p_gatejs],
   ['idb', p_idb],

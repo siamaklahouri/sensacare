@@ -224,5 +224,13 @@
     document.addEventListener("DOMContentLoaded", later);
   else later();
 
-  window.ROWDRAG = { register: register, sweep: sweep };
+  /* چه جدول‌هایی جدولِ دادهٔ واقعی‌اند — tsort همین را می‌پرسد، تا
+     فهرستِ دومی ساخته نشود که فردا از این عقب بماند. */
+  function ids(){
+    var out = [], k;
+    for(k in reg) if(Object.prototype.hasOwnProperty.call(reg, k)) out.push(k);
+    return out;
+  }
+
+  window.ROWDRAG = { register: register, sweep: sweep, ids: ids };
 })();

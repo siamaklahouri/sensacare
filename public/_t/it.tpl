@@ -177,6 +177,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:updowncss}}
 {{PART:cellpopcss}}
 {{PART:rowdragcss}}
+{{PART:tsortcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -4767,6 +4768,7 @@ window.SEARCH_MAP = [
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
+{{PART:tsort}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید

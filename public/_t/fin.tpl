@@ -159,6 +159,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:cellpopcss}}
 {{PART:updowncss}}
 {{PART:rowdragcss}}
+{{PART:tsortcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -1350,6 +1351,27 @@ function formatMoney(n){
   const s = Math.abs(n).toLocaleString("en-US");
   return (n<0?"-":"") + fa(s);
 }
+/* ---------- پول، همان‌طور که خوانده می‌شود ----------
+   تا امروز عددِ مبلغ داخلِ ردیف‌ها خام نوشته می‌شد: «125000000».
+   formatMoney فقط در کارت‌های بالای صفحه به کار می‌رفت. در یک ستونِ
+   عددِ خام، یک صفرِ کم یا زیاد اصلاً دیده نمی‌شود — و دقیقاً همان‌جا
+   مهم است که دیده شود.
+
+   خانه contenteditable است، پس چیزی که نشان می‌دهیم همان چیزی است
+   که کاربر ویرایش می‌کند؛ موقعِ ذخیره دوباره از parseFloat رد می‌شود
+   که حالا جداکننده را می‌فهمد (fadigits). رفت و برگشتش بسته است. */
+const MONEY_CELL = { amount:1, paid:1, balance:1, budgetAmount:1, actualAmount:1 };
+function cellText(field, v){
+  if(!MONEY_CELL[field]) return v == null ? "" : v;
+  if(v === "" || v == null) return "";
+  return formatMoney(v);
+}
+/* پس از ذخیره، همان خانه را با شکلِ خوانا بازنویسی می‌کند. بی این،
+   تا رندرِ بعدی عددِ خامِ تایپ‌شده سرِ جایش می‌ماند. */
+function reflowMoney(td, field, row){
+  if(!MONEY_CELL[field] || !row) return;
+  td.textContent = cellText(field, row[field]);
+}
 /* برای پانویسِ نوارِ «کجای ماهی»: عددِ میلیاردی در یک سطرِ کوچک جا
    نمی‌شود، پس خلاصه‌اش می‌کنیم. جاهای دیگر همان formatMoney سرِ جایش است. */
 function shortMoney(n){
@@ -2148,7 +2170,7 @@ function renderParties(){
 
   const list = applyPartyFilters(partiesData);
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.parties?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.parties?'1':'0.85'}; cursor:${editMode.parties?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.parties?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.parties?'1':'0.85'}; cursor:${editMode.parties?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((p)=>{
     const idx = partiesData.indexOf(p);
@@ -2189,7 +2211,11 @@ function renderParties(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitPartyCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitPartyCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, partiesData[i]);
+    });
   });
   body.querySelectorAll(".party-type-select").forEach(sel=>{
     sel.addEventListener("change", ()=>{ commitPartyCell(parseInt(sel.getAttribute("data-idx")), "type", sel.value); });
@@ -2305,7 +2331,7 @@ function renderInvoices(){
      ویرایش جزوِ خودِ مقدار می‌شود. یک بار همین شد و آزمونِ
      «تاریخ در ردیفِ تازه نشست» گرفتش. */
   const editableTd = (value, idx, field, late)=>
-    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.invoices?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.invoices?'1':'0.85'}; cursor:${editMode.invoices?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((inv)=>{
     const idx = invoicesData.indexOf(inv);
@@ -2348,7 +2374,11 @@ function renderInvoices(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitInvoiceCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitInvoiceCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, invoicesData[i]);
+    });
   });
   body.querySelectorAll(".invoice-status-select").forEach(sel=>{
     sel.addEventListener("change", ()=>{ commitInvoiceCell(parseInt(sel.getAttribute("data-idx")), "status", sel.value); renderInvoices(); });
@@ -2454,7 +2484,7 @@ function renderPayables(){
      ویرایش جزوِ خودِ مقدار می‌شود. یک بار همین شد و آزمونِ
      «تاریخ در ردیفِ تازه نشست» گرفتش. */
   const editableTd = (value, idx, field, late)=>
-    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell${late ? ' od-cell' : ''}" contenteditable="${editMode.payables?'true':'false'}" data-idx="${idx}" data-field="${field}"${late ? ` title="${escapeHtml(odTitle(late))}"` : ''} style="opacity:${editMode.payables?'1':'0.85'}; cursor:${editMode.payables?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((p)=>{
     const idx = payablesData.indexOf(p);
@@ -2487,7 +2517,11 @@ function renderPayables(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitPayableCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitPayableCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, payablesData[i]);
+    });
   });
   body.querySelectorAll("[data-remove-payable]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -2576,7 +2610,7 @@ function renderPayableNotes(){
   `;
   const list = applyPayableNoteFilters(payableNotesData);
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.payablenotes?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.payablenotes?'1':'0.85'}; cursor:${editMode.payablenotes?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.payablenotes?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.payablenotes?'1':'0.85'}; cursor:${editMode.payablenotes?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((n)=>{
     const idx = payableNotesData.indexOf(n);
@@ -2608,7 +2642,11 @@ function renderPayableNotes(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitPayableNoteCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitPayableNoteCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, payableNotesData[i]);
+    });
   });
   body.querySelectorAll("[data-remove-payablenote]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -2697,7 +2735,7 @@ function renderReceivableNotes(){
   `;
   const list = applyReceivableNoteFilters(receivableNotesData);
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.receivablenotes?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.receivablenotes?'1':'0.85'}; cursor:${editMode.receivablenotes?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.receivablenotes?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.receivablenotes?'1':'0.85'}; cursor:${editMode.receivablenotes?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((n)=>{
     const idx = receivableNotesData.indexOf(n);
@@ -2729,7 +2767,11 @@ function renderReceivableNotes(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitReceivableNoteCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitReceivableNoteCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, receivableNotesData[i]);
+    });
   });
   body.querySelectorAll("[data-remove-receivablenote]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -2838,7 +2880,7 @@ function renderExpenses(){
 
   const list = applyExpenseFilters(expensesData);
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.expenses?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.expenses?'1':'0.85'}; cursor:${editMode.expenses?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.expenses?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.expenses?'1':'0.85'}; cursor:${editMode.expenses?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = list.map((e)=>{
     const idx = expensesData.indexOf(e);
@@ -2890,7 +2932,11 @@ function renderExpenses(){
   XMap.paintExtras(body.closest("table"), bodyRows ? list : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitExpenseCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitExpenseCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, expensesData[i]);
+    });
   });
   body.querySelectorAll(".expense-type-select").forEach(sel=>{
     sel.addEventListener("change", ()=>{ commitExpenseCell(parseInt(sel.getAttribute("data-idx")), "type", sel.value); renderExpenses(); });
@@ -2976,7 +3022,7 @@ function renderBank(){
     <div class="stat" style="--accent:var(--c2); --tint:var(--t2)"><div class="stat-head"><span class="stat-ic">💰</span><span class="stat-lbl">جمع نقدینگی</span></div><div class="stat-val">${formatMoney(total)}</div></div>
   `;
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.bank?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.bank?'1':'0.85'}; cursor:${editMode.bank?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.bank?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.bank?'1':'0.85'}; cursor:${editMode.bank?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = bankData.map((b,idx)=>`<tr>
       <td>${fa(idx+1)}</td>
@@ -3005,7 +3051,11 @@ function renderBank(){
   XMap.paintExtras(body.closest("table"), bodyRows ? bankData : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitBankCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitBankCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, bankData[i]);
+    });
   });
   body.querySelectorAll("[data-remove-bank]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -3068,7 +3118,7 @@ function renderBudget(){
   const body = document.getElementById("budgetBody");
   if(!body) return;
   const editableTd = (value, idx, field)=>
-    `<td class="editable-cell" contenteditable="${editMode.budget?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.budget?'1':'0.85'}; cursor:${editMode.budget?'text':'default'};">${escapeHtml(value==null?"":value)}</td>`;
+    `<td class="editable-cell" contenteditable="${editMode.budget?'true':'false'}" data-idx="${idx}" data-field="${field}" style="opacity:${editMode.budget?'1':'0.85'}; cursor:${editMode.budget?'text':'default'};">${escapeHtml(cellText(field, value))}</td>`;
 
   const bodyRows = budgetData.map((b,idx)=>{
     const variance = (b.budgetAmount||0) - (b.actualAmount||0);
@@ -3102,7 +3152,11 @@ function renderBudget(){
   XMap.paintExtras(body.closest("table"), bodyRows ? budgetData : []);
 
   body.querySelectorAll(".editable-cell").forEach(td=>{
-    td.addEventListener("blur", ()=> commitBudgetCell(parseInt(td.getAttribute("data-idx")), td.getAttribute("data-field"), td.textContent.trim()));
+    td.addEventListener("blur", ()=>{
+      const i = parseInt(td.getAttribute("data-idx")), f = td.getAttribute("data-field");
+      commitBudgetCell(i, f, td.textContent.trim());
+      reflowMoney(td, f, budgetData[i]);
+    });
   });
   body.querySelectorAll("[data-remove-budget]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -4306,6 +4360,7 @@ window.SEARCH_MAP = [
 {{PART:pwa}}
 {{PART:bell}}
 {{PART:rowdrag}}
+{{PART:tsort}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید
