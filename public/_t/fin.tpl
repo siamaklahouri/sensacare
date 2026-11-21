@@ -773,6 +773,7 @@ window.KARTABL_IDB      = "{{IDB}}";
            ردیف. دکمهٔ افزودن مثل بقیهٔ جدول‌ها پایین رفت. -->
       <div class="toolbar">
         <button class="btn btn-brass btn-sm" id="bulkAddBtn" title="یک کار را روی چند روزِ ماه بگذارید — مثلاً هر چهارشنبه">＋ کار روی چند روز</button>
+        <button class="btn btn-ghost btn-sm" id="sortTasksBtn" title="فهرست را به ترتیبِ مهلت بچین">↕ ترتیب بر اساس مهلت</button>
         <button class="btn btn-ghost" id="resetTasksBtn">بازنشانی چک‌لیست</button>
       </div>
       <div class="tbl-wrap">
@@ -3587,6 +3588,8 @@ function setupChecklist(){
   });
   const bulk = document.getElementById("bulkAddBtn");
   if(bulk) bulk.addEventListener("click", ()=>{ if(window.BULKADD) BULKADD.open(); });
+  const sortBtn = document.getElementById("sortTasksBtn");
+  if(sortBtn) sortBtn.addEventListener("click", ()=>{ if(window.BULKADD) BULKADD.sortNow(); });
   const resetBtn = document.getElementById("resetTasksBtn");
   if(resetBtn) resetBtn.addEventListener("click", ()=>{
     if(confirm("چک‌لیست این ماه پاک شود؟ این کار قابل بازگشت نیست.")){

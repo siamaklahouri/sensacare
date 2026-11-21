@@ -263,6 +263,39 @@
     });
   }
 
+  /* مرتب‌سازیِ پایدار بر اساسِ مهلت. ردیفِ بی‌مهلت ته می‌رود: عددِ
+     صفر اول می‌نشست و فهرست با چند خانهٔ خالی شروع می‌شد. */
+  function dayOf(t) {
+    var n = parseInt((t || {}).deadline, 10);
+    return (!isFinite(n) || n <= 0) ? 99 : n;
+  }
+  function sortByDay() {
+    try { state.tasks.sort(function (a, b) { return dayOf(a) - dayOf(b); }); }
+    catch (e) { console.error("[ترتیب]", e); }
+  }
+
+  /* دکمهٔ جدا، برای فهرستی که از قبل نامرتب است. افزودن از این پنل
+     خودش مرتب می‌کند، ولی ردیف‌هایی که پیش از این ساخته شده‌اند
+     همان‌جا می‌مانند — و کسی که فهرستش به هم ریخته، نمی‌خواهد برای
+     مرتب شدنش کارِ تازه‌ای اضافه کند. */
+  function sortNow() {
+    var before = state.tasks.slice();
+    var was = before.map(function (t) { return t && t.rid; }).join("|");
+    sortByDay();
+    var now = state.tasks.map(function (t) { return t && t.rid; }).join("|");
+    redraw();
+    scheduleSave();
+    try {
+      UNDO.show(was === now ? "فهرست از قبل به ترتیبِ مهلت بود"
+                            : "فهرست به ترتیبِ مهلت چیده شد", function () {
+        state.tasks.length = 0;
+        before.forEach(function (r) { state.tasks.push(r); });
+        redraw();
+        scheduleSave();
+      });
+    } catch (e) { }
+  }
+
   function val(sel, dflt) {
     try {
       var el = box.querySelector(sel);
@@ -344,11 +377,7 @@
        مرتب‌سازی پایدار است، پس کارهای یک روز ترتیبِ خودشان را
        نگه می‌دارند. ردیفِ بی‌مهلت ته می‌رود: عددِ صفر اول می‌نشست
        و فهرست با چند خانهٔ خالی شروع می‌شد. */
-    var dayOf = function (t) {
-      var n = parseInt((t || {}).deadline, 10);
-      return (!isFinite(n) || n <= 0) ? 99 : n;
-    };
-    state.tasks.sort(function (a, b) { return dayOf(a) - dayOf(b); });
+    sortByDay();
 
     close();
     redraw();
@@ -364,5 +393,5 @@
     } catch (e) { }
   }
 
-  window.BULKADD = { open: open, close: close };
+  window.BULKADD = { open: open, close: close, sortNow: sortNow };
 })();

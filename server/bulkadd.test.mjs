@@ -226,22 +226,33 @@ for (const [label, api, pass, path] of [
   await p.evaluate(() => document.querySelector('.ba-nav[data-step="1"]').click());
   await p.waitForTimeout(400);
   const target = await p.evaluate(() => document.querySelector('.ba-mn').textContent.trim());
-  await p.fill('.ba-task', 'کارِ ماهِ بعد');
+  /* نامِ یکتا: آزمون ممکن است روی دیتابیسی بدود که اجرای قبلی
+     «کارِ ماهِ بعد» را در آن گذاشته. آن‌وقت همین ردیف، «بازماندهٔ
+     ماهِ قبل» شمرده می‌شد و آزمون به خودش گیر می‌داد.
+
+     و بی‌رقم: هر رقمی که در یک کادر تایپ شود همان لحظه فارسی
+     می‌شود (fadigits). نامی با رقمِ لاتین، در صفحه با رقمِ فارسی
+     ذخیره می‌شد و مقایسه‌اش این‌جا هیچ‌وقت برقرار نبود — آزمون
+     می‌گفت «ردیف در ماه ننشست» در حالی که نشسته بود. */
+  const freshName = 'کارِ ماهِ بعدِ ' +
+    Math.random().toString(36).slice(2, 8).replace(/[0-9]/g, 'م');
+  await p.fill('.ba-task', freshName);
   await p.evaluate(() => { document.querySelectorAll('.ba-d')[3].click(); });
   await p.waitForTimeout(300);
   await p.evaluate(() => document.querySelector('.ba-go').click());
   await p.waitForTimeout(1200);
-  const moved = await p.evaluate(() => ({
+  const moved = await p.evaluate(n => ({
     meta: state.meta.month + ' ' + state.meta.year,
-    has: (state.tasks || []).some(x => x && x.task === 'کارِ ماهِ بعد')
-  }));
+    has: (state.tasks || []).some(x => x && x.task === n)
+  }), freshName);
   t(moved.meta !== was, 'افزودن روی ماهِ دیگر، کارتابل را همان‌جا می‌برد',
     was + ' → ' + moved.meta);
   t(moved.has, 'و ردیف در همان ماه نشست، نه در ماهی که دیده نمی‌شود');
   const only = await p.evaluate(o => ({
     n: state.tasks.length,
-    strays: state.tasks.filter(t => o.indexOf(t.task) >= 0).map(t => t.task)
-  }), oldNames);
+    strays: state.tasks.filter(t => t.task !== o.fresh && o.old.indexOf(t.task) >= 0)
+      .map(t => t.task)
+  }), { old: oldNames, fresh: freshName });
   t(only.n === 1, 'و ماهِ تازه فقط همان کار را دارد', only.n + ' ردیف');
   t(only.strays.length === 0,
     'هیچ‌کدام از کارهای ماهِ قبل — انجام‌شده یا نه — به ماهِ تازه نیامدند',
@@ -269,6 +280,42 @@ for (const [label, api, pass, path] of [
   await p.evaluate(() => document.querySelector('.ba-x').click());
   await p.waitForTimeout(300);
   t(await p.evaluate(() => !!document.querySelector('.ba-box[hidden]')), '«بی‌خیال» پنل را می‌بندد');
+
+  /* ---- دکمهٔ «ترتیب بر اساس مهلت» ----
+     افزودن از پنل خودش مرتب می‌کند، ولی ردیف‌هایی که پیش از این
+     ساخته شده‌اند همان‌جا می‌مانند. کسی که فهرستش به هم ریخته،
+     نباید مجبور باشد برای مرتب شدنش کارِ تازه‌ای اضافه کند. */
+  t(await p.evaluate(() => !!document.getElementById('sortTasksBtn')),
+    'دکمهٔ ترتیب روی صفحه است');
+  const messy = await p.evaluate(() => {
+    state.tasks.length = 0;
+    [[20, 'ج'], [5, 'الف'], [12, 'ب'], ['', 'بی‌مهلت'], [5, 'د']].forEach(([d, n]) => {
+      state.tasks.push({ category: '', task: n, owner: '', deadline: d, status: 'انجام نشده',
+        priority: 'متوسط', note: '', rid: 'r-' + n, since: '', every: 0 });
+    });
+    /* دو کارتابل دو جور صفحه را تازه می‌کنند */
+    if (typeof renderAll === 'function') renderAll();
+    else if (typeof renderChecklist === 'function') renderChecklist();
+    return state.tasks.map(t => t.task).join('|');
+  });
+  await p.waitForTimeout(500);
+  await p.click('#sortTasksBtn');
+  await p.waitForTimeout(700);
+  const tidy = await p.evaluate(() => ({
+    order: state.tasks.map(t => t.task).join('|'),
+    days: state.tasks.map(t => t.deadline),
+    bar: !!document.querySelector('.undo-bar:not([hidden])')
+  }));
+  t(tidy.order === 'الف|د|ب|ج|بی‌مهلت', 'فهرستِ به‌هم‌ریخته را به ترتیبِ مهلت می‌چیند',
+    tidy.order + '  (' + tidy.days.join('، ') + ')');
+  t(tidy.order.indexOf('الف|د') === 0, 'و کارهای یک روز ترتیبِ خودشان را نگه می‌دارند',
+    'مرتب‌سازی پایدار است');
+  t(tidy.days[tidy.days.length - 1] === '', 'و ردیفِ بی‌مهلت ته می‌رود، نه اول');
+  t(tidy.bar, 'و برگشتش هست');
+  await p.evaluate(() => document.querySelector('.ub-go').click());
+  await p.waitForTimeout(500);
+  t(await p.evaluate(() => state.tasks.map(t => t.task).join('|')) === messy,
+    'و «برگرداندن» همان ترتیبِ قبلی را برمی‌گرداند');
 
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await ctx.close();
