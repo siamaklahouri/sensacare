@@ -296,13 +296,19 @@
          کارِ آبان را هم می‌ریختیم تو — از جمله آن‌هایی که انجام شده
          بودند و با وضعیتِ صفرشده دوباره ظاهر می‌شدند. ماهی که برای
          گذاشتنِ چهار کار ساخته می‌شود، باید همان چهار کار را داشته
-         باشد. */
+         باشد.
+
+         همین حکم برای برنامهٔ روزانه هم هست: ماهِ تازه کارهای
+         نیمه‌کارهٔ ماهِ قبل را هم می‌آورد، با تاریخِ همان ماهِ قبل.
+         نتیجه‌اش ردیف‌هایی بود در آذر با تاریخِ ۱۴۰۵/۰۸/۰۲ که
+         دیگر در آبان هم وجود نداشتند. */
       var fresh = true;
       try {
         fresh = !state.monthsData[monthKeyOf(m.name, String(m.jy))];
       } catch (e) { }
       try {
-        switchToMonth(m.name, String(m.jy), fresh ? { carryTasks: false } : undefined);
+        switchToMonth(m.name, String(m.jy),
+          fresh ? { carryTasks: false, carryDays: false } : undefined);
       } catch (e) { console.error("[ماه]", e); }
     }
 

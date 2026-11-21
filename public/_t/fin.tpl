@@ -3375,7 +3375,12 @@ function switchToMonth(monthName, year, opts){
     state.days = state.monthsData[key].days;
   } else {
     const prevDays = state.currentMonthKey && state.monthsData[state.currentMonthKey] ? state.monthsData[state.currentMonthKey].days : [];
-    const carried = (prevDays||[])
+    /* ماهی که از پنلِ «کار روی چند روز» ساخته می‌شود هیچ‌چیز با
+       خودش نمی‌آورد — نه چک‌لیست، نه برنامهٔ روزانه. آن‌جا کاربر
+       گفته «این چند کار را در این ماه بگذار»، نه «ماهِ قبل را
+       بیاور». ماهی که از پنجرهٔ ماه‌ها ساخته شود همان رفتارِ
+       همیشگی را دارد. */
+    const carried = (opts && opts.carryDays === false) ? [] : (prevDays||[])
       .filter(d=> d.status==="در حال انجام" || d.status==="انجام نشده")
       .map((d,i)=>({ day:i+1, createdDate:d.createdDate||"", main:d.main||"", meet:d.meet||"", company:d.company||"", status:d.status }));
     /* چک‌لیست دیگر از صفر شروع نمی‌شود: وظیفه‌های تکرارشوندهٔ ماهِ

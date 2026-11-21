@@ -246,6 +246,13 @@ for (const [label, api, pass, path] of [
   t(only.strays.length === 0,
     'هیچ‌کدام از کارهای ماهِ قبل — انجام‌شده یا نه — به ماهِ تازه نیامدند',
     only.strays.slice(0, 3).join('، ') || 'هیچ');
+  /* و همین حکم برای برنامهٔ روزانه: ماهِ تازه کارهای نیمه‌کارهٔ ماهِ
+     قبل را هم می‌آورد، با تاریخِ همان ماهِ قبل. نتیجه‌اش ردیف‌هایی بود
+     در آذر با تاریخِ ۱۴۰۵/۰۸/۰۲ که دیگر در آبان هم وجود نداشتند. */
+  const dayRows = await p.evaluate(() => (state.days || [])
+    .filter(d => d && (d.main || d.meet || d.company || d.status)).length);
+  t(dayRows === 0, 'و برنامهٔ روزانه‌اش هم خالی است، نه پُر از بازماندهٔ ماهِ قبل',
+    dayRows + ' ردیف');
   t(target.indexOf(String(moved.meta).split(' ')[0]) >= 0,
     'و همان ماهی است که تقویم نشان می‌داد', target + ' / ' + moved.meta);
 
