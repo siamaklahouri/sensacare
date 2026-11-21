@@ -509,6 +509,12 @@ window.KARTABL_IDB      = "{{IDB}}";
   /* تاریخِ انجام: تا وقتی کار تمام نشده «—» است و کم‌رنگ می‌ماند؛
      تمام که شد، سبز می‌شود تا با یک نگاه معلوم باشد. */
   .daily-done-cell.on{ color:var(--green-ink); font-weight:600; }
+  /* خالی که باشد خودش خط تیره نشان می‌دهد. خطِ تیره را داخلِ خانه
+     نمی‌نویسیم: خانه contenteditable است و «—» جزوِ متنش می‌شد،
+     یعنی تقویم می‌خواست آن را تاریخ بخواند و ذخیره‌اش هم می‌کرد. */
+  .daily-done-cell:empty::before{ content:"—"; color:var(--ink-faint); }
+  .daily-done-cell{ cursor:pointer; }
+  .daily-done-cell:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
 
   /* ---------- Chart drill-down modal ---------- */
   .cm-overlay{
@@ -3634,7 +3640,10 @@ function renderDaily(){
           ${STATUS.map(s=>`<option value="${s}" ${d.status===s?"selected":""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td class="daily-date-cell daily-done-cell col-hide-s${d.doneDate?' on':''}">${escapeHtml(fa(d.doneDate||"—"))}</td>
+      <td class="daily-date-cell daily-done-cell col-hide-s${d.doneDate?' on':''}"
+          contenteditable="true" data-field="doneDate" data-date
+          data-val="${escapeHtml(fa(d.doneDate||""))}"
+          title="تاریخِ انجام — برای تغییر کلیک کنید">${escapeHtml(fa(d.doneDate||""))}</td>
       <td class="col-hide-s"><button class="star-btn ${d.reminder && !d.reminder.fired ? 'active':''}" data-day-star="${d.idx}" title="${d.reminder && !d.reminder.fired ? 'یادآور تنظیم‌شده — برای تغییر کلیک کنید':'تنظیم یادآور'}">${d.reminder && !d.reminder.fired ? '⭐':'☆'}</button></td>
       <td class="clip-cell col-hide-s" data-kind="day" data-i="${d.idx}" data-nocp>
         <button type="button" class="clip-btn" title="افزودن پیوست">📎</button>
@@ -3661,6 +3670,10 @@ function renderDaily(){
   body.querySelectorAll("[data-field]").forEach(el=>{
     el.addEventListener("change", onDayFieldChange);
     if(el.tagName==="INPUT") el.addEventListener("input", onDayFieldChange);
+    /* خانهٔ تاریخِ انجام contenteditable است: change نمی‌دهد. تقویم
+       پس از انتخاب، input و بعد blur می‌فرستد — دومی روی خودِ خانه
+       است و بالا نمی‌آید، پس باید همین‌جا شنیده شود. */
+    else if(el.isContentEditable) el.addEventListener("blur", onDayFieldChange);
   });
   body.querySelectorAll("[data-remove-day]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -3681,13 +3694,36 @@ function addDayRow(){
   scheduleSave();
 }
 function onDayFieldChange(e){
+  /* خانهٔ تاریخِ انجام روی blur ذخیره می‌شود، و رندرِ دوباره همان خانه
+     را از صفحه برمی‌دارد — برداشتنِ خانه‌ای که فوکوس دارد، خودش یک
+     blur می‌فرستد. آن blur متنِ قدیمی را حمل می‌کند و روی چیزی که
+     همین حالا نوشته شده می‌نویسد.
+
+     دیده شد: تاریخ را دستی گذاشتم، بعد وضعیت را «انجام شد» کردم؛
+     تاریخِ امروز نشست و بلافاصله همان تاریخِ قبلی رویش نوشته شد.
+     خانه‌ای که دیگر در صفحه نیست، حرفی برای گفتن ندارد. */
+  if(e.type === "blur" && !e.target.isConnected) return;
+  /* و خانه‌ای که چیزی در آن عوض نشده هم حرفی ندارد. data-val همان
+     چیزی است که موقعِ کشیدنِ جدول در خانه نوشته شد؛ تا وقتی متن با
+     آن یکی است، این blur فقط «از خانه رفتم بیرون» را می‌گوید. */
+  if(e.target.isContentEditable &&
+     e.target.textContent.trim() === (e.target.getAttribute("data-val") || "")) return;
   const tr = e.target.closest("tr");
   const idx = parseInt(tr.getAttribute("data-idx"));
   const field = e.target.getAttribute("data-field");
   const row = state.days[idx];
   if(!row) return;
   const was = row[field];
-  row[field] = e.target.value;
+  /* خانه‌ها یک جور نیستند: input و select مقدارشان در value است و
+     خانهٔ تاریخِ انجام در متنِ خودش. */
+  const val = e.target.isContentEditable
+    ? e.target.textContent.trim()
+    : e.target.value;
+  row[field] = val;
+  if(e.target.isContentEditable) e.target.setAttribute("data-val", val);
+  /* رنگِ سبزِ خانه با خودِ تاریخ یکی بماند، بی آنکه کلِ جدول از نو
+     کشیده شود و نشانه‌گرِ کسی بپرد. */
+  if(field === "doneDate") e.target.classList.toggle("on", !!val);
   /* تاریخِ ایجاد، اولین باری که چیزی در ردیف نوشته می‌شود.
 
      ایرادی که گزارش شد همین بود: ردیف‌های آمادهٔ ماه (و ماه‌های تازه)
@@ -3695,12 +3731,20 @@ function onDayFieldChange(e){
      می‌آمد تاریخ می‌گرفت. پس در بعضی کارتابل‌ها ستونِ تاریخ خط تیره
      می‌ماند. حالا هر ردیفی که پر شود، همان لحظه تاریخ می‌خورد — و اگر
      از قبل تاریخ داشته باشد دست نمی‌خورد. */
-  if(!String(row.createdDate || "").trim() && String(e.target.value || "").trim())
+  if(!String(row.createdDate || "").trim() && String(val || "").trim())
     row.createdDate = getTodayJalaliStr();
   /* تاریخِ انجام خودش می‌افتد: همان لحظه‌ای که کار «انجام شد» می‌شود.
      و اگر کار دوباره باز شود پاک می‌شود — تاریخِ انجام برای کاری که
      هنوز تمام نشده دروغ است. همان قاعده‌ای که بخش‌های مشترک دارند.
-     دستی هم نوشته نمی‌شود؛ خانه‌اش فقط خوانده می‌شود. */
+     ولی دستی هم می‌شود عوضش کرد: کاری که دیروز تمام شده و امروز
+     تیک می‌خورَد، تاریخِ امروز را می‌گیرد و آن غلط است. خانه تقویمِ
+     شمسیِ همین برنامه را باز می‌کند، همان که ستونِ تاریخِ فاکتورها
+     دارد. خالی‌کردنش هم آزاد است.
+
+     تاریخِ دستی وضعیت را عوض نمی‌کند: اگر کسی تاریخ بگذارد ولی
+     وضعیت را «انجام شد» نکند، ما از طرفش تصمیم نمی‌گیریم. فقط
+     برعکسش خودکار است، چون تاریخِ انجام برای کاری که دوباره باز
+     شده دروغ است. */
   if(field === "status"){
     const isDone = v => String(v == null ? "" : v).trim() === "انجام شد";
     if(isDone(row.status) && !isDone(was)) row.doneDate = fa(getTodayJalaliStr());

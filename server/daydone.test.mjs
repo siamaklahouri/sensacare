@@ -1,4 +1,13 @@
 /* «تاریخ انجام» در برنامهٔ روزانه — خودش می‌افتد، خودش پاک می‌شود.
+
+   یک قاعده عوض شد و این آزمون هم با آن: تا دیروز این خانه فقط خوانده
+   می‌شد. حالا تقویمِ شمسی باز می‌کند و دستی هم عوض می‌شود، چون کاری
+   که دیروز تمام شده و امروز تیک می‌خورَد تاریخِ امروز را می‌گرفت و آن
+   غلط بود. خودکاری سرِ جایش ماند؛ فقط قفلش برداشته شد.
+
+   این فقط برنامهٔ روزانهٔ خودِ کارتابل است. در بخش‌های مشترک همان
+   قاعدهٔ سرور برقرار است و donedate.test.mjs آن را می‌سنجد.
+
    سرورِ محلی را مثل server/vshare.setup.md بالا بیاورید. */
 import { launch } from './pw.mjs';
 
@@ -81,7 +90,10 @@ for (const w of WHO) {
   }, { sel, i: IDX });
 
   const before = await cell();
-  t(before.txt === '—' && !before.on && !before.val,
+  /* خانه خالی است و خط تیره را شیوه‌نامه می‌کشد (empty::before).
+     داخلِ خانه نوشته نمی‌شود، چون contenteditable است و «—» جزوِ
+     متنش می‌شد — یعنی تقویم می‌خواست آن را تاریخ بخواند. */
+  t(before.txt === '' && !before.on && !before.val,
     'ردیفِ تازه تاریخِ انجام ندارد', JSON.stringify(before));
 
   const setStat = async v => { await p.selectOption(sel + ' select[data-field="status"]', v);
@@ -89,7 +101,7 @@ for (const w of WHO) {
 
   await setStat('در حال انجام');
   const doing = await cell();
-  t(doing.txt === '—' && !doing.val, '«در حال انجام» تاریخ نمی‌اندازد', JSON.stringify(doing));
+  t(doing.txt === '' && !doing.val, '«در حال انجام» تاریخ نمی‌اندازد', JSON.stringify(doing));
 
   await setStat('انجام شد');
   const done = await cell();
@@ -99,16 +111,20 @@ for (const w of WHO) {
   t(done.on, 'و خانه‌اش سبز می‌شود');
   t(/^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/.test(done.txt), 'تاریخ شمسی و با رقمِ فارسی است', done.txt);
 
-  /* دستی نوشتنی نیست: خانه ورودی ندارد */
+  /* و حالا دستی هم عوض می‌شود: خانه تقویمِ همین برنامه را دارد.
+     خودِ انتخاب‌کردن در donepick.test.mjs سنجیده می‌شود؛ این‌جا فقط
+     می‌گوییم راهش باز است. */
   const typable = await p.evaluate(s => {
     const td = document.querySelector(s).querySelector('.daily-done-cell');
-    return !!(td.querySelector('input,select,textarea') || td.getAttribute('contenteditable') === 'true');
+    return { ce: td.getAttribute('contenteditable') === 'true',
+             cal: td.classList.contains('dp-host') };
   }, sel);
-  t(!typable, 'و دستی عوض نمی‌شود — فقط خوانده می‌شود');
+  t(typable.ce && typable.cal, 'و دستی هم عوض می‌شود — تقویم به خانه وصل است',
+    JSON.stringify(typable));
 
   await setStat('انجام نشده');
   const reopened = await cell();
-  t(reopened.txt === '—' && !reopened.val && !reopened.on,
+  t(reopened.txt === '' && !reopened.val && !reopened.on,
     'با برگشتنِ کار به حالتِ باز، تاریخ پاک می‌شود', JSON.stringify(reopened));
 
   /* ماندگاری: صفحه را از نو باز می‌کنیم */
