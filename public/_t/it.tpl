@@ -1043,7 +1043,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <!-- «بازنشانی» بالا می‌ماند: کارِ همهٔ جدول است، نه افزودنِ یک
            ردیف. دکمهٔ افزودن مثل بقیهٔ جدول‌ها پایین رفت. -->
       <div class="toolbar">
-        <button class="btn btn-brass btn-sm" id="bulkAddBtn" title="یک کار را روی چند روزِ ماه بگذارید — مثلاً هر چهارشنبه">＋ کار روی چند روز</button>
+        <button class="btn btn-brass btn-sm" id="bulkAddBtn" title="یک کار را روی چند روزِ ماه بگذارید — مثلاً هر چهارشنبه">🗓 کار روی چند روز</button>
         <button class="btn btn-ghost btn-sm" id="sortTasksBtn" title="فهرست را به ترتیبِ مهلت بچین">↕ ترتیب بر اساس مهلت</button>
         <button class="btn btn-ghost" id="resetTasksBtn">بازنشانی چک‌لیست</button>
       </div>
