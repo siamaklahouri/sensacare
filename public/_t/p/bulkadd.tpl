@@ -26,6 +26,11 @@
   var WD = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
   var WDFULL = ["شنبه", "یک‌شنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه"];
   var box = null, picked = {};
+  /* ماهی که تقویمِ پنل نشان می‌دهد. با فلش‌ها جابه‌جا می‌شود و لازم
+     نیست همان ماهی باشد که چک‌لیست باز کرده — ولی موقعِ افزودن،
+     کارتابل به همان ماه می‌رود، چون چک‌لیست هر بار یک ماه را نشان
+     می‌دهد و ردیفی که به ماهِ دیگر برود جایی دیده نمی‌شود. */
+  var view = null;
 
   function faN(n) {
     return String(n).replace(/[0-9]/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[+d]; });
@@ -33,7 +38,7 @@
 
   /* ماهی که چک‌لیست دارد نشان می‌دهد — همان که state.meta می‌گوید،
      نه ماهِ امروز: کاربر ممکن است ماهِ دیگری را باز کرده باشد. */
-  function month() {
+  function openMonth() {
     var jm = 0, jy = 0;
     try {
       jm = JALALI_MONTH_NAMES.indexOf(String((state.meta || {}).month || "")) + 1;
@@ -46,9 +51,29 @@
       } catch (e) { return null; }
     }
     if (!jm || !jy) return null;
+    return mk(jy, jm);
+  }
+  function mk(jy, jm) {
     var len = 30;
     try { len = daysInJalaliMonth(jy, jm); } catch (e) { }
     return { jy: jy, jm: jm, len: len, name: JALALI_MONTH_NAMES[jm - 1] || "" };
+  }
+  /* ماهی که همین حالا روی تقویمِ پنل است */
+  function month() { return view || openMonth(); }
+  function step(n) {
+    var m = month();
+    if (!m) return;
+    var jm = m.jm + n, jy = m.jy;
+    if (jm > 12) { jm = 1; jy++; }
+    if (jm < 1) { jm = 12; jy--; }
+    view = mk(jy, jm);
+    /* روزهای تیک‌خورده مالِ ماهِ قبلی بودند */
+    picked = {};
+    paint();
+  }
+  function sameAsOpen() {
+    var a = month(), b = openMonth();
+    return !!(a && b && a.jy === b.jy && a.jm === b.jm);
   }
 
   /* ۰ = شنبه.
@@ -99,6 +124,19 @@
            '" data-d="' + d + '">' + faN(d) + "</button>";
     grid.innerHTML = h;
 
+    var mn = box.querySelector(".ba-mn");
+    if (mn) mn.textContent = m.name + " " + faN(m.jy);
+
+    /* ماهی که روی تقویم است همان ماهِ چک‌لیست نیست؟ بگو چه می‌شود،
+       پیش از آنکه بشود. */
+    var other = box.querySelector(".ba-other");
+    if (other) {
+      var ok2 = sameAsOpen();
+      other.hidden = ok2;
+      other.textContent = ok2 ? "" :
+        "این ماه باز نیست — با افزودن، کارتابل به " + m.name + " " + faN(m.jy) + " می‌رود.";
+    }
+
     box.querySelector(".ba-sum").textContent = got.length
       ? faN(got.length) + " روز: " + got.map(faN).join("، ")
       : "هنوز روزی انتخاب نشده";
@@ -111,22 +149,44 @@
     box = document.createElement("div");
     box.className = "ba-box";
     box.hidden = true;
-    var cats = "";
-    try {
-      cats = CATEGORIES.map(function (c) {
-        return '<option value="' + c + '">' + c + "</option>";
-      }).join("");
-    } catch (e) { }
+    var opts = function (list, sel) {
+      try {
+        return list.map(function (c) {
+          var v = Array.isArray(c) ? c[0] : c, n = Array.isArray(c) ? c[1] : c;
+          return '<option value="' + v + '"' + (String(v) === String(sel) ? " selected" : "") +
+                 ">" + n + "</option>";
+        }).join("");
+      } catch (e) { return ""; }
+    };
+    var cats = "", stats = "", pris = "", reps = "";
+    try { cats = opts(CATEGORIES); } catch (e) { }
+    try { stats = opts(STATUS, "انجام نشده"); } catch (e) { }
+    try { pris = opts(PRIORITY, "متوسط"); } catch (e) { }
+    try { reps = opts(REPEATS, 0); } catch (e) { }
     box.innerHTML =
       '<div class="ba-row">' +
-        '<input type="text" class="ba-task" placeholder="مثلاً: تست بکاپ سرورها" ' +
+        '<input type="text" class="ba-task" placeholder="شرحِ کار — مثلاً: تست بکاپ سرورها" ' +
           'aria-label="شرحِ وظیفه">' +
         '<select class="ba-cat" aria-label="دسته‌بندی">' + cats + "</select>" +
       "</div>" +
+      '<div class="ba-row">' +
+        '<input type="text" class="ba-owner" placeholder="مسئول" aria-label="مسئول">' +
+        '<select class="ba-stat" aria-label="وضعیت">' + stats + "</select>" +
+        '<select class="ba-pri" aria-label="اولویت">' + pris + "</select>" +
+        '<select class="ba-rep" aria-label="تکرار" title="تکرارِ ماه‌به‌ماه">' + reps + "</select>" +
+      "</div>" +
+      '<div class="ba-row">' +
+        '<input type="text" class="ba-note" placeholder="یادداشت (اختیاری)" aria-label="یادداشت">' +
+      "</div>" +
       '<div class="ba-cal">' +
-        '<div class="ba-m">' + (m ? m.name + " " + faN(m.jy) : "") + "</div>" +
+        '<div class="ba-m">' +
+          '<button type="button" class="ba-nav" data-step="-1" aria-label="ماهِ قبل">\u203A</button>' +
+          '<span class="ba-mn">' + (m ? m.name + " " + faN(m.jy) : "") + "</span>" +
+          '<button type="button" class="ba-nav" data-step="1" aria-label="ماهِ بعد">\u2039</button>' +
+        "</div>" +
         '<div class="ba-wd"></div>' +
         '<div class="ba-grid"></div>' +
+        '<div class="ba-other" hidden></div>' +
       "</div>" +
       '<div class="ba-foot">' +
         '<span class="ba-sum"></span>' +
@@ -137,6 +197,8 @@
       "</div>";
 
     box.addEventListener("click", function (e) {
+      var nv = e.target.closest(".ba-nav");
+      if (nv) { step(+nv.getAttribute("data-step")); return; }
       var w = e.target.closest(".ba-w");
       if (w) { toggleWeek(+w.getAttribute("data-w")); return; }
       var d = e.target.closest(".ba-d");
@@ -170,19 +232,19 @@
     var el = build();
     if (el.parentNode !== host) host.insertBefore(el, bar ? bar.nextSibling : host.firstChild);
     picked = {};
-    /* ماه ممکن است از بارِ قبل عوض شده باشد */
-    var m = month();
-    var ttl = el.querySelector(".ba-m");
-    if (m && ttl) ttl.textContent = m.name + " " + faN(m.jy);
+    /* هر بار از ماهِ خودِ چک‌لیست شروع می‌شود، نه ماهی که بارِ قبل
+       رفته بودیم */
+    view = null;
     el.hidden = false;
     paint();
     /* متنِ بارِ قبل پاک می‌شود. ماندنش یک تله بود: پنل که دوباره باز
        می‌شد، نامِ کارِ قبلی هنوز آن‌جا بود و یک کلیک کافی بود تا
        همان کار روی روزهای تازه بنشیند. */
     try {
-      var box2 = el.querySelector(".ba-task");
-      box2.value = "";
-      box2.focus();
+      el.querySelector(".ba-task").value = "";
+      el.querySelector(".ba-owner").value = "";
+      el.querySelector(".ba-note").value = "";
+      el.querySelector(".ba-task").focus();
     } catch (e) { }
   }
   function close() {
@@ -201,21 +263,42 @@
     });
   }
 
+  function val(sel, dflt) {
+    try {
+      var el = box.querySelector(sel);
+      return el ? el.value : dflt;
+    } catch (e) { return dflt; }
+  }
+
   function add() {
     var got = days();
     if (!got.length) return;
-    var txt = (box.querySelector(".ba-task").value || "").trim();
+    var txt = (val(".ba-task", "") || "").trim();
     if (!txt) { try { box.querySelector(".ba-task").focus(); } catch (e) { } return; }
-    var cat = box.querySelector(".ba-cat").value;
+
+    var cat = val(".ba-cat", ""), owner = (val(".ba-owner", "") || "").trim();
+    var stat = val(".ba-stat", "انجام نشده"), pri = val(".ba-pri", "متوسط");
+    var note = (val(".ba-note", "") || "").trim();
+    var rep = parseInt(val(".ba-rep", "0"), 10) || 0;
+
+    /* اگر تقویم روی ماهِ دیگری است، اول کارتابل را همان‌جا ببر —
+       وگرنه ردیف‌ها در ماهی می‌نشینند که دیده نمی‌شود. راهش همان
+       switchToMonth خودِ برنامه است، نه دست‌کاریِ مستقیمِ داده. */
+    var m = month();
+    if (m && !sameAsOpen()) {
+      try { switchToMonth(m.name, String(m.jy)); } catch (e) { console.error("[ماه]", e); }
+    }
+
     var made = [];
     got.forEach(function (d) {
       var row = {
-        category: cat, task: txt, owner: "", deadline: d,
-        status: "انجام نشده", priority: "متوسط", note: "",
+        category: cat, task: txt, owner: owner, deadline: d,
+        status: stat, priority: pri, note: note,
         rid: "t-" + Math.random().toString(36).slice(2, 10),
         since: state.currentMonthKey || "",
-        /* تکرارِ ماهانه خاموش: چهارشنبهٔ این ماه، چهارشنبهٔ ماهِ بعد نیست */
-        every: 0
+        /* پیش‌فرض خاموش: چهارشنبهٔ این ماه، چهارشنبهٔ ماهِ بعد نیست.
+           ولی دستِ کاربر باز است. */
+        every: rep
       };
       state.tasks.push(row);
       made.push(row);

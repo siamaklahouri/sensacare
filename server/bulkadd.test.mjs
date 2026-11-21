@@ -13,7 +13,11 @@
      (شیء و آرایه) و یکی‌شان بی‌صدا هیچ روزی را تیک نمی‌زد.
    • ردیف‌های ساخته‌شده تکرارِ ماهانه نداشته باشند: چهارشنبهٔ آبان،
      چهارشنبهٔ آذر نیست.
-   • کلِ دسته با یک کلیک برگردد. */
+   • کلِ دسته با یک کلیک برگردد.
+   • تقویم ماه‌به‌ماه جابه‌جا شود و روزهای *همان* ماه را بدهد — و
+     اگر ماهی جز ماهِ باز انتخاب شود، پیش از افزودن بگوید چه می‌شود
+     و بعد کارتابل را به همان ماه ببرد.
+   • همهٔ ستون‌های ردیف همان‌جا پر شوند، نه فقط متن. */
 import { launch, calm } from './pw.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -31,7 +35,9 @@ console.log('===== سیم‌کشی =====');
   t(!/<\/?(script|style)\b/i.test(css), 'جزوِ شیوه‌نامه تگ ندارد');
   t(/Array\.isArray\(g\)/.test(js),
     'هر دو شکلِ jalaliToGregorian پذیرفته می‌شود', 'شیء در فنی، آرایه در مالی');
-  t(/every: 0/.test(js), 'ردیف‌ها تکرارِ ماهانه نمی‌گیرند');
+  t(/opts\(REPEATS, 0\)/.test(js),
+    'تکرارِ ماهانه پیش‌فرض خاموش است', 'چهارشنبهٔ این ماه، چهارشنبهٔ ماهِ بعد نیست');
+  t(/every: rep/.test(js), 'ولی دستِ کاربر باز است');
   for (const f of ['it.tpl', 'fin.tpl']) {
     const s = readFileSync(new URL('../public/_t/' + f, import.meta.url), 'utf8');
     t(/id="bulkAddBtn"/.test(s), f + ': دکمه بالای چک‌لیست است');
@@ -72,20 +78,56 @@ for (const [label, api, pass, path] of [
     const e = document.querySelector('.ba-box');
     return e ? { on: !e.hidden, days: e.querySelectorAll('.ba-d').length,
                  wd: e.querySelectorAll('.ba-w').length,
-                 ttl: e.querySelector('.ba-m').textContent } : null;
+                 ttl: e.querySelector('.ba-mn').textContent,
+                 fields: ['.ba-task','.ba-cat','.ba-owner','.ba-stat','.ba-pri','.ba-rep','.ba-note']
+                   .filter(k => e.querySelector(k)).length,
+                 nav: e.querySelectorAll('.ba-nav').length } : null;
   });
   t(!!open && open.on, 'و پنل را باز می‌کند');
   t(!!open && open.wd === 7, 'هفت روزِ هفته', open ? open.wd + '' : '—');
   t(!!open && open.days >= 29 && open.days <= 31,
     'و روزهای همین ماه، نه بیشتر و نه کمتر', open ? open.days + ' روز — ' + open.ttl : '—');
+  t(!!open && open.fields === 7, 'و همهٔ ستون‌های ردیف همان‌جا هست',
+    (open ? open.fields : 0) + ' از ۷: کار، دسته، مسئول، وضعیت، اولویت، تکرار، یادداشت');
+  t(!!open && open.nav === 2, 'و دو فلشِ ماه');
 
   /* همان ماهی که چک‌لیست نشان می‌دهد، نه ماهِ امروز */
   const meta = await p.evaluate(() => (state.meta || {}).month + ' ' + (state.meta || {}).year);
   t(!!open && open.ttl.indexOf(String(meta).split(' ')[0]) >= 0,
     'و همان ماهی است که چک‌لیست باز کرده', open ? open.ttl + ' ← ' + meta : '—');
 
+  /* ---- جابه‌جاییِ ماه ---- */
+  const nav = await p.evaluate(() => {
+    const was = document.querySelector('.ba-mn').textContent;
+    document.querySelector('.ba-nav[data-step="1"]').click();
+    return was;
+  });
+  await p.waitForTimeout(400);
+  const next = await p.evaluate(() => ({
+    m: document.querySelector('.ba-mn').textContent,
+    days: document.querySelectorAll('.ba-d').length,
+    on: document.querySelectorAll('.ba-d.on').length,
+    warn: document.querySelector('.ba-other').hidden ? '' : document.querySelector('.ba-other').textContent
+  }));
+  t(next.m !== nav, 'فلش، ماه را جابه‌جا می‌کند', nav + ' → ' + next.m);
+  t(next.days >= 29 && next.days <= 31, 'و روزهای همان ماهِ تازه را می‌دهد', next.days + ' روز');
+  t(next.on === 0, 'و تیک‌های ماهِ قبل را نگه نمی‌دارد',
+    'روزِ ۲۹ آبان با ۲۹ آذر یکی نیست');
+  t(/این ماه باز نیست/.test(next.warn), 'و می‌گوید با افزودن چه می‌شود', next.warn);
+
+  await p.evaluate(() => document.querySelector('.ba-nav[data-step="-1"]').click());
+  await p.waitForTimeout(400);
+  t(await p.evaluate(() => document.querySelector('.ba-mn').textContent) === nav,
+    'و فلشِ برگشت به همان ماه برمی‌گردد');
+  t(await p.evaluate(() => document.querySelector('.ba-other').hidden),
+    'آن‌وقت هشدار هم می‌رود');
+
   const n0 = await p.evaluate(() => state.tasks.length);
   await p.fill('.ba-task', 'کارِ آزمونِ هفتگی');
+  await p.fill('.ba-owner', 'مسئولِ آزمون');
+  await p.selectOption('.ba-pri', 'بالا');
+  await p.selectOption('.ba-stat', 'در حال انجام');
+  await p.fill('.ba-note', 'یادداشتِ آزمون');
 
   /* سرستونِ «چ» = چهارشنبه */
   await p.evaluate(() => { [...document.querySelectorAll('.ba-w')][4].click(); });
@@ -129,6 +171,8 @@ for (const [label, api, pass, path] of [
     return {
       count: made.length,
       names: made.every(x => x.task === 'کارِ آزمونِ هفتگی'),
+      full: made.every(x => x.owner === 'مسئولِ آزمون' && x.priority === 'بالا' &&
+                            x.status === 'در حال انجام' && x.note === 'یادداشتِ آزمون'),
       every: made.every(x => x.every === 0),
       days: made.map(x => x.deadline),
       closed: !!document.querySelector('.ba-box[hidden]'),
@@ -137,6 +181,7 @@ for (const [label, api, pass, path] of [
   }, n0);
   t(made.count === less.n, 'به‌تعدادِ روزها ردیف ساخت', made.count + ' ردیف');
   t(made.names, 'همه با همان متن');
+  t(made.full, 'و با همان مسئول و وضعیت و اولویت و یادداشت — همه از همان پنل');
   t(made.days.join(',') === made.days.slice().sort((a, c) => a - c).join(','),
     'و به ترتیبِ روز', made.days.join('، '));
   t(made.every, 'و هیچ‌کدام تکرارِ ماهانه ندارند — چهارشنبهٔ این ماه، چهارشنبهٔ ماهِ بعد نیست');
@@ -148,14 +193,38 @@ for (const [label, api, pass, path] of [
   t(await p.evaluate(() => state.tasks.length) === n0,
     'و کلِ دسته با یک کلیک برگشت');
 
+  /* ---- افزودن روی ماهی جز ماهِ باز ---- */
+  const was = await p.evaluate(() => state.meta.month + ' ' + state.meta.year);
+  await p.click('#bulkAddBtn');
+  await p.waitForTimeout(400);
+  await p.evaluate(() => document.querySelector('.ba-nav[data-step="1"]').click());
+  await p.waitForTimeout(400);
+  const target = await p.evaluate(() => document.querySelector('.ba-mn').textContent.trim());
+  await p.fill('.ba-task', 'کارِ ماهِ بعد');
+  await p.evaluate(() => { document.querySelectorAll('.ba-d')[3].click(); });
+  await p.waitForTimeout(300);
+  await p.evaluate(() => document.querySelector('.ba-go').click());
+  await p.waitForTimeout(1200);
+  const moved = await p.evaluate(() => ({
+    meta: state.meta.month + ' ' + state.meta.year,
+    has: (state.tasks || []).some(x => x && x.task === 'کارِ ماهِ بعد')
+  }));
+  t(moved.meta !== was, 'افزودن روی ماهِ دیگر، کارتابل را همان‌جا می‌برد',
+    was + ' → ' + moved.meta);
+  t(moved.has, 'و ردیف در همان ماه نشست، نه در ماهی که دیده نمی‌شود');
+  t(target.indexOf(String(moved.meta).split(' ')[0]) >= 0,
+    'و همان ماهی است که تقویم نشان می‌داد', target + ' / ' + moved.meta);
+
   /* بی‌متن چیزی ساخته نمی‌شود */
   await p.click('#bulkAddBtn');
   await p.waitForTimeout(400);
   await p.evaluate(() => { [...document.querySelectorAll('.ba-w')][4].click(); });
   await p.waitForTimeout(300);
+  const before0 = await p.evaluate(() => state.tasks.length);
   await p.evaluate(() => document.querySelector('.ba-go').click());
   await p.waitForTimeout(400);
-  t(await p.evaluate(() => state.tasks.length) === n0, 'بی‌نوشتنِ متن، ردیفی ساخته نمی‌شود');
+  t(await p.evaluate(() => state.tasks.length) === before0,
+    'بی‌نوشتنِ متن، ردیفی ساخته نمی‌شود', before0 + '');
   await p.evaluate(() => document.querySelector('.ba-x').click());
   await p.waitForTimeout(300);
   t(await p.evaluate(() => !!document.querySelector('.ba-box[hidden]')), '«بی‌خیال» پنل را می‌بندد');

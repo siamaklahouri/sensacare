@@ -52,3 +52,38 @@
   .ba-go[disabled]{ opacity:.45; cursor:not-allowed; }
 
   @media print{ .ba-box{ display:none !important; } }
+
+  /* ---------- فلشِ ماه و خانه‌های تازه ---------- */
+  .ba-owner, .ba-note{
+    flex:1 1 180px; min-width:0; font-family:inherit; font-size:12.5px;
+    padding:8px 11px; border:1.5px solid var(--card-border); border-radius:10px;
+    background:var(--paper); color:var(--ink);
+  }
+  .ba-stat, .ba-pri, .ba-rep{
+    flex:0 0 auto; font-family:inherit; font-size:12.5px; padding:8px 10px;
+    border:1.5px solid var(--card-border); border-radius:10px;
+    background:var(--paper); color:var(--ink);
+  }
+  .ba-owner:focus-visible, .ba-note:focus-visible,
+  .ba-stat:focus-visible, .ba-pri:focus-visible, .ba-rep:focus-visible{
+    outline:2px solid var(--brass); outline-offset:1px;
+  }
+
+  .ba-m{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .ba-mn{ flex:1 1 auto; text-align:center; }
+  .ba-nav{
+    flex:0 0 auto; width:26px; height:26px; padding:0; cursor:pointer;
+    font-family:inherit; font-size:14px; line-height:1;
+    border:1.5px solid var(--card-border); border-radius:8px;
+    background:var(--paper); color:var(--ink-soft);
+  }
+  .ba-nav:hover{ border-color:var(--brass); color:var(--brass-ink); }
+  .ba-nav:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+
+  /* وقتی تقویم روی ماهی جز ماهِ باز است — پیش از افزودن می‌گوید چه می‌شود */
+  .ba-other{
+    margin-top:9px; font-size:11.5px; line-height:1.8;
+    color:var(--brass-ink, var(--brass));
+    background:var(--brass-bg); border-radius:9px; padding:7px 10px;
+  }
+  .ba-other[hidden]{ display:none !important; }
