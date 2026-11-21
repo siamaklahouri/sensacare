@@ -65,7 +65,14 @@ for (const [label, w, api, pass, path] of [
   if (!canTest) { t(true, 'امروز روزِ سومِ ماه یا پیش از آن است — سنجشِ عقب‌افتادگی معنا ندارد'); continue; }
 
   await ensureCurrentMonth(BASE, HOST, api, pass);
-  const future = String(Math.min(29, now.jd + 3));
+  /* «کارِ آینده» باید واقعاً در آینده باشد. سقفِ ثابتِ ۲۹ غلط بود:
+     امروز که ۳۰ ماه باشد، روزِ ۲۹ گذشته است و آزمون روی تقویمِ
+     آن روز قرمز می‌شد — نه چون چیزی خراب شده، چون آزمون روزِ
+     بعدی نداشت. ماهِ شمسی ۲۹ تا ۳۱ روز است. */
+  const monthLen = now.jm <= 6 ? 31 : (now.jm <= 11 ? 30 : 29);
+  const futureDay = Math.min(monthLen, now.jd + 3);
+  const hasFuture = futureDay > now.jd;
+  const future = String(futureDay);
   await ensureTasks(BASE, HOST, api, pass,
     ts => ts.some(x => x && x.task === 'کارِ گذشته ۱'), [
       { category: 'آزمون', task: 'کارِ گذشته ۱', owner: '-', deadline: '2', status: 'انجام نشده', priority: 'بالا' },
@@ -91,7 +98,9 @@ for (const [label, w, api, pass, path] of [
   t(m.today === now.jd, 'روزِ امروز را درست می‌خواند', m.today + '/' + now.jd);
   t(m.past === now.jd - 2, 'شمارِ روزهای گذشته درست است', m.past + '');
   t(m.done === 0, 'کارِ انجام‌شده عقب‌افتاده شمرده نمی‌شود');
-  t(m.soon === 0, 'کارِ آینده هم نه');
+  if (hasFuture) t(m.soon === 0, 'کارِ آینده هم نه');
+  else t(true, 'امروز آخرین روزِ ماه است — «کارِ آینده» این ماه وجود ندارد',
+    'روزِ ' + now.jd + ' از ' + monthLen);
   /* شمارِ کل به آن‌چه از قبل در کارتابل هست بستگی دارد (در مجموعهٔ
      کامل، چک‌لیستِ نمونه خودش ده‌ها کارِ گذشته دارد). پس عددِ ثابت
      نمی‌سنجیم؛ می‌سنجیم که شمارش با خودِ ردیف‌ها بخواند. */
@@ -128,7 +137,8 @@ for (const [label, w, api, pass, path] of [
   const find = n => chips.rows.find(x => x.task === n) || {};
   t(find('کارِ گذشته ۱').od && find('کارِ گذشته ۲').od, 'چیپِ دو کارِ گذشته نشانه دارد');
   t(!find('گذشته ولی انجام‌شده').od, 'چیپِ کارِ انجام‌شده نشانه ندارد');
-  t(!find('کارِ آینده').od, 'چیپِ کارِ آینده هم نه');
+  if (hasFuture) t(!find('کارِ آینده').od, 'چیپِ کارِ آینده هم نه');
+  else t(true, 'و چیپش هم — که امروز روزِ آینده‌ای ندارد');
   t(/روز از مهلتش گذشته/.test(find('کارِ گذشته ۱').title), 'و با موشواره می‌گوید چند روز',
     find('کارِ گذشته ۱').title);
   t(chips.red !== chips.bg && chips.red !== 'rgba(0, 0, 0, 0)', 'و قابش رنگِ هشدار دارد', chips.red);

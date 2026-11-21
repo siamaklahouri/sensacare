@@ -178,6 +178,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:cellpopcss}}
 {{PART:rowdragcss}}
 {{PART:tsortcss}}
+{{PART:bulkaddcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -1042,6 +1043,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <!-- «بازنشانی» بالا می‌ماند: کارِ همهٔ جدول است، نه افزودنِ یک
            ردیف. دکمهٔ افزودن مثل بقیهٔ جدول‌ها پایین رفت. -->
       <div class="toolbar">
+        <button class="btn btn-brass btn-sm" id="bulkAddBtn" title="یک کار را روی چند روزِ ماه بگذارید — مثلاً هر چهارشنبه">＋ کار روی چند روز</button>
         <button class="btn btn-ghost" id="resetTasksBtn">بازنشانی چک‌لیست</button>
       </div>
       <div class="tbl-wrap">
@@ -4602,6 +4604,8 @@ function setupToolbar(){
       rid:"t-"+Math.random().toString(36).slice(2,10), since: state.currentMonthKey || "", every:1});
     renderAll(); scheduleSave();
   });
+  const bulk = document.getElementById("bulkAddBtn");
+  if(bulk) bulk.addEventListener("click", ()=>{ if(window.BULKADD) BULKADD.open(); });
   document.getElementById("resetTasksBtn").addEventListener("click", ()=>{
     if(confirm("چک‌لیست به حالت پیش‌فرض بازنشانی شود؟ این کار قابل بازگشت نیست.")){
       state.tasks = deepClone(DEFAULT_STATE.tasks);
@@ -4813,6 +4817,7 @@ window.SEARCH_MAP = [
 {{PART:bell}}
 {{PART:rowdrag}}
 {{PART:tsort}}
+{{PART:bulkadd}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید
