@@ -208,8 +208,19 @@ for (const [label, api, pass, path] of [
   t(await p.evaluate(o => state.tasks.map(t => t.task).join('|') === o, orderWas),
     'و ترتیبِ قبلیِ فهرست هم برگشت — نه فقط ردیف‌ها');
 
-  /* ---- افزودن روی ماهی جز ماهِ باز ---- */
+  /* ---- افزودن روی ماهی جز ماهِ باز ----
+     و مرزِ مهمش: ماهی که این‌جا ساخته می‌شود باید فقط همین کارها را
+     داشته باشد. switchToMonth برای ماهِ تازه کارهای تکرارشوندهٔ ماهِ
+     قبل را می‌آورد — که سرِ جای خودش درست است، ولی این‌جا نه: کاربر
+     گفته «این چند کار را در آذر بگذار»، نه «کلِ آبان را ببر آذر».
+     یک بار همین شد و کارهای انجام‌شدهٔ آبان با وضعیتِ صفرشده در آذر
+     ظاهر شدند. */
   const was = await p.evaluate(() => state.meta.month + ' ' + state.meta.year);
+  const oldNames = await p.evaluate(() => {
+    /* یکی را «انجام شد» می‌کنیم تا اگر منتقل شد، دیده شود */
+    if (state.tasks[0]) state.tasks[0].status = 'انجام شد';
+    return state.tasks.map(t => t.task);
+  });
   await p.click('#bulkAddBtn');
   await p.waitForTimeout(400);
   await p.evaluate(() => document.querySelector('.ba-nav[data-step="1"]').click());
@@ -227,6 +238,14 @@ for (const [label, api, pass, path] of [
   t(moved.meta !== was, 'افزودن روی ماهِ دیگر، کارتابل را همان‌جا می‌برد',
     was + ' → ' + moved.meta);
   t(moved.has, 'و ردیف در همان ماه نشست، نه در ماهی که دیده نمی‌شود');
+  const only = await p.evaluate(o => ({
+    n: state.tasks.length,
+    strays: state.tasks.filter(t => o.indexOf(t.task) >= 0).map(t => t.task)
+  }), oldNames);
+  t(only.n === 1, 'و ماهِ تازه فقط همان کار را دارد', only.n + ' ردیف');
+  t(only.strays.length === 0,
+    'هیچ‌کدام از کارهای ماهِ قبل — انجام‌شده یا نه — به ماهِ تازه نیامدند',
+    only.strays.slice(0, 3).join('، ') || 'هیچ');
   t(target.indexOf(String(moved.meta).split(' ')[0]) >= 0,
     'و همان ماهی است که تقویم نشان می‌داد', target + ' / ' + moved.meta);
 
