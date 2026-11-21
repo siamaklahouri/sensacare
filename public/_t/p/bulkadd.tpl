@@ -289,6 +289,11 @@
       try { switchToMonth(m.name, String(m.jy)); } catch (e) { console.error("[ماه]", e); }
     }
 
+    /* عکسِ کلِ فهرست، پیش از دست‌زدن: هم ردیف‌ها و هم ترتیبشان.
+       «برگرداندن» باید هر دو را برگرداند، وگرنه ردیف‌ها می‌روند و
+       ترتیبِ دستیِ کاربر رفته می‌ماند. */
+    var before = state.tasks.slice();
+
     var made = [];
     got.forEach(function (d) {
       var row = {
@@ -303,15 +308,33 @@
       state.tasks.push(row);
       made.push(row);
     });
+
+    /* و بعد کلِ فهرست به ترتیبِ مهلت مرتب می‌شود. ردیف‌های تازه
+       ته فهرست می‌نشستند و آدم باید دنبالشان می‌گشت — حالا هر کار
+       سرِ روزِ خودش است.
+
+       این بار با خودِ داده، نه با نمای مرتب‌شده (tsort): کاربر گفت
+       «بعد از ثبت به ترتیب تاریخ نشون بده»، یعنی فهرست همان‌طور
+       بماند، نه اینکه با یک کلیک به هم بریزد. برگشتش هم هست: نوارِ
+       پایینِ صفحه ترتیبِ قبلی را دست‌نخورده نگه داشته.
+
+       مرتب‌سازی پایدار است، پس کارهای یک روز ترتیبِ خودشان را
+       نگه می‌دارند. ردیفِ بی‌مهلت ته می‌رود: عددِ صفر اول می‌نشست
+       و فهرست با چند خانهٔ خالی شروع می‌شد. */
+    var dayOf = function (t) {
+      var n = parseInt((t || {}).deadline, 10);
+      return (!isFinite(n) || n <= 0) ? 99 : n;
+    };
+    state.tasks.sort(function (a, b) { return dayOf(a) - dayOf(b); });
+
     close();
     redraw();
     scheduleSave();
     try {
       UNDO.show(faN(made.length) + " ردیف برای «" + txt + "» افزوده شد", function () {
-        made.forEach(function (r) {
-          var i = state.tasks.indexOf(r);
-          if (i >= 0) state.tasks.splice(i, 1);
-        });
+        /* همان فهرستِ پیش از افزودن، با همان ترتیب */
+        state.tasks.length = 0;
+        before.forEach(function (r) { state.tasks.push(r); });
         redraw();
         scheduleSave();
       });

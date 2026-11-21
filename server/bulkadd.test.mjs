@@ -123,6 +123,7 @@ for (const [label, api, pass, path] of [
     'آن‌وقت هشدار هم می‌رود');
 
   const n0 = await p.evaluate(() => state.tasks.length);
+  const orderWas = await p.evaluate(() => state.tasks.map(t => t.task).join('|'));
   await p.fill('.ba-task', 'کارِ آزمونِ هفتگی');
   await p.fill('.ba-owner', 'مسئولِ آزمون');
   await p.selectOption('.ba-pri', 'بالا');
@@ -167,7 +168,10 @@ for (const [label, api, pass, path] of [
   await p.evaluate(() => document.querySelector('.ba-go').click());
   await p.waitForTimeout(800);
   const made = await p.evaluate(n => {
-    const made = state.tasks.slice(n);
+    /* ردیف‌های تازه را با نامشان پیدا می‌کنیم، نه با جایشان: فهرست
+       بعد از افزودن به ترتیبِ مهلت مرتب می‌شود، پس «آخرِ آرایه»
+       دیگر یعنی «تازه‌ترین» نیست. */
+    const made = state.tasks.filter(x => x && x.task === 'کارِ آزمونِ هفتگی');
     return {
       count: made.length,
       names: made.every(x => x.task === 'کارِ آزمونِ هفتگی'),
@@ -188,10 +192,21 @@ for (const [label, api, pass, path] of [
   t(made.closed, 'پنل بسته شد');
   t(made.bar, 'و نوارِ برگرداندن آمد');
 
+  /* و کلِ فهرست به ترتیبِ مهلت مرتب شده باشد — نه فقط ردیف‌های تازه.
+     ردیفی که ته فهرست بنشیند، آدم باید دنبالش بگردد. */
+  const sorted = await p.evaluate(() => {
+    const d = t => { const n = parseInt(t.deadline, 10); return (!isFinite(n) || n <= 0) ? 99 : n; };
+    const all = state.tasks.map(d);
+    return { all: all, ok: all.every((x, i) => i === 0 || all[i - 1] <= x) };
+  });
+  t(sorted.ok, 'و کلِ فهرست به ترتیبِ مهلت مرتب شد', sorted.all.join('، '));
+
   await p.evaluate(() => document.querySelector('.ub-go').click());
   await p.waitForTimeout(600);
   t(await p.evaluate(() => state.tasks.length) === n0,
     'و کلِ دسته با یک کلیک برگشت');
+  t(await p.evaluate(o => state.tasks.map(t => t.task).join('|') === o, orderWas),
+    'و ترتیبِ قبلیِ فهرست هم برگشت — نه فقط ردیف‌ها');
 
   /* ---- افزودن روی ماهی جز ماهِ باز ---- */
   const was = await p.evaluate(() => state.meta.month + ' ' + state.meta.year);
