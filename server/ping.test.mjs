@@ -12,9 +12,30 @@
 import { launch, calm } from './pw.mjs';
 import { readFileSync } from 'node:fs';
 import { okHost, okPort, probe, telnet } from '../src/ping.js';
+import net from 'node:net';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const HOST = 'sltech.ir', PORT = new URL(BASE).port || '80';
+
+/* یک دستگاهِ کندگو برای آزمونِ «زنده» بودن: چهار خط، هر ۴۵۰
+   میلی‌ثانیه یکی. اگر جریان تکه‌تکه نرسد و سرور تا آخر نگهش دارد،
+   همه‌اش یکجا در پایان می‌آید و این آزمون می‌افتد — همان چیزی که
+   «زنده» بودن را بی‌معنا می‌کند. */
+const chatty = (gap, max) => net.createServer(s => {
+  let n = 0;
+  const tick = setInterval(() => {
+    n++;
+    try { s.write('خطِ ' + n + '\n'); } catch (e) { }
+    if (max && n >= max) { clearInterval(tick); try { s.end(); } catch (e) { } }
+  }, gap);
+  s.on('close', () => clearInterval(tick));
+  s.on('error', () => clearInterval(tick));
+});
+const slow = chatty(450, 4);          /* چهار خط و تمام */
+const endless = chatty(600, 0);       /* تا خودِ کاربر نبُرد، حرف می‌زند */
+await new Promise(r => slow.listen(0, '127.0.0.1', r));
+await new Promise(r => endless.listen(0, '127.0.0.1', r));
+const SLOW = slow.address().port, ENDLESS = endless.address().port;
 
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -99,6 +120,37 @@ console.log('===== مسیرِ سرور =====');
     body: JSON.stringify({ host: '127.0.0.1' }) });
   t(telNoPort.status === 400, 'و بی پورت هم کاری نمی‌کند — تلنت بی پورت معنا ندارد',
     telNoPort.status + '');
+
+  /* ---- جریانِ زنده ---- */
+  const live = await fetch(BASE + '/api/kartabl/telnet/live', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+    body: JSON.stringify({ host: '127.0.0.1', port: SLOW, send: '' }) });
+  t(live.status === 200 && /text\/plain/.test(live.headers.get('content-type') || ''),
+    'مسیرِ تلنتِ زنده متنِ خام می‌دهد',
+    live.status + ' ' + live.headers.get('content-type'));
+  const at0 = Date.now(), parts = [];
+  {
+    const rd = live.body.getReader(), dec = new TextDecoder('utf-8');
+    for (;;) {
+      const r = await rd.read();
+      if (r.done) break;
+      parts.push({ at: Date.now() - at0, txt: dec.decode(r.value, { stream: true }) });
+    }
+  }
+  const whole = parts.map(c => c.txt).join('');
+  t(/وصل شد/.test((parts[0] || {}).txt || ''), 'اولین چیزی که می‌رسد «وصل شد» است',
+    JSON.stringify((parts[0] || {}).txt || ''));
+  t(parts.length >= 3, 'و متن تکه‌تکه می‌رسد، نه یکجا در پایان', parts.length + ' تکه');
+  t(parts.length > 1 && parts[parts.length - 1].at - parts[0].at > 700,
+    'یعنی واقعاً زنده است',
+    'فاصلهٔ اولین و آخرین تکه ' +
+      ((parts[parts.length - 1] || {}).at - (parts[0] || {}).at) + ' میلی‌ثانیه');
+  t(/خطِ 1/.test(whole) && /خطِ 4/.test(whole) && /اتصال بسته شد/.test(whole),
+    'و تا بسته شدنِ اتصال ادامه می‌دهد', whole.replace(/\s+/g, ' ').trim());
+  const liveBad = await fetch(BASE + '/api/kartabl/telnet/live', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+    body: JSON.stringify({ host: '127.0.0.1; id', port: 80 }) });
+  t(liveBad.status === 400, 'و نشانیِ آلوده اینجا هم رد می‌شود', liveBad.status + '');
 
   const anon = await fetch(BASE + '/api/kartabl/ping', { method: 'POST',
     headers: { 'Content-Type': 'application/json', Host: HOST },
@@ -198,6 +250,45 @@ console.log('===== خودِ بخش =====');
   await p.waitForTimeout(300);
   t(await p.evaluate(() => !!document.querySelector('.tl-ov[hidden]')), 'و بسته می‌شود');
 
+  /* ---- و زنده بودنش، روی صفحه ---- */
+  await p.evaluate(port => {
+    state.pingHosts[2] = { name: 'کندگو', host: '127.0.0.1', port: Number(port) };
+    PING.render();
+  }, ENDLESS);
+  await p.waitForTimeout(300);
+  await p.evaluate(() => document.querySelectorAll('.pg-tel')[2].click());
+  await p.waitForTimeout(250);
+  await p.evaluate(() => {
+    document.querySelector('#tlSend').value = '';
+    document.querySelector('.tl-go').click();
+  });
+  await p.waitForTimeout(800);
+  const liveA = await p.evaluate(() => ({
+    n: ((document.querySelector('.tl-out') || {}).textContent || '').length,
+    btn: ((document.querySelector('.tl-go') || {}).textContent || '').trim()
+  }));
+  await p.waitForTimeout(1300);
+  const liveB = await p.evaluate(() =>
+    ((document.querySelector('.tl-out') || {}).textContent || '').length);
+  t(liveA.n > 0 && liveB > liveA.n, 'متن همان‌طور که می‌رسد روی صفحه زیاد می‌شود',
+    liveA.n + ' ← ' + liveB + ' نویسه');
+  t(liveA.btn === 'قطع', 'و تا وصل است، دکمه «قطع» می‌شود', liveA.btn);
+
+  await p.evaluate(() => document.querySelector('.tl-go').click());
+  await p.waitForTimeout(400);
+  const cut = await p.evaluate(() => ({
+    txt: (document.querySelector('.tl-out') || {}).textContent || '',
+    btn: ((document.querySelector('.tl-go') || {}).textContent || '').trim()
+  }));
+  t(/قطع شد/.test(cut.txt) && cut.btn === 'اتصال', 'و «قطع» همان‌جا می‌بُرد', cut.btn);
+  const frozen = cut.txt.length;
+  await p.waitForTimeout(1000);
+  t(await p.evaluate(() =>
+      ((document.querySelector('.tl-out') || {}).textContent || '').length) === frozen,
+    'و بعدش دیگر چیزی اضافه نمی‌شود', frozen + ' نویسه');
+  await p.evaluate(() => document.querySelector('.tl-x').click());
+  await p.waitForTimeout(250);
+
   /* افزودن و حذف */
   const n0 = await p.evaluate(() => state.pingHosts.length);
   await p.fill('#pgNewName', 'دستگاهِ تازه');
@@ -239,5 +330,6 @@ console.log('===== خودِ بخش =====');
   await b.close();
 }
 
+slow.close(); endless.close();
 console.log(ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

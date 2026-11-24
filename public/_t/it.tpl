@@ -941,7 +941,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
-      <button class="navbtn" data-view="ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
+      <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
@@ -1293,7 +1293,7 @@ window.KARTABL_IDB      = "{{IDB}}";
     </section>
 
     <!-- PING -->
-    <section class="view" id="view-ping">
+    <section class="view" id="view-ping" data-feat="view:ping">
       <div class="section-title">📡 پینگ دستگاه‌ها</div>
       <div class="section-sub">نشانی‌های مهم را این‌جا نگه دارید و با یک کلیک ببینید زنده‌اند یا نه — همه با هم، یا تک‌تک</div>
       <div class="toolbar">
@@ -1519,14 +1519,6 @@ const DEFAULT_STATE = {
   meta:{ month:"", year:"" },
   remoteChecks:{},
   remoteCheckDates: Array.from({length:15}, ()=>""),
-  /* نشانی‌هایی که با یک کلیک پینگ می‌شوند. پورتِ ۴۳۷۰ پورتِ
-     دستگاه‌های حضور و غیاب است؛ خالی گذاشتنش یعنی پینگِ معمولی. */
-  pingHosts: [
-    { name:"شهرک نفت",   host:"93.114.110.74",  port:4370 },
-    { name:"دفتر اصفهان", host:"37.255.220.75",  port:4370 },
-    { name:"ولنجک",      host:"46.100.46.231",  port:4370 },
-    { name:"دفتر مرکزی",  host:"192.168.1.201",  port:4370 }
-  ],
   /* شغلِ انتخاب‌شده اگر چک‌لیستِ خودش را داشته باشد، همان می‌نشیند. */
   tasks: (window.KARTABL_JOB && window.KARTABL_JOB.tasks)
     ? JSON.parse(JSON.stringify(window.KARTABL_JOB.tasks))
@@ -4875,6 +4867,14 @@ window.SEARCH_MAP = [
 {{PART:rowdrag}}
 {{PART:tsort}}
 {{PART:bulkadd}}
+/* دستگاه‌های همین کارتابل. جزوِ پینگ مشترک است و دانه را از این‌جا
+   می‌گیرد؛ کارتابل‌های دیگر دانه ندارند و از صفر شروع می‌کنند. */
+window.PING_SEED = [
+  { name:"شهرک نفت",   host:"93.114.110.74", port:4370 },
+  { name:"دفتر اصفهان", host:"37.255.220.75", port:4370 },
+  { name:"ولنجک",      host:"46.100.46.231", port:4370 },
+  { name:"دفتر مرکزی",  host:"192.168.1.201", port:4370 }
+];
 {{PART:ping}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------

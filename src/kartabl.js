@@ -28,7 +28,7 @@ import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
 import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNames,
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
-import { probe, telnet, okHost, okPort } from './ping.js';
+import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -132,7 +132,8 @@ export const VIEWS = {
     /* گزارشِ Veeam از اسکریپتی روی شبکهٔ شرکت می‌آید، نه از خودِ
        کارتابل: سرورِ ما به شبکهٔ داخلی دسترسی ندارد. بخشش این‌جاست تا
        ادمین بتواند بدهد یا پس بگیرد، مثل بقیهٔ بخش‌ها. */
-    { id: 'veeam',     label: 'VeeamBackup' }
+    { id: 'veeam',     label: 'VeeamBackup' },
+    { id: 'ping',      label: 'پینگ دستگاه‌ها' }
   ],
   fin: [
     { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },
@@ -144,7 +145,8 @@ export const VIEWS = {
     { id: 'budget',          label: 'بودجه‌بندی ماهانه' },
     { id: 'parties',         label: 'طرف‌حساب‌ها' },
     { id: 'datetools',       label: 'تبدیل' },
-    { id: 'report',          label: 'گزارش‌ساز' }
+    { id: 'report',          label: 'گزارش‌ساز' },
+    { id: 'ping',            label: 'پینگ دستگاه‌ها' }
   ],
   /* «عمومی» از همان قالبِ IT ساخته می‌شود، پس همان بخش‌ها را هم
      می‌تواند داشته باشد — مثلاً هلپ‌دسکی که به سرورها و MVPN کار دارد.
@@ -2339,6 +2341,22 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const port = (raw === '' || raw === null || raw === undefined) ? 0 : parseInt(raw, 10);
     if (port && !okPort(port)) return bad('پورت درست نیست', 400);
     return json(await probe(host, port, 2500));
+  }
+
+  /* تلنتِ زنده: هرچه دستگاه می‌گوید، همان لحظه می‌رسد.
+     «X-Accel-Buffering: no» برای پروکسی‌هایی است که وگرنه تا پایانِ
+     پاسخ همه‌چیز را نگه می‌دارند — و آن‌وقت «زنده» بودنش از بین
+     می‌رفت. */
+  if (p === '/telnet/live' && m === 'POST') {
+    const host = String(body.host || '').trim();
+    if (!okHost(host)) return bad('نشانی درست نیست', 400);
+    const port = parseInt(body.port, 10);
+    if (!okPort(port)) return bad('پورت درست نیست', 400);
+    return new Response(telnetStream(host, port, body.send, { idle: 12000 }), {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8',
+                 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
+                 'X-Accel-Buffering': 'no' }
+    });
   }
 
   /* تلنت: یک رفت‌وبرگشت، نه یک پایانهٔ زنده. */

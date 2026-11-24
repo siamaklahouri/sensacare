@@ -27,12 +27,10 @@ var PING = (function () {
      DEFAULT_STATE فقط به کارتابلِ نوساز می‌رسد. پس بارِ اول همین‌جا
      پُر می‌شود — ولی فقط وقتی کلید اصلاً نبوده باشد. فهرستِ خالی
      یعنی کاربر خودش پاکشان کرده و نباید دوباره برگردند. */
-  var FIRST = [
-    { name: 'شهرک نفت', host: '93.114.110.74', port: 4370 },
-    { name: 'دفتر اصفهان', host: '37.255.220.75', port: 4370 },
-    { name: 'ولنجک', host: '46.100.46.231', port: 4370 },
-    { name: 'دفتر مرکزی', host: '192.168.1.201', port: 4370 }
-  ];
+  /* فهرستِ اولیه — فقط اگر قالب یکی داده باشد. کارتابلِ فنی
+     دستگاه‌های خودش را می‌دهد؛ بقیه از صفر شروع می‌کنند، چون
+     نشانی‌های یک شرکت به کارتابلِ دیگری ربطی ندارد. */
+  var FIRST = Array.isArray(window.PING_SEED) ? window.PING_SEED : [];
 
   function rows() {
     if (!Array.isArray(state.pingHosts)) {
@@ -243,11 +241,15 @@ var PING = (function () {
       '</div>';
     document.body.appendChild(tel);
     tel.addEventListener('click', function (e) {
-      if (e.target.closest('.tl-x') || e.target === tel) { tel.hidden = true; return; }
+      if (e.target.closest('.tl-x') || e.target === tel) {
+        if (telStop) telStop();
+        tel.hidden = true;
+        return;
+      }
       if (e.target.closest('.tl-go')) run();
     });
     tel.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') tel.hidden = true;
+      if (e.key === 'Escape') { if (telStop) telStop(); tel.hidden = true; }
       if (e.key === 'Enter' && e.target.id === 'tlSend') { e.preventDefault(); run(); }
     });
     return tel;
@@ -268,39 +270,80 @@ var PING = (function () {
     try { el.querySelector('#tlSend').focus(); } catch (e) { }
   }
 
+  /* اتصالِ زنده: هرچه می‌رسد همان لحظه روی صفحه می‌آید.
+
+     با یک جوابِ یک‌جا، دستگاهی که دو ثانیه بعد حرف می‌زند اصلاً
+     دیده نمی‌شد — یا بدتر، نیمه‌کاره دیده می‌شد. حالا جریان خوانده
+     می‌شود و هر تکه چسبانده می‌شود، و تا وقتی کاربر پایینِ قاب است
+     خودش می‌لغزد؛ اگر بالا رفته باشد و داشته باشد می‌خوانَد، دیگر
+     زیرِ دستش نمی‌پرد. */
+  var telStop = null;
+
   function run() {
     if (!telRow) return;
     var el = telBox();
     var out = el.querySelector('.tl-out');
+    var go = el.querySelector('.tl-go');
     var port = parseInt(telRow.port, 10);
     if (!port) {
       out.className = 'tl-out is-bad';
       out.textContent = 'این نشانی پورت ندارد. تلنت بی پورت معنا ندارد — پورتش را در جدول بنویسید.';
       return;
     }
+    if (telStop) { telStop(); return; }
+
     out.className = 'tl-out is-wait';
-    out.textContent = 'در حال اتصال…';
-    fetch(KARTABL_API + '/telnet', {
+    out.textContent = '• در حال اتصال…\n';
+    go.textContent = 'قطع';
+
+    var ac = (typeof AbortController === 'function') ? new AbortController() : null;
+    var over = function (cls) {
+      telStop = null;
+      go.textContent = 'اتصال';
+      if (cls) out.className = 'tl-out ' + cls;
+    };
+    telStop = function () {
+      try { if (ac) ac.abort(); } catch (e) { }
+      out.textContent += '\n• قطع شد\n';
+      over('tl-out is-ok');
+    };
+
+    fetch(KARTABL_API + '/telnet/live', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ host: telRow.host, port: port,
-                             send: el.querySelector('#tlSend').value || '' })
-    }).then(function (res) { return res.json().catch(function () { return {}; }); })
-      .then(function (j) {
-        if (!j.ok) {
+                             send: el.querySelector('#tlSend').value || '' }),
+      signal: ac ? ac.signal : undefined
+    }).then(function (res) {
+      if (!res.ok || !res.body || !res.body.getReader) {
+        return res.text().then(function (txt) {
           out.className = 'tl-out is-bad';
-          out.textContent = j.error || 'وصل نشد';
-          return;
-        }
-        out.className = 'tl-out is-ok';
-        out.textContent = j.text
-          ? j.text
-          : 'وصل شد (' + fa(Math.round(j.ms || 0)) + ' میلی‌ثانیه) — دستگاه چیزی نگفت.';
-      })
-      .catch(function () {
-        out.className = 'tl-out is-bad';
-        out.textContent = 'به سرور نرسید';
-      });
+          try { txt = (JSON.parse(txt) || {}).error || txt; } catch (e) { }
+          out.textContent = txt || 'وصل نشد';
+          over('');
+        });
+      }
+      out.className = 'tl-out is-ok';
+      out.textContent = '';
+      var reader = res.body.getReader();
+      var dec = new TextDecoder('utf-8');
+      var pump = function () {
+        return reader.read().then(function (r) {
+          if (r.done) { over(''); return; }
+          /* تا وقتی کاربر تهِ قاب است، خودش می‌لغزد */
+          var stick = out.scrollTop + out.clientHeight >= out.scrollHeight - 24;
+          out.textContent += dec.decode(r.value, { stream: true });
+          if (stick) out.scrollTop = out.scrollHeight;
+          return pump();
+        });
+      };
+      return pump();
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') return;
+      out.className = 'tl-out is-bad';
+      out.textContent += '\n• به سرور نرسید\n';
+      over('');
+    });
   }
 
   function nowClock() {

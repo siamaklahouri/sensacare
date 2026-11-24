@@ -161,6 +161,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowdragcss}}
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
+{{PART:pingcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -683,6 +684,7 @@ window.KARTABL_IDB      = "{{IDB}}";
     <button class="navbtn" data-view="bank" data-feat="view:bank"><span class="ic">🏦</span> حساب‌های بانکی</button>
     <button class="navbtn" data-view="budget" data-feat="view:budget"><span class="ic">📐</span> بودجه‌بندی ماهانه</button>
     <button class="navbtn" data-view="parties" data-feat="view:parties"><span class="ic">👥</span> طرف‌حساب‌ها</button>
+    <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
     <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
     <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
@@ -1169,6 +1171,44 @@ window.KARTABL_IDB      = "{{IDB}}";
             <tbody id="partiesBody"></tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- PING -->
+    <section class="view" id="view-ping" data-feat="view:ping">
+      <div class="section-title">📡 پینگ دستگاه‌ها</div>
+      <div class="section-sub">نشانی‌های مهم را این‌جا نگه دارید و با یک کلیک ببینید زنده‌اند یا نه — همه با هم، یا تک‌تک</div>
+      <div class="toolbar">
+        <button class="btn btn-brass btn-sm" id="pingAllBtn" title="همهٔ نشانی‌ها را با هم بررسی کن">⚡ پینگ همه</button>
+      </div>
+      <div class="cards" id="pingCards"></div>
+      <div class="panel">
+        <h3>📡 نشانی‌ها</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:22%;">نام</th>
+              <th style="width:22%;">نشانی (IP یا نام)</th>
+              <th style="width:90px;">پورت</th>
+              <th>وضعیت</th>
+              <th style="width:90px;">آخرین بررسی</th>
+              <th style="width:76px;"></th>
+              <th style="width:40px;" class="col-del"></th>
+            </tr></thead>
+            <tbody id="pingBody"></tbody>
+          </table>
+        </div>
+        <div class="pg-add">
+          <input type="text" id="pgNewName" class="pg-n" placeholder="نام — مثلاً دفتر مرکزی"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="pgNewHost" class="pg-h" placeholder="نشانی — مثلاً 192.168.1.201" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="pgNewPort" class="pg-p" placeholder="پورت" data-ascii inputmode="numeric"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
+        </div>
+        <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
       </div>
     </section>
 
@@ -4157,6 +4197,7 @@ function renderEverything(){
   renderExpenses();
   renderBank();
   renderBudget();
+  try{ if(window.PING) PING.wire(); }catch(e){ console.error(e); }
 }
 {{PART:noautofill}}
 /* ================= Navigation & init ================= */
@@ -4418,6 +4459,7 @@ window.SEARCH_MAP = [
 {{PART:rowdrag}}
 {{PART:tsort}}
 {{PART:bulkadd}}
+{{PART:ping}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید
