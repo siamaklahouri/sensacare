@@ -60,14 +60,27 @@
     html.kb-printing .kb-print > .section-title,
     html.kb-printing .kb-print > .section-sub{ display:none !important; }
 
+    /* سربرگ: دو سطر، شکلِ سربرگِ نامه. آرم و نام سمتِ راست، تاریخ و
+       شمارِ ردیف‌ها سمتِ چپ، یک خط زیرشان. */
     html.kb-printing .kb-phead{
-      display:block; margin:0 0 14px; padding-bottom:10px;
-      border-bottom:1.5px solid #666; break-inside:avoid; page-break-inside:avoid;
+      display:flex !important; align-items:flex-end; justify-content:space-between;
+      gap:14px; margin:0 0 10px; padding-bottom:7px;
+      border-bottom:1.2px solid #555; break-inside:avoid; page-break-inside:avoid;
     }
-    html.kb-printing .kb-phead-who{ font-size:10.5px; color:#555; letter-spacing:.02em; }
-    html.kb-printing .kb-phead-ttl{ font-size:16px; font-weight:800; margin-top:2px; color:#000; }
-    html.kb-printing .kb-phead-sub{ font-size:11px; color:#444; margin-top:3px; }
-    html.kb-printing .kb-phead-foot{ font-size:10px; color:#666; margin-top:6px; }
+    html.kb-printing .kb-ph-id{ display:flex; align-items:center; gap:9px; min-width:0; }
+    /* آرم باید روی کاغذ هم رنگی بیفتد، وگرنه کروم آن را خاکستری
+       می‌کند و نشانِ شرکت لکه می‌شود. */
+    html.kb-printing .kb-ph-logo{
+      width:30px; height:30px; flex:none; border-radius:50%; object-fit:cover;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    html.kb-printing .kb-phead-who{ font-size:9.5px; color:#555; letter-spacing:.02em; }
+    html.kb-printing .kb-phead-ttl{ font-size:15px; font-weight:800; margin-top:1px; color:#000; }
+    /* زیرعنوان متنِ راهنمای صفحه است، نه خبر: روی کاغذ نمی‌آید. */
+    html.kb-printing .kb-phead-sub{ display:none !important; }
+    html.kb-printing .kb-ph-meta{
+      font-size:9.5px; color:#666; text-align:left; flex:none; line-height:1.7;
+    }
 
     /* ---- چیزهایی که روی کاغذ کار نمی‌کنند ----
        دکمه، کادرِ افزودن، دستهٔ کشیدن، سوییچ. این‌ها روی صفحه ابزارند و
@@ -178,9 +191,14 @@
        وسطشان. کاربر گفت «انگار کشیده شده‌اند» و درست می‌گفت.
        حالا جدول عرضِ طبیعیِ خودش را می‌گیرد و فقط اگر از برگه
        بزند بیرون، تا همان‌جا جمع می‌شود. */
-    html.kb-printing .kb-print table{
-      width:auto !important; max-width:100% !important;
-    }
+    /* و جدول تمامِ عرضِ برگه را می‌گیرد.
+
+       یک بار عرضِ طبیعی‌اش را دادم تا «کشیده» نباشد، و نتیجه‌اش
+       بدتر شد: جدولِ کوتاه می‌چسبید به لبهٔ راست و نیمِ چپِ برگه
+       سفید می‌ماند. برگهٔ گزارش، ستونِ خالی کنارش نمی‌خواهد. آنچه
+       «کشیده» نشانش می‌داد، فاصله‌های بزرگِ داشبورد بود که جدا
+       درست شد. */
+    html.kb-printing .kb-print table{ width:100% !important; }
     /* ستونِ چسبنده روی کاغذ معنی ندارد و سایه‌اش روی چاپ خاکستری می‌شود */
     html.kb-printing .kb-print td.server-name,
     html.kb-printing .kb-print th.server-name{ position:static !important; }

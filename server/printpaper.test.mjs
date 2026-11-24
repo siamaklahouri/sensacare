@@ -151,6 +151,44 @@ for (const [label, api, pass, path, view] of [
     };
   });
   t(paper.addRow, 'ردیفِ افزودن روی کاغذ نمی‌رود');
+
+  /* ---- سربرگِ کاغذ ----
+     چهار سطرِ چپ‌چین بود و یکی‌شان متنِ راهنمای صفحه: «هر ردیف را
+     ویرایش کنید…» — کسی که برگه دستش است چیزی را ویرایش نمی‌کند.
+     حالا دو سطر است با آرمِ همان کارتابل. */
+  const head = await p.evaluate(() => {
+    const h = document.querySelector('.kb-phead');
+    if (!h) return null;
+    const img = h.querySelector('.kb-ph-logo');
+    const sub = h.querySelector('.kb-phead-sub');
+    const tbl = document.querySelector('.kb-print table');
+    const box = tbl ? (tbl.closest('.panel') || tbl.parentElement) : null;
+    return {
+      logo: img ? (img.getAttribute('src') || '') : '',
+      logoShown: !!img && getComputedStyle(img).display !== 'none',
+      who: (h.querySelector('.kb-phead-who') || {}).textContent || '',
+      ttl: (h.querySelector('.kb-phead-ttl') || {}).textContent || '',
+      meta: (h.querySelector('.kb-ph-meta') || {}).textContent || '',
+      subShown: !!sub && getComputedStyle(sub).display !== 'none',
+      lines: h.innerText.split('\n').filter(x => x.trim()).length,
+      fill: (tbl && box) ? Math.round(tbl.getBoundingClientRect().width /
+            Math.max(1, box.clientWidth) * 100) : 0
+    };
+  });
+  t(!!head, 'سربرگ روی کاغذ هست');
+  if (head) {
+    t(head.logoShown && /\.(png|jpe?g|svg|webp)(\?|$)/i.test(head.logo),
+      'و آرمِ کارتابل رویش است', head.logo || '—');
+    t(!!head.who && !!head.ttl, 'با نامِ کارتابل و عنوانِ بخش',
+      head.who + ' / ' + head.ttl);
+    t(/ساعت/.test(head.meta), 'و تاریخ و ساعت سمتِ دیگر', head.meta.replace(/\s+/g, ' '));
+    t(!head.subShown, 'و متنِ راهنمای صفحه روی کاغذ نمی‌آید');
+    t(head.lines <= 4, 'سربرگ کوتاه است، نه چهار سطرِ پشتِ هم', head.lines + ' سطر');
+    /* و جدول تمامِ عرض را می‌گیرد: یک بار عرضِ طبیعی دادم و جدولِ
+       کوتاه چسبید به لبهٔ راست و نیمِ چپِ برگه سفید ماند. */
+    t(head.fill >= 90, 'و جدول تمامِ عرضِ برگه را می‌گیرد، نه یک گوشه را',
+      head.fill + '٪');
+  }
   t(paper.chip, 'ولی چیپِ مهلت می‌ماند', paper.chipText);
   t(/^[۰-۹]/.test(paper.chipText), 'و خودِ عدد را می‌گوید، بی شکلکِ تقویم', paper.chipText);
   t(paper.chipBorder === '0px', 'و قابِ دکمه‌ای ندارد', paper.chipBorder);

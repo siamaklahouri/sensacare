@@ -109,31 +109,68 @@
     catch (e) { return String(n); }
   }
 
+  /* آرمِ همان کارتابل، از خودِ صفحه — نه نشانیِ ثابت در کد. اگر
+     فردا آرم عوض شود، کاغذ هم با آن عوض می‌شود. */
+  function logoSrc() {
+    var img = document.querySelector('.topbar .brand img.mark, .brand img.mark');
+    return img && img.getAttribute('src') ? img.getAttribute('src') : '';
+  }
+
+  /* ---------- سربرگِ کاغذ ----------
+     چهار سطرِ چپ‌چین بود: نامِ کارتابل، عنوان، زیرعنوان، و یک سطرِ
+     اطلاعات. زیرعنوان متنِ راهنمای صفحه است («هر ردیف را ویرایش
+     کنید یا وظیفهٔ جدید اضافه کنید») و روی کاغذ معنایی ندارد —
+     کسی که برگه را دستش گرفته چیزی را ویرایش نمی‌کند.
+
+     حالا دو سطر است و شکلِ سربرگِ نامه دارد: آرم و نامِ کارتابل و
+     عنوانِ بخش سمتِ راست، تاریخ و ساعت و شمارِ ردیف‌ها سمتِ چپ، و
+     یک خط زیرشان. */
   function makeHead(v, i, total) {
     var d = document.createElement('div');
     d.className = 'kb-phead';
+
+    var left = document.createElement('div');
+    left.className = 'kb-ph-id';
+
+    var src = logoSrc();
+    if (src) {
+      var img = document.createElement('img');
+      img.className = 'kb-ph-logo';
+      img.setAttribute('src', src);
+      img.setAttribute('alt', '');
+      left.appendChild(img);
+    }
+
+    var words = document.createElement('div');
     var who = document.createElement('div');
     who.className = 'kb-phead-who';
     who.textContent = noEmoji(kartablName());
     var h = document.createElement('div');
     h.className = 'kb-phead-ttl';
     h.textContent = noEmoji(titleOf(v));
-    d.appendChild(who);
-    d.appendChild(h);
-    var sub = subOf(v), note = noteOf(v);
-    if (sub) {
-      var s = document.createElement('div');
-      s.className = 'kb-phead-sub';
-      s.textContent = noEmoji(sub);
-      d.appendChild(s);
+    words.appendChild(who);
+    words.appendChild(h);
+    left.appendChild(words);
+
+    var meta = document.createElement('div');
+    meta.className = 'kb-ph-meta';
+    var when = document.createElement('div');
+    when.textContent = now();
+    meta.appendChild(when);
+    var note = noteOf(v);
+    var tail = (note ? note : '') +
+      (total > 1 ? (note ? ' — ' : '') + 'بخشِ ' + faNum(i + 1) + ' از ' + faNum(total) : '');
+    if (tail) {
+      var t2 = document.createElement('div');
+      t2.textContent = tail;
+      meta.appendChild(t2);
     }
-    var foot = document.createElement('div');
-    foot.className = 'kb-phead-foot';
-    foot.textContent = (note ? note + ' — ' : '') + now() +
-      (total > 1 ? ' — بخشِ ' + faNum(i + 1) + ' از ' + faNum(total) : '');
-    d.appendChild(foot);
+
+    d.appendChild(left);
+    d.appendChild(meta);
     return d;
   }
+
 
   /* کاغذِ خوابیده یا ایستاده را فقط «@page» تعیین می‌کند و @page شرطی
      نمی‌شود — پس همان لحظه یک شیوه‌نامهٔ کوچک می‌سازیم و بعدِ چاپ
