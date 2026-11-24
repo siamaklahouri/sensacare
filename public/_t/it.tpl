@@ -1298,8 +1298,8 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="section-sub">نشانی‌های مهم را این‌جا نگه دارید و با یک کلیک ببینید زنده‌اند یا نه — همه با هم، یا تک‌تک</div>
       <div class="toolbar">
         <button class="btn btn-brass btn-sm" id="pingAllBtn" title="همهٔ نشانی‌ها را با هم بررسی کن">⚡ پینگ همه</button>
-        <div class="pg-sum" id="pingSum"></div>
       </div>
+      <div class="cards" id="pingCards"></div>
       <div class="panel">
         <h3>📡 نشانی‌ها</h3>
         <div class="tbl-wrap">

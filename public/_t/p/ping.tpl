@@ -75,30 +75,47 @@ var PING = (function () {
            '<span class="pg-why">' + escapeHtml(s.error || 'پاسخی نداد') + '</span>';
   }
 
-  /* یک خطِ خلاصه بالای جدول: چندتا زنده، چندتا نه. */
-  function sum() {
-    var el = document.getElementById('pingSum');
-    if (!el) return;
-    var list = rows(), up = 0, down = 0, idle = 0, wait = 0;
+  /* کارت‌های بالای بخش — همان زبانِ کارت‌های داشبورد، تا این بخش
+     مهمانِ صفحه به نظر نرسد. چهار عدد که با یک نگاه خوانده می‌شوند:
+     چندتا، چندتا زنده، چندتا خاموش، و میانگینِ پاسخ.
+
+     میانگین فقط از زنده‌ها گرفته می‌شود؛ خاموش‌ها زمانِ پاسخ ندارند
+     و واردکردنشان میانگین را بی‌معنی می‌کرد. */
+  function tally() {
+    var list = rows(), up = 0, down = 0, idle = 0, wait = 0, sum = 0;
     list.forEach(function (r) {
       var s = seen[key(r)];
-      if (!s) idle++;
-      else if (s.wait) wait++;
-      else if (s.ok) up++;
-      else down++;
+      if (!s) { idle++; return; }
+      if (s.wait) { wait++; return; }
+      if (s.ok) { up++; sum += Number(s.ms) || 0; return; }
+      down++;
     });
-    if (!list.length) { el.innerHTML = ''; return; }
-    var bit = function (n, cls, txt) {
-      return n ? '<span class="pg-sum-it ' + cls + '"><b>' + fa(n) + '</b> ' + txt + '</span>' : '';
-    };
-    el.innerHTML = bit(up, 'pg-s-up', 'زنده') + bit(down, 'pg-s-down', 'خاموش') +
-                   bit(wait, 'pg-s-wait', 'در حال بررسی') + bit(idle, 'pg-s-idle', 'بررسی نشده');
+    return { n: list.length, up: up, down: down, idle: idle, wait: wait,
+             avg: up ? Math.round(sum / up) : 0 };
   }
 
-  /* ساعتِ آخرین بررسی. این تابع یک بار موقعِ بازنویسی حذف شد و
-     چون در صفحه گلوبالی به همین نام هست، خطایی نداد — فقط ستون
-     «[object Observable]» نشان می‌داد. درسش: نامِ کوتاه در دامنهٔ
-     مشترک، خطا را ساکت می‌کند. */
+  function cards() {
+    var el = document.getElementById('pingCards');
+    if (!el) return;
+    var t = tally();
+    if (!t.n) { el.innerHTML = ''; return; }
+    var card = function (tone, ic, lbl, val) {
+      return '<div class="stat ' + tone + '" data-ic="' + ic + '">' +
+             '<div class="lbl">' + ic + ' ' + lbl + '</div>' +
+             '<div class="val">' + val + '</div></div>';
+    };
+    el.innerHTML =
+      card('blue', '📡', 'همهٔ نشانی‌ها', fa(t.n)) +
+      card('green', '🟢', 'زنده', fa(t.up)) +
+      card('red', '🔴', 'خاموش', fa(t.down)) +
+      card('teal', '⚡', 'میانگین پاسخ',
+        t.up ? fa(t.avg) + '<span class="pg-unit">ms</span>' : '—');
+  }
+
+  /* ساعتِ آخرین بررسی. این یک بار موقعِ بازنویسی حذف شد و چون در
+     صفحه گلوبالی به نامِ «when» هست، خطایی نداد — ستون
+     «[object Observable]» نشان می‌داد. نامِ یکتا، خطا را بلند
+     می‌کند به‌جای اینکه ساکتش کند. */
   function lastAt(r) {
     var s = seen[key(r)];
     return (s && s.at) ? s.at : '';
@@ -109,11 +126,13 @@ var PING = (function () {
     if (!body) return;
     var list = rows();
     var html = list.map(function (r, i) {
-      return '<tr>' +
+      var st = seen[key(r)];
+      var tone = !st ? '' : (st.wait ? ' is-wait' : (st.ok ? ' is-up' : ' is-down'));
+      return '<tr class="pg-row' + tone + '">' +
         '<td>' + fa(i + 1) + '</td>' +
         '<td class="editable-text"><input type="text" data-pg="name" data-i="' + i +
           '" value="' + escapeHtml(r.name || '') + '" aria-label="نام"></td>' +
-        '<td class="editable-text"><input type="text" data-pg="host" data-i="' + i +
+        '<td class="editable-text pg-ipcell"><input type="text" class="pg-ip" data-pg="host" data-i="' + i +
           '" value="' + escapeHtml(r.host || '') + '" aria-label="نشانی" data-ascii></td>' +
         '<td class="editable-text"><input type="text" data-pg="port" data-i="' + i +
           '" value="' + escapeHtml(r.port == null ? '' : String(r.port)) +
@@ -158,7 +177,7 @@ var PING = (function () {
       });
     });
 
-    sum();
+    cards();
 
     var all = document.getElementById('pingAllBtn');
     if (all) {

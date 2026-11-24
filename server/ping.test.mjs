@@ -10,6 +10,7 @@
      روی ۴۳۷۰ گوش می‌دهد و خیلی از فایروال‌ها ICMP را می‌اندازند،
      یعنی دستگاهِ سالم را مُرده نشان می‌دهند. */
 import { launch, calm } from './pw.mjs';
+import { readFileSync } from 'node:fs';
 import { okHost, okPort, probe } from '../src/ping.js';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
@@ -17,6 +18,19 @@ const HOST = 'sltech.ir', PORT = new URL(BASE).port || '80';
 
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
+
+console.log('===== سیم‌کشی =====');
+{
+  /* یک آکولادِ جاافتاده در این پرونده، کلِ شیوه‌نامهٔ صفحه را
+     می‌شکند — چون همهٔ جزوها در یک <style> کنارِ هم می‌نشینند.
+     یک بار همین شد و صفحه کاملاً سفید بالا آمد، بی هیچ خطایی. */
+  const css = readFileSync(new URL('../public/_t/p/pingcss.tpl', import.meta.url), 'utf8');
+  const open = (css.match(/\{/g) || []).length, close = (css.match(/\}/g) || []).length;
+  t(open === close, 'آکولادهای شیوه‌نامه تراز است', open + ' باز، ' + close + ' بسته');
+  t(!/<\/?(script|style)\b/i.test(css), 'و تگِ اضافه ندارد');
+  const js = readFileSync(new URL('../public/_t/p/ping.tpl', import.meta.url), 'utf8');
+  t(!/<\/?(script|style)\b/i.test(js) && !/<!--/.test(js), 'جزوِ موتور هم همین‌طور');
+}
 
 console.log('===== پالایشِ نشانی =====');
 for (const h of ['8.8.8.8', '192.168.1.201', 'srv-a.local', 'device-1'])
@@ -85,6 +99,12 @@ console.log('===== خودِ بخش =====');
 
   t(await p.evaluate(() => !!document.querySelector('.navbtn[data-view="ping"]')),
     'بخش در فهرستِ کناری هست');
+  /* و صفحه سالم است: اگر شیوه‌نامه بشکند، همهٔ بخش‌ها هم‌زمان دیده
+     می‌شوند و صفحه عملاً از کار می‌افتد — همان حالتی که یک بار با
+     یک آکولادِ جاافتاده پیش آمد. */
+  t(await p.evaluate(() => [...document.querySelectorAll('.content > .view')]
+      .filter(v => getComputedStyle(v).display !== 'none').length) === 1,
+    'و در هر لحظه فقط یک بخش دیده می‌شود');
   await p.evaluate(() => { const n = document.querySelector('.navbtn[data-view="ping"]'); if (n) n.click(); });
   await p.waitForTimeout(900);
 
@@ -156,12 +176,19 @@ console.log('===== خودِ بخش =====');
   t(await p.evaluate(() => !!document.querySelector('.undo-bar:not([hidden])')),
     'و برگشتش هست');
 
-  /* و خلاصهٔ بالای جدول */
-  const sum = await p.evaluate(() => (document.getElementById('pingSum') || {}).innerText || '');
-  t(/زنده/.test(sum) && /خاموش/.test(sum), 'خلاصهٔ بالای جدول شمار را می‌گوید',
+  /* و کارت‌های بالای بخش */
+  const sum = await p.evaluate(() => (document.getElementById('pingCards') || {}).innerText || '');
+  t(/زنده/.test(sum) && /خاموش/.test(sum), 'کارت‌های بالای بخش شمار را می‌گویند',
     sum.replace(/\s+/g, ' ').trim());
   t(await p.evaluate(() => !!document.querySelector('#pingBody .pg-chip')),
     'و وضعیت به شکلِ قرص است، نه یک جملهٔ خاکستری');
+  const look = await p.evaluate(() => ({
+    cards: document.querySelectorAll('#pingCards .stat').length,
+    rowTone: [...document.querySelectorAll('#pingBody tr')]
+      .filter(tr => /is-(up|down|wait)/.test(tr.className)).length
+  }));
+  t(look.cards === 4, 'چهار کارتِ خلاصه بالای بخش', look.cards + '');
+  t(look.rowTone >= 2, 'و حالِ هر ردیف روی خودش نشسته', look.rowTone + ' ردیفِ رنگ‌دار');
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await b.close();
 }
