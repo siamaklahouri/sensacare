@@ -233,8 +233,66 @@
     }
     /* و بقیه کوتاه‌تر می‌شوند تا بیشترشان در یک صفحه جا شوند: روی
        صفحه ارتفاع برای خواندنِ راحت است، روی کاغذ برای شمردن. */
-    html.kb-printing .kb-print .chart-box{ max-height:62mm; }
-    html.kb-printing .kb-print canvas{ max-height:62mm !important; }
+    /* ---- چیدمانِ داشبورد روی کاغذ ----
+       گزارشِ کاربر: داشبورد چهار برگهٔ خوابیده شد و نیمِ هر برگه
+       سفید ماند.
+
+       علتش شبکه‌ها بودند: «grid3» و «grid-auto» با عرضِ رسانه
+       تصمیم می‌گیرند و عرضِ رسانه در چاپ، عرضِ کاغذ است — حدودِ
+       ۱۰۱۷ پیکسل روی A4ِ خوابیده، یعنی زیرِ همان ۱۱۰۰ که قاعدهٔ
+       دو ستونه را روشن می‌کند. پس سه کارت دو ستونه می‌شدند و سومی
+       تنها می‌افتاد صفحهٔ بعد؛ و چون کارت «break-inside:avoid»
+       دارد، جای خالی‌اش هم با او می‌رفت.
+
+       روی کاغذ شمارِ ستون‌ها را خودمان می‌گوییم، نه عرضِ رسانه. */
+    /* و شبکه روی کاغذ شبکه نمی‌مانَد.
+
+       ردیفِ یک گریدِ CSS در کروم بینِ دو صفحه نمی‌شکند؛ کلِ گرید
+       می‌پرد صفحهٔ بعد. نتیجه‌اش در برگهٔ کاربر این بود: صفحهٔ دوم
+       یک ردیف کارت داشت و هفتاد درصدش سفید بود.
+
+       با جعبه‌های «inline-block» محتوا مثل متن می‌ریزد و هر جا
+       صفحه تمام شود، از سرِ صفحهٔ بعد ادامه می‌دهد. «font-size:0»
+       روی قاب، فاصلهٔ نویسه‌ایِ بینِ جعبه‌ها را می‌بندد و بچه‌ها
+       اندازهٔ خودشان را پس می‌گیرند. */
+    html.kb-printing .kb-print .grid3,
+    html.kb-printing .kb-print .grid-auto,
+    html.kb-printing .kb-print .cards{
+      display:block !important; font-size:0 !important; margin-bottom:6px !important;
+    }
+    html.kb-printing .kb-print .grid3 > *,
+    html.kb-printing .kb-print .grid-auto > *,
+    html.kb-printing .kb-print .cards > *{
+      display:inline-block !important; vertical-align:top !important;
+      box-sizing:border-box !important; font-size:12px !important;
+      margin:0 0 6px 0 !important;
+    }
+    html.kb-printing.kb-land .kb-print .grid3 > *,
+    html.kb-printing.kb-land .kb-print .grid-auto > *{ width:33.2% !important; }
+    html.kb-printing.kb-port .kb-print .grid3 > *,
+    html.kb-printing.kb-port .kb-print .grid-auto > *{ width:49.6% !important; }
+    html.kb-printing.kb-land .kb-print .cards > *{ width:16.4% !important; }
+    html.kb-printing.kb-port .kb-print .cards > *{ width:33.2% !important; }
+    /* کنارهٔ کوچکِ بینِ جعبه‌ها، بی‌آنکه ردیف بشکند */
+    html.kb-printing .kb-print .grid3 > * + *,
+    html.kb-printing .kb-print .grid-auto > * + *,
+    html.kb-printing .kb-print .cards > * + *{ margin-inline-start:0 !important; }
+    html.kb-printing .kb-print .panel, html.kb-printing .kb-print .stat{
+      border-width:1px !important;
+    }
+    html.kb-printing .kb-print .grid2{ gap:8px !important; }
+
+    /* و کارت‌ها جمع‌وجورتر: روی صفحه فضا برای نفس کشیدن است، روی
+       کاغذ برای جا شدن. */
+    html.kb-printing .kb-print .panel{ padding:9px 11px !important; margin-bottom:8px !important; }
+    html.kb-printing .kb-print .panel h3{ margin:0 0 6px !important; font-size:11.5px !important; }
+    html.kb-printing .kb-print .stat{ padding:8px 10px !important; }
+    html.kb-printing .kb-print .dash-group-label{ margin:6px 0 !important; font-size:11px !important; }
+
+    /* نمودار کوتاه‌تر از پیش: ۶۲ میلی‌متر یعنی دو ردیف در یک برگهٔ
+       خوابیده جا نمی‌شود. */
+    html.kb-printing .kb-print .chart-box{ max-height:44mm; }
+    html.kb-printing .kb-print canvas{ max-height:44mm !important; }
   }
 
   /* ---------- انتخابِ جهتِ کاغذ ----------

@@ -146,6 +146,12 @@
       document.head.appendChild(el);
     }
     el.textContent = '@page{ size:A4 ' + orient + '; margin:10mm }';
+    /* شیوه‌نامه هم باید بداند کاغذ ایستاده است یا خوابیده: شبکه‌های
+       داشبورد با عرضِ رسانه تصمیم می‌گیرند و عرضِ رسانه در چاپ عرضِ
+       کاغذ است — نتیجه‌اش این شد که سه کارت دو ستونه می‌شدند و
+       سومی تنها می‌افتاد صفحهٔ بعد. */
+    HTML.classList.toggle('kb-land', orient === 'landscape');
+    HTML.classList.toggle('kb-port', orient !== 'landscape');
   }
 
   /* ---------- خانه‌های جدول روی کاغذ ----------
@@ -263,7 +269,7 @@
       }
     } catch (e) { }
     rebox(document);
-    HTML.classList.remove('kb-printing');
+    HTML.classList.remove('kb-printing', 'kb-land', 'kb-port');
     [].forEach.call(document.querySelectorAll('.kb-print'), function (v) {
       v.classList.remove('kb-print', 'kb-print-last');
     });
@@ -439,6 +445,20 @@
         var c = null;
         try { c = (window.Chart && Chart.getChart) ? Chart.getChart(cv) : null; } catch (e) { }
         if (!c) return;
+        /* و مهم‌تر از همه: بوم روی کاغذ دوباره اندازه نگیرد.
+
+           Chart.js «responsive» است و با عوض شدنِ عرضِ قاب، بوم را
+           از نو می‌کشد — و عرضِ قاب دقیقاً وقتی عوض می‌شود که
+           مرورگر چیدمانِ کاغذ را می‌سازد، یعنی بعد از کدِ ما و
+           پیش از عکسِ چاپ. آن کشیدنِ دوباره به‌موقع تمام نمی‌شد و
+           بوم نیمه‌کاره روی برگه می‌رفت.
+
+           با خاموش‌کردنِ responsive، همان تصویری که روی صفحه کامل
+           کشیده شده روی کاغذ می‌رود و فقط با CSS کوچک می‌شود.
+
+           «animations» (جمع) را دست نمی‌زنیم: Chart.js با
+           «Recursion detected: _scriptable» می‌ترکد. */
+        try { c.options.responsive = false; } catch (e) { }
         try { c.stop(); } catch (e) { }
         try { c.resize(); } catch (e) { }
         try { c.update('none'); n++; } catch (e) { }
