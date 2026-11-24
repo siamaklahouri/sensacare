@@ -44,9 +44,27 @@
                'view-servers': 1, 'view-companies': 1, 'view-mvpn': 1,
                'view-veeam': 1, 'view-shared-rowtone': 1 };
 
+  /* بخش‌هایی که دکمهٔ چاپ نمی‌گیرند.
+
+     همهٔ ۲۱ برگهٔ یک کارتابل رندر و کنار هم دیده شد. پنج‌تایشان
+     روی کاغذ هیچ نبودند:
+
+     • «دیتای شخصی» قفل است و فقط کارتِ تیرهٔ «رمز بگذارید» را چاپ
+       می‌کرد — یک مستطیلِ سرمه‌ایِ تمام‌رنگ. و اگر هم باز باشد،
+       رمز و شمارهٔ کسی روی کاغذ کارِ درستی نیست.
+     • «دستیار هوشمند» یک گفتگوست؛ برگه‌اش یک شکلکِ ربات بود و بس.
+     • «تبدیل» ابزارِ تبدیلِ تاریخ است: روی کاغذ چند کادرِ خالی.
+     • «تنظیمات» و «راهنما» متنِ کار با برنامه‌اند، نه گزارش.
+
+     دکمهٔ چاپ روی این‌ها فقط کاغذ هدر می‌داد. */
+  var NO_PRINT = {
+    'view-personal': 1, 'view-assistant': 1, 'view-datetools': 1,
+    'view-settings': 1, 'view-guide': 1
+  };
+
   function views() {
     return [].slice.call(document.querySelectorAll('.content > .view'))
-      .filter(function (v) { return v.querySelector('.section-title'); });
+      .filter(function (v) { return v.querySelector('.section-title') && !NO_PRINT[v.id]; });
   }
 
   /* عنوان را پیش از چسباندنِ دکمه برمی‌داریم و کنارِ خودِ عنصر نگه

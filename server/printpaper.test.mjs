@@ -112,6 +112,25 @@ for (const [label, api, pass, path, view] of [
   const before = await readCells(p, 'view-' + view);
   t(before.length > 0, 'جدولِ چک‌لیست روی صفحه هست', before.length + ' خانه');
 
+  /* بخشی که روی کاغذ حرفی ندارد، دکمهٔ چاپ هم ندارد. هر ۲۱ برگهٔ
+     یک کارتابل رندر و کنار هم دیده شد: «دیتای شخصی» فقط کارتِ
+     تیرهٔ قفل را چاپ می‌کرد، «دستیار» یک شکلکِ ربات، «تبدیل» چند
+     کادرِ خالی، و «تنظیمات» و «راهنما» متنِ کار با برنامه. */
+  const btns = await p.evaluate(() => {
+    const has = id => {
+      const v = document.getElementById(id);
+      return v ? !!v.querySelector('.kb-print-btn') : null;
+    };
+    return {
+      quiet: ['view-personal', 'view-assistant', 'view-datetools', 'view-settings', 'view-guide']
+        .filter(id => has(id) === true),
+      loud: ['view-checklist', 'view-daily', 'view-dashboard'].filter(id => has(id) === true)
+    };
+  });
+  t(btns.quiet.length === 0, 'بخش‌های ابزاری و راهنما دکمهٔ چاپ ندارند',
+    btns.quiet.join('، ') || 'هیچ');
+  t(btns.loud.length === 3, 'ولی بخش‌های گزارشی دارند', btns.loud.join('، '));
+
   await p.evaluate(() => { window.print = function () { }; try { localStorage.removeItem('kb-print-orient-v1'); } catch (e) { } });
   await p.emulateMedia({ media: 'print' });
   await p.evaluate(() => kbPrint(document.getElementById('view-checklist')));
