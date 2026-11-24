@@ -1,0 +1,102 @@
+/* ==================== پینگ ====================
+   مرورگر نمی‌تواند پینگ بگیرد: ICMP در جاوااسکریپتِ صفحه وجود ندارد
+   و fetch به یک آی‌پیِ بی‌وب‌سرور فقط خطای شبکه می‌دهد که از «خاموش
+   است» قابلِ تشخیص نیست. پس سرور این کار را می‌کند.
+
+   دو جور بررسی، و انتخاب خودکار است:
+
+   • اگر پورت داده شده باشد، یک اتصالِ TCP باز می‌شود. برای این
+     دستگاه‌ها همین درست‌تر است: دستگاهِ حضور و غیاب روی ۴۳۷۰ گوش
+     می‌دهد، و «روشن بودنِ دستگاه» یعنی همان پورت جواب بدهد — نه
+     اینکه ICMP برگردد (خیلی از فایروال‌ها ICMP را می‌اندازند و
+     دستگاه سالم را مُرده نشان می‌دهند).
+
+   • بی پورت، همان ping سیستم با یک بسته.
+
+   دو قیدِ امنیتی که از اول گذاشته شد:
+   یک) نشانی با الگوی سخت سنجیده می‌شود. این رشته به خطِ فرمان
+       می‌رود و «8.8.8.8; rm -rf /» نباید حتی به آن‌جا برسد.
+   دو) ping با execFile صدا زده می‌شود، نه exec — یعنی بی پوسته.
+       حتی اگر الگو روزی سوراخ شود، آرگومان آرگومان می‌ماند. */
+import net from 'node:net';
+import { execFile } from 'node:child_process';
+
+/* آی‌پیِ نسخهٔ ۴، یا نامِ میزبان. نقطه‌ها و خط تیره مجازند، بس. */
+const HOST_RE = /^[A-Za-z0-9](?:[A-Za-z0-9.\-]{0,119})$/;
+
+export function okHost(h) {
+  const s = String(h == null ? '' : h).trim();
+  if (!s || s.length > 120) return false;
+  if (s.indexOf('..') >= 0) return false;
+  return HOST_RE.test(s);
+}
+
+export function okPort(p) {
+  const n = parseInt(p, 10);
+  return Number.isFinite(n) && n >= 1 && n <= 65535;
+}
+
+/* کدِ خطای شبکه، به زبانی که روی صفحه خوانده شود.
+
+   «ECONNREFUSED» به‌ویژه مهم است و با «نرسیدن» فرق دارد: یعنی خودِ
+   دستگاه جواب داده ولی پشتِ آن پورت کسی نیست. برای دستگاهِ حضور و
+   غیاب این خبرِ خوبی است — شبکه سالم است، سرویس بالا نیست. */
+function why(code) {
+  const map = {
+    ECONNREFUSED: 'در دسترس است، ولی پورت بسته است',
+    EHOSTUNREACH: 'نشانی در دسترس نیست',
+    ENETUNREACH: 'شبکه‌اش در دسترس نیست',
+    ENOTFOUND: 'نام پیدا نشد',
+    ETIMEDOUT: 'پاسخی نداد',
+    EACCES: 'اجازهٔ اتصال نبود'
+  };
+  return map[code] || (code ? String(code) : 'خطا');
+}
+
+/* اتصالِ TCP: باز شد یعنی زنده. */
+export function tcpProbe(host, port, ms) {
+  const wait = Math.min(Math.max(parseInt(ms, 10) || 2500, 300), 5000);
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    let done = false;
+    const end = (ok, error) => {
+      if (done) return;
+      done = true;
+      try { sock.destroy(); } catch (e) { }
+      resolve({ ok, ms: Date.now() - t0, how: 'tcp', error: error || '' });
+    };
+    const sock = net.connect({ host, port, family: 4 });
+    sock.setTimeout(wait);
+    sock.on('connect', () => end(true, ''));
+    sock.on('timeout', () => end(false, 'پاسخی نداد'));
+    sock.on('error', e => end(false, why((e && e.code) || '')));
+  });
+}
+
+/* و بی پورت، همان ping سیستم — یک بسته، دو ثانیه صبر. */
+export function icmpProbe(host, ms) {
+  const wait = Math.min(Math.max(parseInt(ms, 10) || 2500, 300), 5000);
+  const sec = Math.max(1, Math.round(wait / 1000));
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    execFile('ping', ['-n', '-c', '1', '-W', String(sec), host],
+      { timeout: wait + 800 }, (err, out) => {
+        const took = Date.now() - t0;
+        if (!err) {
+          /* زمانِ خودِ ping دقیق‌تر از زمانِ ماست */
+          const m = String(out || '').match(/time[=<]\s*([\d.]+)\s*ms/i);
+          return resolve({ ok: true, ms: m ? Math.round(parseFloat(m[1])) : took,
+                           how: 'icmp', error: '' });
+        }
+        resolve({ ok: false, ms: took, how: 'icmp', error: 'پاسخی نداد' });
+      });
+  });
+}
+
+export async function probe(host, port, ms) {
+  if (!okHost(host)) return { ok: false, ms: 0, how: '', error: 'نشانی درست نیست' };
+  if (port === 0 || port === '' || port === null || port === undefined)
+    return icmpProbe(host, ms);
+  if (!okPort(port)) return { ok: false, ms: 0, how: '', error: 'پورت درست نیست' };
+  return tcpProbe(host, parseInt(port, 10), ms);
+}

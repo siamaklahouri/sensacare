@@ -57,6 +57,8 @@ import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_tsort from '../public/_t/p/tsort.tpl';
 import p_bulkadd from '../public/_t/p/bulkadd.tpl';
+import p_ping from '../public/_t/p/ping.tpl';
+import p_pingcss from '../public/_t/p/pingcss.tpl';
 import p_bulkaddcss from '../public/_t/p/bulkaddcss.tpl';
 import p_tsortcss from '../public/_t/p/tsortcss.tpl';
 import p_gatecss from '../public/_t/p/gatecss.tpl';
@@ -179,6 +181,8 @@ export const PARTS = new Map([
   ['fadigits', p_fadigits],
   ['tsort', p_tsort],
   ['bulkadd', p_bulkadd],
+  ['ping', p_ping],
+  ['pingcss', p_pingcss],
   ['bulkaddcss', p_bulkaddcss],
   ['tsortcss', p_tsortcss],
   ['gatecss', p_gatecss],
