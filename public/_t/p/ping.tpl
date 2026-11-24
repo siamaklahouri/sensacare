@@ -49,17 +49,57 @@ var PING = (function () {
     return fa(v) + ' میلی‌ثانیه';
   }
 
-  function cell(r) {
-    var s = seen[key(r)];
-    if (!s) return '<span class="pg-dot pg-idle"></span><span class="pg-txt">بررسی نشده</span>';
-    if (s.wait) return '<span class="pg-dot pg-wait"></span><span class="pg-txt">در حال بررسی…</span>';
-    if (s.ok)
-      return '<span class="pg-dot pg-up"></span><span class="pg-txt">زنده — ' + fmtMs(s.ms) + '</span>';
-    return '<span class="pg-dot pg-down"></span><span class="pg-txt">' +
-           escapeHtml(s.error || 'پاسخی نداد') + '</span>';
+  /* وضعیت به شکلِ قرص، نه یک نقطه و یک جملهٔ خاکستری: در یک جدولِ
+     ده‌ردیفی چشم باید از دو متر آن‌طرف‌تر هم بفهمد کدام قرمز است.
+
+     و زمانِ پاسخ یک نوارِ کوچک هم دارد. عدد تنها («۳۲ میلی‌ثانیه»)
+     تا وقتی کنارِ عددهای دیگر نباشد معنایی ندارد؛ نوار همان مقایسه
+     را بی‌خواندن انجام می‌دهد. مقیاس تا ۳۰۰ میلی‌ثانیه است، چون
+     بالاتر از آن دیگر «کُند» است و فرقِ ۴۰۰ و ۸۰۰ کارِ کسی را عوض
+     نمی‌کند. */
+  function bar(ms) {
+    var v = Math.max(0, Math.min(300, Math.round(Number(ms) || 0)));
+    var pct = Math.max(4, Math.round(v / 300 * 100));
+    var tone = v <= 60 ? 'fast' : (v <= 150 ? 'mid' : 'slow');
+    return '<span class="pg-bar pg-' + tone + '"><i style="width:' + pct + '%"></i></span>';
   }
 
-  function when(r) {
+  function cell(r) {
+    var s = seen[key(r)];
+    if (!s) return '<span class="pg-chip pg-idle">بررسی نشده</span>';
+    if (s.wait) return '<span class="pg-chip pg-wait">در حال بررسی…</span>';
+    if (s.ok)
+      return '<span class="pg-chip pg-up">زنده</span>' +
+             '<span class="pg-ms">' + fmtMs(s.ms) + '</span>' + bar(s.ms);
+    return '<span class="pg-chip pg-down">خاموش</span>' +
+           '<span class="pg-why">' + escapeHtml(s.error || 'پاسخی نداد') + '</span>';
+  }
+
+  /* یک خطِ خلاصه بالای جدول: چندتا زنده، چندتا نه. */
+  function sum() {
+    var el = document.getElementById('pingSum');
+    if (!el) return;
+    var list = rows(), up = 0, down = 0, idle = 0, wait = 0;
+    list.forEach(function (r) {
+      var s = seen[key(r)];
+      if (!s) idle++;
+      else if (s.wait) wait++;
+      else if (s.ok) up++;
+      else down++;
+    });
+    if (!list.length) { el.innerHTML = ''; return; }
+    var bit = function (n, cls, txt) {
+      return n ? '<span class="pg-sum-it ' + cls + '"><b>' + fa(n) + '</b> ' + txt + '</span>' : '';
+    };
+    el.innerHTML = bit(up, 'pg-s-up', 'زنده') + bit(down, 'pg-s-down', 'خاموش') +
+                   bit(wait, 'pg-s-wait', 'در حال بررسی') + bit(idle, 'pg-s-idle', 'بررسی نشده');
+  }
+
+  /* ساعتِ آخرین بررسی. این تابع یک بار موقعِ بازنویسی حذف شد و
+     چون در صفحه گلوبالی به همین نام هست، خطایی نداد — فقط ستون
+     «[object Observable]» نشان می‌داد. درسش: نامِ کوتاه در دامنهٔ
+     مشترک، خطا را ساکت می‌کند. */
+  function lastAt(r) {
     var s = seen[key(r)];
     return (s && s.at) ? s.at : '';
   }
@@ -79,7 +119,7 @@ var PING = (function () {
           '" value="' + escapeHtml(r.port == null ? '' : String(r.port)) +
           '" aria-label="پورت" data-ascii placeholder="—"></td>' +
         '<td class="pg-state">' + cell(r) + '</td>' +
-        '<td class="pg-when">' + escapeHtml(when(r)) + '</td>' +
+        '<td class="pg-when">' + escapeHtml(lastAt(r)) + '</td>' +
         '<td><button type="button" class="btn btn-ghost btn-sm pg-one" data-i="' + i +
           '">پینگ</button></td>' +
         '<td><button class="btn-del" data-pg-del="' + i + '" title="حذف این ردیف">✕</button></td>' +
@@ -118,8 +158,13 @@ var PING = (function () {
       });
     });
 
+    sum();
+
     var all = document.getElementById('pingAllBtn');
-    if (all) all.disabled = !list.length || busy;
+    if (all) {
+      all.disabled = !list.length || busy;
+      all.textContent = busy ? 'در حال بررسی…' : '⚡ پینگ همه';
+    }
   }
 
   /* یک نشانی. وعده برمی‌گرداند تا پینگِ گروهی بتواند منتظرِ همه بماند. */

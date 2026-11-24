@@ -88,6 +88,15 @@ console.log('===== خودِ بخش =====');
   await p.evaluate(() => { const n = document.querySelector('.navbtn[data-view="ping"]'); if (n) n.click(); });
   await p.waitForTimeout(900);
 
+  /* فرمِ افزودن باید زیرِ نگهبانِ پُرشدنِ خودکار باشد: کرومی که برای
+     این دامنه رمز ذخیره دارد، autocomplete=off را روی کادرهایی که
+     خودش «نام کاربری» حدس می‌زند نادیده می‌گیرد — و کادرِ پورت را
+     «admin» می‌کرد. نشانه پیش از پُر شدنِ فرم سنجیده می‌شود، چون
+     نگهبان به‌محضِ اینکه کاربر چیزی بنویسد کنار می‌رود. */
+  t(await p.evaluate(() => ['pgNewName', 'pgNewHost', 'pgNewPort']
+      .every(id => (document.getElementById(id) || {}).dataset.mtEmpty === '1')),
+    'فرمِ افزودن زیرِ نگهبانِ پُرشدنِ خودکار است');
+
   const seeded = await p.evaluate(() => (state.pingHosts || []).map(x => x.host));
   t(seeded.length >= 4, 'و بارِ اول با چهار نشانی پُر می‌شود', seeded.join('، '));
 
@@ -107,7 +116,10 @@ console.log('===== خودِ بخش =====');
     when: document.querySelectorAll('#pingBody tr')[0].querySelector('.pg-when').textContent.trim()
   }));
   t(/زنده/.test(one.txt) && one.dot, 'پینگِ تکی جواب می‌دهد', one.txt);
-  t(/[۰-۹]/.test(one.when), 'و ساعتِ بررسی را می‌نویسد', one.when);
+  /* ساعت باید واقعاً ساعت باشد. یک بار تابعِ ساعت حذف شد و چون در
+     صفحه گلوبالی به همان نام بود، خطایی نداد — ستون
+     «[object Observable]» نشان می‌داد. */
+  t(/^[۰-۹]{2}:[۰-۹]{2}:[۰-۹]{2}$/.test(one.when), 'و ساعتِ بررسی را می‌نویسد', one.when);
 
   await p.evaluate(() => document.getElementById('pingAllBtn').click());
   await p.waitForTimeout(6000);
@@ -144,6 +156,12 @@ console.log('===== خودِ بخش =====');
   t(await p.evaluate(() => !!document.querySelector('.undo-bar:not([hidden])')),
     'و برگشتش هست');
 
+  /* و خلاصهٔ بالای جدول */
+  const sum = await p.evaluate(() => (document.getElementById('pingSum') || {}).innerText || '');
+  t(/زنده/.test(sum) && /خاموش/.test(sum), 'خلاصهٔ بالای جدول شمار را می‌گوید',
+    sum.replace(/\s+/g, ' ').trim());
+  t(await p.evaluate(() => !!document.querySelector('#pingBody .pg-chip')),
+    'و وضعیت به شکلِ قرص است، نه یک جملهٔ خاکستری');
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await b.close();
 }

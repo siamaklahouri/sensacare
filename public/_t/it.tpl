@@ -1298,6 +1298,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="section-sub">نشانی‌های مهم را این‌جا نگه دارید و با یک کلیک ببینید زنده‌اند یا نه — همه با هم، یا تک‌تک</div>
       <div class="toolbar">
         <button class="btn btn-brass btn-sm" id="pingAllBtn" title="همهٔ نشانی‌ها را با هم بررسی کن">⚡ پینگ همه</button>
+        <div class="pg-sum" id="pingSum"></div>
       </div>
       <div class="panel">
         <h3>📡 نشانی‌ها</h3>
@@ -1317,9 +1318,12 @@ window.KARTABL_IDB      = "{{IDB}}";
           </table>
         </div>
         <div class="pg-add">
-          <input type="text" id="pgNewName" class="pg-n" placeholder="نام — مثلاً دفتر مرکزی">
-          <input type="text" id="pgNewHost" class="pg-h" placeholder="نشانی — مثلاً 192.168.1.201" data-ascii>
-          <input type="text" id="pgNewPort" class="pg-p" placeholder="پورت" data-ascii>
+          <input type="text" id="pgNewName" class="pg-n" placeholder="نام — مثلاً دفتر مرکزی"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="pgNewHost" class="pg-h" placeholder="نشانی — مثلاً 192.168.1.201" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="pgNewPort" class="pg-p" placeholder="پورت" data-ascii inputmode="numeric"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
           <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
