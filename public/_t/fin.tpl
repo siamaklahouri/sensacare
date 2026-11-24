@@ -2304,7 +2304,7 @@ function commitInvoiceCell(idx, field, value){
 }
 function addInvoiceRow(vals){
   invoicesData.push({
-    invoiceNo: vals.invoiceNo, customer: vals.customer, date: vals.date||getTodayJalaliStr(),
+    invoiceNo: vals.invoiceNo, customer: vals.customer, date: vals.date||fa(getTodayJalaliStr()),
     dueDate: vals.dueDate||"", amount: parseFloat(vals.amount)||0, paid: parseFloat(vals.paid)||0,
     status: vals.status||INVOICE_STATUS[2], enteredBy: vals.enteredBy||""
   });
@@ -2859,7 +2859,7 @@ function commitExpenseCell(idx, field, value){
   saveExpensesSheet();
 }
 function addExpenseRow(vals){
-  expensesData.push({ date: vals.date||getTodayJalaliStr(), type: vals.type||SOURCE_USE_TYPES[1], category: vals.category||EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length-1], description: vals.description||"", amount: parseFloat(vals.amount)||0, paymentMethod: vals.paymentMethod||PAYMENT_METHODS[0], enteredBy: vals.enteredBy||"" });
+  expensesData.push({ date: vals.date||fa(getTodayJalaliStr()), type: vals.type||SOURCE_USE_TYPES[1], category: vals.category||EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length-1], description: vals.description||"", amount: parseFloat(vals.amount)||0, paymentMethod: vals.paymentMethod||PAYMENT_METHODS[0], enteredBy: vals.enteredBy||"" });
   saveExpensesSheet();
   renderExpenses();
 }
@@ -3119,7 +3119,7 @@ function commitBudgetCell(idx, field, value){
   renderBudget();
 }
 function addBudgetRow(vals){
-  budgetData.push({ period: vals.period||getTodayJalaliStr(), category: vals.category, budgetAmount: parseFloat(vals.budgetAmount)||0, actualAmount: parseFloat(vals.actualAmount)||0, enteredBy: vals.enteredBy||"" });
+  budgetData.push({ period: vals.period||fa(getTodayJalaliStr()), category: vals.category, budgetAmount: parseFloat(vals.budgetAmount)||0, actualAmount: parseFloat(vals.actualAmount)||0, enteredBy: vals.enteredBy||"" });
   saveBudgetSheet();
   renderBudget();
 }
@@ -3483,7 +3483,7 @@ function renderChecklist(){
       <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text col-hide-s"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
-        <button type="button" class="date-box${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
+        <button type="button" class="date-box keep-print${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
                 title="${odDays(t) ? escapeHtml(odTitle(odDays(t))) : 'انتخابِ روزِ مهلت'}">
           <span class="cal-ic">📅</span>
           <span class="dv">${t.deadline ? fa(t.deadline)+' ام' : 'بی‌مهلت'}</span>

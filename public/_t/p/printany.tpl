@@ -174,14 +174,46 @@
      نمی‌شود. ولی نمی‌شود همان‌جا در CSS پنهانش کرد: اگر فقط <th> برود
      ستون‌ها یکی جابه‌جا می‌شوند. پس جایش را از روی سرِ جدول پیدا
      می‌کنیم و هر دو — سر و خانه‌ها — را با هم برمی‌داریم. */
+  /* ستونی که روی کاغذ حرفی برای گفتن ندارد.
+
+     اولش فقط «col-del» بود. ولی ستونِ پیوست (📎)، ستاره (⭐)،
+     یادآور (⏰) و مانندشان هم روی کاغذ خالی‌اند — خودِ دکمه‌هایشان
+     برداشته می‌شوند و یک ستونِ باریکِ خالی می‌ماند با یک شکلک بالای
+     سرش. چند تا از این‌ها کنارِ هم، لبهٔ برگه را به یک ردیفِ شکلک
+     تبدیل کرده بود.
+
+     قاعده: ستونی می‌رود که یا ستونِ حذف باشد، یا سرش اسم نداشته
+     باشد (فقط شکلک) و هیچ خانه‌اش هم چیزی برای چاپ نداشته باشد.
+     «اسم نداشتن» با حرف سنجیده می‌شود، نه با طول — ستونِ «🔁 تکرار»
+     که «هر ماه» در خانه‌هایش است می‌ماند، چون داده دارد. */
+  var NAMED_TH = /[A-Za-z\u0621-\u06CC]/;
+
+  function printableText(td) {
+    if (!td) return '';
+    var f = td.querySelector('input:not([type=checkbox]):not([type=radio]),select,textarea');
+    if (f) return String(f.value || '').trim();
+    return String(td.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
   function dropActionCols(root) {
     [].forEach.call(root.querySelectorAll('table'), function (tb) {
       var head = tb.querySelector('tr');
       if (!head) return;
+      var rows = [].slice.call(tb.querySelectorAll('tr'));
       var cells = [].slice.call(head.children);
       cells.forEach(function (th, i) {
-        if (!th.classList.contains('col-del')) return;
-        [].forEach.call(tb.querySelectorAll('tr'), function (tr) {
+        var drop = th.classList.contains('col-del') ||
+                   !!th.querySelector('.edit-toggle-wrap, .del-toggle-wrap');
+        if (!drop) {
+          var name = String(th.textContent || '').replace(/\s+/g, '');
+          if (name && NAMED_TH.test(name)) return;      /* ستونِ اسم‌دار می‌ماند */
+          /* بی‌اسم: فقط اگر هیچ خانه‌اش چیزی ندارد */
+          drop = rows.every(function (tr) {
+            return tr === head || !printableText(tr.children[i]);
+          });
+        }
+        if (!drop) return;
+        rows.forEach(function (tr) {
           var c = tr.children[i];
           if (c) c.classList.add('kb-pskip');
         });
@@ -240,8 +272,41 @@
      همان بخش یادمان می‌ماند. */
   var ORIENT_KEY = 'kb-print-orient-v1';
 
+  /* فهرستِ WIDE دستی بود و از خودش عقب ماند: هیچ‌کدام از جدول‌های
+     مالی در آن نبودند، پس فاکتورها با ده ستون روی کاغذِ ایستاده
+     می‌رفتند و در دو سومِ عرضِ برگه له می‌شدند.
+
+     حالا خودِ جدول را می‌شماریم. ستونی که روی کاغذ برداشته می‌شود
+     (ستونِ حذف، ستون‌های بی‌اسم و خالی) حساب نمی‌شود، چون عرضی هم
+     نمی‌گیرد. فهرستِ WIDE می‌ماند برای بخش‌هایی که جدول ندارند و
+     خودمان می‌دانیم پهن‌اند — مثلِ تقویم. */
+  var WIDE_COLS = 7;
+
+  function colCount(v) {
+    var most = 0;
+    [].forEach.call(v.querySelectorAll('table'), function (tb) {
+      var head = tb.querySelector('tr');
+      if (!head) return;
+      var rows = [].slice.call(tb.querySelectorAll('tr'));
+      var n = 0;
+      [].forEach.call(head.children, function (th, i) {
+        if (th.classList.contains('col-del')) return;
+        if (th.querySelector('.edit-toggle-wrap, .del-toggle-wrap')) return;
+        var name = String(th.textContent || '').replace(/\s+/g, '');
+        if ((!name || !NAMED_TH.test(name)) && rows.every(function (tr) {
+          return tr === head || !printableText(tr.children[i]);
+        })) return;
+        n++;
+      });
+      if (n > most) most = n;
+    });
+    return most;
+  }
+
   function orientGuess(list) {
-    return list.some(function (v) { return WIDE[v.id]; }) ? 'landscape' : 'portrait';
+    return list.some(function (v) {
+      return WIDE[v.id] || colCount(v) >= WIDE_COLS;
+    }) ? 'landscape' : 'portrait';
   }
   function orientKeyOf(list) {
     return list.map(function (v) { return v.id; }).join(',') || 'all';

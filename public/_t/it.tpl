@@ -2532,7 +2532,7 @@ function renderChecklist(){
       <td class="editable-text"><input type="text" data-field="task" aria-label="وظیفه" value="${escapeHtml(t.task)}"></td>
       <td class="editable-text col-hide-s"><input type="text" data-field="owner" aria-label="مسئول" value="${escapeHtml(t.owner)}"></td>
       <td data-nocp>
-        <button type="button" class="date-box${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
+        <button type="button" class="date-box keep-print${t.deadline ? '' : ' empty'}${odDays(t) ? ' od' : ''}" data-idx="${i}"
                 title="${odDays(t) ? escapeHtml(odTitle(odDays(t))) : 'انتخاب روزِ مهلت'}">
           <span class="cal-ic">📅</span>
           <span class="dv">${t.deadline ? fa(t.deadline)+' ام' : 'بی‌مهلت'}</span>

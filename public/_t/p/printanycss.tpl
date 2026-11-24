@@ -69,11 +69,21 @@
     html.kb-printing .kb-print .cp-back, html.kb-printing .kb-print .cp-more,
     html.kb-printing .kb-print .nt-del,
     html.kb-printing .kb-print [data-notes-add],
+    /* ردیفِ افزودن: یک فرمِ خالی ته هر جدول. روی کاغذ نه پُر می‌شود
+       نه معنایی دارد، و در جدول‌های مالی یک ردیفِ عجیب می‌ساخت با
+       یک «+» و یک کشویی که «پرداخت‌شده» نشان می‌داد. نامش در
+       قالب‌ها «add-row» است، با خط تیره — قاعدهٔ قبلی «addrow» را
+       می‌گرفت و این یکی سال‌ها از زیرش رد می‌شد. */
+    html.kb-printing .kb-print tr.add-row,
     html.kb-printing .kb-print .addrow,
     html.kb-printing .kb-print .visit-add-bar,
     html.kb-printing .kb-print .del-switch,
     html.kb-printing .kb-print .edit-switch,
-    html.kb-printing .kb-print .save-hint{ display:none !important; }
+    html.kb-printing .kb-print .save-hint,
+    /* ساعتِ زندهٔ داشبورد: روی کاغذ یک عددِ یخ‌زده است که تا کاغذ
+       از چاپگر بیرون بیاید هم غلط شده. سربرگِ خودِ برگه ساعتِ چاپ
+       را می‌نویسد و همان کافی است. */
+    html.kb-printing .kb-print .dh-clock{ display:none !important; }
 
     /* کادرهای ورودی روی کاغذ «متن» می‌شوند، نه کادر: قابِ خاکستری دورِ
        هر خانه، جدول را مثلِ فرمِ پُرنشده نشان می‌داد. و چون input
@@ -107,6 +117,32 @@
     html.kb-printing .kb-print select.st-select{
       border-color:#bbb !important; background:#f6f6f6 !important;
     }
+    /* وضعیتِ خالی، قاب نمی‌خواهد: قرصِ خاکستریِ خالی روی کاغذ فقط
+       یک شکلِ بی‌معنی بود، در برنامهٔ روزانه به‌ازای هر ردیف یکی. */
+    html.kb-printing .kb-print select.st-select[data-st=""]{
+      border-color:transparent !important; background:transparent !important;
+    }
+
+    /* ---- چیپِ «مهلت» ----
+       این یکی دکمه است ولی داده دارد، نه کار: روزِ مهلتِ همان ردیف.
+       قاعدهٔ بالا همهٔ دکمه‌ها را برمی‌داشت و نتیجه‌اش یک ستونِ
+       کاملاً خالی روی کاغذ بود — در جدولی که نصفِ معنایش همان
+       تاریخ است. با keep-print می‌مانَد، ولی قابِ دکمه‌ای‌اش می‌رود
+       و متن می‌شود؛ شکلکِ تقویمِ داخلش هم تکرارِ بیست‌باره بود و
+       روی کاغذ فقط شلوغی. */
+    html.kb-printing .kb-print .date-box{
+      border:none !important; background:transparent !important;
+      padding:0 !important; box-shadow:none !important;
+      font-size:11px !important; color:#000 !important;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    html.kb-printing .kb-print .date-box.od{ font-weight:700; }
+    html.kb-printing .kb-print .date-box .cal-ic{ display:none !important; }
+
+    /* نشانهٔ تقویمِ کنارِ خانه‌های تاریخ (dp-host::after) روی کاغذ
+       کاری ندارد: روی صفحه می‌گوید «این‌جا کلیک کن»، روی برگه یک
+       لکهٔ قرمزِ کنارِ هر ردیف بود. */
+    html.kb-printing .kb-print .dp-host::after{ display:none !important; content:none !important; }
 
     html.kb-printing .kb-print .kb-pskip{ display:none !important; }
     /* «col-hide-s» در عرضِ زیر ۷۶۰ ستونِ جدول را برمی‌دارد — برای
