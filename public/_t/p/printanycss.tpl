@@ -298,6 +298,20 @@
     html.kb-printing .kb-print .panel, html.kb-printing .kb-print .stat{
       border-width:1px !important;
     }
+    /* قابِ جدولِ بلند می‌تواند بشکند؛ سرستون‌ها سرِ برگهٔ بعد تکرار
+       می‌شوند و عنوانِ قاب تنها ته برگه نمی‌مانَد. */
+    html.kb-printing .kb-print .panel.kb-split{
+      break-inside:auto !important; page-break-inside:auto !important;
+    }
+    html.kb-printing .kb-print .panel.kb-split thead{
+      display:table-header-group !important;
+    }
+    html.kb-printing .kb-print .panel.kb-split h3{
+      break-after:avoid !important; page-break-after:avoid !important;
+    }
+    /* عددِ کارت در یک سطر می‌مانَد — اندازه‌اش را موتورِ چاپ کوچک
+       می‌کند، نه سطرِ دوم. */
+    html.kb-printing .kb-print .stat-val{ white-space:nowrap !important; }
     html.kb-printing .kb-print .grid2{ gap:8px !important; }
 
     /* و کارت‌ها جمع‌وجورتر: روی صفحه فضا برای نفس کشیدن است، روی

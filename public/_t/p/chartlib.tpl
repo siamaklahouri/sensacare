@@ -33,6 +33,24 @@ function chartNum(n){
   return t.replace(/[0-9]/g, d => "۰۱۲۳۴۵۶۷۸۹"[+d]);
 }
 
+/* و شکلِ کوتاهش، برای جایی که جا تنگ است: محورِ نمودار و عددِ
+   ستون‌های باریک.
+
+   روی کاغذِ کارتابلِ مالی، محورِ افقی «۶۰۰۰۰۰۰۰۰» می‌نوشت — نُه رقمِ
+   پشتِ هم که خواندنش از شمردن می‌گذشت. و عددِ دو ستونِ کنارِ هم در
+   نمودارِ بودجه روی هم می‌افتاد و هیچ‌کدام خوانده نمی‌شد. */
+function chartShort(n){
+  const v = Number(n) || 0, a = Math.abs(v);
+  const one = x => {
+    const r = Math.round(x * 10) / 10;
+    return chartNum(r % 1 === 0 ? r : Math.round(r * 10) / 10).replace('.', '٫');
+  };
+  if(a >= 1e9) return one(v / 1e9) + ' میلیارد';
+  if(a >= 1e6) return one(v / 1e6) + ' م';
+  if(a >= 1e4) return one(v / 1e3) + ' هزار';
+  return chartNum(v);
+}
+
 /* عددِ هر ستون، روی خودش. بدونِ این، خواندنِ نمودار به نگه داشتنِ
    موشواره بند بود — و روی کاغذ اصلاً ممکن نبود. */
 const dashValues = {
@@ -52,6 +70,19 @@ const dashValues = {
     g.save();
     g.font = "600 10.5px " + chartFont();
     g.textBaseline = horiz ? "middle" : "bottom";
+    /* یا همهٔ عددهای یک نمودار کوتاه‌اند یا هیچ‌کدام. وگرنه در یک
+       نمودار کنارِ هم «۳۶۰,۰۰۰,۰۰۰» و «۳۳۶ م» می‌نشست و خواننده
+       فکر می‌کرد دو چیزِ متفاوت است. */
+    let short = false;
+    if(!horiz) c.data.datasets.forEach((ds, di)=>{
+      const meta = c.getDatasetMeta(di);
+      if(meta.hidden) return;
+      meta.data.forEach((el, i)=>{
+        const v = ds.data[i];
+        if(v == null || typeof v === "object" || !v) return;
+        if(g.measureText(chartNum(v)).width > (el.width || 0) + 4) short = true;
+      });
+    });
     c.data.datasets.forEach((ds, di)=>{
       const meta = c.getDatasetMeta(di);
       if(meta.hidden) return;
@@ -78,14 +109,22 @@ const dashValues = {
             g.fillText(s, el.x - dir * 7, el.y);
           }
         } else {
+          /* ستونِ عمودی به پهنای خودش جا دارد، نه بیشتر. عددِ کاملِ
+             یک مبلغِ نُه‌رقمی از ستون پهن‌تر است و می‌رفت روی ستونِ
+             بغلی — در نمودارِ «بودجه در مقابل هزینه» هر دو عدد
+             ناخوانا می‌شدند. اول کوتاهش می‌کنیم، و اگر باز هم جا
+             نشد، اصلاً نمی‌نویسیم. */
+          const room = (el.width || 0) + 4;
+          const txt = short ? chartShort(v) : s;
+          if(g.measureText(txt).width > room) return;
           const inside = el.y - 16 < area.top;
           g.textAlign = "center";
           if(inside && Math.abs((el.base == null ? area.bottom : el.base) - el.y) > 22){
             g.fillStyle = "#FFFFFF";
-            g.fillText(s, el.x, el.y + 15);
+            g.fillText(txt, el.x, el.y + 15);
           } else {
             g.fillStyle = t.ink;
-            g.fillText(s, el.x, el.y - 5);
+            g.fillText(txt, el.x, el.y - 5);
           }
         }
       });

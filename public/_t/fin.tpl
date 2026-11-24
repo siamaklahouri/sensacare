@@ -4095,7 +4095,7 @@ async function renderCharts(){
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
-        scales:{ x:{ ticks:{ callback:v=>fa(v) } }, y:{ ticks:{ font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
+        scales:{ x:{ ticks:{ callback:v=>chartShort(v) } }, y:{ ticks:{ autoSkip:false, font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
         onHover:chartHoverCursor,
         onClick:(evt, elements)=>{
           if(!elements.length) return;
@@ -4116,7 +4116,7 @@ async function renderCharts(){
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
-        scales:{ x:{ ticks:{ callback:v=>fa(v) } }, y:{ ticks:{ font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
+        scales:{ x:{ ticks:{ callback:v=>chartShort(v) } }, y:{ ticks:{ autoSkip:false, font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
         onHover:chartHoverCursor,
         onClick:(evt, elements)=>{
           if(!elements.length) return;
@@ -4141,7 +4141,7 @@ async function renderCharts(){
       options:{
         plugins:{ legend:{position:"bottom", labels:{font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}}},
           tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+ctx.dataset.label+": "+formatMoney(ctx.parsed.y)} } },
-        scales:{ y:{ ticks:{ callback:v=>fa(v) } }, x:{ ticks:{ font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"} } } }
+        scales:{ y:{ ticks:{ callback:v=>chartShort(v) } }, x:{ ticks:{ autoSkip:false, font:{family:"Vazirmatn, Tahoma, Arial, sans-serif"} } } }
       }
     });
   })();
@@ -4154,7 +4154,7 @@ async function renderCharts(){
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
-        scales:{ x:{ ticks:{ callback:v=>fa(v) } }, y:{ ticks:{ font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } }
+        scales:{ x:{ ticks:{ callback:v=>chartShort(v) } }, y:{ ticks:{ autoSkip:false, font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } }
       }
     });
   })();
@@ -4172,7 +4172,7 @@ async function renderCharts(){
       options:{
         indexAxis:"y",
         plugins:{ legend:{display:false}, tooltip:{ bodyFont:{family:"Vazirmatn, Tahoma, Arial, sans-serif"}, callbacks:{label:(ctx)=>" "+formatMoney(ctx.parsed.x)} } },
-        scales:{ x:{ ticks:{ callback:v=>fa(v) } }, y:{ ticks:{ font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
+        scales:{ x:{ ticks:{ callback:v=>chartShort(v) } }, y:{ ticks:{ autoSkip:false, font:{family:"Vazirmatn, Tahoma, Arial, sans-serif", size:11} } } },
         onHover:chartHoverCursor,
         onClick:(evt, elements)=>{
           if(!elements.length) return;

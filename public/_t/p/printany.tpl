@@ -302,9 +302,70 @@
     });
   }
 
+  /* کارت‌ها به عرضِ برگه.
+
+     روی کاغذ هر کارت ۱۶٫۴٪ بود، یعنی شش‌تا در یک ردیف. بخشی که
+     چهار کارت دارد دو سومِ راستِ برگه را می‌گرفت و یک سومِ چپ سفید
+     می‌ماند — همان «چرا سمت چپ خالی است» که گزارش شد. حالا عرضِ
+     کارت از شمارِ خودِ کارت‌ها می‌آید، نه از یک عددِ ثابت. */
+  function spreadCards(v, land) {
+    [].forEach.call(v.querySelectorAll('.cards, .grid3, .grid-auto'), function (row) {
+      var kids = [].filter.call(row.children, function (c) {
+        return c.getClientRects().length > 0;
+      });
+      if (!kids.length) return;
+      var cap = row.classList.contains('cards') ? (land ? 6 : 3) : (land ? 3 : 2);
+      var per = Math.min(kids.length, cap);
+      var w = (100 / per) - 0.6;
+      kids.forEach(function (c) { c.style.setProperty('width', w + '%', 'important'); });
+      row.setAttribute('data-kb-spread', '1');
+    });
+  }
+
+  /* و عددِ داخلِ کارت در یک سطر.
+
+     «۱,۹۴۲,۵۰۰,۰۰۰» دو تکه می‌شد و «۰۰» تنها می‌افتاد سطرِ بعد. عدد
+     نباید بشکند؛ اگر جا نشد، کوچک‌تر می‌شود. */
+  function fitStats(v) {
+    [].forEach.call(v.querySelectorAll('.stat-val'), function (el) {
+      var size = 19, guard = 0;
+      el.style.setProperty('font-size', size + 'px', 'important');
+      while (el.scrollWidth > el.clientWidth + 1 && size > 10 && guard++ < 14) {
+        size -= 1;
+        el.style.setProperty('font-size', size + 'px', 'important');
+      }
+      el.setAttribute('data-kb-fit', '1');
+    });
+  }
+
+  /* جدولِ بلند حق دارد بینِ دو برگه بشکند.
+
+     «منابع و مصارف» برگهٔ اولش سه کارت داشت و بقیه‌اش سفید بود، و
+     کلِ جدول می‌رفت برگهٔ دوم — چون قابِ جدول «نشکن» است. برای یک
+     قابِ کوتاه این درست است، برای جدولی که خودش از نیمِ برگه بلندتر
+     است نه. سرستون‌ها با «table-header-group» سرِ برگهٔ بعد تکرار
+     می‌شوند، پس ستون‌ها بی‌نام نمی‌مانند. */
+  function allowSplit(v) {
+    [].forEach.call(v.querySelectorAll('.panel'), function (pn) {
+      if (!pn.querySelector('table')) return;
+      if (pn.getBoundingClientRect().height < 300) return;
+      pn.classList.add('kb-split');
+    });
+  }
+
   function rebox(root) {
     [].forEach.call((root || document).querySelectorAll('.kb-pskip'),
       function (c) { c.classList.remove('kb-pskip'); });
+    [].forEach.call((root || document).querySelectorAll('.kb-split'),
+      function (c) { c.classList.remove('kb-split'); });
+    [].forEach.call((root || document).querySelectorAll('[data-kb-spread]'), function (row) {
+      [].forEach.call(row.children, function (c) { c.style.removeProperty('width'); });
+      row.removeAttribute('data-kb-spread');
+    });
+    [].forEach.call((root || document).querySelectorAll('[data-kb-fit]'), function (el) {
+      el.style.removeProperty('font-size');
+      el.removeAttribute('data-kb-fit');
+    });
     [].forEach.call((root || document).querySelectorAll('.kb-pval'),
       function (sp) { sp.remove(); });
     [].forEach.call((root || document).querySelectorAll('[data-kb-val]'),
@@ -473,6 +534,14 @@
       v.insertBefore(makeHead(v, i, list.length), v.firstChild);
     });
     HTML.classList.add('kb-printing');
+    /* این سه بعد از روشن شدنِ حالتِ چاپ‌اند: هر سه اندازه می‌گیرند،
+       و اندازه‌ها تا وقتی شیوه‌نامهٔ کاغذ ننشسته معنا ندارند. */
+    var land = HTML.classList.contains('kb-land');
+    list.forEach(function (v) {
+      spreadCards(v, land);
+      fitStats(v);
+      allowSplit(v);
+    });
     return true;
   }
 
