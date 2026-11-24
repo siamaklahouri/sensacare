@@ -11,7 +11,7 @@
      یعنی دستگاهِ سالم را مُرده نشان می‌دهند. */
 import { launch, calm } from './pw.mjs';
 import { readFileSync } from 'node:fs';
-import { okHost, okPort, probe } from '../src/ping.js';
+import { okHost, okPort, probe, telnet } from '../src/ping.js';
 
 const BASE = process.env.VS_BASE || 'http://127.0.0.1:8911';
 const HOST = 'sltech.ir', PORT = new URL(BASE).port || '80';
@@ -54,6 +54,18 @@ console.log('===== بررسیِ واقعی =====');
     nope.error);
 }
 
+console.log('===== تلنت =====');
+{
+  /* «telnet IP PORT» یعنی وصل شو و ببین آن‌طرف چه می‌گوید. */
+  const r = await telnet('127.0.0.1', Number(PORT), 'GET / HTTP/1.0', 2500);
+  t(r.ok && /^HTTP\/1/.test(r.text), 'جوابِ دستگاه را برمی‌گرداند',
+    (r.text || '').split('\n')[0].trim());
+  t(r.bytes > 0 && r.text.length <= 2000, 'و سقفِ متن را نگه می‌دارد',
+    r.bytes + ' بایت، ' + r.text.length + ' نویسه');
+  const shut = await telnet('127.0.0.1', 9, '', 1200);
+  t(!shut.ok && /پورت بسته/.test(shut.error), 'و پورتِ بسته را می‌گوید', shut.error);
+}
+
 console.log('===== مسیرِ سرور =====');
 {
   const r = await fetch(BASE + '/api/kartabl/login', { method: 'POST',
@@ -71,6 +83,22 @@ console.log('===== مسیرِ سرور =====');
   t(evil.status === 400, 'و نشانیِ آلوده را رد می‌کند', evil.status + '');
   const badPort = await call({ host: '127.0.0.1', port: 999999 });
   t(badPort.status === 400, 'و پورتِ نادرست را هم', badPort.status + '');
+
+  const tel = await fetch(BASE + '/api/kartabl/telnet', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+    body: JSON.stringify({ host: '127.0.0.1', port: Number(PORT), send: 'GET / HTTP/1.0' }) });
+  const tj = await tel.json();
+  t(tel.status === 200 && tj.ok && /HTTP/.test(tj.text || ''),
+    'مسیرِ تلنت هم جواب می‌دهد', (tj.text || '').split('\n')[0].trim());
+  const telBad = await fetch(BASE + '/api/kartabl/telnet', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+    body: JSON.stringify({ host: '127.0.0.1; id', port: 80 }) });
+  t(telBad.status === 400, 'و نشانیِ آلوده را رد می‌کند', telBad.status + '');
+  const telNoPort = await fetch(BASE + '/api/kartabl/telnet', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+    body: JSON.stringify({ host: '127.0.0.1' }) });
+  t(telNoPort.status === 400, 'و بی پورت هم کاری نمی‌کند — تلنت بی پورت معنا ندارد',
+    telNoPort.status + '');
 
   const anon = await fetch(BASE + '/api/kartabl/ping', { method: 'POST',
     headers: { 'Content-Type': 'application/json', Host: HOST },
@@ -151,6 +179,24 @@ console.log('===== خودِ بخش =====');
   t(/زنده/.test(many[0]) && /پورت بسته/.test(many[1]),
     'و هر ردیف جوابِ خودش را می‌گیرد، نه یکی برای همه',
     many[0] + ' / ' + many[1]);
+
+  /* ---- پنجرهٔ تلنت ---- */
+  await p.evaluate(() => document.querySelectorAll('.pg-tel')[0].click());
+  await p.waitForTimeout(400);
+  const telOpen = await p.evaluate(() => {
+    const e = document.querySelector('.tl-ov');
+    return e && !e.hidden ? (document.querySelector('.tl-sub') || {}).textContent : '';
+  });
+  t(/127\.0\.0\.1:/.test(telOpen || ''), 'دکمهٔ تلنت پنجره را با همان نشانی باز می‌کند', telOpen);
+  await p.fill('#tlSend', 'GET / HTTP/1.0');
+  await p.evaluate(() => document.querySelector('.tl-go').click());
+  await p.waitForTimeout(3000);
+  const telOut = await p.evaluate(() => (document.querySelector('.tl-out') || {}).textContent || '');
+  t(/HTTP\/1/.test(telOut), 'و جوابِ خامِ دستگاه را نشان می‌دهد',
+    telOut.split('\n')[0].trim());
+  await p.evaluate(() => document.querySelector('.tl-x').click());
+  await p.waitForTimeout(300);
+  t(await p.evaluate(() => !!document.querySelector('.tl-ov[hidden]')), 'و بسته می‌شود');
 
   /* افزودن و حذف */
   const n0 = await p.evaluate(() => state.pingHosts.length);

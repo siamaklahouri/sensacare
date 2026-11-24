@@ -139,8 +139,11 @@ var PING = (function () {
           '" aria-label="پورت" data-ascii placeholder="—"></td>' +
         '<td class="pg-state">' + cell(r) + '</td>' +
         '<td class="pg-when">' + escapeHtml(lastAt(r)) + '</td>' +
-        '<td><button type="button" class="btn btn-ghost btn-sm pg-one" data-i="' + i +
-          '">پینگ</button></td>' +
+        '<td class="pg-acts">' +
+          '<button type="button" class="btn btn-ghost btn-sm pg-one" data-i="' + i + '">پینگ</button>' +
+          '<button type="button" class="btn btn-ghost btn-sm pg-tel" data-i="' + i +
+            '" title="وصل شو و ببین چه می‌گوید">تلنت</button>' +
+        '</td>' +
         '<td><button class="btn-del" data-pg-del="' + i + '" title="حذف این ردیف">✕</button></td>' +
       '</tr>';
     }).join('');
@@ -166,6 +169,11 @@ var PING = (function () {
     body.querySelectorAll('.pg-one').forEach(function (b) {
       b.addEventListener('click', function () {
         one(parseInt(b.getAttribute('data-i'), 10));
+      });
+    });
+    body.querySelectorAll('.pg-tel').forEach(function (b) {
+      b.addEventListener('click', function () {
+        openTel(parseInt(b.getAttribute('data-i'), 10));
       });
     });
     body.querySelectorAll('[data-pg-del]').forEach(function (b) {
@@ -205,6 +213,94 @@ var PING = (function () {
         seen[k] = { ok: false, ms: 0, error: 'به سرور نرسید', at: nowClock() };
       })
       .then(function () { render(); });
+  }
+
+  /* ---------- تلنت ----------
+     «telnet IP PORT» در عمل یعنی: وصل شو، شاید یک خط بفرست، و ببین
+     آن‌طرف چه می‌گوید. پایانهٔ زنده نیست و عمداً هم نیست — یک
+     رفت‌وبرگشت و قطع. برای «این پورت چه می‌گوید؟» همین کافی است و
+     نشستِ بازِ روی سرور نمی‌خواهد. */
+  var tel = null;
+
+  function telBox() {
+    if (tel) return tel;
+    tel = document.createElement('div');
+    tel.className = 'tl-ov';
+    tel.hidden = true;
+    tel.innerHTML =
+      '<div class="tl" role="dialog" aria-modal="true" aria-labelledby="tl-h">' +
+        '<div class="tl-h" id="tl-h">تلنت</div>' +
+        '<div class="tl-sub"></div>' +
+        '<label class="tl-lbl" for="tlSend">خطی که فرستاده می‌شود (اختیاری)</label>' +
+        '<input type="text" id="tlSend" class="tl-in" data-ascii ' +
+          'placeholder="خالی بگذارید تا فقط بنرِ دستگاه را ببینید" ' +
+          'autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">' +
+        '<pre class="tl-out" aria-live="polite"></pre>' +
+        '<div class="tl-f">' +
+          '<button type="button" class="btn btn-ghost btn-sm tl-x">بستن</button>' +
+          '<button type="button" class="btn btn-brass btn-sm tl-go">اتصال</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(tel);
+    tel.addEventListener('click', function (e) {
+      if (e.target.closest('.tl-x') || e.target === tel) { tel.hidden = true; return; }
+      if (e.target.closest('.tl-go')) run();
+    });
+    tel.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') tel.hidden = true;
+      if (e.key === 'Enter' && e.target.id === 'tlSend') { e.preventDefault(); run(); }
+    });
+    return tel;
+  }
+
+  var telRow = null;
+
+  function openTel(i) {
+    var r = rows()[i];
+    if (!r) return;
+    telRow = r;
+    var el = telBox();
+    el.querySelector('.tl-sub').textContent =
+      (r.name ? r.name + ' — ' : '') + r.host + (r.port ? ':' + r.port : '');
+    el.querySelector('.tl-out').textContent = '';
+    el.querySelector('.tl-out').className = 'tl-out';
+    el.hidden = false;
+    try { el.querySelector('#tlSend').focus(); } catch (e) { }
+  }
+
+  function run() {
+    if (!telRow) return;
+    var el = telBox();
+    var out = el.querySelector('.tl-out');
+    var port = parseInt(telRow.port, 10);
+    if (!port) {
+      out.className = 'tl-out is-bad';
+      out.textContent = 'این نشانی پورت ندارد. تلنت بی پورت معنا ندارد — پورتش را در جدول بنویسید.';
+      return;
+    }
+    out.className = 'tl-out is-wait';
+    out.textContent = 'در حال اتصال…';
+    fetch(KARTABL_API + '/telnet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: telRow.host, port: port,
+                             send: el.querySelector('#tlSend').value || '' })
+    }).then(function (res) { return res.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (!j.ok) {
+          out.className = 'tl-out is-bad';
+          out.textContent = j.error || 'وصل نشد';
+          return;
+        }
+        out.className = 'tl-out is-ok';
+        out.textContent = j.text
+          ? j.text
+          : 'وصل شد (' + fa(Math.round(j.ms || 0)) + ' میلی‌ثانیه) — دستگاه چیزی نگفت.';
+      })
+      .catch(function () {
+        out.className = 'tl-out is-bad';
+        out.textContent = 'به سرور نرسید';
+      });
   }
 
   function nowClock() {

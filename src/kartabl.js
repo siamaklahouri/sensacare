@@ -28,7 +28,7 @@ import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
 import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNames,
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
-import { probe, okHost, okPort } from './ping.js';
+import { probe, telnet, okHost, okPort } from './ping.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -2339,6 +2339,15 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const port = (raw === '' || raw === null || raw === undefined) ? 0 : parseInt(raw, 10);
     if (port && !okPort(port)) return bad('پورت درست نیست', 400);
     return json(await probe(host, port, 2500));
+  }
+
+  /* تلنت: یک رفت‌وبرگشت، نه یک پایانهٔ زنده. */
+  if (p === '/telnet' && m === 'POST') {
+    const host = String(body.host || '').trim();
+    if (!okHost(host)) return bad('نشانی درست نیست', 400);
+    const port = parseInt(body.port, 10);
+    if (!okPort(port)) return bad('پورت درست نیست', 400);
+    return json(await telnet(host, port, body.send, 2500));
   }
 
   if (p === '/state' && m === 'GET') {

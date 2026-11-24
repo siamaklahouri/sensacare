@@ -100,3 +100,56 @@ export async function probe(host, port, ms) {
   if (!okPort(port)) return { ok: false, ms: 0, how: '', error: 'پورت درست نیست' };
   return tcpProbe(host, parseInt(port, 10), ms);
 }
+
+/* ==================== تلنت ====================
+   «telnet IP PORT» در عمل یعنی: وصل شو، شاید یک خط بفرست، و ببین
+   آن‌طرف چه می‌گوید. برای عیب‌یابیِ دستگاه همین کافی است — بنرِ
+   SSH، جوابِ HTTP، یا سکوتِ یک پورتِ باز.
+
+   این یک پایانهٔ واقعی نیست و عمداً هم نیست: پایانهٔ زنده یعنی
+   نشستِ باز روی سرور، و برای «ببینم این پورت چه می‌گوید» گران و
+   خطرناک است. یک رفت‌وبرگشت، سقفِ دو کیلوبایت، و قطع.
+
+   پاسخ متنی است و ممکن است هر بایتی داشته باشد؛ نویسه‌های کنترلی
+   برداشته می‌شوند تا صفحه را به هم نریزند. */
+export function telnet(host, port, send, ms) {
+  const wait = Math.min(Math.max(parseInt(ms, 10) || 2500, 500), 6000);
+  const line = String(send == null ? '' : send).slice(0, 200);
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    let out = Buffer.alloc(0);
+    let done = false;
+    const end = (ok, error) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { sock.destroy(); } catch (e) { }
+      /* بایت‌ها را به متن می‌آوریم و نویسه‌های کنترلی را برمی‌داریم،
+         جز خطِ تازه و تب که خودِ متن‌اند. */
+      const text = out.toString('utf8')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+        .slice(0, 2000);
+      resolve({ ok, ms: Date.now() - t0, text, bytes: out.length, error: error || '' });
+    };
+    const sock = net.connect({ host, port, family: 4 });
+    sock.setTimeout(wait);
+    /* حتی اگر دستگاه ساکت بماند، «وصل شد» خودش یک خبر است. */
+    const timer = setTimeout(() => end(true, ''), wait);
+    sock.on('connect', () => {
+      if (!line) return;
+      /* درخواستِ HTTP با یک خطِ خالی تمام می‌شود، وگرنه وب‌سرور تا
+         ابد منتظرِ بقیهٔ سرآیندها می‌ماند و هیچ نمی‌گوید. برای
+         پروتکل‌های خطی یک خطِ خالیِ اضافه بی‌ضرر است، ولی بی‌دلیل
+         هم نمی‌فرستیمش. */
+      var tail = /HTTP\/\d/i.test(line) ? '\r\n\r\n' : '\r\n';
+      try { sock.write(line + tail); } catch (e) { }
+    });
+    sock.on('data', d => {
+      out = Buffer.concat([out, d]).subarray(0, 2048);
+      if (out.length >= 2048) end(true, '');
+    });
+    sock.on('timeout', () => end(out.length > 0, out.length ? '' : 'پاسخی نداد'));
+    sock.on('error', e => end(false, why((e && e.code) || '')));
+    sock.on('close', () => end(out.length > 0, out.length ? '' : ''));
+  });
+}

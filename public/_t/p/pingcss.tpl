@@ -67,3 +67,44 @@
   .pg-add .pg-h{ flex:1 1 180px; }
   .pg-add .pg-p{ flex:0 0 96px; }
   .pg-add input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+
+  /* ---------- پنجرهٔ تلنت ---------- */
+  .pg-acts{ white-space:nowrap; }
+  .pg-acts .btn + .btn{ margin-inline-start:5px; }
+
+  .tl-ov{
+    position:fixed; inset:0; z-index:720; display:flex;
+    align-items:center; justify-content:center; padding:16px;
+    background:rgba(11,20,33,.5);
+  }
+  .tl-ov[hidden]{ display:none !important; }
+  .tl{
+    background:var(--white); border-radius:16px; padding:18px 20px 14px;
+    width:min(620px, 100%); box-shadow:0 20px 50px rgba(0,0,0,.3); color:var(--ink);
+  }
+  .tl-h{ font-family:var(--font-display); font-size:15px; font-weight:800; }
+  .tl-sub{
+    font-size:12px; color:var(--ink-soft); margin:3px 0 13px;
+    direction:ltr; text-align:right; font-variant-numeric:tabular-nums;
+  }
+  .tl-lbl{ display:block; font-size:11.5px; color:var(--ink-faint); margin-bottom:5px; }
+  .tl-in{
+    width:100%; box-sizing:border-box; font-family:inherit; font-size:12.5px;
+    padding:8px 11px; border:1.5px solid var(--card-border); border-radius:10px;
+    background:var(--paper); color:var(--ink); direction:ltr; text-align:left;
+  }
+  .tl-in:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+  /* جوابِ دستگاه متنِ خام است: چپ‌به‌راست، با قلمِ یک‌عرض، و در قابی
+     که می‌لغزد — بنرِ بعضی دستگاه‌ها چند ده خط است. */
+  .tl-out{
+    margin:11px 0 0; max-height:40vh; overflow:auto; white-space:pre-wrap;
+    word-break:break-word; direction:ltr; text-align:left;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:11.5px; line-height:1.7; padding:10px 12px; border-radius:10px;
+    background:var(--paper); color:var(--ink-soft); min-height:34px;
+  }
+  .tl-out.is-ok{ color:var(--ink); }
+  .tl-out.is-bad{ background:var(--red-bg); color:var(--red-ink); }
+  .tl-out.is-wait{ color:var(--brass-ink); }
+  .tl-f{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  @media print{ .tl-ov{ display:none !important; } }
