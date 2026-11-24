@@ -69,6 +69,43 @@ await weigh('کارتابلِ فنی', '/siamak/',
   await cookiesFor('kartabl', { password: process.env.VS_IT_PASS || 'siamaksiamak' }),
   1700, 240);
 
+console.log('===== شیوه‌نامهٔ سرو‌شده =====');
+{
+  /* توضیح‌های فارسیِ داخلِ شیوه‌نامه یک چهارمِ حجمش بودند و هر بازدید
+     کننده دانلودشان می‌کرد. از پرونده‌ها برداشته نشده‌اند، فقط از آن
+     چیزی که به مرورگر می‌رود. */
+  const { dropCssComments } = await import('../src/kartabl.js');
+  t(dropCssComments('a{/*x*/color:red}') === 'a{color:red}', 'توضیح برداشته می‌شود');
+  t(dropCssComments('a{content:"/*"}') === 'a{content:"/*"}',
+    'ولی «/*»ی که داخلِ رشته است، توضیح نیست');
+  t(dropCssComments("a{content:'*/';}/*z*/") === "a{content:'*/';}",
+    'و رشتهٔ تک‌کوتیشن هم همین‌طور');
+  t(dropCssComments('a{/* ناتمام ') === 'a{', 'و توضیحِ بسته‌نشده تا ته برداشته می‌شود');
+
+  const ctx = await b.newContext();
+  await ctx.addCookies(await cookiesFor('kartabl', { password: process.env.VS_IT_PASS || 'siamaksiamak' }));
+  const p2 = await ctx.newPage();
+  await p2.goto('http://' + HOST + ':' + PORT + '/siamak/', { waitUntil: 'load' });
+  await p2.waitForTimeout(2500);
+  const href = await p2.evaluate(() => {
+    const l = document.querySelector('link[rel=stylesheet][href^="/_a/"]');
+    return l ? l.getAttribute('href') : '';
+  });
+  t(!!href, 'شیوه‌نامه از یک پروندهٔ جداگانه می‌آید', href);
+  const css = await (await fetch(BASE + href, { headers: { Host: HOST } })).text();
+  t(!/\/\*/.test(css.replace(/(["'])(?:\\.|(?!\1)[\s\S])*\1/g, '')),
+    'و هیچ توضیحی در آن نمانده', Math.round(css.length / 1024) + 'KB');
+  /* و هنوز همان شیوه‌نامه است، نه یک متنِ شکسته */
+  const look = await p2.evaluate(() => {
+    const el = document.querySelector('.navbtn');
+    const s2 = el ? getComputedStyle(el) : null;
+    return s2 ? { pad: s2.padding, disp: s2.display } : null;
+  });
+  t(look && look.disp !== 'inline' && look.pad !== '0px',
+    'و صفحه هنوز شکل دارد', JSON.stringify(look));
+  await ctx.close();
+}
+
 console.log('===== نشانهٔ برنامه =====');
 {
   const names = home.map(([u]) => u);

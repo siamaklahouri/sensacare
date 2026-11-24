@@ -553,6 +553,36 @@ async function sha8(text) {
    چیزی خراب نمی‌شود — فقط صفحه بزرگ‌تر. */
 const hasPlaceholder = t => /\{\{[A-Z][A-Z0-9_]*\}\}/.test(t);
 
+/* توضیح‌های CSS برای کسی است که کد را می‌خواند؛ مرورگر فقط
+   دانلودشان می‌کند. شیوه‌نامهٔ کارتابل ۲۹۳ کیلوبایت بود و یک چهارمش
+   همین توضیح‌ها. از خودِ پرونده‌ها برداشته نمی‌شوند — فقط از آن چیزی
+   که به مرورگر می‌رود.
+
+   رشته‌ها دست‌نخورده می‌مانند: «content:"/*"» توضیح نیست. */
+export function dropCssComments(css) {
+  let out = '', i = 0;
+  const n = css.length;
+  while (i < n) {
+    const c = css[i];
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n && css[j] !== c) { if (css[j] === '\\') j++; j++; }
+      out += css.slice(i, Math.min(j + 1, n));
+      i = j + 1;
+      continue;
+    }
+    if (c === '/' && css[i + 1] === '*') {
+      const e = css.indexOf('*/', i + 2);
+      i = e < 0 ? n : e + 2;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  /* و سطرهای خالی‌ای که جای توضیح‌ها مانده */
+  return out.replace(/[ \t]*\n(?:[ \t]*\n)+/g, '\n');
+}
+
 async function lift(html, kind, tag, ext, store, makeRef) {
   /* «<style» و «<script» داخلِ رشته‌های جاوااسکریپت هم هست (سندِ چاپ
      خودش یکی می‌سازد). آن‌ها نباید برداشته شوند، پس ناحیه‌های اسکریپت
@@ -589,7 +619,8 @@ async function lift(html, kind, tag, ext, store, makeRef) {
 
   /* بینِ دو تکه جاوااسکریپت یک «;» لازم است تا اگر تکهٔ اول بی‌نقطه‌ویرگول
      تمام شده باشد، به تکهٔ بعدی نچسبد. CSS چنین چیزی نمی‌خواهد. */
-  const body = picked.map(m => m[1]).join(tag === 'style' ? '\n' : '\n;\n');
+  let body = picked.map(m => m[1]).join(tag === 'style' ? '\n' : '\n;\n');
+  if (tag === 'style') body = dropCssComments(body);
   const name = `k-${kind}-${await sha8(body)}.${ext}`;
   store.set(name, body);
 
