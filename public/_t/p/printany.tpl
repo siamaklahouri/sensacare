@@ -250,7 +250,18 @@
       function (el) { delete el.dataset.kbVal; });
   }
 
+  /* پیش‌فرضِ انیمیشنِ نمودارها، همان‌طور که پیش از چاپ بود */
+  var animWas = null;
+
   function cleanup() {
+    /* وگرنه بعد از اولین چاپ، نمودارهای صفحه تا پایانِ همان نشست
+       بی‌حرکت می‌ماندند. */
+    try {
+      if (animWas !== null && window.Chart && Chart.defaults) {
+        Chart.defaults.animation = animWas;
+        animWas = null;
+      }
+    } catch (e) { }
     rebox(document);
     HTML.classList.remove('kb-printing');
     [].forEach.call(document.querySelectorAll('.kb-print'), function (v) {
@@ -404,6 +415,45 @@
     return true;
   }
 
+  /* نمودارها را از حرکت می‌اندازد و فوری می‌کشد.
+
+     با دست‌کاریِ options هر نمودار شروع کردم و Chart.js با
+     «Recursion detected: _scriptable» ترکید: options یک پراکسیِ
+     حل‌شونده است و نوشتن روی کلیدهای انیمیشن، حل‌کننده را به حلقه
+     می‌انداخت. راهِ درست همان چیزی است که خودِ کتابخانه می‌گوید:
+     پیش‌فرضِ سراسری را خاموش کن، هر نمودار را stop کن، و یک
+     به‌روزرسانیِ بی‌انیمیشن بخواه.
+
+     responsive را دست نمی‌زنیم: می‌خواهیم نمودار خودش را با عرضِ
+     کاغذ جور کند — فقط بی‌حرکت. */
+  function freezeCharts(list) {
+    var n = 0;
+    try {
+      if (window.Chart && Chart.defaults) {
+        if (animWas === null) animWas = Chart.defaults.animation;
+        Chart.defaults.animation = false;
+      }
+    } catch (e) { }
+    list.forEach(function (v) {
+      [].forEach.call(v.querySelectorAll('canvas'), function (cv) {
+        var c = null;
+        try { c = (window.Chart && Chart.getChart) ? Chart.getChart(cv) : null; } catch (e) { }
+        if (!c) return;
+        try { c.stop(); } catch (e) { }
+        try { c.resize(); } catch (e) { }
+        try { c.update('none'); n++; } catch (e) { }
+      });
+    });
+    return n;
+  }
+
+  /* دو فریمِ واقعیِ نقاشی، نه یک تایمرِ حدسی. */
+  function afterPaint(fn) {
+    var raf = window.requestAnimationFrame;
+    if (!raf) { setTimeout(fn, 260); return; }
+    raf(function () { raf(function () { setTimeout(fn, 60); }); });
+  }
+
   function activeView() {
     return document.querySelector('.content > .view.active');
   }
@@ -431,7 +481,20 @@
       try { if (typeof redrawAfterTheme === 'function') redrawAfterTheme(); } catch (e) { }
       setTimeout(function () {
         if (!setup(list, o)) return;
-        setTimeout(function () { window.print(); }, 140);
+        /* نمودارها جانِ کلام‌اند و نیمه‌کشیده روی کاغذ می‌افتادند.
+
+           دو چیز هم‌زمان اتفاق می‌افتد: Chart.js هر بار با انیمیشن
+           می‌کشد (حدودِ یک ثانیه)، و کلاسِ چاپ که می‌نشیند عرضِ
+           بوم عوض می‌شود و یک کشیدنِ دیگر شروع می‌شود. ما ۱۴۰
+           میلی‌ثانیه بعد window.print را صدا می‌زدیم — درست وسطِ
+           همان کشیدن. نتیجه‌اش نمودارِ نصفه بود؛ گاهی یک چارکِ
+           دایره، گاهی میله‌های نیم‌قد.
+
+           پس اول انیمیشن را خاموش می‌کنیم و یک کشیدنِ فوری
+           می‌خواهیم، بعد دو فریم صبر می‌کنیم تا مرورگر واقعاً
+           نقاشی‌اش کند، و تازه بعد چاپ. */
+        freezeCharts(list);
+        afterPaint(function () { window.print(); });
       }, 140);
     };
     if (orient === 'landscape' || orient === 'portrait') run(orient);

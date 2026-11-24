@@ -17,7 +17,16 @@
       نبود: فاکتورها با ده ستون روی کاغذِ ایستاده می‌رفتند.
 
    ۴) ستون‌های بی‌اسم و خالی (📎 پیوست، ⭐ ستاره، کلیدِ حذف/تغییر)
-      روی کاغذ یک ردیف شکلکِ بی‌فایده می‌شدند. */
+      روی کاغذ یک ردیف شکلکِ بی‌فایده می‌شدند.
+
+   و دو تای دیگر که بعداً گزارش شد:
+
+   ۵) نمودارها نیمه‌کشیده می‌افتادند. Chart.js با انیمیشن می‌کشد و
+      ما ۱۴۰ میلی‌ثانیه بعد چاپ می‌کردیم — درست وسطِ همان کشیدن.
+
+   ۶) کارت‌های آمار نامرئی چاپ می‌شدند: «animation:statIn backwards»
+      یعنی فریمِ صفرشان شفاف است، و چیدمانِ کاغذ انیمیشن را از نو
+      شروع می‌کرد. */
 import { launch, calm } from './pw.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -147,6 +156,63 @@ for (const [label, api, pass, path, view] of [
   t(paper.chipBorder === '0px', 'و قابِ دکمه‌ای ندارد', paper.chipBorder);
   t(paper.toggleCol, 'ستونِ کلیدِ «حذف/تغییر» برداشته می‌شود');
   t(paper.btns === 0, 'و هیچ دکمهٔ دیگری روی کاغذ نیست', paper.btns + ' دکمه');
+
+  /* ---- نمودارها و حرکت ---- */
+  await p.evaluate(() => { try { if (window.KBPRINT) KBPRINT = KBPRINT; } catch (e) { } });
+  await p.emulateMedia({ media: null });
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(2800); await calm(p);
+  await p.evaluate(() => {
+    const x = document.querySelector('.navbtn[data-view="dashboard"]'); if (x) x.click();
+  });
+  await p.waitForTimeout(900);
+  await p.evaluate(() => {
+    window.__snap = null;
+    window.print = function () {
+      const out = [];
+      /* فقط بوم‌هایی که واقعاً روی کاغذ می‌روند: نمودارِ بی‌داده
+         اصلاً چاپ نمی‌شود و بومِ پنهان هم اندازه ندارد. */
+      [...document.querySelectorAll('.kb-print canvas')].filter(cv => {
+        if (cv.getAttribute('data-empty') === '1') return false;
+        if (!cv.width || !cv.height) return false;
+        const box = cv.closest('.panel') || cv;
+        return getComputedStyle(box).display !== 'none' && cv.offsetParent !== null;
+      }).forEach(cv => {
+        let c = null; try { c = Chart.getChart(cv); } catch (e) { }
+        let ink = -1;
+        try {
+          const g = cv.getContext('2d');
+          const d = g.getImageData(0, 0, cv.width, cv.height).data;
+          let n = 0; for (let i = 3; i < d.length; i += 148) if (d[i] > 8) n++;
+          ink = n;
+        } catch (e) { }
+        out.push({ anim: String((window.Chart && Chart.defaults) ? Chart.defaults.animation : '?'), busy: (c && c.$animations) ? Object.keys(c.$animations).length : -1, ink });
+      });
+      const card = document.querySelector('.kb-print .stat');
+      window.__snap = { charts: out, cardOpacity: card ? getComputedStyle(card).opacity : '',
+                        cardAnim: card ? getComputedStyle(card).animationName : '' };
+    };
+    try { localStorage.removeItem('kb-print-orient-v1'); } catch (e) { }
+  });
+  await p.emulateMedia({ media: 'print' });
+  await p.evaluate(() => kbPrint(document.getElementById('view-dashboard')));
+  await p.waitForTimeout(700);
+  await p.evaluate(() => { const ov = document.querySelector('.kb-orient-ov'); if (ov) ov.querySelector('.ko-go').click(); });
+  await p.waitForTimeout(2200);
+  const snap = await p.evaluate(() => window.__snap);
+  t(!!snap, 'چاپِ داشبورد راه افتاد');
+  if (snap) {
+    t(snap.charts.length > 0, 'نمودار روی کاغذ هست', snap.charts.length + ' تا');
+    t(snap.charts.every(c => c.anim === 'false'),
+      'و انیمیشنِ نمودارها پیش از چاپ خاموش است', JSON.stringify(snap.charts.map(c => c.anim)));
+    t(snap.charts.every(c => c.busy <= 0),
+      'و هیچ‌کدام وسطِ کشیدن نیستند', JSON.stringify(snap.charts.map(c => c.busy)));
+    t(snap.charts.every(c => c.ink > 20),
+      'و همه واقعاً کشیده شده‌اند، نه نصفه', JSON.stringify(snap.charts.map(c => c.ink)));
+    t(snap.cardOpacity === '1', 'کارت‌های آمار نامرئی چاپ نمی‌شوند', 'شفافیت ' + snap.cardOpacity);
+    t(snap.cardAnim === 'none', 'چون روی کاغذ هیچ‌چیز حرکت نمی‌کند', snap.cardAnim);
+  }
+  await p.emulateMedia({ media: null });
 
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await ctx.close();

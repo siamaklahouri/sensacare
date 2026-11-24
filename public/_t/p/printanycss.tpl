@@ -32,6 +32,15 @@
     .kb-print-btn{ display:none !important; }
 
     html.kb-printing body{ background:#fff !important; }
+    /* هیچ‌چیز روی کاغذ حرکت نمی‌کند.
+
+       کارت‌های آمار با «animation:statIn .4s backwards» می‌آیند، یعنی
+       فریمِ صفرشان شفاف است. چیدمانِ کاغذ که عوض می‌شود انیمیشن از نو
+       شروع می‌شود و برگه می‌تواند درست همان فریمِ صفر را بگیرد: شش
+       کارتِ نامرئی. همین برای هر محوشدن و لغزشِ دیگری هم هست. */
+    html.kb-printing *, html.kb-printing *::before, html.kb-printing *::after{
+      animation:none !important; transition:none !important;
+    }
     html.kb-printing .sidebar, html.kb-printing .topbar,
     html.kb-printing .appbar, html.kb-printing .ch-fab-wrap,
     html.kb-printing .reminders-banner,
@@ -155,10 +164,23 @@
     /* ردیفِ جست‌وجوی بالای جدول ابزار است، نه داده: روی کاغذ یک ردیفِ
        کاملاً خالی می‌شد که آدم را دنبالِ خودش می‌فرستاد. */
     html.kb-printing .kb-print tr:has(.col-filter){ display:none !important; }
+    /* پیامِ «با این فیلتر چیزی نیست» هم ابزار است، نه داده — و
+       چون خانه‌اش colspan=30 دارد، روی کاغذ جدول را به زور پهن
+       می‌کرد و ردیفی می‌ساخت پهن‌تر از سرصفحه‌اش. */
+    html.kb-printing .kb-print tr.ts-none{ display:none !important; }
     /* جدول‌ها روی کاغذ: سرصفحه سرِ هر صفحه، و ردیف نصف نشود. */
     html.kb-printing .kb-print thead{ display:table-header-group; }
     html.kb-printing .kb-print tr{ break-inside:avoid; page-break-inside:avoid; }
-    html.kb-printing .kb-print table{ width:100% !important; }
+    /* جدول به اندازهٔ خودش، نه به زورِ عرضِ برگه.
+
+       «width:100%» هر جدولی را تا لبهٔ کاغذ می‌کشید: جدولِ چهار
+       ستونه روی کاغذِ خوابیده می‌شد چند خانهٔ غول‌پیکر با یک کلمه
+       وسطشان. کاربر گفت «انگار کشیده شده‌اند» و درست می‌گفت.
+       حالا جدول عرضِ طبیعیِ خودش را می‌گیرد و فقط اگر از برگه
+       بزند بیرون، تا همان‌جا جمع می‌شود. */
+    html.kb-printing .kb-print table{
+      width:auto !important; max-width:100% !important;
+    }
     /* ستونِ چسبنده روی کاغذ معنی ندارد و سایه‌اش روی چاپ خاکستری می‌شود */
     html.kb-printing .kb-print td.server-name,
     html.kb-printing .kb-print th.server-name{ position:static !important; }
