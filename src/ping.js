@@ -20,6 +20,7 @@
        حتی اگر الگو روزی سوراخ شود، آرگومان آرگومان می‌ماند. */
 import net from 'node:net';
 import { execFile } from 'node:child_process';
+import { lookup } from 'node:dns';
 
 /* آی‌پیِ نسخهٔ ۴، یا نامِ میزبان. نقطه‌ها و خط تیره مجازند، بس. */
 const HOST_RE = /^[A-Za-z0-9](?:[A-Za-z0-9.\-]{0,119})$/;
@@ -154,26 +155,33 @@ export function telnet(host, port, send, ms) {
   });
 }
 
-/* ---------- تلنتِ زنده ----------
-   همان کار، ولی به‌جای یک جوابِ یک‌جا، هرچه می‌آید همان لحظه
-   فرستاده می‌شود. کاربر گفت «کامل نمایش بده وقتی دارد تلنت گرفته
-   می‌شود» و حق داشت: دستگاهی که دو ثانیه بعد حرف می‌زند، در حالتِ
-   یک‌جا اصلاً دیده نمی‌شد.
+/* ---------- تلنتِ زنده، مرحله‌به‌مرحله ----------
+   کاربر گفت «می‌خواهم مراحلش را ببینم؛ ببینم تا کجا می‌رود یا کجا
+   گیر می‌کند». پس این جریان دو چیز می‌فرستد:
 
-   سه مرز:
-   • سقفِ متن ۶۴ کیلوبایت است، نه دو. چیزی که زنده می‌آید را آدم
-     می‌خوانَد و می‌بندد؛ دو کیلوبایت وسطِ حرف می‌بُرید.
-   • بی‌حرفیِ طولانی هم پایان است: اگر دستگاه دوازده ثانیه ساکت
-     بماند، بسته می‌شود. نشستِ باز روی سرور نمی‌ماند.
-   • قطعِ کاربر هم بسته‌اش می‌کند: وقتی مرورگر خواندن را رها کند،
-     cancel صدا می‌خورد و سوکت می‌رود.
+   • خطِ خامِ خودِ دستگاه، همان لحظه که می‌آید.
+   • و کنارش مرحله‌ها: نام پیدا شد، در حال اتصال، وصل شد، این خط
+     رفت، در انتظارِ پاسخ، اولین پاسخ رسید، ... هرکدام با زمانِ
+     خودش از لحظهٔ صفر.
 
-   نویسه‌های کنترلی تکه‌به‌تکه برداشته می‌شوند. این تنها جایی است که
-   با متنِ تکه‌شده مشکل می‌سازد — یک نویسهٔ چندبایتی ممکن است وسطِ
-   دو تکه بیفتد — پس رمزگشایی با TextDecoder و stream:true انجام
-   می‌شود که خودش تکه‌ها را به هم می‌چسباند. */
+   مرحله‌ها با نویسهٔ ۰x1E شروع می‌شوند و بدنه‌شان JSON است. این
+   نویسه هرگز از خودِ دستگاه رد نمی‌شود، چون نویسه‌های کنترلی از
+   دادهٔ دستگاه برداشته می‌شوند — پس مرز قاطع است و قاطی نمی‌شود.
+
+   سه مرز مثلِ قبل: سقفِ ۶۴ کیلوبایت، دوازده ثانیه سکوت، و قطعِ
+   کاربر. یکی هم تازه است: اگر اتصال خودش باز نشود، هشت ثانیه
+   بیشتر منتظر نمی‌مانیم و همان‌جا می‌گوییم کجا ماند — وگرنه
+   «گیر کردن» از «دیر جواب دادن» پیدا نبود. */
+const IP4_RE = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+
+/* شمارِ بایت و ثانیه با رقمِ فارسی می‌رود، مثلِ بقیهٔ صفحه. نشانی و
+   کدِ خطا نه: «۱۲۷.۰.۰.۱» نشانی نیست. */
+const faN = n => String(n).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]);
+
 export function telnetStream(host, port, send, opt) {
-  const idle = Math.min(Math.max(parseInt((opt || {}).idle, 10) || 12000, 1000), 30000);
+  const o = opt || {};
+  const idle = Math.min(Math.max(parseInt(o.idle, 10) || 12000, 1000), 30000);
+  const connMs = Math.min(Math.max(parseInt(o.connect, 10) || 8000, 500), 20000);
   const cap = 64 * 1024;
   const line = String(send == null ? '' : send).slice(0, 200);
 
@@ -181,38 +189,110 @@ export function telnetStream(host, port, send, opt) {
     start(ctrl) {
       const enc = new TextEncoder();
       const dec = new TextDecoder('utf-8');
-      let got = 0, done = false;
-      const say = txt => {
-        if (done || !txt) return;
+      const t0 = Date.now();
+      let got = 0, done = false, sock = null, tConn = null, lastRecv = 0;
+
+      const put = txt => {
         try { ctrl.enqueue(enc.encode(txt)); } catch (e) { }
       };
-      const end = msg => {
+      /* یک مرحله: کدام مرحله، در چه حالی، با چه متنی، در چندم. */
+      const step = (id, st, t, note) => {
         if (done) return;
+        put('\u001e' + JSON.stringify({ id, st, t, ms: Date.now() - t0,
+                                        note: note == null ? '' : String(note) }) + '\n');
+      };
+      const say = txt => { if (!done && txt) put(txt); };
+      const fin = (st, id, t, note) => {
+        if (done) return;
+        clearTimeout(tConn);
+        step(id, st, t, note);
         done = true;
-        if (msg) { try { ctrl.enqueue(enc.encode(msg)); } catch (e) { } }
         try { ctrl.close(); } catch (e) { }
-        try { sock.destroy(); } catch (e) { }
+        try { if (sock) sock.destroy(); } catch (e) { }
       };
 
-      const sock = net.connect({ host, port, family: 4 });
-      sock.setTimeout(idle);
-      sock.on('connect', () => {
-        say('• وصل شد\n');
-        if (!line) return;
-        const tail = /HTTP\/\d/i.test(line) ? '\r\n\r\n' : '\r\n';
-        try { sock.write(line + tail); } catch (e) { }
-      });
-      sock.on('data', d => {
-        got += d.length;
-        say(dec.decode(d, { stream: true })
-          .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''));
-        if (got >= cap) end('\n• به سقفِ ۶۴ کیلوبایت رسید\n');
-      });
-      sock.on('timeout', () => end(got ? '\n• دستگاه ساکت شد\n' : '• پاسخی نداد\n'));
-      sock.on('error', e => end('• ' + why((e && e.code) || '') + '\n'));
-      sock.on('close', () => end(got ? '\n• اتصال بسته شد\n' : ''));
+      step('addr', 'ok', 'نشانی پذیرفته شد', host + ':' + port);
 
-      this._stop = () => end('');
+      const connect = ip => {
+        step('conn', 'run', 'در حال اتصال به ' + ip + ':' + port);
+        tConn = setTimeout(function () {
+          fin('bad', 'conn', 'اتصال باز نشد',
+            'هشت ثانیه هیچ جوابی نیامد — یا فایروال وسط است یا دستگاه خاموش');
+        }, connMs);
+
+        sock = net.connect({ host: ip, port, family: 4 });
+        sock.setTimeout(idle);
+
+        sock.on('connect', () => {
+          clearTimeout(tConn);
+          step('conn', 'ok', 'وصل شد');
+          if (line) {
+            const tail = /HTTP\/\d/i.test(line) ? '\r\n\r\n' : '\r\n';
+            try { sock.write(line + tail); } catch (e) { }
+            step('send', 'ok', 'این خط فرستاده شد', line);
+          } else {
+            step('send', 'skip', 'چیزی فرستاده نشد', 'فقط گوش می‌دهیم که دستگاه خودش چه می‌گوید');
+          }
+          step('wait', 'run', 'در انتظارِ پاسخِ دستگاه…');
+        });
+
+        sock.on('data', d => {
+          const first = got === 0;
+          got += d.length;
+          if (first) step('wait', 'ok', 'اولین پاسخ رسید', faN(d.length) + ' بایت');
+          say(dec.decode(d, { stream: true })
+            .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''));
+          /* هر تکه یک مرحله نشود؛ ده بار در ثانیه بس است. */
+          const now = Date.now();
+          if (!first && now - lastRecv > 100) {
+            lastRecv = now;
+            step('recv', 'run', 'در حال دریافت', faN(got) + ' بایت');
+          }
+          if (got >= cap) fin('ok', 'recv', 'به سقفِ ۶۴ کیلوبایت رسید', faN(got) + ' بایت');
+        });
+
+        sock.on('timeout', () => {
+          if (got) fin('ok', 'recv', 'دستگاه ساکت شد',
+            faN(got) + ' بایت گرفته شد، بعد ' + faN(Math.round(idle / 1000)) + ' ثانیه حرفی نزد');
+          else fin('bad', 'wait', 'وصل شد، ولی دستگاه چیزی نگفت',
+            faN(Math.round(idle / 1000)) + ' ثانیه سکوت — شاید منتظرِ فرمان است');
+        });
+
+        sock.on('error', e => {
+          const code = (e && e.code) || '';
+          fin('bad', got ? 'recv' : 'conn', why(code), code);
+        });
+
+        sock.on('close', () => {
+          if (got) fin('ok', 'recv', 'اتصال از آن‌طرف بسته شد', faN(got) + ' بایت');
+          else fin('bad', 'conn', 'اتصال بسته شد', 'بی آنکه چیزی بیاید');
+        });
+      };
+
+      /* نامِ میزبان جدا از اتصال حل می‌شود، تا اگر همین‌جا بماند
+         معلوم باشد که گیرِ کار DNS است، نه دستگاه. */
+      if (IP4_RE.test(host)) {
+        connect(host);
+      } else {
+        step('dns', 'run', 'در حال یافتنِ نشانیِ ' + host);
+        lookup(host, { family: 4 }, (err, addr) => {
+          if (done) return;
+          if (err || !addr) {
+            fin('bad', 'dns', 'نام پیدا نشد', (err && err.code) || '');
+            return;
+          }
+          step('dns', 'ok', 'نام پیدا شد', addr);
+          connect(addr);
+        });
+      }
+
+      this._stop = () => {
+        if (done) return;
+        clearTimeout(tConn);
+        done = true;
+        try { ctrl.close(); } catch (e) { }
+        try { if (sock) sock.destroy(); } catch (e) { }
+      };
     },
     cancel() { if (this._stop) this._stop(); }
   });

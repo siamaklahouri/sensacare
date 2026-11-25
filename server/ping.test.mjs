@@ -32,10 +32,14 @@ const chatty = (gap, max) => net.createServer(s => {
   s.on('error', () => clearInterval(tick));
 });
 const slow = chatty(450, 4);          /* چهار خط و تمام */
+/* وصل می‌شود و هیچ نمی‌گوید — برای آزمونِ «کجا گیر کرد» */
+const mute = net.createServer(() => { });
 const endless = chatty(600, 0);       /* تا خودِ کاربر نبُرد، حرف می‌زند */
 await new Promise(r => slow.listen(0, '127.0.0.1', r));
 await new Promise(r => endless.listen(0, '127.0.0.1', r));
-const SLOW = slow.address().port, ENDLESS = endless.address().port;
+await new Promise(r => mute.listen(0, '127.0.0.1', r));
+const SLOW = slow.address().port, ENDLESS = endless.address().port,
+      MUTE = mute.address().port;
 
 let ok = 0, bad = 0;
 const t = (c, m, d) => { console.log((c ? '   ok  ' : '   BAD ') + ' ' + m + (d !== undefined ? '  — ' + d : '')); c ? ok++ : bad++; };
@@ -138,15 +142,65 @@ console.log('===== مسیرِ سرور =====');
     }
   }
   const whole = parts.map(c => c.txt).join('');
-  t(/وصل شد/.test((parts[0] || {}).txt || ''), 'اولین چیزی که می‌رسد «وصل شد» است',
-    JSON.stringify((parts[0] || {}).txt || ''));
+  /* مرحله‌ها با ۰x1E شروع می‌شوند و بدنه‌شان JSON است؛ بقیه حرفِ
+     خودِ دستگاه است. */
+  const evs = whole.split('\u001e').slice(1)
+    .map(x => { try { return JSON.parse(x.slice(0, x.indexOf('\n'))); } catch (e) { return null; } })
+    .filter(Boolean);
+  const body = whole.split('\n').filter(x => x[0] !== '\u001e').join('\n');
+  const at = id => evs.filter(e => e.id === id);
+
+  t(evs.length >= 5, 'جریان، مرحله‌هایش را هم می‌فرستد', evs.length + ' مرحله');
+  t(at('addr').length === 1 && at('conn').some(e => e.st === 'ok'),
+    'نشانی و اتصال هرکدام مرحلهٔ خودشان را دارند',
+    evs.slice(0, 3).map(e => e.id + ':' + e.st).join('، '));
+  t(at('send').length === 1 && at('send')[0].st === 'skip',
+    'و وقتی چیزی فرستاده نمی‌شود، همین هم گفته می‌شود', at('send')[0].t);
+  t(at('wait').some(e => e.st === 'ok'), 'و لحظهٔ رسیدنِ اولین پاسخ',
+    (at('wait').find(e => e.st === 'ok') || {}).ms + ' میلی‌ثانیه');
+  t(evs.every(e => typeof e.ms === 'number' && e.ms >= 0),
+    'هر مرحله زمانِ خودش را دارد — همین می‌گوید کجا کند بوده',
+    evs.map(e => e.ms).join('، '));
+  const last = evs[evs.length - 1];
+  t(last && last.id === 'recv' && last.st === 'ok', 'و مرحلهٔ آخر، پایانِ کار است',
+    (last || {}).t);
+  t(evs.filter(e => e.st === 'run').every(e => evs.some(x => x.id === e.id && e.st !== x.st)),
+    'هیچ مرحله‌ای روی «در جریان» جا نمی‌مانَد',
+    evs.filter(e => e.st === 'run').map(e => e.id).join('، ') || 'هیچ');
+
   t(parts.length >= 3, 'و متن تکه‌تکه می‌رسد، نه یکجا در پایان', parts.length + ' تکه');
   t(parts.length > 1 && parts[parts.length - 1].at - parts[0].at > 700,
     'یعنی واقعاً زنده است',
     'فاصلهٔ اولین و آخرین تکه ' +
       ((parts[parts.length - 1] || {}).at - (parts[0] || {}).at) + ' میلی‌ثانیه');
-  t(/خطِ 1/.test(whole) && /خطِ 4/.test(whole) && /اتصال بسته شد/.test(whole),
-    'و تا بسته شدنِ اتصال ادامه می‌دهد', whole.replace(/\s+/g, ' ').trim());
+  t(/خطِ 1/.test(body) && /خطِ 4/.test(body),
+    'و حرفِ خودِ دستگاه تا آخر می‌آید', body.replace(/\s+/g, ' ').trim());
+
+  /* و وقتی کار می‌ماند، همان مرحله می‌گوید کجا ماند */
+  const stuck = async (b2) => {
+    const r2 = await fetch(BASE + '/api/kartabl/telnet/live', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
+      body: JSON.stringify(b2) });
+    const txt = await r2.text();
+    return txt.split('\u001e').slice(1)
+      .map(x => { try { return JSON.parse(x.slice(0, x.indexOf('\n'))); } catch (e) { return null; } })
+      .filter(Boolean);
+  };
+  const shut = await stuck({ host: '127.0.0.1', port: 9, send: '' });
+  const shutLast = shut[shut.length - 1] || {};
+  t(shutLast.id === 'conn' && shutLast.st === 'bad' && /پورت بسته/.test(shutLast.t || ''),
+    'پورتِ بسته: روی مرحلهٔ اتصال می‌ایستد و می‌گوید چرا',
+    shutLast.t + ' (' + shutLast.note + ')');
+  const noname = await stuck({ host: 'hich-dastgahi-nist.invalid', port: 80, send: '' });
+  const nameLast = noname[noname.length - 1] || {};
+  t(nameLast.st === 'bad' && (nameLast.id === 'dns' || nameLast.id === 'conn'),
+    'نامِ ناشناخته: روی مرحلهٔ یافتنِ نام می‌ایستد',
+    nameLast.id + ' — ' + nameLast.t);
+  const quiet = await stuck({ host: '127.0.0.1', port: MUTE, send: '' });
+  const quietLast = quiet[quiet.length - 1] || {};
+  t(quietLast.id === 'wait' && quietLast.st === 'bad',
+    'دستگاهِ ساکت: وصل می‌شود ولی روی «در انتظارِ پاسخ» می‌ماند',
+    quietLast.t + ' — ' + quietLast.note);
   const liveBad = await fetch(BASE + '/api/kartabl/telnet/live', { method: 'POST',
     headers: { 'Content-Type': 'application/json', Host: HOST, cookie },
     body: JSON.stringify({ host: '127.0.0.1; id', port: 80 }) });
@@ -273,14 +327,33 @@ console.log('===== خودِ بخش =====');
   t(liveA.n > 0 && liveB > liveA.n, 'متن همان‌طور که می‌رسد روی صفحه زیاد می‌شود',
     liveA.n + ' ← ' + liveB + ' نویسه');
   t(liveA.btn === 'قطع', 'و تا وصل است، دکمه «قطع» می‌شود', liveA.btn);
+  /* و مرحله‌ها کنارش دیده می‌شوند */
+  const st = await p.evaluate(() => ({
+    rows: [...document.querySelectorAll('.tl-st')].map(r => ({
+      t: (r.querySelector('.tl-st-t') || {}).textContent || '',
+      cls: r.className, ms: (r.querySelector('.tl-st-ms') || {}).textContent || ''
+    })),
+    leak: /\u001e/.test((document.querySelector('.tl-out') || {}).textContent || '')
+  }));
+  t(st.rows.length >= 4, 'مرحله‌ها روی صفحه ردیف می‌شوند',
+    st.rows.map(r => r.t).join(' ← '));
+  t(st.rows.some(r => /is-run/.test(r.cls)), 'و مرحلهٔ در جریان مشخص است',
+    (st.rows.find(r => /is-run/.test(r.cls)) || {}).t);
+  t(st.rows.every(r => /[۰-۹]/.test(r.ms)), 'و هرکدام زمانِ خودش را نشان می‌دهد',
+    st.rows.map(r => r.ms).join('، '));
+  t(!st.leak, 'و خطِ مرحله‌ها توی متنِ خامِ دستگاه نمی‌افتد');
 
   await p.evaluate(() => document.querySelector('.tl-go').click());
   await p.waitForTimeout(400);
   const cut = await p.evaluate(() => ({
     txt: (document.querySelector('.tl-out') || {}).textContent || '',
+    steps: (document.querySelector('.tl-steps') || {}).innerText || '',
     btn: ((document.querySelector('.tl-go') || {}).textContent || '').trim()
   }));
-  t(/قطع شد/.test(cut.txt) && cut.btn === 'اتصال', 'و «قطع» همان‌جا می‌بُرد', cut.btn);
+  t(cut.btn === 'اتصال' && /شما قطع کردید/.test(cut.steps),
+    'و «قطع» همان‌جا می‌بُرد و توی مرحله‌ها هم می‌نشیند', cut.btn);
+  t(await p.evaluate(() => !document.querySelector('.tl-st.is-run')),
+    'و دیگر هیچ مرحله‌ای تپنده نمی‌مانَد');
   const frozen = cut.txt.length;
   await p.waitForTimeout(1000);
   t(await p.evaluate(() =>
@@ -330,6 +403,6 @@ console.log('===== خودِ بخش =====');
   await b.close();
 }
 
-slow.close(); endless.close();
+slow.close(); endless.close(); mute.close();
 console.log(ok + ' ok، ' + bad + ' bad');
 process.exit(bad ? 1 : 0);

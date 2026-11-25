@@ -106,5 +106,40 @@
   .tl-out.is-ok{ color:var(--ink); }
   .tl-out.is-bad{ background:var(--red-bg); color:var(--red-ink); }
   .tl-out.is-wait{ color:var(--brass-ink); }
+  /* ---------- مرحله‌ها ----------
+     کاربر گفت «می‌خواهم ببینم تا کجا می‌رود یا کجا گیر می‌کند». پس
+     بالای متنِ خام، خودِ مسیر دیده می‌شود: هر مرحله یک سطر، با
+     حالِ خودش و زمانی که برد. مرحلهٔ در جریان می‌تپد؛ همان سطری که
+     بماند، همان‌جایی است که کار گیر کرده. */
+  .tl-steps{
+    margin-top:11px; display:none; flex-direction:column; gap:1px;
+    border-radius:10px; overflow:hidden; background:var(--card-border);
+  }
+  .tl-steps.on{ display:flex; }
+  .tl-st{
+    display:grid; grid-template-columns:18px 1fr auto auto; align-items:center;
+    gap:8px; padding:6px 10px; background:var(--white); font-size:11.5px;
+  }
+  .tl-st-ic{ font-size:11px; line-height:1; text-align:center; }
+  .tl-st-t{ color:var(--ink); }
+  .tl-st-n{
+    color:var(--ink-faint); font-size:10.5px; direction:ltr; text-align:left;
+    max-width:min(230px, 42vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .tl-st-ms{
+    color:var(--ink-faint); font-size:10.5px; font-variant-numeric:tabular-nums;
+    min-width:54px; text-align:left; direction:ltr;
+  }
+  .tl-st.is-run{ background:var(--brass-bg, var(--paper)); }
+  .tl-st.is-run .tl-st-t{ color:var(--brass-ink); font-weight:700; }
+  .tl-st.is-run .tl-st-ic{ animation:tlPulse 1s ease-in-out infinite; }
+  .tl-st.is-ok .tl-st-ic{ color:var(--green-ink, #137a4a); }
+  .tl-st.is-bad{ background:var(--red-bg); }
+  .tl-st.is-bad .tl-st-t{ color:var(--red-ink); font-weight:700; }
+  .tl-st.is-skip .tl-st-t{ color:var(--ink-faint); }
+  @keyframes tlPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  @media (prefers-reduced-motion:reduce){
+    .tl-st.is-run .tl-st-ic{ animation:none; }
+  }
   .tl-f{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
   @media print{ .tl-ov{ display:none !important; } }

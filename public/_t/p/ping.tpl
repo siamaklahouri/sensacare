@@ -233,6 +233,7 @@ var PING = (function () {
         '<input type="text" id="tlSend" class="tl-in" data-ascii ' +
           'placeholder="خالی بگذارید تا فقط بنرِ دستگاه را ببینید" ' +
           'autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">' +
+        '<div class="tl-steps" aria-live="polite"></div>' +
         '<pre class="tl-out" aria-live="polite"></pre>' +
         '<div class="tl-f">' +
           '<button type="button" class="btn btn-ghost btn-sm tl-x">بستن</button>' +
@@ -266,6 +267,7 @@ var PING = (function () {
       (r.name ? r.name + ' — ' : '') + r.host + (r.port ? ':' + r.port : '');
     el.querySelector('.tl-out').textContent = '';
     el.querySelector('.tl-out').className = 'tl-out';
+    clearSteps(el);
     el.hidden = false;
     try { el.querySelector('#tlSend').focus(); } catch (e) { }
   }
@@ -278,6 +280,79 @@ var PING = (function () {
      خودش می‌لغزد؛ اگر بالا رفته باشد و داشته باشد می‌خوانَد، دیگر
      زیرِ دستش نمی‌پرد. */
   var telStop = null;
+
+  /* ---------- مرحله‌ها ----------
+     سرور کنارِ متنِ خامِ دستگاه، مرحله‌هایش را هم می‌فرستد: هر مرحله
+     یک خط که با نویسهٔ ۰x1E شروع می‌شود و بدنه‌اش JSON است. این
+     نویسه از دادهٔ دستگاه پاک می‌شود، پس هرچه با آن شروع شود حتماً
+     مالِ ماست و قاطی نمی‌شود.
+
+     هر مرحله یک سطر دارد و سطرش سرِ جای خودش به‌روز می‌شود — نه
+     اینکه ده بار تکرار شود. سطری که روی «در جریان» بماند، همان
+     جایی است که کار گیر کرده. */
+  var ICON = { run: '◴', ok: '✓', bad: '✕', skip: '–' };
+
+  function clearSteps(el) {
+    var box = el.querySelector('.tl-steps');
+    if (!box) return;
+    box.innerHTML = '';
+    box.classList.remove('on');
+    box._rows = null;
+  }
+
+  function faMs(ms) {
+    var n = Number(ms) || 0;
+    if (n < 1000) return fa(n) + ' م‌ث';
+    return fa((Math.round(n / 100) / 10).toFixed(1)).replace('.', '٫') + ' ثانیه';
+  }
+
+  function putStep(el, ev) {
+    var box = el.querySelector('.tl-steps');
+    if (!box) return;
+    box.classList.add('on');
+    if (!box._rows) box._rows = {};
+    var row = box._rows[ev.id];
+    if (!row) {
+      row = document.createElement('div');
+      row.innerHTML = '<span class="tl-st-ic"></span><span class="tl-st-t"></span>' +
+                      '<span class="tl-st-n"></span><span class="tl-st-ms"></span>';
+      box.appendChild(row);
+      box._rows[ev.id] = row;
+    }
+    row.className = 'tl-st is-' + (ev.st || 'run');
+    row.querySelector('.tl-st-ic').textContent = ICON[ev.st] || '◴';
+    row.querySelector('.tl-st-t').textContent = ev.t || '';
+    row.querySelector('.tl-st-n').textContent = ev.note || '';
+    row.querySelector('.tl-st-n').title = ev.note || '';
+    row.querySelector('.tl-st-ms').textContent = faMs(ev.ms);
+  }
+
+  /* مرحله‌ای که خودِ صفحه می‌سازد (قطعِ کاربر، نرسیدن به سرور) */
+  function ownStep(el, id, st, t, note, t0) {
+    putStep(el, { id: id, st: st, t: t, note: note || '', ms: Date.now() - t0 });
+  }
+
+  /* جدا کردنِ مرحله‌ها از متنِ خام. متنِ خام ممکن است خودش خطِ
+     ناتمام داشته باشد، پس هرچه مانده نگه داشته می‌شود تا تکهٔ
+     بعدی. */
+  function split(el, buf, out) {
+    for (;;) {
+      var i = buf.indexOf('\u001e');
+      if (i < 0) { if (buf) raw(out, buf); return ''; }
+      if (i > 0) { raw(out, buf.slice(0, i)); buf = buf.slice(i); }
+      var nl = buf.indexOf('\n');
+      if (nl < 0) return buf;                     /* مرحلهٔ نیمه‌رسیده */
+      var one = buf.slice(1, nl);
+      buf = buf.slice(nl + 1);
+      try { putStep(el, JSON.parse(one)); } catch (e) { }
+    }
+  }
+
+  function raw(out, txt) {
+    var stick = out.scrollTop + out.clientHeight >= out.scrollHeight - 24;
+    out.textContent += txt;
+    if (stick) out.scrollTop = out.scrollHeight;
+  }
 
   function run() {
     if (!telRow) return;
@@ -292,20 +367,28 @@ var PING = (function () {
     }
     if (telStop) { telStop(); return; }
 
-    out.className = 'tl-out is-wait';
-    out.textContent = '• در حال اتصال…\n';
+    clearSteps(el);
+    out.className = 'tl-out is-ok';
+    out.textContent = '';
     go.textContent = 'قطع';
 
+    var t0 = Date.now();
     var ac = (typeof AbortController === 'function') ? new AbortController() : null;
     var over = function (cls) {
       telStop = null;
       go.textContent = 'اتصال';
       if (cls) out.className = 'tl-out ' + cls;
+      /* کار که تمام شد، هیچ مرحله‌ای نباید تپنده بماند: مرحله‌ای که
+         به سرانجام نرسیده، نیمه‌کاره مانده و همان را می‌گوید. */
+      [].forEach.call(el.querySelectorAll('.tl-st.is-run'), function (row) {
+        row.className = 'tl-st is-skip';
+        row.querySelector('.tl-st-ic').textContent = ICON.skip;
+      });
     };
     telStop = function () {
       try { if (ac) ac.abort(); } catch (e) { }
-      out.textContent += '\n• قطع شد\n';
-      over('tl-out is-ok');
+      ownStep(el, 'cut', 'bad', 'شما قطع کردید', '', t0);
+      over('');
     };
 
     fetch(KARTABL_API + '/telnet/live', {
@@ -317,31 +400,27 @@ var PING = (function () {
     }).then(function (res) {
       if (!res.ok || !res.body || !res.body.getReader) {
         return res.text().then(function (txt) {
-          out.className = 'tl-out is-bad';
           try { txt = (JSON.parse(txt) || {}).error || txt; } catch (e) { }
+          ownStep(el, 'net', 'bad', txt || 'وصل نشد', '', t0);
+          out.className = 'tl-out is-bad';
           out.textContent = txt || 'وصل نشد';
           over('');
         });
       }
-      out.className = 'tl-out is-ok';
-      out.textContent = '';
       var reader = res.body.getReader();
       var dec = new TextDecoder('utf-8');
+      var buf = '';
       var pump = function () {
         return reader.read().then(function (r) {
-          if (r.done) { over(''); return; }
-          /* تا وقتی کاربر تهِ قاب است، خودش می‌لغزد */
-          var stick = out.scrollTop + out.clientHeight >= out.scrollHeight - 24;
-          out.textContent += dec.decode(r.value, { stream: true });
-          if (stick) out.scrollTop = out.scrollHeight;
+          if (r.done) { buf = split(el, buf, out); over(''); return; }
+          buf = split(el, buf + dec.decode(r.value, { stream: true }), out);
           return pump();
         });
       };
       return pump();
     }).catch(function (e) {
       if (e && e.name === 'AbortError') return;
-      out.className = 'tl-out is-bad';
-      out.textContent += '\n• به سرور نرسید\n';
+      ownStep(el, 'net', 'bad', 'به سرور نرسید', '', t0);
       over('');
     });
   }
