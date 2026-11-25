@@ -180,6 +180,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
 {{PART:pingcss}}
+{{PART:netusecss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -942,6 +943,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
       <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
+      <button class="navbtn" data-view="netuse" data-feat="view:netuse"><span class="ic">📶</span> مصرف اینترنت</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
@@ -1327,6 +1329,73 @@ window.KARTABL_IDB      = "{{IDB}}";
           <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
+      </div>
+    </section>
+
+    <!-- NETUSE -->
+    <section class="view" id="view-netuse" data-feat="view:netuse">
+      <div class="section-title">📶 مصرف اینترنت</div>
+      <div class="section-sub">رنجِ شبکه را بدهید تا خودش همهٔ دستگاه‌ها را پیدا کند، و مصرفِ حجمِ هرکدام را از روی شمارندهٔ خودِ دستگاه بخواند</div>
+
+      <div class="nu-bar">
+        <div class="nu-fld">
+          <label for="nuRange">رنجِ شبکه</label>
+          <input type="text" id="nuRange" value="192.168.1.0/24" data-ascii
+                 placeholder="مثلاً 192.168.1.0/24"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+        </div>
+        <button class="btn btn-brass btn-sm" id="nuScanBtn">کاوش</button>
+        <button class="btn btn-ghost btn-sm" id="nuLiveBtn">⚡ سرعتِ همین حالا</button>
+      </div>
+      <div class="nu-hint">هم «۱۹۲.۱۶۸.۱.۰/۲۴» را می‌فهمد، هم «۱۹۲.۱۶۸.۱.۱۰-۵۰». سقف هر بار ۱۰۲۴ نشانی است. هیچ رمزی لازم نیست — نه رمزِ ویندوز، نه دامین.</div>
+
+      <div class="nu-prog" id="nuProg">
+        <div class="nu-track"><div class="nu-fill" id="nuFill"></div></div>
+        <div id="nuSay"></div>
+      </div>
+
+      <div class="cards" id="nuCards"></div>
+
+      <div class="panel">
+        <h3>📶 دستگاه‌هایی که مصرفشان خوانده می‌شود</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:20%;">نام</th>
+              <th style="width:130px;">نشانی</th>
+              <th style="width:16%;">پورتِ اینترنت</th>
+              <th style="width:110px;">امروز</th>
+              <th style="width:110px;">این ماه</th>
+              <th style="width:170px;">سرعتِ همین حالا</th>
+              <th style="width:110px;" class="col-del"></th>
+            </tr></thead>
+            <tbody id="nuDevBody"></tbody>
+          </table>
+        </div>
+        <div class="save-hint" style="margin-top:9px;">سرور هر پنج دقیقه یک نمونه می‌گیرد و تفاضلشان می‌شود مصرفِ آن روز — پس لازم نیست این صفحه باز بماند.</div>
+      </div>
+
+      <div class="panel">
+        <h3>📊 مصرفِ روزهای این ماه</h3>
+        <div class="chart-box"><canvas id="nuChart"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <h3>🔍 آنچه در این رنج پیدا شد</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:130px;">نشانی</th>
+              <th style="width:22%;">نامِ سیستم</th>
+              <th style="width:14%;">نوع</th>
+              <th>چه چیزی باز است</th>
+              <th style="width:200px;">مصرف</th>
+            </tr></thead>
+            <tbody id="nuFoundBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -4576,6 +4645,7 @@ function refreshEverything(){
   safe(renderMvpn);
   safe(renderRemoteChecklist);
   safe(function(){ if(window.PING) PING.wire(); });
+  safe(function(){ if(window.NETUSE) NETUSE.wire(); });
   safe(window.tableSizeSweep);
   safe(window.cellPopScan);
 }
@@ -4638,6 +4708,9 @@ function setupNav(){
       /* هر بار که باز می‌شود از نو می‌پرسد: گزارش هر ساعت عوض می‌شود و
          یک‌بار خواندن سرِ بارِ صفحه یعنی تا رفرشِ بعدی کهنه می‌ماند. */
       if(view==="veeam") loadVeeam();
+      /* مصرفِ اینترنت هم هر بار که باز می‌شود تازه می‌شود: نمونه‌ها
+         روی سرور جمع می‌شوند، پس عددِ بارِ قبل کهنه است. */
+      if(view==="netuse"){ try{ NETUSE.wire(); }catch(e){} }
     });
   });
 }
@@ -4876,6 +4949,7 @@ window.PING_SEED = [
   { name:"دفتر مرکزی",  host:"192.168.1.201", port:4370 }
 ];
 {{PART:ping}}
+{{PART:netuse}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید

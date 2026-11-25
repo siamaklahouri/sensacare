@@ -40,7 +40,7 @@ LIST="
   xlsx-import.test.mjs xlsx-import-fin.test.mjs xlsx-sample.test.mjs
   merge.test.mjs apperr.test.mjs maghale.test.mjs rownote.test.mjs
   updown.test.mjs seo.test.mjs aria.test.mjs narrow.test.mjs orgroles.test.mjs
-  duesoon.test.mjs icons.test.mjs adminnarrow.test.mjs bkhtml.test.mjs bkseen.test.mjs bkfixzip.test.mjs bots.test.mjs schedcolor.test.mjs restore.test.mjs bkbtn.test.mjs undelete.test.mjs panelkb.test.mjs prune.test.mjs weight.test.mjs xlsxout.test.mjs appmeta.test.mjs chips.test.mjs printbtn.test.mjs bottg.test.mjs esm.test.mjs munasebat.test.mjs bkbody.test.mjs contrast.test.mjs pace.test.mjs gone.test.mjs charts.test.mjs overdue.test.mjs monthkey.test.mjs tourpos.test.mjs carry.test.mjs latemoney.test.mjs tidy.test.mjs polish.test.mjs printorient.test.mjs undo.test.mjs money.test.mjs tsort.test.mjs donepick.test.mjs bulkadd.test.mjs printpaper.test.mjs ping.test.mjs finprint.test.mjs"
+  duesoon.test.mjs icons.test.mjs adminnarrow.test.mjs bkhtml.test.mjs bkseen.test.mjs bkfixzip.test.mjs bots.test.mjs schedcolor.test.mjs restore.test.mjs bkbtn.test.mjs undelete.test.mjs panelkb.test.mjs prune.test.mjs weight.test.mjs xlsxout.test.mjs appmeta.test.mjs chips.test.mjs printbtn.test.mjs bottg.test.mjs esm.test.mjs munasebat.test.mjs bkbody.test.mjs contrast.test.mjs pace.test.mjs gone.test.mjs charts.test.mjs overdue.test.mjs monthkey.test.mjs tourpos.test.mjs carry.test.mjs latemoney.test.mjs tidy.test.mjs polish.test.mjs printorient.test.mjs undo.test.mjs money.test.mjs tsort.test.mjs donepick.test.mjs bulkadd.test.mjs printpaper.test.mjs ping.test.mjs finprint.test.mjs netuse.test.mjs"
 
 for f in $LIST; do
   [ -f "$f" ] || continue

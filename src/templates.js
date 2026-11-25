@@ -57,6 +57,8 @@ import p_findcss from '../public/_t/p/findcss.tpl';
 import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_tsort from '../public/_t/p/tsort.tpl';
 import p_bulkadd from '../public/_t/p/bulkadd.tpl';
+import p_netuse from '../public/_t/p/netuse.tpl';
+import p_netusecss from '../public/_t/p/netusecss.tpl';
 import p_ping from '../public/_t/p/ping.tpl';
 import p_pingcss from '../public/_t/p/pingcss.tpl';
 import p_bulkaddcss from '../public/_t/p/bulkaddcss.tpl';
@@ -181,6 +183,8 @@ export const PARTS = new Map([
   ['fadigits', p_fadigits],
   ['tsort', p_tsort],
   ['bulkadd', p_bulkadd],
+  ['netuse', p_netuse],
+  ['netusecss', p_netusecss],
   ['ping', p_ping],
   ['pingcss', p_pingcss],
   ['bulkaddcss', p_bulkaddcss],
