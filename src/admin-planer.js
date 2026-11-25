@@ -1459,15 +1459,15 @@ async function handleArticles(env, p, m, body) {
                  orphan: nameOf[r.owner] === undefined || !list.some(o => o.id === r.org) || !sp };
       }),
       owners: panels.map(x => ({ slug: x.slug, name: x.name, kind: x.kind,
-                                 views: shareableFor(x.kind) })),
+                                 views: shareableFor(x.kind, x.off) })),
       orgs: list.map(o => ({ id: o.id, path: pathOf(list, o.id), members: o.members.length })) });
   }
 
   if (p === '/view-shares' && m === 'POST') {
     const [list, panels] = await Promise.all([orgList(env), allPanels(env)]);
-    const kinds = {};
-    for (const x of panels) kinds[x.slug] = x.kind;
-    const r = await saveViewShare(env, body, kinds, list.map(o => o.id));
+    const kinds = {}, offs = {};
+    for (const x of panels) { kinds[x.slug] = x.kind; offs[x.slug] = x.off; }
+    const r = await saveViewShare(env, body, kinds, list.map(o => o.id), offs);
     if (r.error) return bad(r.error);
     await log(env, 'view-share', r.id,
               String(body.owner || '') + '/' + String(body.view || '') + '→' + String(body.org || ''));

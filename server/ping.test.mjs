@@ -251,13 +251,33 @@ console.log('===== خودِ بخش =====');
       .every(id => (document.getElementById(id) || {}).dataset.mtEmpty === '1')),
     'فرمِ افزودن زیرِ نگهبانِ پُرشدنِ خودکار است');
 
-  const seeded = await p.evaluate(() => (state.pingHosts || []).map(x => x.host));
-  t(seeded.length >= 4, 'و بارِ اول با چهار نشانی پُر می‌شود', seeded.join('، '));
+  /* فهرست از صفر شروع می‌شود. پیش‌تر چهار نشانیِ آماده داشت و
+     همان‌ها در کارتابلِ هر کسی که این بخش برایش باز می‌شد سبز
+     می‌شدند — نشانیِ یک شرکتِ دیگر، در جدولِ یک آدمِ دیگر. */
+  const seed = await p.evaluate(() => ({
+    has: typeof window.PING_SEED !== 'undefined',
+    n: (window.PING_SEED || []).length
+  }));
+  t(!seed.has || seed.n === 0, 'هیچ نشانیِ آماده‌ای در صفحه نیست', JSON.stringify(seed));
+  /* و خودِ بخش هم از خودش چیزی نمی‌سازد: فهرست را خالی می‌کنیم و
+     دوباره می‌کشیم؛ باید خالی بماند. */
+  const empty = await p.evaluate(() => {
+    state.pingHosts.length = 0;
+    PING.render();
+    return { n: state.pingHosts.length,
+             say: (document.getElementById('pingBody') || {}).innerText || '' };
+  });
+  t(empty.n === 0 && /نشانی/.test(empty.say),
+    'فهرست خالی می‌مانَد و خودش می‌گوید که باید نشانی اضافه کرد',
+    empty.say.replace(/\s+/g, ' ').trim().slice(0, 60));
 
-  /* یکی را به خودِ همین سرور می‌بندیم تا جوابِ واقعی بگیریم */
+  /* دو تا می‌گذاریم: یکی به خودِ همین سرور، یکی به پورتی که بسته است */
   await p.evaluate(port => {
-    state.pingHosts[0] = { name: 'سرورِ آزمون', host: '127.0.0.1', port: Number(port) };
-    state.pingHosts[1] = { name: 'پورتِ بسته', host: '127.0.0.1', port: 9 };
+    state.pingHosts.length = 0;
+    state.pingHosts.push({ name: 'سرورِ آزمون', host: '127.0.0.1', port: Number(port) });
+    state.pingHosts.push({ name: 'پورتِ بسته', host: '127.0.0.1', port: 9 });
+    state.pingHosts.push({ name: 'سومی', host: '127.0.0.1', port: 9 });
+    state.pingHosts.push({ name: 'چهارمی', host: '127.0.0.1', port: 9 });
     PING.render();
   }, PORT);
   await p.waitForTimeout(300);

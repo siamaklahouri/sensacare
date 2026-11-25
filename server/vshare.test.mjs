@@ -35,6 +35,25 @@ t(!itv.includes('personal') && !finv.includes('personal'),
 t(!itv.includes('report') && !itv.includes('datetools'),
   'گزارش‌ساز و تبدیل هم نیستند: جدولِ خودشان را ندارند');
 
+/* فهرست باید مالِ همان کارتابل باشد، نه مالِ نوعش.
+
+   گزارش شد: «نسبت به نفر باید بخش‌های نفر خوانده بشود؛ سیامک چندین
+   بخش دارد اما فقط چهار-پنج‌تاش قابل اشتراک است.» بخش‌ها برای هر کس
+   جداگانه باز و بسته می‌شوند، و بسته‌ها نباید در فهرستِ اشتراک
+   بیایند — ادمین انتخابشان می‌کرد و سرور رد می‌کرد، بی‌آنکه معلوم
+   شود چرا. */
+{
+  const off = ['view:mvpn', 'view:companies'];
+  const some = shareableFor('it', off).map(v => v.id);
+  t(!some.includes('mvpn') && !some.includes('companies'),
+    'بخشی که برای همین کارتابل بسته است، در فهرستش نمی‌آید', some.join('،'));
+  t(some.includes('servers'), 'ولی بخش‌های بازش هست');
+  t(some.includes('checklist') && some.includes('daily'),
+    'و چک‌لیست و برنامهٔ روزانه همیشه هستند — ستون‌فقراتِ کارتابل‌اند');
+  t(shareableFor('it', []).length === itv.length,
+    'کارتابلی که چیزی بسته ندارد، همان فهرستِ کاملِ نوعش را دارد');
+}
+
 console.log('\n===== گروه و اشتراک =====');
 const g = await saveOrg(env, { name: 'فنی', members: ['ali', 'naz'] }, SLUGS);
 t(g.ok, 'گروهِ فنی ساخته شد', g.error || g.id);
@@ -52,6 +71,14 @@ r = await saveViewShare(env, { owner: 'kasi-nist', view: 'servers', org: g.id, w
 t(!r.ok, 'کارتابلِ ناشناس رد شد', r.error);
 r = await saveViewShare(env, { owner: 'siamak', view: 'servers', org: 'nist00', w: 0 }, KINDS, [g.id]);
 t(!r.ok, 'گروهِ ناشناس رد شد', r.error);
+/* و بخشی که برای همین کارتابل بسته است — فهرستِ بازشو نشانش نمی‌دهد،
+   ولی درخواستِ دستی هم باید همین‌جا رد شود. */
+r = await saveViewShare(env, { owner: 'siamak', view: 'mvpn', org: g.id, w: 0 },
+                        KINDS, [g.id], { siamak: ['view:mvpn'] });
+t(!r.ok && /باز نیست/.test(r.error || ''), 'بخشِ بستهٔ همان کارتابل هم رد شد', r.error);
+r = await saveViewShare(env, { owner: 'siamak', view: 'servers', org: g.id, w: 0 },
+                        KINDS, [g.id], { siamak: ['view:mvpn'] });
+t(r.ok, 'ولی بخشِ بازش همچنان می‌رود', r.error || '');
 
 /* دوباره دادنِ همان بخش به همان گروه نباید ردیفِ دوم بسازد */
 r = await saveViewShare(env, { owner: 'siamak', view: 'servers', org: g.id, w: 1 }, KINDS, [g.id]);

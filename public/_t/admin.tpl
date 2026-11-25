@@ -391,6 +391,16 @@ a{ color:var(--brass-ink); }
 .fld{ display:flex; flex-direction:column; gap:6px; min-width:150px; flex:1; }
 /* بدونِ این، صفتِ hidden روی .fld بی‌اثر است: display:flex بر
    display:none ِ مرورگر می‌چربد و کادر پنهان‌شده همچنان دیده می‌شود. */
+/* فرم‌های پنل با قلمِ خودِ صفحه.
+
+   مرورگر برای select و input و textarea قلمِ خودش را می‌گذارد، نه
+   قلمِ صفحه را — و آن قلم برای فارسی Arial بود. نتیجه‌اش در فرمِ
+   «اشتراکِ بخش» دیده می‌شد: برچسب‌ها وزیرمتن و کادرها ارییل، با
+   کشیدگی و فاصله‌گذاریِ متفاوت در یک ردیف.
+
+   این یک قاعده همهٔ فرم‌های پنل را درست می‌کند، نه فقط آن یکی. */
+select, option, optgroup, input, textarea, button{ font-family:var(--font); }
+
 .fld[hidden]{ display:none; }
 .fld label{ font-size:11.5px; color:var(--ink-soft); font-weight:500; }
 .fld input, .fld select{ padding:10px 11px; border:1px solid var(--line);
@@ -1086,7 +1096,13 @@ table.inv-tab td.desc{ text-align:right; }
     border:1px solid var(--line); border-radius:var(--r); background:var(--paper-2); }
   .vsf label{ display:flex; flex-direction:column; gap:6px; font-size:12px;
     color:var(--ink-soft); font-weight:600; }
-  .vsf select{ width:100%; }
+  .vsf select{ width:100%; padding:9px 11px; font-size:12.5px;
+    border:1px solid var(--line); border-radius:var(--r-sm);
+    background:var(--paper-2); color:var(--ink); }
+  .vsf select:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
+  /* نامِ بخش‌ها بلند است («سررسید اسناد دریافتنی از مشتری»)؛ کادر
+     نباید از کارت بزند بیرون. */
+  .vsf select, .vsf option{ max-width:100%; text-overflow:ellipsis; }
   .vsf .go{ display:flex; align-items:flex-end; }
   .vsf .go .btn{ width:100%; }
 

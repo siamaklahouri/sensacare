@@ -126,11 +126,17 @@ body{
 /* دکمه‌های ستونِ کنار. قالبِ مالی گوشهٔ ۹ و قلمِ ۱۳ داشت در برابرِ ۱۱
    و ۱۳٫۶ — کوچک به نظر می‌رسد، ولی این‌ها تمامِ چیزی‌اند که کاربر در
    هر صفحه می‌بیند. */
+/* قلم یک پله کوچک‌تر از پیش.
+
+   گزارش شد که نوار «قشنگ نیست». علتش نامِ بلندِ بخش‌ها بود:
+   «سررسید اسناد دریافتنی از مشتری» در ستونی به پهنای ۲۲۰ پیکسل سه
+   خط می‌شد و ستون شلوغ به نظر می‌رسید. با یک پله کوچک‌تر، همان نام
+   در دو خط می‌نشیند و خوانایی‌اش هم کم نمی‌شود. */
 .navbtn{
-  gap:11px; font-size:13.6px; font-weight:600;
-  padding:10px 12px; border-radius:11px; margin-bottom:3px;
+  gap:9px; font-size:12.6px; font-weight:600; line-height:1.45;
+  padding:9px 11px; border-radius:11px; margin-bottom:2px;
 }
-.navbtn .ic{ font-size:16px; width:22px; height:22px; flex:0 0 22px; }
+.navbtn .ic{ font-size:15px; width:20px; height:20px; flex:0 0 20px; }
 
 /* شش کارت باید در یک ردیف جا شوند، نه چهار تا و دو تا زیرش. */
 .cards{ grid-template-columns:repeat(auto-fit, minmax(148px,1fr)); }

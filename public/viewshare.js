@@ -46,9 +46,55 @@
   var CSS = [
     /* نامِ صاحبِ بخش روی دکمهٔ نوار: کم‌رنگ و در خطِ دوم، تا نامِ خودِ
        بخش همان‌قدر خوانا بماند که بقیهٔ دکمه‌ها. */
-    ".navbtn .vs-who{display:block;font-size:10.5px;font-weight:400;opacity:.6;",
+    ".navbtn .vs-who{display:block;font-size:10px;font-weight:400;opacity:.55;",
     "  margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    /* متنِ دکمه ستونی می‌شود تا نامِ بخش و نامِ صاحبش زیرِ هم بنشینند،
+       نه کنارِ هم: با نامِ بلند، «سیامک» وسطِ عنوان می‌افتاد. */
+    ".navbtn[data-view^=\"vshare-\"]{align-items:flex-start}",
+    ".navbtn[data-view^=\"vshare-\"] .ic{margin-top:1px}",
+    ".navbtn .vs-t{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}",
+
+    /* سرفصلِ گروه و ریلِ زیرش.
+
+       این‌ها را تا دیروز /shared.js می‌ساخت، و آن فایل فقط وقتی بار
+       می‌شود که بخشِ مشترکِ ادمین‌ساخته‌ای هم باشد. کسی که فقط بخشِ
+       اشتراکیِ یک کارتابلِ دیگر را داشت، سرفصل را بی‌شیوه‌نامه
+       می‌دید: یک متنِ درشتِ ۱۶ پیکسلی وسطِ نوار، بزرگ‌تر از خودِ
+       دکمه‌ها. همان چیزی که گزارش شد «توی منو قشنگ نیست».
+
+       تعریفشان با /shared.js یکی است، پس هر کدام که زودتر بنشیند
+       فرقی نمی‌کند. */
+    ".sh-org{font-size:10.5px;font-weight:700;letter-spacing:.02em;color:var(--ink-faint,#8c97a3);",
+    "  padding:6px 12px 5px;margin:14px 0 2px;",
+    "  display:flex;align-items:center;gap:7px;",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".sh-org::before{content:\"\";width:4px;height:4px;border-radius:50%;flex:none;",
+    "  background:var(--brass,#1A4FA3);opacity:.7}",
+    ".navbtn.sh-ingroup{width:calc(100% - 9px);margin-inline-start:9px;padding-inline-start:13px;",
+    "  border-inline-start:1px solid var(--card-border,rgba(11,37,69,.10));",
+    "  border-radius:0 11px 11px 0}",
+    ".navbtn.sh-ingroup.active{border-inline-start-color:var(--brass,#B08D57)}",
     ".vs-note{font-size:11.5px;color:var(--ink-faint,#8c97a3)}",
+
+    /* نوارِ بالای جدول: جستجو، انتخابِ ستون‌ها، و شمارِ ردیف‌ها.
+
+       بخشی که به اشتراک می‌رسد ابزارهای خودِ کارتابل را ندارد —
+       نه مرتب‌سازی، نه پالایه. و بعضی از این جدول‌ها ده ستون دارند.
+       این سه چیز کمینه‌ای است که «دیدنِ» یک جدولِ بیگانه را ممکن
+       می‌کند. */
+    ".vs-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}",
+    ".vs-find{flex:1 1 200px;min-width:0;max-width:320px;font-family:inherit;font-size:12.5px;",
+    "  padding:7px 11px;border:1.5px solid var(--card-border,rgba(11,37,69,.12));",
+    "  border-radius:10px;background:var(--paper,#f6f7f9);color:var(--ink,#0b2545)}",
+    ".vs-find:focus-visible{outline:2px solid var(--brass,#B08D57);outline-offset:1px}",
+    ".vs-colbtn.on{background:var(--brass-bg,rgba(176,141,87,.14))}",
+    ".vs-count{font-size:11.5px;color:var(--ink-faint,#8c97a3);margin-inline-start:auto}",
+    ".vs-cols{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}",
+    ".vs-cols[hidden]{display:none}",
+    ".vs-col{font-family:inherit;font-size:11.5px;padding:4px 11px;border-radius:999px;",
+    "  border:1px solid var(--card-border,rgba(11,37,69,.12));cursor:pointer;",
+    "  background:var(--white,#fff);color:var(--ink-faint,#8c97a3)}",
+    ".vs-col.on{background:var(--brass,#B08D57);border-color:transparent;color:#fff;font-weight:700}",
     ".vs-note.bad{color:var(--red,#B3261E)}",
     "td.vs-c[contenteditable=\"true\"]{cursor:text}",
     "tr.vs-ok>td{animation:vsOk .9s ease}",
@@ -88,8 +134,25 @@
     return null;
   }
 
+  /* ستون‌هایی که کاربر کنار گذاشته، برای خودش می‌مانَد: یک جدولِ
+     ده‌ستونی روی لپ‌تاپ خوانده نمی‌شود، و هر کسی چند ستونِ اولش را
+     می‌خواهد. مالِ همین مرورگر است و به کارتابلِ صاحبِ بخش کاری
+     ندارد. */
+  var HKEY = function (id) { return "vs-cols-" + id; };
+  function loadHide(id) {
+    try {
+      var raw = localStorage.getItem(HKEY(id));
+      var o = raw ? JSON.parse(raw) : null;
+      return (o && typeof o === "object") ? o : {};
+    } catch (e) { return {}; }
+  }
+  function saveHide(id) {
+    try { localStorage.setItem(HKEY(id), JSON.stringify(st(id).hide || {})); } catch (e) { }
+  }
+
   function st(id) {
-    if (!ST[id]) ST[id] = { rows: [], rev: -1, open: false, timer: 0, edit: false };
+    if (!ST[id]) ST[id] = { rows: [], rev: -1, open: false, timer: 0, edit: false,
+                            q: "", hide: loadHide(id) };
     return ST[id];
   }
   var byId = function (id) { return SHARES.find(function (s) { return s.id === id; }); };
@@ -109,8 +172,12 @@
     var btn = document.createElement("button");
     btn.className = "navbtn";
     btn.setAttribute("data-view", "vshare-" + sh.id);
-    btn.innerHTML = '<span class="ic">' + esc(sh.icon) + "</span> " + esc(sh.label) +
-                    '<span class="vs-who">' + esc(sh.ownerName) + "</span>";
+    /* نامِ بخش و نامِ صاحبش زیرِ هم، نه کنارِ هم: دکمهٔ نوار یک ردیفِ
+       flex است، پس تا وقتی هر دو مستقیماً زیرِ خودش بودند، «سیامک»
+       کنارِ عنوان می‌نشست و با نامِ بلند نصفه می‌شد. */
+    btn.innerHTML = '<span class="ic">' + esc(sh.icon) + "</span>" +
+                    '<span class="vs-t">' + esc(sh.label) +
+                    '<span class="vs-who">' + esc(sh.ownerName) + "</span></span>";
     btn.title = sh.label + " — کارتابلِ " + sh.ownerName;
 
     var before = navAnchor(nav);
@@ -154,17 +221,17 @@
           "<h3>" + esc(sh.icon) + " " + esc(sh.label) + "</h3>" +
           '<span class="save-hint vs-note" data-vsnote="' + esc(sh.id) + '"></span>' +
         "</div>" +
-        '<div class="tbl-wrap"><table><thead><tr>' +
-          '<th style="width:26px;">#</th>' +
-          sh.cols.map(function (c) { return "<th>" + esc(c.t) + "</th>"; }).join("") +
-          (sh.w
-            ? '<th style="width:70px;">' +
-                '<label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">' +
-                  '<span class="edit-switch"><input type="checkbox" data-vsedit="' + esc(sh.id) +
-                  '"><span class="track"></span></span> حذف/تغییر</label>' +
-              "</th>"
-            : "") +
-        "</tr></thead>" +
+        '<div class="vs-tools">' +
+          '<input type="text" class="vs-find" data-vsfind="' + esc(sh.id) + '" ' +
+            'placeholder="جستجو در این بخش…" autocomplete="off" ' +
+            'data-lpignore="true" data-1p-ignore data-form-type="other">' +
+          '<button type="button" class="btn btn-ghost btn-sm vs-colbtn" data-vscols="' +
+            esc(sh.id) + '">ستون‌ها</button>' +
+          '<span class="vs-count" data-vscount="' + esc(sh.id) + '"></span>' +
+        '</div>' +
+        '<div class="vs-cols" data-vscolbox="' + esc(sh.id) + '" hidden></div>' +
+        '<div class="tbl-wrap"><table>' +
+        '<thead data-vshead="' + esc(sh.id) + '"></thead>' +
         '<tbody data-vsbody="' + esc(sh.id) + '"></tbody></table></div>' +
         (sh.w ? '<div class="visit-add-bar" style="margin-top:10px;">' +
                 '<button class="btn btn-brass btn-sm" data-vsadd="' + esc(sh.id) +
@@ -183,13 +250,30 @@
       startPoll(sh.id);
     });
 
-    var tog = sec.querySelector("[data-vsedit]");
-    if (tog) tog.addEventListener("change", function () {
-      st(sh.id).edit = !!tog.checked;
-      paint(sh.id);
-    });
     var add = sec.querySelector("[data-vsadd]");
     if (add) add.addEventListener("click", function () { addRow(sh.id); });
+
+    var find = sec.querySelector("[data-vsfind]");
+    if (find) find.addEventListener("input", function () {
+      st(sh.id).q = find.value.trim();
+      paint(sh.id);
+    });
+    var colBtn = sec.querySelector("[data-vscols]");
+    var colBox = sec.querySelector("[data-vscolbox]");
+    if (colBtn && colBox) colBtn.addEventListener("click", function () {
+      colBox.hidden = !colBox.hidden;
+      colBtn.classList.toggle("on", !colBox.hidden);
+    });
+    if (colBox) colBox.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-vscol]");
+      if (!b) return;
+      var k = b.getAttribute("data-vscol"), s2 = st(sh.id);
+      if (s2.hide[k]) delete s2.hide[k]; else s2.hide[k] = 1;
+      /* دستِ‌کم یک ستون باید بماند، وگرنه جدول می‌شود یک ستونِ شماره. */
+      if (sh.cols.every(function (c) { return s2.hide[c.k]; })) delete s2.hide[k];
+      saveHide(sh.id);
+      paint(sh.id);
+    });
   }
 
   function note(id, t, bad) {
@@ -258,22 +342,71 @@
            shown + "</td>";
   }
 
+  /* ردیف با جستجو جور است؟ همهٔ ستون‌های دیده‌شدنی را می‌گردیم، چون
+     کاربر دنبالِ چیزی است که می‌بیند. */
+  function hit(sh, s, r) {
+    if (!s.q) return true;
+    var q = s.q.toLowerCase();
+    for (var i = 0; i < sh.cols.length; i++) {
+      var c = sh.cols[i];
+      if (s.hide[c.k]) continue;
+      var v = r[c.k];
+      if (v != null && String(v).toLowerCase().indexOf(q) >= 0) return true;
+    }
+    return false;
+  }
+
   function paint(id) {
     var sh = byId(id); if (!sh) return;
     var body = document.querySelector('[data-vsbody="' + id + '"]');
     if (!body) return;
     var s = st(id);
     var open = !!(sh.w && s.edit);
+    var cols = sh.cols.filter(function (c) { return !s.hide[c.k]; });
 
-    var span = sh.cols.length + (sh.w ? 2 : 1);
+    /* سرِ جدول هم این‌جا ساخته می‌شود، چون ستون‌ها عوض می‌شوند. */
+    var head = document.querySelector('[data-vshead="' + id + '"]');
+    if (head) head.innerHTML = "<tr>" +
+      '<th style="width:26px;">#</th>' +
+      cols.map(function (c) { return "<th>" + esc(c.t) + "</th>"; }).join("") +
+      (sh.w
+        ? '<th style="width:70px;">' +
+            '<label class="edit-toggle-wrap" title="فعال/غیرفعال کردن امکان حذف و تغییر">' +
+              '<span class="edit-switch"><input type="checkbox" data-vsedit="' + esc(sh.id) +
+              '"' + (s.edit ? " checked" : "") + '><span class="track"></span></span> حذف/تغییر</label>' +
+          "</th>"
+        : "") + "</tr>";
+    var tog = head && head.querySelector("[data-vsedit]");
+    if (tog) tog.addEventListener("change", function () {
+      st(sh.id).edit = !!tog.checked;
+      paint(sh.id);
+    });
+
+    /* کدام ستون‌ها دیده شوند: یک ردیف قرص، با همان نامِ سرستون. */
+    var box = document.querySelector('[data-vscolbox="' + id + '"]');
+    if (box) box.innerHTML = sh.cols.map(function (c) {
+      return '<button type="button" class="vs-col' + (s.hide[c.k] ? "" : " on") +
+        '" data-vscol="' + esc(c.k) + '">' + esc(c.t) + "</button>";
+    }).join("");
+
+    var span = cols.length + (sh.w ? 2 : 1);
+    var seen = 0;
     body.innerHTML = s.rows.map(function (r, i) {
+      if (!hit(sh, s, r)) return "";
+      seen++;
       return '<tr data-ix="' + i + '"><td>' + fa(i + 1) + "</td>" +
-        sh.cols.map(function (c) { return cellHtml(sh, c, r[c.k], open); }).join("") +
+        cols.map(function (c) { return cellHtml(sh, c, r[c.k], open); }).join("") +
         (sh.w ? '<td><button class="btn-del" data-vsdel="' + i + '"' +
                 (open ? "" : " disabled") + ' title="حذف">✕</button></td>' : "") +
         "</tr>";
     }).join("") ||
-      '<tr><td colspan="' + span + '" style="color:var(--ink-faint);">هنوز ردیفی ندارد.</td></tr>';
+      '<tr><td colspan="' + span + '" style="color:var(--ink-faint);">' +
+      (s.q ? "چیزی با «" + esc(s.q) + "» پیدا نشد." : "هنوز ردیفی ندارد.") + "</td></tr>";
+
+    var cnt = document.querySelector('[data-vscount="' + id + '"]');
+    if (cnt) cnt.textContent = s.rows.length
+      ? (s.q ? fa(seen) + " از " + fa(s.rows.length) + " ردیف" : fa(s.rows.length) + " ردیف")
+      : "";
 
     body.querySelectorAll("td.vs-c[contenteditable=\"true\"]").forEach(function (td) {
       td.addEventListener("blur", function () { commit(id, td); });

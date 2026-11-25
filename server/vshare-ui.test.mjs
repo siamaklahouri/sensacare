@@ -180,6 +180,91 @@ t(ro.able === 0, 'و هیچ خانه‌ای نوشتنی نیست');
 t(ro.rows >= 1, 'ولی ردیف‌ها دیده می‌شوند', String(ro.rows));
 t(/فقط می‌توانید ببینید/.test(ro.sub), 'و زیرنویس همین را می‌گوید', ro.sub.slice(0, 70));
 
+console.log('\n===== نوارِ ابزارِ بخشِ اشتراکی =====');
+{
+  /* بخشی که از کارتابلِ دیگری می‌آید، ابزارهای خودِ کارتابل را ندارد:
+     نه مرتب‌سازی، نه پالایه. و بعضی از این جدول‌ها ده ستون دارند.
+     گزارش شد که «کاربر باید بتواند قشنگ آن بخش را ببیند و اگر چند
+     قسمت دارد انتخاب کند کدام را ببیند» — این سه چیز کمینهٔ همان
+     است: جستجو، انتخابِ ستون، و شمارِ ردیف. */
+  await p.evaluate(v => document.querySelector('[data-view="' + v + '"]').click(), 'vshare-' + id);
+  await p.waitForTimeout(1200);
+
+  /* دو بخشِ اشتراکی در صفحه هست؛ همه‌چیز باید داخلِ همین یکی سنجیده
+     شود، وگرنه ستون‌های آن یکی هم شمرده می‌شوند. */
+  const SEC = '#view-vshare-' + id + ' ';
+  const head = () => p.evaluate(sel =>
+    [...document.querySelectorAll(sel + '[data-vshead] th')].map(x => x.innerText.trim()), SEC);
+  const cols0 = await head();
+  t(cols0.length > 3, 'سرِ جدول ساخته می‌شود', cols0.join(' | '));
+  t(await p.evaluate(sel => !!document.querySelector(sel + '.vs-find'), SEC), 'کادرِ جستجو هست');
+  const cnt0 = await p.evaluate(sel =>
+    (document.querySelector(sel + '[data-vscount]') || {}).textContent || '', SEC);
+  t(/ردیف/.test(cnt0), 'و شمارِ ردیف‌ها نوشته می‌شود', cnt0);
+
+  /* انتخابِ ستون */
+  await p.evaluate(sel => document.querySelector(sel + '[data-vscols]').click(), SEC);
+  await p.waitForTimeout(300);
+  const chips = await p.evaluate(sel => document.querySelectorAll(sel + '.vs-col').length, SEC);
+  const extra = await p.evaluate(sel =>
+    document.querySelector(sel + '[data-vshead] .edit-toggle-wrap') ? 2 : 1, SEC);
+  t(chips === cols0.length - extra, 'برای هر ستون یک قرص هست',
+    chips + ' قرص در برابرِ ' + cols0.length + ' سرستون');
+
+  const dropped = await p.evaluate(sel => {
+    const c = document.querySelectorAll(sel + '.vs-col')[2];
+    const name = c.textContent;
+    c.click();
+    return name;
+  }, SEC);
+  await p.waitForTimeout(400);
+  const cols1 = await head();
+  t(cols1.length === cols0.length - 1 && cols1.indexOf(dropped) < 0,
+    'ستونی که کنار گذاشته شود از جدول می‌رود', dropped);
+
+  /* و یادش می‌ماند */
+  await p.reload({ waitUntil: 'load' });
+  await p.waitForTimeout(3500);
+  await p.evaluate(v => document.querySelector('[data-view="' + v + '"]').click(), 'vshare-' + id);
+  await p.waitForTimeout(1500);
+  const cols2 = await head();
+  t(cols2.indexOf(dropped) < 0, 'و بعد از بازخوانیِ صفحه هم یادش می‌ماند',
+    cols2.join(' | '));
+
+  /* برش گردانیم تا بقیهٔ آزمون‌ها جدولِ کامل ببینند */
+  await p.evaluate(sel => document.querySelector(sel + '[data-vscols]').click(), SEC);
+  await p.waitForTimeout(250);
+  await p.evaluate(o => {
+    const c = [...document.querySelectorAll(o.sel + '.vs-col')].find(x => x.textContent === o.d);
+    if (c) c.click();
+  }, { sel: SEC, d: dropped });
+  await p.waitForTimeout(400);
+  t((await head()).length === cols0.length, 'و برگرداندنش هم همین‌طور');
+
+  /* جستجو */
+  const first = await p.evaluate(sel => {
+    const td = document.querySelector(sel + '[data-vsbody] tr td:nth-child(2)');
+    return td ? td.innerText.trim() : '';
+  }, SEC);
+  if (first) {
+    await p.fill(SEC + '.vs-find', first);
+    await p.waitForTimeout(400);
+    const seen = await p.evaluate(sel => ({
+      rows: document.querySelectorAll(sel + '[data-vsbody] tr').length,
+      say: (document.querySelector(sel + '[data-vscount]') || {}).textContent || ''
+    }), SEC);
+    t(seen.rows >= 1 && /از/.test(seen.say), 'جستجو ردیف‌ها را کم می‌کند',
+      first + ' → ' + seen.say);
+    await p.fill(SEC + '.vs-find', 'چنین‌چیزی‌نیست‌۱۲۳');
+    await p.waitForTimeout(400);
+    t(await p.evaluate(sel =>
+      /پیدا نشد/.test(document.querySelector(sel + '[data-vsbody]').innerText), SEC),
+      'و وقتی چیزی پیدا نشود، خودش می‌گوید');
+    await p.fill(SEC + '.vs-find', '');
+    await p.waitForTimeout(300);
+  }
+}
+
 console.log('\n===== خطای صفحه =====');
 t(errs.length === 0, 'هیچ خطای جاوااسکریپتی نداد', errs.join(' // ') || '—');
 

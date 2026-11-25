@@ -222,10 +222,11 @@ window.KARTABL_IDB      = "{{IDB}}";
     padding:0 12px; margin-bottom:8px; text-transform:uppercase;
   }
   .navbtn{
-    display:flex; align-items:center; gap:11px;
+    display:flex; align-items:center; gap:9px;
     width:100%; text-align:right; border:none; background:transparent;
-    font-family:var(--font-body); font-size:13.6px; font-weight:600; color:var(--ink-soft);
-    padding:10px 12px; border-radius:11px; cursor:pointer; margin-bottom:3px;
+    font-family:var(--font-body); font-size:12.6px; font-weight:600; color:var(--ink-soft);
+    line-height:1.45;
+    padding:9px 11px; border-radius:11px; cursor:pointer; margin-bottom:2px;
     transition:background .15s, color .15s, box-shadow .15s;
     position:relative;
   }
@@ -233,7 +234,7 @@ window.KARTABL_IDB      = "{{IDB}}";
      پشتِ هم، ستون را شلوغ می‌کرد و قدیمی به نظر می‌رسید. حالا آیکن
      خودش تنهاست و فقط پررنگی‌اش عوض می‌شود. */
   .navbtn .ic{
-    font-size:16px; width:22px; height:22px; flex:0 0 22px;
+    font-size:15px; width:20px; height:20px; flex:0 0 20px;
     display:flex; align-items:center; justify-content:center;
     background:none; opacity:.62; transition:opacity .15s, transform .15s;
   }
@@ -4940,14 +4941,10 @@ window.SEARCH_MAP = [
 {{PART:rowdrag}}
 {{PART:tsort}}
 {{PART:bulkadd}}
-/* دستگاه‌های همین کارتابل. جزوِ پینگ مشترک است و دانه را از این‌جا
-   می‌گیرد؛ کارتابل‌های دیگر دانه ندارند و از صفر شروع می‌کنند. */
-window.PING_SEED = [
-  { name:"شهرک نفت",   host:"93.114.110.74", port:4370 },
-  { name:"دفتر اصفهان", host:"37.255.220.75", port:4370 },
-  { name:"ولنجک",      host:"46.100.46.231", port:4370 },
-  { name:"دفتر مرکزی",  host:"192.168.1.201", port:4370 }
-];
+/* بخشِ پینگ با فهرستِ خالی بالا می‌آید و هرکس نشانی‌های خودش را
+   می‌نویسد. پیش‌تر چهار نشانیِ آماده داشت و همان‌ها در کارتابلِ هر
+   کسی که این بخش برایش باز می‌شد سبز می‌شدند — نشانیِ یک شرکتِ
+   دیگر، در جدولِ یک آدمِ دیگر. */
 {{PART:ping}}
 {{PART:netuse}}
 
