@@ -48,7 +48,12 @@ window.NETUSE = (function () {
     return null;
   }
 
+  /* روی نسخهٔ پشتیبانِ آفلاین هیچ سروری نیست: هر درخواستی از این‌جا
+     یک فایلِ نرسیده است و صفحه را هم به خطا می‌اندازد. */
+  function offline() { return !!window.KARTABL_OFFLINE; }
+
   function api(path, body, raw) {
+    if (offline()) return Promise.reject(new Error('آفلاین'));
     var o = { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json' } };
     if (body) o.body = JSON.stringify(body);
     return fetch(KARTABL_API + path, o).then(function (r) { return raw ? r : r.json(); });
@@ -58,6 +63,8 @@ window.NETUSE = (function () {
   function scan() {
     var inp = $('nuRange');
     var range = inp ? inp.value.trim() : '';
+    if (offline()) { var s0 = $('nuSay'); if (s0) { $('nuProg').classList.add('on');
+      s0.textContent = 'این نسخهٔ پشتیبان است؛ کاوش فقط روی خودِ کارتابل کار می‌کند.'; } return; }
     if (!range) { if (inp) inp.focus(); return; }
     if (scanning) { stopScan(); return; }
 
@@ -416,10 +423,11 @@ window.NETUSE = (function () {
       if (inp) inp.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); scan(); }
       });
-      load();                      /* یک بار، تا جدول از اول خالی نباشد */
+      if (!offline()) load();      /* یک بار، تا جدول از اول خالی نباشد */
+      else render();               /* روی پشتیبان، فقط همان جدولِ خالی */
       return;
     }
-    if (shown()) load();
+    if (shown() && !offline()) load();
   }
 
   return { wire: wire, load: load, scan: scan, render: render,
