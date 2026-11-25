@@ -15,7 +15,7 @@
 
    چرا پینگ کافی نیست: پینگ فقط می‌گوید دستگاه زنده است. حجم عددی
    است که فقط خودِ دستگاه دارد. */
-import { tcpProbe, icmpProbe, okHost } from './ping.js';
+import { tcpProbe, icmpProbe, okHost, okPort } from './ping.js';
 import { snmpGet, snmpWalk } from './snmp.js';
 import { reverse } from 'node:dns';
 
@@ -152,6 +152,8 @@ export async function probeHost(ip, opt) {
   return {
     ip, host, alive, how, ms: Date.now() - t0,
     ports: open.map(x => ({ port: x.p, t: x.t, ms: x.ms })),
+    /* چه چیزی امتحان شد — برای وقتی که هیچ‌کدام جواب نمی‌دهند */
+    tried: PORTS.map(x => x.p),
     snmp,
     kind: guessKind(open, snmp),
     usable: snmp ? 'snmp' : (open.some(x => x.p === 8728 || x.p === 8291) ? 'mikrotik' : '')
@@ -221,7 +223,11 @@ export function scanStream(list, opt) {
           let r = null;
           try { r = await probeHost(list[idx], o); } catch (e) { }
           if (done) return;
-          if (r && r.alive) { found++; put({ k: 'host', ...r }); }
+          if (r && r.alive) found++;
+          /* نشانیِ خاموش معمولاً خبر نیست و فهرست را شلوغ می‌کند. ولی
+             وقتی کاربر یک نشانیِ تنها را پرسیده، «هیچ» جواب نیست:
+             باید ببیند چه چیزی امتحان شد و هیچ‌کدام جواب نداد. */
+          if (r && (r.alive || list.length === 1)) put({ k: 'host', ...r });
           put({ k: 'tick', at: idx + 1, n: list.length, found });
         }
       };
@@ -404,6 +410,88 @@ export async function days(env, owner, from) {
     owner, String(from || '').slice(0, 10) || tehranDay(Date.now() - 40 * 86400000));
 }
 
+/* ---------- گزارشِ کاوشگرِ داخلِ شبکه ----------
+   سرورِ ما بیرونِ شبکهٔ شماست و به ۱۹۲.۱۶۸.x نمی‌رسد؛ همان مسئله‌ای
+   که برای گزارشِ Veeam هم بود و همان‌طور حل می‌شود: یک اسکریپتِ کوچک
+   داخلِ شبکه می‌دود و نتیجه را به این‌جا می‌فرستد. هیچ پورتی باز
+   نمی‌شود — اتصال همیشه از داخل به بیرون است.
+
+   دو چیز می‌آید: فهرستِ آنچه در رنج پیدا شده، و شمارندهٔ بایتِ
+   پورت‌هایی که باید شمرده شوند. */
+const portName = pn => {
+  const k = PORTS.find(x => x.p === pn);
+  return k ? k.t : ('پورت ' + pn);
+};
+
+export function cleanScan(body) {
+  const arr = Array.isArray(body && body.hosts) ? body.hosts : [];
+  const hosts = arr.slice(0, 1024).map(h => ({
+    ip: String((h && h.ip) || '').slice(0, 45),
+    host: String((h && h.host) || '').slice(0, 60),
+    kind: String((h && h.kind) || '').slice(0, 40),
+    mac: String((h && h.mac) || '').slice(0, 24),
+    /* نامِ پورت را خودمان می‌گذاریم، نه آن‌طور که اسکریپت نوشته:
+       اسکریپت اَسکی است («winbox»)، صفحه فارسی. */
+    ports: (Array.isArray(h && h.ports) ? h.ports : []).slice(0, 16)
+      .map(x => parseInt((x && x.port) != null ? x.port : x, 10) || 0)
+      .filter(okPort)
+      .map(pn => ({ port: pn, t: portName(pn) })),
+    snmp: (h && h.snmp && (h.snmp.descr || h.snmp.name)) ? {
+      community: String(h.snmp.community || 'public').slice(0, 32),
+      descr: String(h.snmp.descr || '').slice(0, 160),
+      name: String(h.snmp.name || '').slice(0, 60)
+    } : null
+  })).filter(h => okHost(h.ip));
+  hosts.forEach(h => {
+    h.alive = true;
+    h.usable = h.snmp ? 'snmp' : '';
+    h.how = 'agent';
+  });
+  return hosts;
+}
+
+export async function pushScan(env, owner, body) {
+  await ensureNet(env);
+  const hosts = cleanScan(body);
+  const at = Date.now();
+
+  /* نمونه‌ها: هر کدام یک پورتِ یک دستگاه، با دو شمارنده‌اش. */
+  const raw = Array.isArray(body && body.samples) ? body.samples : [];
+  let counted = 0, seen = 0;
+  for (const x of raw.slice(0, 200)) {
+    const ip = String((x && x.ip) || '').trim();
+    const inb = Number(x && x.in), outb = Number(x && x.out);
+    if (!okHost(ip) || !Number.isFinite(inb) || !Number.isFinite(outb)) continue;
+    if (inb < 0 || outb < 0) continue;
+    seen++;
+    /* دستگاهی که در فهرست نیست، با همین گزارش ثبت می‌شود: کاربر
+       نباید دو جا یک کار را بکند. */
+    const known = await nOne(env, 'SELECT ip FROM net_dev WHERE owner=? AND ip=?', owner, ip);
+    /* نامش را از همان کاوش برمی‌داریم: دستگاهی که در فهرست «۱۹۲٫۱۶۸٫۱٫۱»
+       نوشته شود، فردا کسی نمی‌داند کدام است. */
+    const seenHost = hosts.find(h => h.ip === ip);
+    const nice = (x && x.name) || (seenHost && (seenHost.host ||
+                  (seenHost.snmp && seenHost.snmp.name))) || ip;
+    if (!known) await saveDev(env, owner, {
+      ip, name: String(nice).slice(0, 60),
+      community: 'public',
+      iface: parseInt(x && x.iface, 10) >= 0 ? parseInt(x.iface, 10) : 0,
+      ifname: String((x && x.ifname) || '').slice(0, 40),
+      /* کاوشگر خودش می‌فرستد، پس سرور لازم نیست سراغش برود. */
+      live: false
+    });
+    const r = await applySample(env, owner, ip, at, inb, outb);
+    if (r.counted) counted++;
+  }
+
+  /* خودِ عکسِ کاوش در تنظیمات می‌نشیند و نوشتنش کارِ مسیر است:
+     netuse.js از kartabl.js چیزی وارد نمی‌کند، وگرنه دو پرونده
+     دایره‌وار به هم وصل می‌شدند. */
+  return { ok: true, hosts: hosts.length, samples: seen, counted,
+           snapshot: { at, range: String((body && body.range) || '').slice(0, 64),
+                       by: String((body && body.by) || '').slice(0, 60), hosts } };
+}
+
 /* ---------- یک نوبتِ نمونه‌گیری ----------
    هر دستگاهِ روشن، یک نمونه. تفاضل با نمونهٔ قبلی به حسابِ همان روز
    می‌نشیند.
@@ -415,6 +503,29 @@ export async function days(env, owner, from) {
    اضافه نمی‌شود — عددِ ساختگی بدتر از عددِ نداشته است. */
 const MAX_GAP = 3 * 3600 * 1000;
 
+/* یک نمونه را روی حسابِ روز می‌نشاند. هم نوبتِ خودِ سرور از این
+   می‌گذرد، هم نمونه‌ای که کاوشگرِ داخلِ شبکه می‌فرستد — قاعده یکی
+   است، پس در یک جا نوشته شده. */
+export async function applySample(env, owner, ip, at, inb, outb) {
+  const prev = await nOne(env, 'SELECT * FROM net_last WHERE owner=? AND ip=?', owner, ip);
+  /* فاصلهٔ زمانی فقط برای «زیادی دور نباشد» سنجیده می‌شود، نه برای
+     نرخ: جمعِ روز از تفاضلِ خودِ شمارنده‌ها می‌آید. دو گزارش در یک
+     میلی‌ثانیه هم تفاضلِ واقعی دارند. */
+  const good = prev && inb >= prev.inb && outb >= prev.outb &&
+               (at - prev.ts) >= 0 && (at - prev.ts) <= MAX_GAP;
+  if (good) {
+    await env.DB.prepare(
+      `INSERT INTO net_day (owner, ip, day, inb, outb) VALUES (?1,?2,?3,?4,?5)
+       ON CONFLICT(owner, ip, day) DO UPDATE SET inb=inb+?4, outb=outb+?5`
+    ).bind(owner, ip, tehranDay(at), inb - prev.inb, outb - prev.outb).run();
+  }
+  await env.DB.prepare(
+    `INSERT INTO net_last (owner, ip, ts, inb, outb) VALUES (?1,?2,?3,?4,?5)
+     ON CONFLICT(owner, ip) DO UPDATE SET ts=?3, inb=?4, outb=?5`
+  ).bind(owner, ip, at, inb, outb).run();
+  return { ok: true, counted: !!good };
+}
+
 export async function netTick(env, opt) {
   await ensureNet(env);
   const rows = await nAll(env,
@@ -424,20 +535,7 @@ export async function netTick(env, opt) {
     let s = null;
     try { s = await sample(d.ip, d.community, d.iface, opt); } catch (e) { }
     if (!s || !s.ok) { skipped++; continue; }
-    const prev = await nOne(env, 'SELECT * FROM net_last WHERE owner=? AND ip=?', d.owner, d.ip);
-    const good = prev && s.in >= prev.inb && s.out >= prev.outb &&
-                 (s.at - prev.ts) > 0 && (s.at - prev.ts) <= MAX_GAP;
-    if (good) {
-      const day = tehranDay(s.at);
-      await env.DB.prepare(
-        `INSERT INTO net_day (owner, ip, day, inb, outb) VALUES (?1,?2,?3,?4,?5)
-         ON CONFLICT(owner, ip, day) DO UPDATE SET inb=inb+?4, outb=outb+?5`
-      ).bind(d.owner, d.ip, day, s.in - prev.inb, s.out - prev.outb).run();
-    }
-    await env.DB.prepare(
-      `INSERT INTO net_last (owner, ip, ts, inb, outb) VALUES (?1,?2,?3,?4,?5)
-       ON CONFLICT(owner, ip) DO UPDATE SET ts=?3, inb=?4, outb=?5`
-    ).bind(d.owner, d.ip, s.at, s.in, s.out).run();
+    await applySample(env, d.owner, d.ip, s.at, s.in, s.out);
     done++;
   }
   return { ok: true, done, skipped, devs: rows.length };

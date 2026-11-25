@@ -1148,6 +1148,35 @@ async function handleArticles(env, p, m, body) {
       return json({ ok: true });
     }
 
+    /* --- کلیدِ کاوشگرِ شبکه ---
+       همان داستانِ Veeam: سرورِ ما بیرونِ شبکهٔ مشتری است و به
+       ۱۹۲.۱۶۸.x نمی‌رسد. اسکریپتی داخلِ شبکه می‌دود و با این کلید
+       گزارش می‌فرستد. */
+    if (sub === '/net-key' && m === 'GET') {
+      const [has, rep] = await Promise.all([
+        getSetting(env, 'netKey:' + slug, ''),
+        getSetting(env, 'netScan:' + slug, null)
+      ]);
+      return json({ ok: true, set: !!has,
+                    last: rep ? { at: rep.at || 0, range: rep.range || '',
+                                  by: rep.by || '', hosts: (rep.hosts || []).length } : null });
+    }
+
+    if (sub === '/net-key' && m === 'POST') {
+      const ab = 'abcdefghijkmnpqrstuvwxyz23456789';
+      let key = '';
+      for (const x of crypto.getRandomValues(new Uint8Array(32))) key += ab[x % ab.length];
+      await setSetting(env, 'netKey:' + slug, await hashPassword(key));
+      await log(env, 'net-key', slug, '');
+      return json({ ok: true, key });
+    }
+
+    if (sub === '/net-key' && m === 'DELETE') {
+      await run(env, 'DELETE FROM settings WHERE k=?', 'netKey:' + slug);
+      await log(env, 'net-key-del', slug, '');
+      return json({ ok: true });
+    }
+
     /* --- بستهٔ پیچیدهٔ رمزِ دیتای شخصی --- */
     if (sub === '/escrow' && m === 'GET') {
       const e = await getSetting(env, 'escrow:' + slug, null);
@@ -1465,9 +1494,9 @@ async function handleArticles(env, p, m, body) {
 
   if (p === '/view-shares' && m === 'POST') {
     const [list, panels] = await Promise.all([orgList(env), allPanels(env)]);
-    const kinds = {}, offs = {};
-    for (const x of panels) { kinds[x.slug] = x.kind; offs[x.slug] = x.off; }
-    const r = await saveViewShare(env, body, kinds, list.map(o => o.id), offs);
+    const kinds = {};
+    for (const x of panels) kinds[x.slug] = x.kind;
+    const r = await saveViewShare(env, body, kinds, list.map(o => o.id));
     if (r.error) return bad(r.error);
     await log(env, 'view-share', r.id,
               String(body.owner || '') + '/' + String(body.view || '') + '→' + String(body.org || ''));

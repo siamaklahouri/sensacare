@@ -30,7 +30,7 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
 import { parseRange, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
-         days as netDays, tehranDay } from './netuse.js';
+         days as netDays, tehranDay, pushScan } from './netuse.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -2079,6 +2079,29 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      کلید مثل رمزِ ورود درهم‌شده نگه داشته می‌شود، نه خودش: اگر روزی
      کسی به جدولِ تنظیمات برسد، کلیدِ آماده‌ای برای فرستادنِ گزارشِ
      جعلی پیدا نمی‌کند. */
+  /* ---------- گزارشِ کاوشگرِ داخلِ شبکه ----------
+     سرورِ ما بیرونِ شبکهٔ شماست و به ۱۹۲.۱۶۸.x نمی‌رسد. پس مثلِ گزارشِ
+     Veeam، یک اسکریپتِ کوچک داخلِ شبکه می‌دود و نتیجه را این‌جا
+     می‌فرستد؛ هیچ پورتی باز نمی‌شود، اتصال همیشه از داخل به بیرون
+     است.
+
+     کلیدش جداست و فقط همین یک کار را می‌کند: با آن نه می‌شود کارتابل
+     را خواند و نه چیزی در آن نوشت. درهم‌شده نگه داشته می‌شود، نه
+     خودش. */
+  if (p === '/netuse/push' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-net:` + clientIp(req), 240, 3600);
+    if (!rl.ok) return bad('تلاش زیاد بود.', 429);
+    const want = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
+    const got = String(req.headers.get('x-net-key') || body.key || '');
+    if (!want || !got) return bad('کلید درست نیست.', 403);
+    const k = await checkPassword(got, want);
+    if (!k.ok) return bad('کلید درست نیست.', 403);
+
+    const r = await pushScan(env, panel.slug, body);
+    if (r.snapshot) await setSetting(env, 'netScan:' + panel.slug, r.snapshot);
+    return json({ ok: true, hosts: r.hosts, samples: r.samples, counted: r.counted });
+  }
+
   if (p === '/veeam/push' && m === 'POST') {
     const rl = await rateLimit(env, `${panel.id}-veeam:` + clientIp(req), 120, 3600);
     if (!rl.ok) return bad('تلاش زیاد بود.', 429);
@@ -2412,7 +2435,10 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     /* چهل روزِ اخیر بس است: کارتِ «امروز» و «این ماه» و نمودارِ ماه
        همه از همین درمی‌آیند. */
     const from = tehranDay(Date.now() - 40 * 86400000);
-    return json({ devs, days: await netDays(env, panel.slug, from), today: tehranDay() });
+    const scan = await getSetting(env, 'netScan:' + panel.slug, null);
+    const key = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
+    return json({ devs, days: await netDays(env, panel.slug, from), today: tehranDay(),
+                  scan, agent: !!key });
   }
 
   if (p === '/netuse/devs' && m === 'POST') {

@@ -17,6 +17,7 @@
    همان DNSِ دامین می‌آید. */
 window.NETUSE = (function () {
   var devs = [], dayRows = [], today = '', found = [], scanning = null, chart = null;
+  var agent = null, hasKey = false;
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -38,12 +39,16 @@ window.NETUSE = (function () {
   }
 
   /* روزِ میلادیِ ذخیره‌شده → شمسی، برای نمودار و جمعِ ماه */
+  /* تبدیلِ روزِ ذخیره‌شده (میلادی) به شمسی. خودِ تابعِ کارتابل
+     {jy,jm,jd} می‌دهد، نه آرایه — یک بار همین اشتباه شد و نمودار با
+     برچسبِ «NaN» بالا آمد. */
   function jal(iso) {
     var p = String(iso).split('-').map(Number);
+    if (!p[0] || !p[1] || !p[2]) return null;
     try {
       var j = (typeof gregorianToJalali === 'function')
         ? gregorianToJalali(p[0], p[1], p[2]) : null;
-      if (j) return { y: j[0], m: j[1], d: j[2] };
+      if (j && j.jy) return { y: j.jy, m: j.jm, d: j.jd };
     } catch (e) { }
     return null;
   }
@@ -131,6 +136,35 @@ window.NETUSE = (function () {
       fill.style.width = '100%';
       say.textContent = fa(ev.found) + ' دستگاه از ' + fa(ev.n) + ' نشانی، در ' +
         fa(Math.round(ev.ms / 1000)) + ' ثانیه';
+      /* دو جور «خروجی ندارد» هست و توضیحشان یکی نیست:
+         هیچ‌کس جواب نداد، یا جواب دادند ولی هیچ‌کدام شمارنده نمی‌دهند.
+         بی توضیح، هر دو «خراب است» به نظر می‌رسند. */
+      var w = document.getElementById('nuWhy');
+      if (w) {
+        var withSnmp = found.filter(function (h) { return h.snmp; }).length;
+        if (!ev.found) {
+          w.hidden = false;
+          w.innerHTML =
+            '<b>هیچ نشانی‌ای جواب نداد.</b> کاوش از روی <b>سرورِ کارتابل</b> انجام می‌شود، نه ' +
+            'از مرورگرِ شما — مرورگر اجازهٔ اسکنِ شبکه ندارد. پس نشانی باید از خودِ سرور در ' +
+            'دسترس باشد:<br>' +
+            '• رنجِ داخلیِ دفتر (مثل ۱۹۲٫۱۶۸٫۱٫x) از اینترنت دیده نمی‌شود؛ سرور به آن نمی‌رسد.<br>' +
+            '• نشانیِ اینترنتیِ همان سایت — همان که در «پینگ دستگاه‌ها» می‌زنید — کار می‌کند، ' +
+            'به شرطی که فایروالِ آن‌طرف اجازه بدهد.';
+        } else if (!withSnmp) {
+          w.hidden = false;
+          w.innerHTML =
+            '<b>' + fa(ev.found) + ' دستگاه پیدا شد، ولی هیچ‌کدام شمارندهٔ مصرف نمی‌دهند.</b> ' +
+            'حجمِ مصرفی عددی است که فقط خودِ روتر دارد و با SNMP خوانده می‌شود:<br>' +
+            '• روی روتر SNMP را روشن کنید (نسخهٔ ۲c، فقط خواندن) و community‌اش را بگذارید ' +
+            '«public» یا هرچه خواستید.<br>' +
+            '• در فایروال، پورت ۱۶۱ روی UDP را از سمتِ همین سرور باز کنید.<br>' +
+            '• بعد دوباره کاوش بزنید؛ کنارِ همان نشانی دکمهٔ «افزودن» می‌آید.';
+        } else {
+          w.hidden = true;
+          w.innerHTML = '';
+        }
+      }
     }
   }
 
@@ -143,6 +177,13 @@ window.NETUSE = (function () {
       return;
     }
     b.innerHTML = found.map(function (h, i) {
+      if (!h.alive) {
+        /* نشانیِ تنهایی که پرسیده شد و جواب نداد: بگو چه چیزی امتحان شد. */
+        return '<tr class="nu-dead"><td>' + fa(i + 1) + '</td>' +
+          '<td class="nu-ip">' + escapeHtml(h.ip) + '</td>' +
+          '<td colspan="4" class="nu-dim">جواب نداد — نه پینگ، نه SNMP، و نه هیچ‌کدام از ' +
+          'پورت‌های ' + fa((h.tried || []).join('، ')) + '</td></tr>';
+      }
       var tags = (h.ports || []).map(function (p) {
         return '<span class="nu-tag">' + escapeHtml(p.t) + '</span>';
       }).join('');
@@ -151,7 +192,8 @@ window.NETUSE = (function () {
       return '<tr>' +
         '<td>' + fa(i + 1) + '</td>' +
         '<td class="nu-ip">' + escapeHtml(h.ip) + '</td>' +
-        '<td>' + escapeHtml(h.host || '') + '</td>' +
+        '<td>' + escapeHtml(h.host || '') +
+          (h.how === 'agent' ? ' <span class="nu-tag">از داخلِ شبکه</span>' : '') + '</td>' +
         '<td>' + escapeHtml(h.kind || (h.snmp ? h.snmp.name : '') || '') + '</td>' +
         '<td>' + (tags || '<span class="nu-dim">فقط پینگ</span>') + '</td>' +
         '<td>' + (h.snmp
@@ -169,9 +211,54 @@ window.NETUSE = (function () {
       devs = (j && j.devs) || [];
       dayRows = (j && j.days) || [];
       today = (j && j.today) || '';
+      agent = (j && j.scan) || null;
+      hasKey = !!(j && j.agent);
+      /* گزارشِ کاوشگرِ داخلِ شبکه همان فهرستِ «پیدا شد» را پر می‌کند،
+         مگر همین حالا کاوشی از روی سرور زده باشیم. */
+      if (agent && agent.hosts && !found.length) found = agent.hosts.slice();
       render();
       renderFound();
+      renderAgent();
     }).catch(function () { });
+  }
+
+  /* ---------- کاوشگرِ داخلِ شبکه ----------
+     سرور بیرونِ شبکهٔ کاربر است و به ۱۹۲.۱۶۸.x نمی‌رسد. این تکه
+     می‌گوید آخرین گزارشِ داخلی کِی رسیده، و اگر نرسیده، چه باید کرد. */
+  function renderAgent() {
+    var box = $('nuAgent');
+    if (!box) return;
+    if (agent && agent.at) {
+      var mins = Math.max(0, Math.round((Date.now() - agent.at) / 60000));
+      box.className = 'nu-agent is-on';
+      box.innerHTML =
+        '<b>کاوشگرِ داخلِ شبکه فعال است.</b> آخرین گزارش ' +
+        (mins < 1 ? 'همین الان' : (mins < 60 ? fa(mins) + ' دقیقه پیش'
+          : fa(Math.round(mins / 60)) + ' ساعت پیش')) +
+        (agent.by ? ' از <b>' + escapeHtml(agent.by) + '</b>' : '') +
+        (agent.range ? ' — رنجِ ' + escapeHtml(agent.range) : '') +
+        ' · ' + fa((agent.hosts || []).length) + ' دستگاه' +
+        (mins > 30 ? '<br><span class="nu-dim">بیش از نیم ساعت است که گزارشی نیامده؛ ' +
+          'شاید آن سیستم خاموش است یا کارِ زمان‌بندی‌شده نمی‌دود.</span>' : '');
+      return;
+    }
+    box.className = 'nu-agent';
+    box.innerHTML =
+      '<b>برای شبکهٔ داخلی، کاوشگر را روی یک سیستمِ همان شبکه بگذارید.</b><br>' +
+      'کاوشِ بالا از روی <b>سرورِ کارتابل</b> انجام می‌شود و به ۱۹۲٫۱۶۸٫x شما نمی‌رسد — ' +
+      'مرورگر هم اجازهٔ اسکنِ شبکه ندارد. راهش همان است که برای گزارشِ Veeam هست: ' +
+      'یک اسکریپتِ کوچک روی یک ویندوزِ داخلِ شبکه، که هر پنج دقیقه نتیجه را به این‌جا ' +
+      'می‌فرستد. هیچ پورتی باز نمی‌شود و هیچ رمزی لازم نیست.' +
+      '<ol class="nu-steps">' +
+        '<li>از ادمین بخواهید در پنل، برای همین کارتابل «کلیدِ کاوشگرِ شبکه» بسازد.</li>' +
+        '<li>دو فایلِ <span dir="ltr">net-push.ps1</span> و ' +
+          '<span dir="ltr">net-push.json</span> را در پوشه‌ای مثل ' +
+          '<span dir="ltr">C:\\SLTech\\</span> بگذارید و کلید و رنج را در فایلِ json بنویسید.</li>' +
+        '<li>یک بار دستی اجرایش کنید؛ همین‌جا فهرستِ دستگاه‌ها می‌آید.</li>' +
+        '<li>در Task Scheduler هر پنج دقیقه اجرا شود.</li>' +
+      '</ol>' +
+      (hasKey ? '<span class="nu-dim">کلید ساخته شده؛ منتظرِ اولین گزارشیم.</span>'
+              : '<span class="nu-dim">هنوز کلیدی ساخته نشده.</span>');
   }
 
   function dayOf(ip, iso) {

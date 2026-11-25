@@ -2453,6 +2453,8 @@ function renderPlannersNow(){
         <button class="btn" data-vpw="${esc(p.slug)}" title="رمز دیتای شخصی">رمز شخصی</button>
         ${((DATA.views||{})[p.kind]||[]).some(v=> v.id === "veeam")
           ? `<button class="btn" data-vee="${esc(p.slug)}" title="کلیدِ اسکریپتِ گزارشِ Veeam">کلید Veeam</button>` : ``}
+        ${((DATA.views||{})[p.kind]||[]).some(v=> v.id === "netuse")
+          ? `<button class="btn" data-netk="${esc(p.slug)}" title="کلیدِ کاوشگرِ شبکه — برای خواندنِ مصرفِ اینترنت از داخلِ شبکهٔ خودشان">کلید شبکه</button>` : ``}
         ${p.builtin ? `` : `<button class="btn ${p.closed?'btn-on':'btn-off'}" data-off="${esc(p.slug)}">${
           p.closed ? "فعال کن" : "غیرفعال"}</button>`}
         ${p.builtin || p.core ? `` : `<button class="btn btn-danger btn-ic" data-del="${esc(p.slug)}" title="حذف کامل این کارتابل">${ICON.trash}</button>`}
@@ -2467,6 +2469,7 @@ function renderPlannersNow(){
   wrap.querySelectorAll("[data-creds]").forEach(b=> b.onclick = ()=> openSendCreds(b.dataset.creds));
   wrap.querySelectorAll("[data-vpw]").forEach(b=> b.onclick = ()=> openVaultReset(b.dataset.vpw));
   wrap.querySelectorAll("[data-vee]").forEach(b=> b.onclick = ()=> openVeeamKey(b.dataset.vee));
+  wrap.querySelectorAll("[data-netk]").forEach(b=> b.onclick = ()=> openNetKey(b.dataset.netk));
   wrap.querySelectorAll("[data-off]").forEach(b=> b.onclick = ()=> toggleState(b.dataset.off));
   wrap.querySelectorAll("[data-del]").forEach(b=> b.onclick = ()=> openDelete(b.dataset.del));
 }
@@ -2823,6 +2826,79 @@ function openSendCreds(slug){
    کلید فقط همین یک کار را می‌کند: با آن نمی‌شود کارتابل را خواند یا
    چیزی در آن نوشت. درهم‌شده ذخیره می‌شود، پس فقط همان یک بار که
    ساخته می‌شود دیده می‌شود — مثل رمزِ ورود. */
+/* ---------- کلیدِ کاوشگرِ شبکه ----------
+   همان داستانِ Veeam، برای مصرفِ اینترنت: سرورِ ما به ۱۹۲.۱۶۸.x
+   مشتری نمی‌رسد، پس یک اسکریپتِ کوچک داخلِ شبکه می‌دود و با این کلید
+   گزارش می‌فرستد. */
+async function openNetKey(slug){
+  const p = find(slug);
+  if(!p) return;
+  const r = await api("/planners/" + slug + "/net-key");
+  if(!r.ok){ say(r.data.error || "نشد.", true); return; }
+  const set = !!r.data.set, last = r.data.last;
+  const when = t=>{
+    if(!t) return "—";
+    try{ return new Intl.DateTimeFormat("fa-IR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(Number(t))); }
+    catch(e){ return new Date(Number(t)).toLocaleString(); }
+  };
+  const state = !set
+    ? `<div class="hint">هنوز کلیدی ساخته نشده، پس هیچ گزارشی پذیرفته نمی‌شود.</div>`
+    : last
+      ? `<div class="hint">آخرین گزارش: <b>${esc(when(last.at))}</b>` +
+        (last.by ? ` — از <span dir="ltr">${esc(last.by)}</span>` : ``) +
+        (last.range ? ` — رنجِ <span dir="ltr">${esc(last.range)}</span>` : ``) +
+        ` — ${fa(last.hosts)} دستگاه</div>`
+      : `<div class="hint">کلید هست ولی هنوز هیچ گزارشی نرسیده. یعنی اسکریپت
+           یا روی سیستمِ داخلِ شبکه گذاشته نشده، یا به سرورِ ما نمی‌رسد.</div>`;
+
+  openOverlay(`
+    <h2>کلید کاوشگر شبکه — ${esc(p.name)}</h2>
+    <p class="sub">سرورِ کارتابل بیرونِ شبکهٔ آن‌هاست و به <span dir="ltr">192.168.x.x</span>
+      نمی‌رسد. پس یک اسکریپتِ کوچک روی یک ویندوزِ داخلِ شبکه می‌نشیند، رنج را
+      می‌گردد، شمارندهٔ بایتِ روتر را می‌خواند و با این کلید می‌فرستد. هیچ پورتی
+      باز نمی‌شود و هیچ رمزِ ویندوزی لازم نیست.</p>
+    <p class="sub">کلید درهم‌شده ذخیره می‌شود، پس فقط همین یک‌بار که ساخته شود
+      دیده می‌شود.</p>
+    ${state}
+    <div class="ov-acts">
+      <button class="btn btn-main" id="netNew">${set ? "کلید تازه بساز" : "کلید بساز"}</button>
+      ${set ? `<button class="btn btn-off" id="netDel">کلید را بردار</button>` : ``}
+      <button class="btn" id="netClose">بستن</button>
+    </div>
+    <div class="gate-err" id="netErr"></div>
+    <div id="netOut"></div>`);
+
+  document.getElementById("netClose").onclick = closeOverlay;
+  document.getElementById("netNew").onclick = async ()=>{
+    if(set && !confirm("کلیدِ تازه یعنی کلیدِ فعلی همان لحظه از کار می‌افتد و تا " +
+                       "به‌روز کردنِ اسکریپت، هیچ گزارشی نمی‌رسد. ادامه؟")) return;
+    const g = await api("/planners/" + slug + "/net-key", { method:"POST", body:"{}" });
+    if(!g.ok){ document.getElementById("netErr").textContent = g.data.error || "نشد."; return; }
+    const url = location.origin + "/api/" + (p.api || p.slug) + "/netuse/push";
+    const cfg = JSON.stringify({ url, key: g.data.key, range: "192.168.1.0/24",
+                                 community: "public", counters: {} }, null, 2);
+    document.getElementById("netOut").innerHTML =
+      `<div class="hint2" style="margin-top:14px;">کلید — همین حالا جایی یادداشتش کنید:</div>` +
+      `<div class="kk" dir="ltr" style="margin-top:6px;word-break:break-all;">${esc(g.data.key)}` +
+      ` <button class="copy" data-copy="${esc(g.data.key)}" title="رونوشت">${ICON.copy}</button></div>` +
+      `<div class="hint2" style="margin-top:12px;">و این هم کلِ پروندهٔ
+         <span dir="ltr">net-push.json</span> — رنجش را عوض کنید:</div>` +
+      `<div class="kk" dir="ltr" style="margin-top:6px;white-space:pre-wrap;">${esc(cfg)}` +
+      ` <button class="copy" data-copy="${esc(cfg)}" title="رونوشت">${ICON.copy}</button></div>` +
+      `<p class="sub" style="margin-top:12px;">اسکریپتِ ویندوزی
+         (<span dir="ltr">server/net-push.ps1</span>) و راهنمای قدم‌به‌قدمش
+         (<span dir="ltr">server/net-push.README.md</span>) در همین پروژه‌اند.</p>`;
+    document.querySelectorAll("#netOut [data-copy]").forEach(b=> b.onclick = ()=> copyText(b));
+  };
+  const del = document.getElementById("netDel");
+  if(del) del.onclick = async ()=>{
+    if(!confirm("کلید برداشته شود؟ از همان لحظه هیچ گزارشی پذیرفته نمی‌شود.")) return;
+    const d = await api("/planners/" + slug + "/net-key", { method:"DELETE" });
+    if(!d.ok){ document.getElementById("netErr").textContent = d.data.error || "نشد."; return; }
+    closeOverlay(); say("کلید برداشته شد.");
+  };
+}
+
 async function openVeeamKey(slug){
   const p = find(slug);
   if(!p) return;
@@ -3573,8 +3649,12 @@ function fillVsForm(){
   const views = ()=>{
     const o = VS_OWNERS.find(x=> x.slug === ow.value);
     const list = (o && o.views) || [];
+    /* بخشی که برای این کارتابل بسته است هم در فهرست می‌مانَد — ادمین
+       می‌تواند به اشتراکش بگذارد — ولی نشان‌دار، تا بداند صاحبش خودش
+       آن بخش را روی صفحه‌اش نمی‌بیند. */
     vw.innerHTML = list.length
-      ? list.map(v=> '<option value="' + esc(v.id) + '">' + esc(v.icon) + ' ' + esc(v.label) + '</option>').join("")
+      ? list.map(v=> '<option value="' + esc(v.id) + '">' + esc(v.icon) + ' ' + esc(v.label) +
+          (v.shut ? ' — (در کارتابلِ خودش بسته است)' : '') + '</option>').join("")
       : '<option value="">— بخشِ اشتراکی‌شدنی ندارد —</option>';
   };
   views();

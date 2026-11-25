@@ -12,6 +12,26 @@
   .nu-fld input:focus-visible{ outline:2px solid var(--brass); outline-offset:1px; }
   .nu-hint{ font-size:11.5px; color:var(--ink-faint); margin:-4px 0 12px; }
 
+  /* کاوشگرِ داخلِ شبکه: حالش، و اگر نیست، راهِ راه‌اندازی‌اش. */
+  .nu-agent{
+    margin:0 0 12px; padding:12px 15px; border-radius:12px;
+    background:var(--paper); border:1px solid var(--card-border);
+    font-size:12px; line-height:2; color:var(--ink-soft);
+  }
+  .nu-agent.is-on{ background:var(--green-bg, #e8f6ef); border-color:transparent; }
+  .nu-steps{ margin:7px 0 0; padding-inline-start:18px; }
+  .nu-steps li{ margin-bottom:3px; }
+
+  /* وقتی کاوش چیزی پیدا نکرد، همین‌جا می‌گوید چرا — «صفر» بی‌توضیح،
+     خرابی به نظر می‌رسد. */
+  .nu-why{
+    margin:0 0 12px; padding:11px 14px; border-radius:11px;
+    background:var(--amber-bg, #fdf4e3); color:var(--ink-soft);
+    border:1px solid var(--card-border); font-size:12px; line-height:1.9;
+  }
+  .nu-why[hidden]{ display:none; }
+  .nu-dead td{ background:var(--paper); }
+
   .nu-prog{
     display:none; align-items:center; gap:10px; margin:0 0 12px;
     font-size:12px; color:var(--ink-soft);

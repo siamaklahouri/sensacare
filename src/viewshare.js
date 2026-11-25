@@ -253,14 +253,9 @@ export function shareableFor(kind, off) {
     .filter(f => typeof f === 'string' && f.indexOf('view:') === 0)
     .map(f => f.slice(5)));
   return Object.entries(SHAREABLE)
-    .filter(([id, s]) => s.kinds.includes(k) && !shut.has(id))
-    .map(([id, s]) => ({ id, label: s.label, icon: s.icon }));
+    .filter(([, s]) => s.kinds.includes(k))
+    .map(([id, s]) => ({ id, label: s.label, icon: s.icon, shut: shut.has(id) }));
 }
-
-/* و همین را سرور هم می‌سنجد، نه فقط فهرستِ بازشو: درخواستِ دستی هم
-   نباید بخشی را که صاحبش ندارد به اشتراک بگذارد. */
-export const hasShareable = (kind, off, view) =>
-  shareableFor(kind, off).some(v => v.id === view);
 
 export const specOf = view => SHAREABLE[String(view || '')] || null;
 
@@ -310,7 +305,7 @@ const newId = () => {
    کافی نبود: بخشِ «حساب‌های بانکی» را می‌شد به کارتابلِ فنی بست و
    هیچ‌کس نمی‌فهمید، چون آن کارتابل اصلاً چنین بخشی ندارد — عضوِ گروه
    یک جدولِ همیشه‌خالی می‌دید. */
-export async function saveViewShare(env, body, kinds, knownOrgs, offs) {
+export async function saveViewShare(env, body, kinds, knownOrgs) {
   await ensureViewShares(env);
   const id = String(body.id || '').trim();
   if (id && !ID_RE.test(id)) return { error: 'شناسهٔ اشتراک درست نیست.' };
@@ -324,10 +319,6 @@ export async function saveViewShare(env, body, kinds, knownOrgs, offs) {
   if (!spec) return { error: 'این بخش اشتراکی نمی‌شود.' };
   if (!spec.kinds.includes(kind))
     return { error: 'کارتابلِ «' + owner + '» بخشی به نامِ «' + spec.label + '» ندارد.' };
-  /* و بخشی که برای همان کارتابل بسته است هم نه: فهرستِ بازشو همین را
-     نشان می‌دهد، ولی درخواستِ دستی هم باید همین‌جا رد شود. */
-  if (offs && !hasShareable(kind, offs[owner], view))
-    return { error: 'این بخش در کارتابلِ «' + owner + '» باز نیست؛ اول از «بخش‌ها» بازش کنید.' };
 
   const org = String(body.org || '').trim();
   if (!org || !knownOrgs.includes(org)) return { error: 'گروهِ گیرنده را انتخاب کنید.' };

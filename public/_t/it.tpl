@@ -1350,6 +1350,9 @@ window.KARTABL_IDB      = "{{IDB}}";
       </div>
       <div class="nu-hint">هم «۱۹۲.۱۶۸.۱.۰/۲۴» را می‌فهمد، هم «۱۹۲.۱۶۸.۱.۱۰-۵۰». سقف هر بار ۱۰۲۴ نشانی است. هیچ رمزی لازم نیست — نه رمزِ ویندوز، نه دامین.</div>
 
+      <div class="nu-agent" id="nuAgent"></div>
+      <div class="nu-why" id="nuWhy" hidden></div>
+
       <div class="nu-prog" id="nuProg">
         <div class="nu-track"><div class="nu-fill" id="nuFill"></div></div>
         <div id="nuSay"></div>
