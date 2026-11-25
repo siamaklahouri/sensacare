@@ -30,7 +30,7 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
 import { parseRanges, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
-         days as netDays, tehranDay, pushScan } from './netuse.js';
+         days as netDays, tehranDay, pushScan, netPlan } from './netuse.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -2088,6 +2088,17 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      کلیدش جداست و فقط همین یک کار را می‌کند: با آن نه می‌شود کارتابل
      را خواند و نه چیزی در آن نوشت. درهم‌شده نگه داشته می‌شود، نه
      خودش. */
+  /* کاوشگر پیش از فرستادن می‌پرسد «برای هر دستگاه کدام پورت؟» — همان
+     چیزی که کاربر در صفحه انتخاب کرده. نبودنش یعنی خودش حدس بزند. */
+  if (p === '/netuse/plan' && m === 'GET') {
+    const want = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
+    const got = String(req.headers.get('x-net-key') || '');
+    if (!want || !got) return bad('کلید درست نیست.', 403);
+    const k = await checkPassword(got, want);
+    if (!k.ok) return bad('کلید درست نیست.', 403);
+    return json({ ok: true, plan: await netPlan(env, panel.slug) });
+  }
+
   if (p === '/netuse/push' && m === 'POST') {
     const rl = await rateLimit(env, `${panel.id}-net:` + clientIp(req), 240, 3600);
     if (!rl.ok) return bad('تلاش زیاد بود.', 429);

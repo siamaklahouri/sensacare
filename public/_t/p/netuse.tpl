@@ -404,6 +404,19 @@ window.NETUSE = (function () {
     return ov;
   }
 
+  function drawIfaces(el, rows) {
+    el.querySelector('.nu-list').innerHTML = rows.map(function (r) {
+      return '<div class="nu-if' + (r.up ? '' : ' is-off') + '" data-nu-pick="' + r.i +
+        '" data-nu-name="' + escapeHtml(r.name) + '">' +
+        '<div><div class="nu-if-n">' + escapeHtml(r.name) + '</div>' +
+        (r.note ? '<div class="nu-if-note">' + escapeHtml(r.note) + '</div>' : '') + '</div>' +
+        '<div class="nu-num nu-dim">' + (r.mbps ? fa(r.mbps) + ' مگابیت' : '—') + '</div>' +
+        '<div class="nu-num nu-dim">' + bytes((r.in || 0) + (r.out || 0)) + '</div>' +
+        '<div><span class="nu-tag' + (r.up ? ' is-good' : '') + '">' +
+          (r.up ? 'بالا' : 'پایین') + '</span></div></div>';
+    }).join('') || '<div class="nu-dim">پورتی نداشت</div>';
+  }
+
   function openIf(ip) {
     var d = devs.filter(function (x) { return x.ip === ip; })[0];
     if (!d) return;
@@ -412,22 +425,22 @@ window.NETUSE = (function () {
     el.querySelector('.nu-sub').textContent = (d.name ? d.name + ' — ' : '') + ip;
     el.querySelector('.nu-list').innerHTML = '<div class="nu-dim">در حال خواندنِ پورت‌ها…</div>';
     el.hidden = false;
+
+    /* اگر کاوشگرِ داخلِ شبکه پورت‌ها را فرستاده، همان‌ها را نشان
+       می‌دهیم: سرور خودش به این دستگاه نمی‌رسد که بپرسد. */
+    var seen = (agent && agent.hosts || []).filter(function (h) { return h.ip === ip; })[0];
+    if (seen && seen.ifaces && seen.ifaces.length) {
+      drawIfaces(el, seen.ifaces);
+      return;
+    }
+
     api('/netuse/ifaces', { host: ip, community: d.community }).then(function (j) {
       if (!j || !j.ok) {
         el.querySelector('.nu-list').innerHTML =
           '<div class="nu-dim">' + escapeHtml((j && j.error) || 'پورتی خوانده نشد') + '</div>';
         return;
       }
-      el.querySelector('.nu-list').innerHTML = j.rows.map(function (r) {
-        return '<div class="nu-if' + (r.up ? '' : ' is-off') + '" data-nu-pick="' + r.i +
-          '" data-nu-name="' + escapeHtml(r.name) + '">' +
-          '<div><div class="nu-if-n">' + escapeHtml(r.name) + '</div>' +
-          (r.note ? '<div class="nu-if-note">' + escapeHtml(r.note) + '</div>' : '') + '</div>' +
-          '<div class="nu-num nu-dim">' + (r.mbps ? fa(r.mbps) + ' مگابیت' : '—') + '</div>' +
-          '<div class="nu-num nu-dim">' + bytes(r.in + r.out) + '</div>' +
-          '<div><span class="nu-tag' + (r.up ? ' is-good' : '') + '">' +
-            (r.up ? 'بالا' : 'پایین') + '</span></div></div>';
-      }).join('') || '<div class="nu-dim">پورتی نداشت</div>';
+      drawIfaces(el, j.rows);
     }).catch(function () {
       el.querySelector('.nu-list').innerHTML = '<div class="nu-dim">به سرور نرسید</div>';
     });

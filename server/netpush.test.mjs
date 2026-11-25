@@ -224,7 +224,10 @@ console.log('\n===== روی خودِ صفحه =====');
   const rep = (i, o) => ({ range: '192.168.1.0/24', by: 'PC-SIAMAK',
     hosts: [{ ip: '192.168.1.1', host: 'gw.sltech.local',
               ports: [{ port: 80 }, { port: 8291 }],
-              snmp: { community: 'public', descr: 'RouterOS 7.14', name: 'gw-markazi' } },
+              snmp: { community: 'public', descr: 'RouterOS 7.14', name: 'gw-markazi' },
+              ifaces: [{ i: 1, name: 'ether1-wan', up: true, in: i, out: o },
+                       { i: 2, name: 'ether2-lan', up: true, in: 500, out: 400 },
+                       { i: 3, name: 'lo', up: true, in: 0, out: 0 }] },
             { ip: '192.168.1.50', host: 'pc-ali.sltech.local', ports: [{ port: 445 }], snmp: null }],
     samples: [{ ip: '192.168.1.1', iface: 1, ifname: 'ether1-wan', in: i, out: o }] });
   const send = b2 => fetch(BASE + '/api/kartabl/netuse/push', { method: 'POST',
@@ -233,6 +236,14 @@ console.log('\n===== روی خودِ صفحه =====');
   t((await send(rep(8e9, 9e8))).status === 200, 'گزارشِ اول می‌نشیند');
   const two = await (await send(rep(8e9 + 2400000, 9e8 + 350000))).json();
   t(two.counted === 1, 'و گزارشِ دوم مصرف می‌سازد', JSON.stringify(two));
+
+  /* کاوشگر پیش از هر اجرا می‌پرسد کدام پورتِ هر دستگاه خوانده شود. */
+  const plan = await (await fetch(BASE + '/api/kartabl/netuse/plan',
+    { headers: { Host: HOST, 'x-net-key': kj.key } })).json();
+  t(plan.ok && plan.plan['192.168.1.1'] === 1,
+    'و برنامهٔ پورت‌ها را هم به کاوشگر می‌دهد', JSON.stringify(plan.plan));
+  const planNo = await fetch(BASE + '/api/kartabl/netuse/plan', { headers: { Host: HOST } });
+  t(planNo.status === 403, 'ولی برنامه بی کلید داده نمی‌شود', planNo.status + '');
 
   const { launch, calm } = await import('./pw.mjs');
   const PORT = new URL(BASE).port || '80';
@@ -281,6 +292,20 @@ console.log('\n===== روی خودِ صفحه =====');
   t(/وین‌باکس|ویندوز/.test(found) && /gw\.sltech\.local/.test(found),
     'و فهرستِ پیداشده‌ها با نامِ فارسیِ پورت‌ها می‌آید',
     found.replace(/\s+/g, ' ').slice(0, 90));
+  /* پنجرهٔ انتخابِ پورت باید از فهرستِ خودِ کاوشگر پر شود — سرور به
+     این دستگاه نمی‌رسد که از خودش بپرسد. */
+  await p2.evaluate(() => {
+    const b3 = document.querySelector('[data-nu-if]');
+    if (b3) b3.click();
+  });
+  await p2.waitForTimeout(700);
+  const ifs = await p2.evaluate(() => {
+    const o = document.querySelector('.nu-ov');
+    return o && !o.hidden ? o.innerText.replace(/\s+/g, ' ') : '';
+  });
+  t(/ether1-wan/.test(ifs) && /ether2-lan/.test(ifs),
+    'پنجرهٔ پورت از فهرستِ کاوشگر پر می‌شود', ifs.slice(0, 70));
+
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await br.close();
 }

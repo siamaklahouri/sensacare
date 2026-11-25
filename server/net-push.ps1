@@ -262,6 +262,52 @@ function Snmp-Get([string] $ip, [string] $community, [string[]] $oids, [int] $ms
   } catch { return $null }
 }
 
+# ------------------------------------------------------- device ports
+# Which ports does this device have, and how many bytes has each moved?
+# Asked index by index rather than by walking the tree: a GET carries
+# four questions at once, a walk needs a round trip per answer, and a
+# switch has far fewer ports than the tree has branches.
+function Get-Ifaces([string] $ip, [string] $community, [int] $ms, [int] $max) {
+  $out = New-Object System.Collections.ArrayList
+  for ($i = 1; $i -le $max; $i++) {
+    $r = Snmp-Get $ip $community @(
+          "1.3.6.1.2.1.31.1.1.1.1.$i",     # ifName
+          "1.3.6.1.2.1.2.2.1.8.$i",        # ifOperStatus
+          "1.3.6.1.2.1.31.1.1.1.6.$i",     # ifHCInOctets
+          "1.3.6.1.2.1.31.1.1.1.10.$i") $ms
+    if (-not $r) { continue }
+    $name = [string]$r[0]
+    if (-not $name) {
+      # No high-capacity name? Try the plain description before giving up.
+      $d = Snmp-Get $ip $community @("1.3.6.1.2.1.2.2.1.2.$i") $ms
+      if ($d) { $name = [string]$d[0] }
+    }
+    if (-not $name) { continue }
+    $in  = $r[2]; $out2 = $r[3]
+    if ($in -eq $null -or $out2 -eq $null) {
+      $o = Snmp-Get $ip $community @("1.3.6.1.2.1.2.2.1.10.$i", "1.3.6.1.2.1.2.2.1.16.$i") $ms
+      if ($o) { $in = $o[0]; $out2 = $o[1] }
+    }
+    if ($in -eq $null -or $out2 -eq $null) { continue }
+    [void]$out.Add(@{ i = $i; name = $name; up = ($r[1] -eq 1);
+                      'in' = [int64]$in; out = [int64]$out2 })
+  }
+  return $out
+}
+
+# The port that carries the internet is almost always the busiest one
+# that is up. A guess, but a good one -- and the kartabl lets a human
+# change it afterwards, which is what the next run reads back.
+function Pick-Iface($ifaces) {
+  $best = $null
+  foreach ($f in $ifaces) {
+    if (-not $f.up) { continue }
+    if ($f.name -match '^(lo|Loopback|Null)') { continue }
+    if ($best -eq $null -or ($f.'in' + $f.out) -gt ($best.'in' + $best.out)) { $best = $f }
+  }
+  return $best
+}
+
 # ------------------------------------------------------------- the scan
 $PORTS = @(
   @{ p = 80;   t = 'web' },      @{ p = 443;  t = 'web-tls' },
@@ -333,35 +379,49 @@ foreach ($Range in $Ranges) {
     $name = ''
     try { $name = [Net.Dns]::GetHostEntry($ip).HostName } catch { }
 
-    [void]$hosts.Add(@{ ip = $ip; host = $name; ports = @($open); snmp = $snmp })
+    $ifs = @()
+    if ($snmp) { $ifs = @(Get-Ifaces $ip $Comm ([math]::Max($Wait, 700)) 24) }
+
+    [void]$hosts.Add(@{ ip = $ip; host = $name; ports = @($open); snmp = $snmp;
+                        ifaces = $ifs })
   }
 }
 Write-Host ("Found {0} device(s) in {1} range(s)." -f $hosts.Count, $Ranges.Count)
 
 # --------------------------------------------------------- the counters
-# For each device/port the config asks for, read ifHCInOctets and
-# ifHCOutOctets (64-bit). Falls back to the 32-bit pair when the device
-# has no high-capacity counters.
-$samples = New-Object System.Collections.ArrayList
+# Nothing to configure by hand: every device that speaks SNMP reports
+# its busiest live port. If the kartabl says otherwise for an address --
+# because somebody picked a port there -- that one wins. And "counters"
+# in the config file still overrides both.
+$chosen = @{}
+try {
+  $planUrl = $Url -replace '/push$', '/plan'
+  $plan = Invoke-RestMethod -Method Get -Uri $planUrl -Headers @{ 'x-net-key' = $Key }
+  if ($plan -and $plan.plan) {
+    foreach ($prop in $plan.plan.PSObject.Properties) { $chosen[$prop.Name] = [int]$prop.Value }
+  }
+} catch { }
 if ($Want) {
   foreach ($prop in $Want.PSObject.Properties) {
-    $ip = $prop.Name
-    foreach ($idx in @($prop.Value)) {
-      $i = [int]$idx
-      $r = Snmp-Get $ip $Comm @(
-            "1.3.6.1.2.1.31.1.1.1.6.$i", "1.3.6.1.2.1.31.1.1.1.10.$i",
-            "1.3.6.1.2.1.2.2.1.10.$i",   "1.3.6.1.2.1.2.2.1.16.$i",
-            "1.3.6.1.2.1.31.1.1.1.1.$i") 1500
-      if (-not $r) { Write-Host ("  no answer from {0} port {1}" -f $ip, $i); continue }
-      $in  = if ($r[0] -ne $null) { $r[0] } else { $r[2] }
-      $out = if ($r[1] -ne $null) { $r[1] } else { $r[3] }
-      if ($in -eq $null -or $out -eq $null) { continue }
-      [void]$samples.Add(@{ ip = $ip; iface = $i; ifname = [string]$r[4];
-                            'in' = [int64]$in; out = [int64]$out })
-    }
+    foreach ($idx in @($prop.Value)) { $chosen[$prop.Name] = [int]$idx; break }
   }
-  Write-Host ("Read {0} counter(s)." -f $samples.Count)
 }
+
+$samples = New-Object System.Collections.ArrayList
+foreach ($h in $hosts) {
+  if (-not $h.snmp) { continue }
+  $ifs = @($h.ifaces)
+  if ($ifs.Count -eq 0) { continue }
+  $pick = $null
+  if ($chosen.ContainsKey($h.ip)) {
+    foreach ($f in $ifs) { if ($f.i -eq $chosen[$h.ip]) { $pick = $f } }
+  }
+  if (-not $pick) { $pick = Pick-Iface $ifs }
+  if (-not $pick) { continue }
+  [void]$samples.Add(@{ ip = $h.ip; iface = $pick.i; ifname = $pick.name;
+                        name = $h.host; 'in' = $pick.'in'; out = $pick.out })
+}
+Write-Host ("Read {0} counter(s)." -f $samples.Count)
 
 # ------------------------------------------------------------- the push
 $body = @{

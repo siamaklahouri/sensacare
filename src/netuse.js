@@ -461,7 +461,17 @@ export function cleanScan(body) {
       community: String(h.snmp.community || 'public').slice(0, 32),
       descr: String(h.snmp.descr || '').slice(0, 160),
       name: String(h.snmp.name || '').slice(0, 60)
-    } : null
+    } : null,
+    /* پورت‌های دستگاه، همان‌طور که کاوشگر خواندشان. این‌جا می‌مانند تا
+       صفحه بتواند فهرستشان را نشان بدهد: سرور خودش به این دستگاه
+       نمی‌رسد که از خودش بپرسد. */
+    ifaces: (Array.isArray(h && h.ifaces) ? h.ifaces : []).slice(0, 48)
+      .map(f => ({ i: parseInt(f && f.i, 10) || 0,
+                   name: String((f && f.name) || '').slice(0, 40),
+                   up: !!(f && f.up),
+                   in: Math.max(0, Number((f && f.in) || 0)),
+                   out: Math.max(0, Number((f && f.out) || 0)) }))
+      .filter(f => f.i > 0 && f.name)
   })).filter(h => okHost(h.ip));
   hosts.forEach(h => {
     h.alive = true;
@@ -572,6 +582,17 @@ export async function applySample(env, owner, ip, at, inb, outb) {
      ON CONFLICT(owner, ip) DO UPDATE SET ts=?3, inb=?4, outb=?5`
   ).bind(owner, ip, at, inb, outb).run();
   return { ok: true, counted: !!good };
+}
+
+/* برنامه‌ای که کاوشگر می‌خواند: برای هر دستگاه، کدام پورت. خالی یعنی
+   خودش بهترین را انتخاب کند. */
+export async function netPlan(env, owner) {
+  await ensureNet(env);
+  const rows = await nAll(env,
+    'SELECT ip, iface FROM net_dev WHERE owner=? AND iface>=0', owner);
+  const plan = {};
+  for (const r of rows) plan[r.ip] = r.iface;
+  return plan;
 }
 
 export async function netTick(env, opt) {
