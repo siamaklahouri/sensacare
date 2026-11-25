@@ -19,6 +19,8 @@
     font-size:12px; line-height:2; color:var(--ink-soft);
   }
   .nu-agent.is-on{ background:var(--green-bg, #e8f6ef); border-color:transparent; }
+  .nu-get{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 2px; }
+  .nu-get .btn{ text-decoration:none; }
   .nu-steps{ margin:7px 0 0; padding-inline-start:18px; }
   .nu-steps li{ margin-bottom:3px; }
 

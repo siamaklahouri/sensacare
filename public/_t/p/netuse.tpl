@@ -249,11 +249,20 @@ window.NETUSE = (function () {
       'مرورگر هم اجازهٔ اسکنِ شبکه ندارد. راهش همان است که برای گزارشِ Veeam هست: ' +
       'یک اسکریپتِ کوچک روی یک ویندوزِ داخلِ شبکه، که هر پنج دقیقه نتیجه را به این‌جا ' +
       'می‌فرستد. هیچ پورتی باز نمی‌شود و هیچ رمزی لازم نیست.' +
+      '<div class="nu-get">' +
+        '<a class="btn btn-brass btn-sm" href="/net-push.ps1.txt" download="net-push.ps1.txt">' +
+          '⬇ گرفتنِ اسکریپت</a>' +
+        '<a class="btn btn-ghost btn-sm" href="/net-push-readme.txt" target="_blank" ' +
+          'rel="noopener">راهنمای راه‌اندازی</a>' +
+      '</div>' +
       '<ol class="nu-steps">' +
-        '<li>از ادمین بخواهید در پنل، برای همین کارتابل «کلیدِ کاوشگرِ شبکه» بسازد.</li>' +
-        '<li>دو فایلِ <span dir="ltr">net-push.ps1</span> و ' +
-          '<span dir="ltr">net-push.json</span> را در پوشه‌ای مثل ' +
-          '<span dir="ltr">C:\\SLTech\\</span> بگذارید و کلید و رنج را در فایلِ json بنویسید.</li>' +
+        '<li>از ادمین بخواهید در پنل، برای همین کارتابل «کلیدِ کاوشگرِ شبکه» بسازد؛ ' +
+          'متنِ آمادهٔ <span dir="ltr">net-push.json</span> را هم همان‌جا می‌دهد.</li>' +
+        '<li>اسکریپت را از همین‌جا بگیرید. با پسوندِ <span dir="ltr">.txt</span> می‌آید ' +
+          '— مرورگرها جلوی دانلودِ مستقیمِ <span dir="ltr">.ps1</span> را می‌گیرند — روی ' +
+          'ویندوز اسمش را به <span dir="ltr">net-push.ps1</span> عوض کنید.</li>' +
+        '<li>آن و <span dir="ltr">net-push.json</span> را در پوشه‌ای مثل ' +
+          '<span dir="ltr">C:\\SLTech\\</span> بگذارید و رنجِ شبکه‌تان را در json بنویسید.</li>' +
         '<li>یک بار دستی اجرایش کنید؛ همین‌جا فهرستِ دستگاه‌ها می‌آید.</li>' +
         '<li>در Task Scheduler هر پنج دقیقه اجرا شود.</li>' +
       '</ol>' +

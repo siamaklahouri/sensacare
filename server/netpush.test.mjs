@@ -49,6 +49,28 @@ console.log('===== خودِ اسکریپت =====');
     t(PS.indexOf(oid) >= 0, 'شاخهٔ ' + oid + ' را می‌خواند');
 }
 
+console.log('\n===== گرفتنِ اسکریپت از خودِ سایت =====');
+{
+  /* «.ps1 دانلود نمی‌شود» — و درست هم هست: مرورگرها و پیام‌رسان‌ها
+     جلوی پسوندِ اجرایی را می‌گیرند. پس همان متن با پسوندِ .txt از
+     خودِ سایت سرو می‌شود و کاربر روی ویندوز اسمش را عوض می‌کند.
+
+     دو نسخه نباید از هم فاصله بگیرند؛ همین‌جا سنجیده می‌شود. */
+  const served = readFileSync(new URL('../public/net-push.ps1.txt', import.meta.url), 'utf8');
+  t(served === PS, 'نسخهٔ سرو‌شده مو‌به‌مو همان اسکریپت است',
+    served.length + ' در برابرِ ' + PS.length + ' نویسه');
+  const md = readFileSync(new URL('../server/net-push.README.md', import.meta.url), 'utf8');
+  const servedMd = readFileSync(new URL('../public/net-push-readme.txt', import.meta.url), 'utf8');
+  t(servedMd === md, 'و راهنما هم همان راهنماست');
+
+  const r = await fetch(BASE + '/net-push.ps1.txt', { headers: { Host: HOST } });
+  const body = await r.text();
+  t(r.status === 200 && body.indexOf('x-net-key') > 0,
+    'و سایت واقعاً می‌دهدش', r.status + ' — ' + Math.round(body.length / 1024) + 'KB');
+  const r2 = await fetch(BASE + '/net-push-readme.txt', { headers: { Host: HOST } });
+  t(r2.status === 200, 'راهنما هم همین‌طور', r2.status + '');
+}
+
 console.log('\n===== بستهٔ SNMP، بایت‌به‌بایت =====');
 {
   /* همان توابعِ اسکریپت، خط‌به‌خط به جاوااسکریپت. اگر پاورشل عوض شود و
