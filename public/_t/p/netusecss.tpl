@@ -14,12 +14,13 @@
 
   /* کاوشگرِ داخلِ شبکه: حالش، و اگر نیست، راهِ راه‌اندازی‌اش. */
   .nu-agent{
-    margin:0 0 12px; padding:12px 15px; border-radius:12px;
+    margin:0 0 12px; padding:9px 14px; border-radius:11px;
     background:var(--paper); border:1px solid var(--card-border);
-    font-size:12px; line-height:2; color:var(--ink-soft);
+    font-size:12px; color:var(--ink-soft);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px;
   }
   .nu-agent.is-on{ background:var(--green-bg, #e8f6ef); border-color:transparent; }
-  .nu-get{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 2px; }
+  .nu-get{ display:flex; gap:8px; flex-wrap:wrap; margin-inline-start:auto; }
   .nu-get .btn{ text-decoration:none; }
   .nu-steps{ margin:7px 0 0; padding-inline-start:18px; }
   .nu-steps li{ margin-bottom:3px; }
@@ -27,9 +28,9 @@
   /* وقتی کاوش چیزی پیدا نکرد، همین‌جا می‌گوید چرا — «صفر» بی‌توضیح،
      خرابی به نظر می‌رسد. */
   .nu-why{
-    margin:0 0 12px; padding:11px 14px; border-radius:11px;
+    margin:0 0 12px; padding:9px 14px; border-radius:11px;
     background:var(--amber-bg, #fdf4e3); color:var(--ink-soft);
-    border:1px solid var(--card-border); font-size:12px; line-height:1.9;
+    border:1px solid var(--card-border); font-size:12px;
   }
   .nu-why[hidden]{ display:none; }
   .nu-dead td{ background:var(--paper); }

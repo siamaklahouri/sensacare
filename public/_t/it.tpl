@@ -1336,7 +1336,7 @@ window.KARTABL_IDB      = "{{IDB}}";
     <!-- NETUSE -->
     <section class="view" id="view-netuse" data-feat="view:netuse">
       <div class="section-title">📶 مصرف اینترنت</div>
-      <div class="section-sub">رنجِ شبکه را بدهید تا خودش همهٔ دستگاه‌ها را پیدا کند، و مصرفِ حجمِ هرکدام را از روی شمارندهٔ خودِ دستگاه بخواند</div>
+      <div class="section-sub">مصرفِ حجمِ اینترنتِ هر دستگاه، از روی شمارندهٔ خودش</div>
 
       <div class="nu-bar">
         <div class="nu-fld">
@@ -1348,7 +1348,6 @@ window.KARTABL_IDB      = "{{IDB}}";
         <button class="btn btn-brass btn-sm" id="nuScanBtn">کاوش</button>
         <button class="btn btn-ghost btn-sm" id="nuLiveBtn">⚡ سرعتِ همین حالا</button>
       </div>
-      <div class="nu-hint">هم «۱۹۲.۱۶۸.۱.۰/۲۴» را می‌فهمد، هم «۱۹۲.۱۶۸.۱.۱۰-۵۰». سقف هر بار ۱۰۲۴ نشانی است. هیچ رمزی لازم نیست — نه رمزِ ویندوز، نه دامین.</div>
 
       <div class="nu-agent" id="nuAgent"></div>
       <div class="nu-why" id="nuWhy" hidden></div>
@@ -1377,7 +1376,6 @@ window.KARTABL_IDB      = "{{IDB}}";
             <tbody id="nuDevBody"></tbody>
           </table>
         </div>
-        <div class="save-hint" style="margin-top:9px;">سرور هر پنج دقیقه یک نمونه می‌گیرد و تفاضلشان می‌شود مصرفِ آن روز — پس لازم نیست این صفحه باز بماند.</div>
       </div>
 
       <div class="panel">
