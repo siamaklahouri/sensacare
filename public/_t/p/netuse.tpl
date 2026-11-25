@@ -158,6 +158,16 @@ window.NETUSE = (function () {
     }
   }
 
+  /* «۳ دقیقه پیش»، «دیروز» — برای ستونِ آخرین دیده شدن */
+  function ago(at) {
+    if (!at) return '';
+    var m = Math.max(0, Math.round((Date.now() - at) / 60000));
+    if (m < 60) return fa(m) + ' دقیقه پیش';
+    var h = Math.round(m / 60);
+    if (h < 24) return fa(h) + ' ساعت پیش';
+    return fa(Math.round(h / 24)) + ' روز پیش';
+  }
+
   function renderFound() {
     var b = $('nuFoundBody');
     if (!b) return;
@@ -166,6 +176,11 @@ window.NETUSE = (function () {
         'هنوز کاوشی انجام نشده</td></tr>';
       return;
     }
+    /* «آخرین بار دیده شد»: دستگاهی که در گزارشِ آخر نبود، خاموش است
+       یا از شبکه رفته — هر دو خبرند، پس از فهرست پاک نمی‌شود. */
+    var newest = 0;
+    found.forEach(function (h) { if (h.last && h.last > newest) newest = h.last; });
+
     b.innerHTML = found.map(function (h, i) {
       if (!h.alive) {
         /* نشانیِ تنهایی که پرسیده شد و جواب نداد: بگو چه چیزی امتحان شد. */
@@ -179,11 +194,13 @@ window.NETUSE = (function () {
       }).join('');
       if (h.snmp) tags = '<span class="nu-tag is-good">SNMP</span>' + tags;
       var has = devs.some(function (d) { return d.ip === h.ip; });
-      return '<tr>' +
+      /* یک دقیقه رواداری، چون همهٔ ردیف‌های یک گزارش یک زمان ندارند */
+      var gone = newest && h.last && (newest - h.last) > 60000;
+      return '<tr' + (gone ? ' class="nu-gone"' : '') + '>' +
         '<td>' + fa(i + 1) + '</td>' +
         '<td class="nu-ip">' + escapeHtml(h.ip) + '</td>' +
         '<td>' + escapeHtml(h.host || '') +
-          (h.how === 'agent' ? ' <span class="nu-tag">از داخلِ شبکه</span>' : '') + '</td>' +
+          (gone ? ' <span class="nu-tag">' + ago(h.last) + '</span>' : '') + '</td>' +
         '<td>' + escapeHtml(h.kind || (h.snmp ? h.snmp.name : '') || '') + '</td>' +
         '<td>' + (tags || '<span class="nu-dim">فقط پینگ</span>') + '</td>' +
         '<td>' + (h.snmp

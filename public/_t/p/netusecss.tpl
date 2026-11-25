@@ -34,6 +34,8 @@
   }
   .nu-why[hidden]{ display:none; }
   .nu-dead td{ background:var(--paper); }
+  /* دستگاهی که در گزارشِ آخر نبود: هست، ولی کم‌رنگ. */
+  .nu-gone td{ opacity:.6; }
 
   .nu-prog{
     display:none; align-items:center; gap:10px; margin:0 0 12px;

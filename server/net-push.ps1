@@ -115,15 +115,28 @@ function Expand-Range([string] $text) {
 }
 
 # ------------------------------------------------------------ tcp probe
-function Test-Port([string] $ip, [int] $port, [int] $ms) {
-  $c = New-Object System.Net.Sockets.TcpClient
-  try {
-    $r = $c.BeginConnect($ip, $port, $null, $null)
-    if (-not $r.AsyncWaitHandle.WaitOne($ms, $false)) { return $false }
-    $c.EndConnect($r) | Out-Null
-    return $true
-  } catch { return $false }
-  finally { try { $c.Close() } catch { } }
+# All ports of one address at once. One after another meant ten times the
+# timeout for every silent address -- five seconds each, and a /24 with a
+# handful of live hosts took minutes.
+function Test-Ports([string] $ip, $ports, [int] $ms) {
+  $cs = @()
+  $rs = @()
+  foreach ($p in $ports) {
+    $c = New-Object System.Net.Sockets.TcpClient
+    $cs += $c
+    try { $rs += $c.BeginConnect($ip, [int]$p.p, $null, $null) } catch { $rs += $null }
+  }
+  Start-Sleep -Milliseconds $ms
+  $open = New-Object System.Collections.ArrayList
+  for ($i = 0; $i -lt $ports.Count; $i++) {
+    try {
+      if ($rs[$i] -and $rs[$i].IsCompleted -and $cs[$i].Connected) {
+        [void]$open.Add(@{ port = [int]$ports[$i].p; t = [string]$ports[$i].t })
+      }
+    } catch { }
+    try { $cs[$i].Close() } catch { }
+  }
+  return $open
 }
 
 # ----------------------------------------------------------------- snmp
@@ -306,10 +319,7 @@ foreach ($Range in $Ranges) {
   }
 
   foreach ($ip in $ask) {
-    $open = New-Object System.Collections.ArrayList
-    foreach ($x in $PORTS) {
-      if (Test-Port $ip $x.p $Wait) { [void]$open.Add(@{ port = $x.p; t = $x.t }) }
-    }
+    $open = Test-Ports $ip $PORTS $Wait
 
     $snmp = $null
     $d = Snmp-Get $ip $Comm @('1.3.6.1.2.1.1.1.0', '1.3.6.1.2.1.1.5.0') ([math]::Max($Wait, 700))
@@ -323,7 +333,7 @@ foreach ($Range in $Ranges) {
     $name = ''
     try { $name = [Net.Dns]::GetHostEntry($ip).HostName } catch { }
 
-    [void]$hosts.Add(@{ ip = $ip; host = $name; ports = $open.ToArray(); snmp = $snmp })
+    [void]$hosts.Add(@{ ip = $ip; host = $name; ports = @($open); snmp = $snmp })
   }
 }
 Write-Host ("Found {0} device(s) in {1} range(s)." -f $hosts.Count, $Ranges.Count)

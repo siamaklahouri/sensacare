@@ -471,7 +471,7 @@ export function cleanScan(body) {
   return hosts;
 }
 
-export async function pushScan(env, owner, body) {
+export async function pushScan(env, owner, body, prev) {
   await ensureNet(env);
   const hosts = cleanScan(body);
   const at = Date.now();
@@ -505,12 +505,39 @@ export async function pushScan(env, owner, body) {
     if (r.counted) counted++;
   }
 
+  /* فهرست جایگزین نمی‌شود، روی هم می‌نشیند.
+
+     دستگاهی که همین حالا خاموش است در گزارشِ بعدی نیست؛ اگر فهرست
+     هر بار از نو ساخته شود، آن دستگاه کلاً غیب می‌شود — و برای
+     کارتابلِ فنی «فلان دستگاه دیگر دیده نمی‌شود» خودش خبر است، نه
+     چیزی که باید پاک شود. پس هرکدام تاریخِ اولین و آخرین دیده شدن
+     را با خود دارد.
+
+     و بی‌پایان هم رشد نمی‌کند: چیزی که سی روز دیده نشده می‌رود، و
+     سقفِ کل پانصد است. */
+  const old = (prev && Array.isArray(prev.hosts)) ? prev.hosts : [];
+  const keep = new Map();
+  for (const h of old) {
+    if (!h || !okHost(h.ip)) continue;
+    keep.set(h.ip, { ...h, first: h.first || h.last || prev.at || at,
+                           last: h.last || prev.at || at });
+  }
+  for (const h of hosts) {
+    const was = keep.get(h.ip);
+    keep.set(h.ip, { ...h, first: (was && was.first) || at, last: at });
+  }
+  const DROP = 30 * 86400000;
+  const merged = [...keep.values()]
+    .filter(h => at - (h.last || 0) < DROP)
+    .sort((a, b) => (b.last || 0) - (a.last || 0) || String(a.ip).localeCompare(b.ip))
+    .slice(0, 500);
+
   /* خودِ عکسِ کاوش در تنظیمات می‌نشیند و نوشتنش کارِ مسیر است:
      netuse.js از kartabl.js چیزی وارد نمی‌کند، وگرنه دو پرونده
      دایره‌وار به هم وصل می‌شدند. */
-  return { ok: true, hosts: hosts.length, samples: seen, counted,
+  return { ok: true, hosts: hosts.length, kept: merged.length, samples: seen, counted,
            snapshot: { at, range: String((body && body.range) || '').slice(0, 64),
-                       by: String((body && body.by) || '').slice(0, 60), hosts } };
+                       by: String((body && body.by) || '').slice(0, 60), hosts: merged } };
 }
 
 /* ---------- یک نوبتِ نمونه‌گیری ----------

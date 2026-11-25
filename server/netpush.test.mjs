@@ -151,15 +151,31 @@ console.log('\n===== گزارشی که می‌رسد =====');
   t(devs[0] && devs[0].live === 0,
     'و سرور دیگر خودش سراغش نمی‌رود: کاوشگر می‌فرستد', String(devs[0] && devs[0].live));
 
-  const two = await pushScan(env, 'siamak', report(5_300_000, 1_120_000));
+  const two = await pushScan(env, 'siamak', report(5_300_000, 1_120_000), one.snapshot);
   t(two.counted === 1, 'گزارشِ دوم، تفاضل را به حسابِ امروز می‌نشاند');
   const d = await days(env, 'siamak', '2000-01-01');
   t(d.length === 1 && d[0].day === tehranDay() && d[0].inb === 300000 && d[0].outb === 120000,
     'و عدد همان تفاضل است، نه خودِ شمارنده',
     JSON.stringify(d[0] || {}));
 
+  /* دستگاهی که در گزارشِ بعدی نیست، از فهرست پاک نمی‌شود: خاموش
+     بودنش خودش خبر است. */
+  const narrow = { range: '192.168.1.0/24', by: 'PC-SIAMAK',
+    hosts: [{ ip: '192.168.1.1', host: 'gw.sltech.local', ports: [{ port: 80 }],
+              snmp: { community: 'public', descr: 'RouterOS', name: 'gw-markazi' } }],
+    samples: [] };
+  const third = await pushScan(env, 'siamak', narrow, two.snapshot);
+  const ips = third.snapshot.hosts.map(h => h.ip);
+  t(ips.indexOf('192.168.1.50') >= 0 && ips.length === 2,
+    'دستگاهِ خاموش از فهرست نمی‌افتد', ips.join('، '));
+  const off = third.snapshot.hosts.find(h => h.ip === '192.168.1.50');
+  const on = third.snapshot.hosts.find(h => h.ip === '192.168.1.1');
+  t(off.last < on.last, 'ولی «آخرین بار دیده شد»اش عقب می‌مانَد',
+    (on.last - off.last) + ' میلی‌ثانیه فاصله');
+  t(!!off.first && off.first <= off.last, 'و تاریخِ اولین دیدنش هم با خودش است');
+
   /* روتر ریست شد: شمارنده برگشت عقب */
-  const three = await pushScan(env, 'siamak', report(900, 100));
+  const three = await pushScan(env, 'siamak', report(900, 100), third.snapshot);
   const d2 = await days(env, 'siamak', '2000-01-01');
   t(three.counted === 0 && d2[0].inb === 300000,
     'ریستِ روتر چیزی اضافه نمی‌کند', JSON.stringify(d2[0] || {}));
@@ -262,7 +278,7 @@ console.log('\n===== روی خودِ صفحه =====');
 
   const found = await p2.evaluate(() =>
     (document.getElementById('nuFoundBody') || {}).innerText || '');
-  t(/از داخلِ شبکه/.test(found) && /وین‌باکس|ویندوز/.test(found),
+  t(/وین‌باکس|ویندوز/.test(found) && /gw\.sltech\.local/.test(found),
     'و فهرستِ پیداشده‌ها با نامِ فارسیِ پورت‌ها می‌آید',
     found.replace(/\s+/g, ' ').slice(0, 90));
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');

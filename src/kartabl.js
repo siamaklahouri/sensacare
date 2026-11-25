@@ -2097,7 +2097,8 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const k = await checkPassword(got, want);
     if (!k.ok) return bad('کلید درست نیست.', 403);
 
-    const r = await pushScan(env, panel.slug, body);
+    const prev = await getSetting(env, 'netScan:' + panel.slug, null);
+    const r = await pushScan(env, panel.slug, body, prev);
     if (r.snapshot) await setSetting(env, 'netScan:' + panel.slug, r.snapshot);
     return json({ ok: true, hosts: r.hosts, samples: r.samples, counted: r.counted });
   }
