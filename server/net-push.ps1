@@ -44,14 +44,25 @@ $cfg = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
 
 $Url   = [string]$cfg.url            # https://sltech.ir/api/kartabl/netuse/push
 $Key   = [string]$cfg.key            # the key the admin panel printed once
-$Range = [string]$cfg.range          # 192.168.1.0/24  or  192.168.1.10-50
+# One range, or many. All three of these work:
+#   "range":  "10.170.10.0/24"
+#   "range":  "10.170.10.0/24, 10.170.20.0/24"
+#   "ranges": ["10.170.10.0/24", "10.170.20.0/24"]
+$Ranges = @()
+foreach ($r in @($cfg.range) + @($cfg.ranges)) {
+  if (-not $r) { continue }
+  foreach ($one in ([string]$r).Split(',')) {
+    $one = $one.Trim()
+    if ($one) { $Ranges += $one }
+  }
+}
 $Comm  = if ($cfg.community) { [string]$cfg.community } else { 'public' }
 $Wide  = if ($cfg.parallel)  { [int]$cfg.parallel }     else { 32 }
 $Wait  = if ($cfg.timeoutMs) { [int]$cfg.timeoutMs }    else { 500 }
 # Ports to read counters from, per device:  { "192.168.1.1": [1] }
 $Want  = $cfg.counters
 
-if (-not $Url -or -not $Key -or -not $Range) {
+if (-not $Url -or -not $Key -or $Ranges.Count -eq 0) {
   throw 'url, key and range are all required in the config file.'
 }
 
@@ -248,42 +259,74 @@ $PORTS = @(
   @{ p = 9100; t = 'printer' }
 )
 
-$list = Expand-Range $Range
-Write-Host ("Scanning {0} ({1} addresses) ..." -f $Range, $list.Count)
-
-$ping = New-Object System.Net.NetworkInformation.Ping
-$hosts = New-Object System.Collections.ArrayList
-$n = 0
-foreach ($ip in $list) {
-  $n++
-  if ($n % 32 -eq 0) { Write-Host ("  {0}/{1}" -f $n, $list.Count) }
-
-  $alive = $false
-  try { $alive = ($ping.Send($ip, $Wait).Status -eq 'Success') } catch { }
-
-  $open = New-Object System.Collections.ArrayList
-  foreach ($x in $PORTS) {
-    if (Test-Port $ip $x.p $Wait) {
-      [void]$open.Add(@{ port = $x.p; t = $x.t })
-      $alive = $true
+# A whole /24 is 254 addresses, and asking each one ten questions in a
+# row takes minutes. So: ping everything at once first, and only ask the
+# rest of the questions of the addresses that answered.
+function Ping-Many([string[]] $ips, [int] $ms) {
+  $out = New-Object System.Collections.ArrayList
+  $batch = 64
+  for ($i = 0; $i -lt $ips.Count; $i += $batch) {
+    $last  = [math]::Min($i + $batch - 1, $ips.Count - 1)
+    $slice = $ips[$i..$last]
+    $pings = @()
+    $tasks = @()
+    foreach ($ip in $slice) {
+      $p = New-Object System.Net.NetworkInformation.Ping
+      $pings += $p
+      $tasks += $p.SendPingAsync($ip, $ms)
+    }
+    try { [void][Threading.Tasks.Task]::WaitAll($tasks, $ms + 2000) } catch { }
+    for ($k = 0; $k -lt $slice.Count; $k++) {
+      try {
+        if ($tasks[$k].IsCompleted -and $tasks[$k].Result.Status -eq 'Success') {
+          [void]$out.Add($slice[$k])
+        }
+      } catch { }
+      try { $pings[$k].Dispose() } catch { }
     }
   }
+  return $out
+}
 
-  $snmp = $null
-  $d = Snmp-Get $ip $Comm @('1.3.6.1.2.1.1.1.0', '1.3.6.1.2.1.1.5.0') ([math]::Max($Wait, 700))
-  if ($d -and $d.Count -ge 1 -and $d[0]) {
-    $snmp = @{ community = $Comm; descr = [string]$d[0]; name = [string]$d[1] }
-    $alive = $true
+$hosts = New-Object System.Collections.ArrayList
+foreach ($Range in $Ranges) {
+  $list = Expand-Range $Range
+  Write-Host ("Scanning {0} ({1} addresses) ..." -f $Range, $list.Count)
+
+  $alive = Ping-Many $list $Wait
+  Write-Host ("  {0} answered ping" -f $alive.Count)
+
+  # A router that drops ICMP would be missed, and the router is the one
+  # address that actually matters here. So the usual gateway spots are
+  # always asked, answered or not.
+  $ask = New-Object System.Collections.ArrayList
+  foreach ($ip in $alive) { [void]$ask.Add($ip) }
+  foreach ($g in @($list[0], $list[$list.Count - 1])) {
+    if (-not $ask.Contains($g)) { [void]$ask.Add($g) }
   }
 
-  if (-not $alive) { continue }
+  foreach ($ip in $ask) {
+    $open = New-Object System.Collections.ArrayList
+    foreach ($x in $PORTS) {
+      if (Test-Port $ip $x.p $Wait) { [void]$open.Add(@{ port = $x.p; t = $x.t }) }
+    }
 
-  $name = ''
-  try { $name = [Net.Dns]::GetHostEntry($ip).HostName } catch { }
+    $snmp = $null
+    $d = Snmp-Get $ip $Comm @('1.3.6.1.2.1.1.1.0', '1.3.6.1.2.1.1.5.0') ([math]::Max($Wait, 700))
+    if ($d -and $d.Count -ge 1 -and $d[0]) {
+      $snmp = @{ community = $Comm; descr = [string]$d[0]; name = [string]$d[1] }
+    }
 
-  [void]$hosts.Add(@{ ip = $ip; host = $name; ports = $open.ToArray(); snmp = $snmp })
+    # Asked only because it might be a gateway, and it is not there.
+    if (-not $alive.Contains($ip) -and $open.Count -eq 0 -and -not $snmp) { continue }
+
+    $name = ''
+    try { $name = [Net.Dns]::GetHostEntry($ip).HostName } catch { }
+
+    [void]$hosts.Add(@{ ip = $ip; host = $name; ports = $open.ToArray(); snmp = $snmp })
+  }
 }
-Write-Host ("Found {0} device(s)." -f $hosts.Count)
+Write-Host ("Found {0} device(s) in {1} range(s)." -f $hosts.Count, $Ranges.Count)
 
 # --------------------------------------------------------- the counters
 # For each device/port the config asks for, read ifHCInOctets and
@@ -312,7 +355,7 @@ if ($Want) {
 
 # ------------------------------------------------------------- the push
 $body = @{
-  range   = $Range
+  range   = ($Ranges -join ', ')
   by      = $env:COMPUTERNAME
   hosts   = $hosts.ToArray()
   samples = $samples.ToArray()

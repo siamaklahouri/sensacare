@@ -29,7 +29,7 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
-import { parseRange, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
+import { parseRanges, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
          days as netDays, tehranDay, pushScan } from './netuse.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
@@ -2408,7 +2408,7 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      هیچ‌کدام رمزِ ویندوز یا دامین نمی‌خواهند: خواندن از خودِ
      دستگاهِ شبکه است، و نامِ سیستم‌ها از DNSِ همان دامین می‌آید. */
   if (p === '/netuse/scan' && m === 'POST') {
-    const r = parseRange(body.range);
+    const r = parseRanges(body.range);
     if (!r.ok) return bad(r.error, 400);
     return new Response(scanStream(r.list, { ms: 700, wide: 32 }), {
       headers: { 'Content-Type': 'text/plain; charset=utf-8',

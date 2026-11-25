@@ -53,6 +53,27 @@ const toNum = ip => {
 };
 const toIp = n => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
 
+/* چند رنج، با ویرگول: «۱۰٫۱۷۰٫۱۰٫۰/۲۴، ۱۰٫۱۷۰٫۲۰٫۰/۲۴». هر کدام جدا
+   پالوده می‌شود و فهرستشان پشتِ هم می‌نشیند — سقفِ کل همان است. */
+export function parseRanges(txt) {
+  const parts = String(txt == null ? '' : txt).split(/[,،]/)
+    .map(x => x.trim()).filter(Boolean);
+  if (parts.length <= 1) return parseRange(txt);
+  const list = [];
+  const labels = [];
+  for (const one of parts) {
+    const r = parseRange(one);
+    if (!r.ok) return r;
+    for (const ip of r.list) if (list.indexOf(ip) < 0) list.push(ip);
+    labels.push(one);
+    if (list.length > MAX_RANGE)
+      return { ok: false, error: 'روی هم ' + list.length + ' نشانی می‌شود؛ سقف ' +
+                                 MAX_RANGE + ' است. رنج‌ها را جدا کاوش کنید.' };
+  }
+  return { ok: true, list, from: list[0], to: list[list.length - 1],
+           n: list.length, parts: labels };
+}
+
 export function parseRange(txt) {
   const s = String(txt == null ? '' : txt).trim()
     .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
