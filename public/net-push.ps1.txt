@@ -447,16 +447,48 @@ $body = @{
 $args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
             ContentType = 'application/json; charset=utf-8'
             Headers = @{ 'x-net-key' = $Key } }
-if ($Proxy) { $args2['Proxy'] = $Proxy; $args2['ProxyUseDefaultCredentials'] = $true }
-
-try {
-  $res = Invoke-RestMethod @args2
-  Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
-} catch {
-  Write-Host ("Could not reach the kartabl: {0}" -f $_.Exception.Message)
-  Write-Host ("  URL: {0}" -f $Url)
-  Write-Host "  From this very machine, try:  Test-NetConnection sltech.ir -Port 443"
-  Write-Host "  If this network only goes out through a proxy, add it to net-push.json:"
-  Write-Host '    "proxy": "http://PROXY-HOST:PORT"'
-  throw
+if ($Proxy) {
+  $args2['Proxy'] = $Proxy
+  $args2['ProxyUseDefaultCredentials'] = $true
+} else {
+  # No proxy in the config: use whatever Windows itself is set to.
+  # Invoke-RestMethod does not always pick that up on its own, and on a
+  # network where everything goes out through a proxy, "unable to
+  # connect" is all you ever see.
+  try {
+    $sys = [System.Net.WebRequest]::GetSystemWebProxy()
+    $via = $sys.GetProxy([Uri]$Url)
+    if ($via -and $via.AbsoluteUri -ne ([Uri]$Url).AbsoluteUri) {
+      $args2['Proxy'] = $via
+      $args2['ProxyUseDefaultCredentials'] = $true
+      Write-Host ("Going out through the system proxy: {0}" -f $via)
+    }
+  } catch { }
 }
+
+# One failed send should not cost a sample: the counters only mean
+# something next to the previous reading, and the next run is five
+# minutes away.
+$sent = $false
+for ($try = 1; $try -le 3; $try++) {
+  try {
+    $res = Invoke-RestMethod @args2
+    Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
+    $sent = $true
+    break
+  } catch {
+    $why = $_.Exception.Message
+    if ($try -lt 3) {
+      Write-Host ("  attempt {0} failed ({1}); trying again..." -f $try, $why)
+      Start-Sleep -Seconds (3 * $try)
+    } else {
+      Write-Host ("Could not reach the kartabl: {0}" -f $why)
+      Write-Host ("  URL: {0}" -f $Url)
+      Write-Host ("  From this very machine, try:  Test-NetConnection {0} -Port 443" -f ([Uri]$Url).Host)
+      Write-Host "  And:  netsh winhttp show proxy"
+      Write-Host "  If this network only goes out through a proxy, add it to net-push.json:"
+      Write-Host '    "proxy": "http://PROXY-HOST:PORT"'
+    }
+  }
+}
+if (-not $sent) { exit 1 }
