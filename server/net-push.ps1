@@ -482,8 +482,12 @@ if ($Proxy) {
 # One failed send should not cost a sample: the counters only mean
 # something next to the previous reading, and the next run is five
 # minutes away.
+# The next run is five minutes away, so there is room to be patient:
+# five tries over about a minute and a half. A server that is restarting,
+# or a link that blinks, should not cost a reading.
+$waits = @(5, 10, 20, 45)
 $sent = $false
-for ($try = 1; $try -le 3; $try++) {
+for ($try = 1; $try -le 5; $try++) {
   try {
     $res = Invoke-RestMethod @args2
     Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
@@ -491,9 +495,9 @@ for ($try = 1; $try -le 3; $try++) {
     break
   } catch {
     $why = $_.Exception.Message
-    if ($try -lt 3) {
-      Write-Host ("  attempt {0} failed ({1}); trying again..." -f $try, $why)
-      Start-Sleep -Seconds (3 * $try)
+    if ($try -lt 5) {
+      Write-Host ("  attempt {0} failed ({1}); waiting {2}s..." -f $try, $why, $waits[$try - 1])
+      Start-Sleep -Seconds $waits[$try - 1]
     } else {
       Write-Host ("Could not reach the kartabl: {0}" -f $why)
       Write-Host ("  URL: {0}" -f $Url)
