@@ -447,9 +447,14 @@ $body = @{
   by      = $env:COMPUTERNAME
   hosts   = $hosts.ToArray()
   samples = $samples.ToArray()
-} | ConvertTo-Json -Depth 6 -Compress
+} | ConvertTo-Json -Depth 12 -Compress
 
 Write-Host ("Report is {0} KB." -f [math]::Round($body.Length / 1024, 1))
+# A quick look at what actually goes out. More than once the answer to
+# "the kartabl shows nothing" was here: a field that never left.
+if ($body -notmatch '"snmp":\s*\{') {
+  Write-Host "  WARNING: no SNMP details in the report -- the kartabl will show none."
+}
 
 $args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
             ContentType = 'application/json; charset=utf-8'
