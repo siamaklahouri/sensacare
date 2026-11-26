@@ -174,8 +174,24 @@ console.log('\n===== گزارشی که می‌رسد =====');
     (on.last - off.last) + ' میلی‌ثانیه فاصله');
   t(!!off.first && off.first <= off.last, 'و تاریخِ اولین دیدنش هم با خودش است');
 
+  /* گزارشِ تکه‌تکه: روی شبکه‌ای که با بدنهٔ بزرگ مشکل دارد، اسکریپت
+     هر بیست دستگاه را جدا می‌فرستد و شمارنده‌ها با تکهٔ آخر می‌آیند.
+     چون سمتِ سرور تجمعی است، نتیجه باید همان باشد. */
+  const partA = { range: 'r', by: 'ICT', hosts: [
+    { ip: '10.0.0.5', host: 'sw-a', ports: [{ port: 80 }], snmp: null }], samples: [] };
+  const partB = { range: 'r', by: 'ICT', hosts: [
+    { ip: '10.0.0.6', host: 'sw-b', ports: [{ port: 80 }], snmp: null }],
+    samples: [{ ip: '10.0.0.6', iface: 1, ifname: 'e1', in: 10, out: 10 }] };
+  const pa = await pushScan(env, 'siamak', partA, third.snapshot);
+  const pb = await pushScan(env, 'siamak', partB, pa.snapshot);
+  const ips2 = pb.snapshot.hosts.map(h => h.ip);
+  t(ips2.indexOf('10.0.0.5') >= 0 && ips2.indexOf('10.0.0.6') >= 0,
+    'گزارشِ تکه‌تکه هم روی هم می‌نشیند', ips2.join('، '));
+  t(ips2.indexOf('192.168.1.1') >= 0,
+    'و تکه‌های قبلی را پاک نمی‌کند', ips2.length + ' دستگاه');
+
   /* روتر ریست شد: شمارنده برگشت عقب */
-  const three = await pushScan(env, 'siamak', report(900, 100), third.snapshot);
+  const three = await pushScan(env, 'siamak', report(900, 100), pb.snapshot);
   const d2 = await days(env, 'siamak', '2000-01-01');
   t(three.counted === 0 && d2[0].inb === 300000,
     'ریستِ روتر چیزی اضافه نمی‌کند', JSON.stringify(d2[0] || {}));

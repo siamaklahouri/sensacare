@@ -442,70 +442,83 @@ foreach ($h in $hosts) {
 Write-Host ("Read {0} counter(s)." -f $samples.Count)
 
 # ------------------------------------------------------------- the push
-$body = @{
-  range   = ($Ranges -join ', ')
-  by      = $env:COMPUTERNAME
-  hosts   = $hosts.ToArray()
-  samples = $samples.ToArray()
-} | ConvertTo-Json -Depth 12 -Compress
+# Sent in slices, not in one lump.
+#
+# A 14 KB POST reached the kartabl one minute and failed the next, from
+# the same machine, while a plain GET never missed. That is what a
+# middlebox with a broken path MTU looks like: small requests fine, a
+# body that spans many packets hangs and dies. Slices of twenty hosts
+# are a few KB each and go through.
+#
+# The kartabl adds each report to what it already has, so several small
+# reports are the same as one big one. The counters ride along with the
+# last slice.
+$Chunk = if ($cfg.chunk) { [int]$cfg.chunk } else { 20 }
+if ($Chunk -lt 1) { $Chunk = 20 }
 
-Write-Host ("Report is {0} KB." -f [math]::Round($body.Length / 1024, 1))
-# A quick look at what actually goes out. More than once the answer to
-# "the kartabl shows nothing" was here: a field that never left.
-if ($body -notmatch '"snmp":\s*\{') {
-  Write-Host "  WARNING: no SNMP details in the report -- the kartabl will show none."
-}
+function Send-Part($partHosts, $partSamples, [int] $n, [int] $of) {
+  $body = @{
+    range   = ($Ranges -join ', ')
+    by      = $env:COMPUTERNAME
+    hosts   = @($partHosts)
+    samples = @($partSamples)
+  } | ConvertTo-Json -Depth 12 -Compress
 
-$args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
-            ContentType = 'application/json; charset=utf-8'
-            Headers = @{ 'x-net-key' = $Key }
-            TimeoutSec = 120 }
-if ($Proxy) {
-  $args2['Proxy'] = $Proxy
-  $args2['ProxyUseDefaultCredentials'] = $true
-} else {
-  # No proxy in the config: use whatever Windows itself is set to.
-  # Invoke-RestMethod does not always pick that up on its own, and on a
-  # network where everything goes out through a proxy, "unable to
-  # connect" is all you ever see.
-  try {
-    $sys = [System.Net.WebRequest]::GetSystemWebProxy()
-    $via = $sys.GetProxy([Uri]$Url)
-    if ($via -and $via.AbsoluteUri -ne ([Uri]$Url).AbsoluteUri) {
-      $args2['Proxy'] = $via
-      $args2['ProxyUseDefaultCredentials'] = $true
-      Write-Host ("Going out through the system proxy: {0}" -f $via)
-    }
-  } catch { }
-}
+  $args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
+              ContentType = 'application/json; charset=utf-8'
+              Headers = @{ 'x-net-key' = $Key }
+              TimeoutSec = 120 }
+  if ($Proxy) {
+    $args2['Proxy'] = $Proxy
+    $args2['ProxyUseDefaultCredentials'] = $true
+  } else {
+    try {
+      $sys = [System.Net.WebRequest]::GetSystemWebProxy()
+      $via = $sys.GetProxy([Uri]$Url)
+      if ($via -and $via.AbsoluteUri -ne ([Uri]$Url).AbsoluteUri) {
+        $args2['Proxy'] = $via
+        $args2['ProxyUseDefaultCredentials'] = $true
+      }
+    } catch { }
+  }
 
-# One failed send should not cost a sample: the counters only mean
-# something next to the previous reading, and the next run is five
-# minutes away.
-# The next run is five minutes away, so there is room to be patient:
-# five tries over about a minute and a half. A server that is restarting,
-# or a link that blinks, should not cost a reading.
-$waits = @(5, 10, 20, 45)
-$sent = $false
-for ($try = 1; $try -le 5; $try++) {
-  try {
-    $res = Invoke-RestMethod @args2
-    Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
-    $sent = $true
-    break
-  } catch {
-    $why = $_.Exception.Message
-    if ($try -lt 5) {
-      Write-Host ("  attempt {0} failed ({1}); waiting {2}s..." -f $try, $why, $waits[$try - 1])
-      Start-Sleep -Seconds $waits[$try - 1]
-    } else {
-      Write-Host ("Could not reach the kartabl: {0}" -f $why)
-      Write-Host ("  URL: {0}" -f $Url)
-      Write-Host ("  From this very machine, try:  Test-NetConnection {0} -Port 443" -f ([Uri]$Url).Host)
-      Write-Host "  And:  netsh winhttp show proxy"
-      Write-Host "  If this network only goes out through a proxy, add it to net-push.json:"
-      Write-Host '    "proxy": "http://PROXY-HOST:PORT"'
+  $waits = @(5, 10, 20, 45)
+  for ($try = 1; $try -le 5; $try++) {
+    try {
+      $res = Invoke-RestMethod @args2
+      Write-Host ("  part {0}/{1} ({2} KB) sent: {3}" -f $n, $of,
+                  [math]::Round($body.Length / 1024, 1), ($res | ConvertTo-Json -Compress))
+      return $true
+    } catch {
+      $why = $_.Exception.Message
+      if ($try -lt 5) {
+        Write-Host ("  part {0}/{1} attempt {2} failed ({3}); waiting {4}s..." -f `
+                    $n, $of, $try, $why, $waits[$try - 1])
+        Start-Sleep -Seconds $waits[$try - 1]
+      } else {
+        Write-Host ("Could not reach the kartabl: {0}" -f $why)
+        Write-Host ("  URL: {0}" -f $Url)
+        Write-Host ("  From this very machine, try:  Test-NetConnection {0} -Port 443" -f ([Uri]$Url).Host)
+        Write-Host "  And:  netsh winhttp show proxy"
+        Write-Host "  If this network only goes out through a proxy, add it to net-push.json:"
+        Write-Host '    "proxy": "http://PROXY-HOST:PORT"'
+        Write-Host '  If it is the size, make the slices smaller:  "chunk": 10'
+      }
     }
   }
+  return $false
 }
-if (-not $sent) { exit 1 }
+
+$all = @($hosts)
+$of = [math]::Max(1, [int][math]::Ceiling($all.Count / [double]$Chunk))
+$okAll = $true
+for ($i = 0; $i -lt $of; $i++) {
+  $from = $i * $Chunk
+  $to   = [math]::Min($from + $Chunk - 1, $all.Count - 1)
+  $slice = if ($all.Count -gt 0) { $all[$from..$to] } else { @() }
+  # The counters go with the last slice, once everything else has landed.
+  $withSamples = if ($i -eq $of - 1) { $samples.ToArray() } else { @() }
+  if (-not (Send-Part $slice $withSamples ($i + 1) $of)) { $okAll = $false; break }
+}
+if (-not $okAll) { exit 1 }
+Write-Host "Done."
