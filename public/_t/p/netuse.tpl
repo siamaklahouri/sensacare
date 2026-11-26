@@ -232,6 +232,16 @@ window.NETUSE = (function () {
   /* ---------- کاوشگرِ داخلِ شبکه ----------
      سرور بیرونِ شبکهٔ کاربر است و به ۱۹۲.۱۶۸.x نمی‌رسد. این تکه
      می‌گوید آخرین گزارشِ داخلی کِی رسیده، و اگر نرسیده، چه باید کرد. */
+  /* هشت رنج در یک خط نمی‌نشیند و بریده می‌شد. تا دوتا خودشان،
+     بیشتر که شد شمارشان — و خودشان روی موشواره. */
+  function ranges(txt) {
+    var all = String(txt).split(/[,،]/).map(function (x) { return x.trim(); })
+      .filter(Boolean);
+    if (all.length <= 2) return escapeHtml(all.join('، '));
+    return '<span title="' + escapeHtml(all.join('\n')) + '">' +
+      fa(all.length) + ' رنج</span>';
+  }
+
   function renderAgent() {
     var box = $('nuAgent');
     if (!box) return;
@@ -243,7 +253,7 @@ window.NETUSE = (function () {
         (mins < 1 ? 'همین الان' : (mins < 60 ? fa(mins) + ' دقیقه پیش'
           : fa(Math.round(mins / 60)) + ' ساعت پیش')) +
         (agent.by ? ' از <b>' + escapeHtml(agent.by) + '</b>' : '') +
-        (agent.range ? ' — رنجِ ' + escapeHtml(agent.range) : '') +
+        (agent.range ? ' — ' + ranges(agent.range) : '') +
         ' · ' + fa((agent.hosts || []).length) + ' دستگاه' +
         (mins > 30 ? '<br><span class="nu-dim">بیش از نیم ساعت است که گزارشی نیامده؛ ' +
           'شاید آن سیستم خاموش است یا کارِ زمان‌بندی‌شده نمی‌دود.</span>' : '');

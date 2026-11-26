@@ -110,6 +110,33 @@ export const SHAREABLE = {
       { k: 'storage',        t: 'محل ذخیره',         kind: 'text' }
     ]
   },
+  /* نشانی‌های پینگ: جدولِ خودِ صفحه است و در state می‌نشیند، پس مثلِ
+     بقیه به اشتراک می‌رود. */
+  ping: {
+    kinds: ['it', 'fin', 'gen'], label: 'پینگ دستگاه‌ها', icon: '📡',
+    src: 'state', path: 'pingHosts',
+    cols: [
+      { k: 'name', t: 'نام',   kind: 'text' },
+      { k: 'host', t: 'نشانی', kind: 'text' },
+      { k: 'port', t: 'پورت',  kind: 'num' }
+    ]
+  },
+
+  /* مصرفِ اینترنت فرق دارد: دادهٔ این یکی در خودِ کارتابل نیست، در
+     جدول‌های سرور است (دستگاه‌ها و جمعِ هر روز). پس فقط دیدنی است —
+     چیزی برای نوشتن ندارد — و ردیف‌هایش همان‌جا ساخته می‌شوند. */
+  netuse: {
+    kinds: ['it', 'fin', 'gen'], label: 'مصرف اینترنت', icon: '📶',
+    src: 'net', path: 'netuse', readOnly: true,
+    cols: [
+      { k: 'name',  t: 'نام',       kind: 'text', edit: 'never' },
+      { k: 'ip',    t: 'نشانی',     kind: 'text', edit: 'never' },
+      { k: 'iface', t: 'پورت',      kind: 'text', edit: 'never' },
+      { k: 'today', t: 'امروز',     kind: 'text', edit: 'never' },
+      { k: 'month', t: 'این ماه',   kind: 'text', edit: 'never' }
+    ]
+  },
+
   mvpn: {
     kinds: ['it', 'gen'], label: 'سرویس MVPN', icon: '📱',
     src: 'db', path: 'lines',
@@ -376,6 +403,9 @@ function rowsToMap(rows, spec) {
 }
 
 export function readViewRows(d, spec) {
+  /* «net» از جدول‌های سرور می‌آید، نه از دادهٔ کارتابل؛ صدازننده
+     خودش آن را آماده می‌کند و این‌جا فقط رد می‌شود. */
+  if (spec.src === 'net') return Array.isArray(d && d.netRows) ? d.netRows : [];
   const src = (spec.src === 'state' ? d && d.state : d && d.db) || {};
   const raw = src[spec.path];
   if (spec.shape === 'map') return mapToRows(raw, spec);

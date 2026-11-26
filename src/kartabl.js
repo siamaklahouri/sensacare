@@ -30,7 +30,7 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
 import { parseRanges, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
-         days as netDays, tehranDay, pushScan, netPlan } from './netuse.js';
+         days as netDays, tehranDay, pushScan, netPlan, netRows } from './netuse.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -2338,7 +2338,11 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
   if (p === '/vshare' && m === 'GET') {
     const mine = await myShares(env, panel);
     return json({ shares: mine.map(s => ({
-      id: s.id, view: s.view, w: !!s.w, org: s.org, orgPath: s.orgPath,
+      /* بخشی که فقط دیدنی است، حتی اگر ادمین «اجازهٔ تغییر» داده
+         باشد: دادهٔ «مصرف اینترنت» در خودِ کارتابل نیست که بشود
+         نوشتش. زیرنویسِ صفحه هم از همین می‌آید. */
+      id: s.id, view: s.view, w: s.spec.readOnly ? false : !!s.w,
+      org: s.org, orgPath: s.orgPath,
       owner: s.owner, ownerName: s.ownerName,
       label: s.spec.label, icon: s.spec.icon, cols: s.spec.cols
     })) });
@@ -2353,14 +2357,21 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
     const d = await loadKartabl(env, owner);
     if (d.broken) return bad('دادهٔ این کارتابل روی سرور خوانده نشد.', 409);
+    /* «مصرف اینترنت» در خودِ کارتابل نیست؛ در جدول‌های سرور است. پس
+       ردیف‌هایش همین‌جا ساخته می‌شوند و بقیهٔ مسیر دست نمی‌خورد. */
+    if (sh.spec.src === 'net') d.netRows = await netRows(env, sh.owner);
     const rows = readViewRows(d, sh.spec);
 
     if (!mV[2] && m === 'GET')
-      return json({ rows, rev: d.rev, updated: d.updated, w: !!sh.w,
+      return json({ rows, rev: d.rev, updated: d.updated,
+                    w: sh.spec.readOnly ? false : !!sh.w,
                     label: sh.spec.label, cols: sh.spec.cols,
                     owner: sh.owner, ownerName: sh.ownerName, orgPath: sh.orgPath });
 
     if (m !== 'POST') return bad('این درخواست را نمی‌شناسم.', 405);
+    /* بخشی که فقط دیدنی است، از همین‌جا جواب رد می‌گیرد — حتی اگر
+       ادمین اشتباهی «اجازهٔ تغییر» داده باشد. */
+    if (sh.spec.readOnly) return bad('این بخش فقط دیدنی است.', 403);
     /* اجازهٔ نوشتن را فقط ادمین می‌دهد و این‌جا از دیتابیس خوانده
        می‌شود — نه از بدنهٔ درخواست. */
     if (!sh.w) return bad('این بخش را فقط می‌توانید ببینید.', 403);

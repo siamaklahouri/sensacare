@@ -57,6 +57,9 @@ foreach ($r in @($cfg.range) + @($cfg.ranges)) {
   }
 }
 $Comm  = if ($cfg.community) { [string]$cfg.community } else { 'public' }
+# Some networks only reach the internet through a proxy. Put it here and
+# the report goes that way:  "proxy": "http://10.170.10.9:8080"
+$Proxy = if ($cfg.proxy) { [string]$cfg.proxy } else { '' }
 $Wide  = if ($cfg.parallel)  { [int]$cfg.parallel }     else { 32 }
 $Wait  = if ($cfg.timeoutMs) { [int]$cfg.timeoutMs }    else { 500 }
 # Ports to read counters from, per device:  { "192.168.1.1": [1] }
@@ -386,7 +389,15 @@ foreach ($Range in $Ranges) {
                         ifaces = $ifs })
   }
 }
-Write-Host ("Found {0} device(s) in {1} range(s)." -f $hosts.Count, $Ranges.Count)
+$withSnmp = 0
+foreach ($h in $hosts) { if ($h.snmp) { $withSnmp++ } }
+Write-Host ("Found {0} device(s) in {1} range(s); {2} answered SNMP." -f `
+            $hosts.Count, $Ranges.Count, $withSnmp)
+if ($withSnmp -eq 0) {
+  Write-Host "  Nothing answered SNMP, so there are no byte counters to read."
+  Write-Host ("  Turn SNMP on in the router (read-only, v2c) and make sure its " +
+              "community is '{0}', or change `"community`" in net-push.json." -f $Comm)
+}
 
 # --------------------------------------------------------- the counters
 # Nothing to configure by hand: every device that speaks SNMP reports
@@ -396,7 +407,9 @@ Write-Host ("Found {0} device(s) in {1} range(s)." -f $hosts.Count, $Ranges.Coun
 $chosen = @{}
 try {
   $planUrl = $Url -replace '/push$', '/plan'
-  $plan = Invoke-RestMethod -Method Get -Uri $planUrl -Headers @{ 'x-net-key' = $Key }
+  $pa = @{ Method = 'Get'; Uri = $planUrl; Headers = @{ 'x-net-key' = $Key } }
+  if ($Proxy) { $pa['Proxy'] = $Proxy; $pa['ProxyUseDefaultCredentials'] = $true }
+  $plan = Invoke-RestMethod @pa
   if ($plan -and $plan.plan) {
     foreach ($prop in $plan.plan.PSObject.Properties) { $chosen[$prop.Name] = [int]$prop.Value }
   }
@@ -431,7 +444,19 @@ $body = @{
   samples = $samples.ToArray()
 } | ConvertTo-Json -Depth 6 -Compress
 
-$res = Invoke-RestMethod -Method Post -Uri $Url -Body $body `
-         -ContentType 'application/json; charset=utf-8' `
-         -Headers @{ 'x-net-key' = $Key }
-Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
+$args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
+            ContentType = 'application/json; charset=utf-8'
+            Headers = @{ 'x-net-key' = $Key } }
+if ($Proxy) { $args2['Proxy'] = $Proxy; $args2['ProxyUseDefaultCredentials'] = $true }
+
+try {
+  $res = Invoke-RestMethod @args2
+  Write-Host ("Sent. kartabl says: {0}" -f ($res | ConvertTo-Json -Compress))
+} catch {
+  Write-Host ("Could not reach the kartabl: {0}" -f $_.Exception.Message)
+  Write-Host ("  URL: {0}" -f $Url)
+  Write-Host "  From this very machine, try:  Test-NetConnection sltech.ir -Port 443"
+  Write-Host "  If this network only goes out through a proxy, add it to net-push.json:"
+  Write-Host '    "proxy": "http://PROXY-HOST:PORT"'
+  throw
+}

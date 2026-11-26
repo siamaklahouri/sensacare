@@ -546,7 +546,7 @@ export async function pushScan(env, owner, body, prev) {
      netuse.js از kartabl.js چیزی وارد نمی‌کند، وگرنه دو پرونده
      دایره‌وار به هم وصل می‌شدند. */
   return { ok: true, hosts: hosts.length, kept: merged.length, samples: seen, counted,
-           snapshot: { at, range: String((body && body.range) || '').slice(0, 64),
+           snapshot: { at, range: String((body && body.range) || '').slice(0, 400),
                        by: String((body && body.by) || '').slice(0, 60), hosts: merged } };
 }
 
@@ -582,6 +582,38 @@ export async function applySample(env, owner, ip, at, inb, outb) {
      ON CONFLICT(owner, ip) DO UPDATE SET ts=?3, inb=?4, outb=?5`
   ).bind(owner, ip, at, inb, outb).run();
   return { ok: true, counted: !!good };
+}
+
+/* ردیف‌های «مصرف اینترنت» برای اشتراک‌گذاری: همان چیزی که صاحبِ
+   کارتابل می‌بیند، ولی آمادهٔ یک جدولِ ساده — بی دکمه و بی نمودار.
+   عددها همین‌جا به متن تبدیل می‌شوند، چون گیرنده فقط می‌خوانَدشان. */
+const human = n => {
+  const v = Math.max(0, Number(n) || 0);
+  const fa = x => String(x).replace(/[0-9]/g, d => '۰۱۲۳۴۵۶۷۸۹'[+d]);
+  if (v >= 1024 ** 4) return fa((v / 1024 ** 4).toFixed(2)).replace('.', '٫') + ' ترا';
+  if (v >= 1024 ** 3) return fa((v / 1024 ** 3).toFixed(2)).replace('.', '٫') + ' گیگ';
+  if (v >= 1024 ** 2) return fa((v / 1024 ** 2).toFixed(1)).replace('.', '٫') + ' مگ';
+  if (v >= 1024) return fa(Math.round(v / 1024)) + ' کیلو';
+  return fa(v) + ' بایت';
+};
+
+export async function netRows(env, owner) {
+  await ensureNet(env);
+  const devs = await listDevs(env, owner);
+  const from = tehranDay(Date.now() - 40 * 86400000);
+  const rows = await days(env, owner, from);
+  const today = tehranDay();
+  const sum = (ip, only) => rows.reduce((n, r) =>
+    (r.ip === ip && (!only || r.day === only)) ? n + r.inb + r.outb : n, 0);
+  /* «این ماه» همان سی روزِ اخیر است، نه ماهِ شمسی: این‌جا تقویمِ
+     شمسی نداریم و عددِ غلط از عددِ نداشته بدتر است. */
+  return devs.map(d => ({
+    name: d.name || d.ip,
+    ip: d.ip,
+    iface: d.ifname || (d.iface >= 0 ? 'پورت ' + d.iface : '—'),
+    today: human(sum(d.ip, today)),
+    month: human(sum(d.ip, ''))
+  }));
 }
 
 /* برنامه‌ای که کاوشگر می‌خواند: برای هر دستگاه، کدام پورت. خالی یعنی

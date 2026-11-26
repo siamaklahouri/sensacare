@@ -56,6 +56,26 @@ t(!itv.includes('report') && !itv.includes('datetools'),
     'کارتابلی که چیزی بسته ندارد، همان فهرستِ کاملِ نوعش را دارد');
 }
 
+/* و دو بخشِ تازه: پینگ و مصرفِ اینترنت.
+
+   «قرار شد هر بخش را بخواهم بتوانم با هرکسی اشتراک بدهم.» این دو
+   اصلاً در فهرست نبودند. مصرف فرقی دارد: دادهٔ آن در خودِ کارتابل
+   نیست، در جدول‌های سرور است — پس فقط دیدنی است. */
+{
+  const it = shareableFor('it', []).map(v => v.id);
+  t(it.includes('ping') && it.includes('netuse'),
+    'پینگ و مصرفِ اینترنت هم اشتراکی می‌شوند', it.join('، '));
+  t(specOf('netuse').readOnly === true && specOf('netuse').src === 'net',
+    'و مصرف فقط دیدنی است — دادهٔ آن در کارتابل نیست که نوشته شود');
+  t(specOf('ping').src === 'state' && specOf('ping').path === 'pingHosts',
+    'ولی پینگ جدولِ خودِ کارتابل است و مثلِ بقیه نوشته هم می‌شود');
+  /* ردیف‌های «مصرف» از جای دیگری می‌آیند و صدازننده آماده‌شان می‌کند */
+  t(readViewRows({ netRows: [{ ip: '10.0.0.1' }] }, specOf('netuse')).length === 1,
+    'و ردیف‌هایش از سرور به جدول می‌رسند');
+  t(readViewRows({ state: {}, db: {} }, specOf('netuse')).length === 0,
+    'و اگر چیزی نرسید، جدول خالی است نه شکسته');
+}
+
 console.log('\n===== گروه و اشتراک =====');
 const g = await saveOrg(env, { name: 'فنی', members: ['ali', 'naz'] }, SLUGS);
 t(g.ok, 'گروهِ فنی ساخته شد', g.error || g.id);
