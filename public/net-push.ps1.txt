@@ -33,6 +33,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# With a body of any size, .NET sends "Expect: 100-continue" and waits for
+# the server to say go ahead. Plenty of middleboxes never answer that, and
+# the whole request dies with a connection error that says nothing about
+# the real cause.
+[Net.ServicePointManager]::Expect100Continue = $false
 
 if (-not $ConfigPath -or $ConfigPath -eq '') {
   $ConfigPath = Join-Path $PSScriptRoot 'net-push.json'
@@ -383,7 +388,7 @@ foreach ($Range in $Ranges) {
     try { $name = [Net.Dns]::GetHostEntry($ip).HostName } catch { }
 
     $ifs = @()
-    if ($snmp) { $ifs = @(Get-Ifaces $ip $Comm ([math]::Max($Wait, 700)) 24) }
+    if ($snmp) { $ifs = @(Get-Ifaces $ip $Comm ([math]::Max($Wait, 700)) 16) }
 
     [void]$hosts.Add(@{ ip = $ip; host = $name; ports = @($open); snmp = $snmp;
                         ifaces = $ifs })
@@ -444,9 +449,12 @@ $body = @{
   samples = $samples.ToArray()
 } | ConvertTo-Json -Depth 6 -Compress
 
+Write-Host ("Report is {0} KB." -f [math]::Round($body.Length / 1024, 1))
+
 $args2 = @{ Method = 'Post'; Uri = $Url; Body = $body
             ContentType = 'application/json; charset=utf-8'
-            Headers = @{ 'x-net-key' = $Key } }
+            Headers = @{ 'x-net-key' = $Key }
+            TimeoutSec = 120 }
 if ($Proxy) {
   $args2['Proxy'] = $Proxy
   $args2['ProxyUseDefaultCredentials'] = $true
