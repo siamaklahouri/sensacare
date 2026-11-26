@@ -277,10 +277,21 @@ window.NETUSE = (function () {
   }
 
   /* جمعِ ماهِ شمسیِ جاری برای یک دستگاه (یا همه، با ip خالی) */
+  /* کدام دستگاه‌ها در جمعِ کارت‌ها می‌آیند.
+
+     کاوش هر چیزی را که SNMP بدهد می‌آورد — روتر و سوییچِ مدیریتی با
+     هم. اگر همه را جمع بزنیم، ترافیکی که از روتر رد شده و از سوییچ
+     هم رد شده، دوبار شمرده می‌شود. پس هر دستگاه کلیدِ خودش را دارد. */
+  function counted(ip) {
+    var d = devs.filter(function (x) { return x.ip === ip; })[0];
+    return !d || d.tot !== 0;
+  }
+
   function monthSum(ip) {
     var now = jal(today), inb = 0, outb = 0;
     dayRows.forEach(function (r) {
       if (ip && r.ip !== ip) return;
+      if (!ip && !counted(r.ip)) return;
       var j = jal(r.day);
       if (!j || !now || j.y !== now.y || j.m !== now.m) return;
       inb += r.inb; outb += r.outb;
@@ -291,6 +302,7 @@ window.NETUSE = (function () {
     var inb = 0, outb = 0;
     dayRows.forEach(function (r) {
       if (ip && r.ip !== ip) return;
+      if (!ip && !counted(r.ip)) return;
       if (r.day !== today) return;
       inb += r.inb; outb += r.outb;
     });
@@ -351,6 +363,9 @@ window.NETUSE = (function () {
         '<td class="nu-num">' + bytes(mo.inb + mo.outb) + '</td>' +
         '<td class="nu-num" data-nu-live="' + escapeHtml(d.ip) + '"><span class="nu-dim">—</span></td>' +
         '<td class="pg-acts">' +
+          '<button class="btn btn-sm ' + (d.tot === 0 ? 'btn-ghost' : 'btn-brass') +
+            '" data-nu-tot="' + escapeHtml(d.ip) + '" title="در جمعِ بالا حساب شود یا نه">' +
+            (d.tot === 0 ? 'بیرونِ جمع' : 'در جمع') + '</button>' +
           '<button class="btn btn-ghost btn-sm" data-nu-if="' + escapeHtml(d.ip) + '">پورت</button>' +
           '<button class="btn btn-ghost btn-sm" data-nu-del="' + escapeHtml(d.ip) + '">✕</button>' +
         '</td></tr>';
@@ -364,6 +379,7 @@ window.NETUSE = (function () {
     var now = jal(today);
     var byDay = {};
     dayRows.forEach(function (r) {
+      if (!counted(r.ip)) return;
       var j = jal(r.day);
       if (!j || !now || j.y !== now.y || j.m !== now.m) return;
       byDay[j.d] = (byDay[j.d] || 0) + r.inb + r.outb;
@@ -460,7 +476,7 @@ window.NETUSE = (function () {
     var d = devs.filter(function (x) { return x.ip === ovIp; })[0];
     if (!d) return;
     api('/netuse/devs', { ip: d.ip, name: d.name, community: d.community,
-                          iface: i, ifname: name, live: true })
+                          iface: i, ifname: name, live: d.live !== 0, tot: d.tot !== 0 })
       .then(function (j) { if (j && j.devs) { devs = j.devs; render(); } });
     if (ov) ov.hidden = true;
   }
@@ -495,6 +511,15 @@ window.NETUSE = (function () {
       });
   }
 
+  function flip(ip) {
+    var d = devs.filter(function (x) { return x.ip === ip; })[0];
+    if (!d) return;
+    api('/netuse/devs', { ip: d.ip, name: d.name, community: d.community,
+                          iface: d.iface, ifname: d.ifname, live: d.live !== 0,
+                          tot: d.tot === 0 })
+      .then(function (j) { if (j && j.devs) { devs = j.devs; render(); } });
+  }
+
   function del(ip) {
     var d = devs.filter(function (x) { return x.ip === ip; })[0];
     ASKDEL((d && d.name) || ip, function () {
@@ -523,6 +548,8 @@ window.NETUSE = (function () {
         if (a) { addFound(Number(a.getAttribute('data-nu-add'))); return; }
         var f = e.target.closest('[data-nu-if]');
         if (f) { openIf(f.getAttribute('data-nu-if')); return; }
+        var g = e.target.closest('[data-nu-tot]');
+        if (g) { flip(g.getAttribute('data-nu-tot')); return; }
         var d = e.target.closest('[data-nu-del]');
         if (d) { del(d.getAttribute('data-nu-del')); return; }
       });

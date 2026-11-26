@@ -1371,7 +1371,7 @@ window.KARTABL_IDB      = "{{IDB}}";
               <th style="width:110px;">امروز</th>
               <th style="width:110px;">این ماه</th>
               <th style="width:170px;">سرعتِ همین حالا</th>
-              <th style="width:110px;" class="col-del"></th>
+              <th style="width:190px;" class="col-del"></th>
             </tr></thead>
             <tbody id="nuDevBody"></tbody>
           </table>

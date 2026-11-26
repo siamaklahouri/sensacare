@@ -306,6 +306,36 @@ console.log('\n===== روی خودِ صفحه =====');
   t(/ether1-wan/.test(ifs) && /ether2-lan/.test(ifs),
     'پنجرهٔ پورت از فهرستِ کاوشگر پر می‌شود', ifs.slice(0, 70));
 
+  /* کاوش هر چیزی را که SNMP بدهد می‌آورد: روتر و سوییچِ مدیریتی با
+     هم. جمعشان یعنی ترافیکی که از هر دو رد شده، دوبار شمرده شود. پس
+     هر دستگاه کلیدِ «در جمع» خودش را دارد. */
+  const before = await p2.evaluate(() =>
+    (document.getElementById('nuCards') || {}).innerText || '');
+  await p2.evaluate(() => {
+    const b4 = document.querySelector('[data-nu-tot]');
+    if (b4) b4.click();
+  });
+  await p2.waitForTimeout(900);
+  const after = await p2.evaluate(() => ({
+    cards: (document.getElementById('nuCards') || {}).innerText || '',
+    btn: (document.querySelector('[data-nu-tot]') || {}).textContent || ''
+  }));
+  t(after.btn.indexOf('بیرون') >= 0, 'دستگاه را می‌شود از جمع بیرون گذاشت', after.btn);
+  t(after.cards !== before.cards && /۰ بایت/.test(after.cards),
+    'و آن‌وقت جمعِ بالا هم عوضش را نشان می‌دهد',
+    after.cards.replace(/\s+/g, ' ').slice(0, 60));
+  /* و برگرداندنش */
+  await p2.evaluate(() => {
+    const b5 = document.querySelector('[data-nu-tot]');
+    if (b5) b5.click();
+  });
+  await p2.waitForTimeout(900);
+  const back = await p2.evaluate(() =>
+    (document.getElementById('nuCards') || {}).innerText || '');
+  t(back === before, 'و دوباره به جمع برمی‌گردد',
+    back === before ? '' : JSON.stringify({ before: before.replace(/\s+/g, ' ').slice(0, 70),
+                                            back: back.replace(/\s+/g, ' ').slice(0, 70) }));
+
   t(errs.length === 0, 'و صفحه خطای جاوااسکریپت نداد', errs[0] || '—');
   await br.close();
 }

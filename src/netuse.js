@@ -360,6 +360,7 @@ export async function ensureNet(env) {
       iface     INTEGER NOT NULL DEFAULT -1,
       ifname    TEXT    NOT NULL DEFAULT '',
       live      INTEGER NOT NULL DEFAULT 1,
+      tot       INTEGER NOT NULL DEFAULT 1,
       added     INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (owner, ip)
     )`),
@@ -377,6 +378,10 @@ export async function ensureNet(env) {
     )`),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS net_day_d ON net_day(owner, day)')
   ]);
+  /* ستونِ «در جمع» بعداً اضافه شد: جدولی که از قبل هست همین‌جا
+     به‌روز می‌شود، وگرنه هر خواندنی با «no such column» می‌افتاد. */
+  try { await env.DB.prepare('ALTER TABLE net_dev ADD COLUMN tot INTEGER NOT NULL DEFAULT 1').run(); }
+  catch (e) { /* بود */ }
   netReady = true;
 }
 
@@ -405,12 +410,13 @@ export async function saveDev(env, owner, d) {
   if (!/^[\x21-\x7e]{1,32}$/.test(comm)) return { ok: false, error: 'جامعه درست نیست' };
   const iface = Number.isFinite(parseInt(d.iface, 10)) ? parseInt(d.iface, 10) : -1;
   await env.DB.prepare(
-    `INSERT INTO net_dev (owner, ip, name, community, iface, ifname, live, added)
-     VALUES (?1,?2,?3,?4,?5,?6,?7,?8)
+    `INSERT INTO net_dev (owner, ip, name, community, iface, ifname, live, tot, added)
+     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
      ON CONFLICT(owner, ip) DO UPDATE SET
-       name=?3, community=?4, iface=?5, ifname=?6, live=?7`
+       name=?3, community=?4, iface=?5, ifname=?6, live=?7, tot=?8`
   ).bind(owner, ip, String(d.name || '').slice(0, 60), comm, iface,
-         String(d.ifname || '').slice(0, 40), d.live === false ? 0 : 1, Date.now()).run();
+         String(d.ifname || '').slice(0, 40), d.live === false ? 0 : 1,
+         d.tot === false ? 0 : 1, Date.now()).run();
   return { ok: true };
 }
 
