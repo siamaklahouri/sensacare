@@ -28,7 +28,10 @@
 
 [CmdletBinding()]
 param(
-  [string] $ConfigPath = ''
+  [string] $ConfigPath = '',
+  # Sends an empty report and stops. For when the scan works but the
+  # sending does not, and the question is which of the two is at fault.
+  [switch] $SendOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -356,7 +359,11 @@ function Ping-Many([string[]] $ips, [int] $ms) {
 }
 
 $hosts = New-Object System.Collections.ArrayList
-foreach ($Range in $Ranges) {
+$samples = New-Object System.Collections.ArrayList
+if ($SendOnly) {
+  Write-Host "SendOnly: skipping the scan, sending an empty report."
+}
+foreach ($Range in $(if ($SendOnly) { @() } else { $Ranges })) {
   $list = Expand-Range $Range
   Write-Host ("Scanning {0} ({1} addresses) ..." -f $Range, $list.Count)
 
@@ -425,7 +432,6 @@ if ($Want) {
   }
 }
 
-$samples = New-Object System.Collections.ArrayList
 foreach ($h in $hosts) {
   if (-not $h.snmp) { continue }
   $ifs = @($h.ifaces)
@@ -455,6 +461,18 @@ Write-Host ("Read {0} counter(s)." -f $samples.Count)
 # last slice.
 $Chunk = if ($cfg.chunk) { [int]$cfg.chunk } else { 20 }
 if ($Chunk -lt 1) { $Chunk = 20 }
+
+# A breath between the scan and the report.
+#
+# The scan opens a few hundred connections in a few seconds. Some
+# firewalls read that as a port scan and shut the machine out for a
+# while -- and the report goes out in exactly that minute. Waiting
+# costs nothing: the next run is five minutes away.
+$Pause = if ($cfg.pause -ne $null) { [int]$cfg.pause } else { 20 }
+if ($Pause -gt 0 -and -not $SendOnly) {
+  Write-Host ("Waiting {0}s before sending (so the scan is not mistaken for an attack)..." -f $Pause)
+  Start-Sleep -Seconds $Pause
+}
 
 function Send-Part($partHosts, $partSamples, [int] $n, [int] $of) {
   $body = @{
