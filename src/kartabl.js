@@ -137,7 +137,8 @@ export const VIEWS = {
     { id: 'veeam',     label: 'VeeamBackup' },
     { id: 'restore',   label: 'تست ری‌استور' },
     { id: 'ping',      label: 'پینگ دستگاه‌ها' },
-    { id: 'portcheck', label: 'پورت‌چکر' }
+    { id: 'portcheck', label: 'پورت‌چکر' },
+    { id: 'health',    label: 'گزارش سلامت ماهانه' }
   ],
   fin: [
     { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },

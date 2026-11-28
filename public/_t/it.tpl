@@ -179,6 +179,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowdragcss}}
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
+{{PART:healthcss}}
 {{PART:systemscss}}
 {{PART:restorecss}}
 {{PART:pingcss}}
@@ -946,6 +947,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
       <button class="navbtn" data-view="systems" data-feat="view:systems"><span class="ic">💻</span> سیستم‌ها</button>
+      <button class="navbtn" data-view="health" data-feat="view:health"><span class="ic">🩺</span> گزارش سلامت</button>
       <button class="navbtn" data-view="restore" data-feat="view:restore"><span class="ic">♻️</span> تست ری‌استور</button>
       <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
       <button class="navbtn" data-view="portcheck" data-feat="view:portcheck"><span class="ic">🔌</span> پورت‌چکر</button>
@@ -1335,6 +1337,16 @@ window.KARTABL_IDB      = "{{IDB}}";
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
       </div>
+    </section>
+
+    <!-- MONTHLY HEALTH REPORT -->
+    <section class="view" id="view-health" data-feat="view:health">
+      <div class="section-title">🩺 گزارش سلامت ماهانه</div>
+      <div class="section-sub">یک صفحه برای گذاشتن جلوی مدیر — همهٔ عددها از همین کارتابل درمی‌آید</div>
+      <div class="hr-when" id="hrWhen"></div>
+
+      <div class="cards" id="hrCards"></div>
+      <div id="hrBody"></div>
     </section>
 
     <!-- SYSTEMS -->
@@ -4716,6 +4728,7 @@ function refreshEverything(){
   safe(function(){ if(window.PING) PING.wire(); });
   safe(function(){ if(window.RESTORE) RESTORE.render(); });
   safe(function(){ if(window.SYSTEMS) SYSTEMS.render(); });
+  safe(function(){ if(window.HEALTH) HEALTH.render(); });
   safe(window.tableSizeSweep);
   safe(window.cellPopScan);
 }
@@ -4781,6 +4794,7 @@ function setupNav(){
       if(view==="portcheck"){ try{ PORTCHECK.wire(); }catch(e){} }
       if(view==="restore"){ try{ RESTORE.wire(); }catch(e){} }
       if(view==="systems"){ try{ SYSTEMS.wire(); }catch(e){} }
+      if(view==="health"){ try{ HEALTH.wire(); }catch(e){} }
     });
   });
 }
@@ -5015,6 +5029,7 @@ window.SEARCH_MAP = [
    کسی که این بخش برایش باز می‌شد سبز می‌شدند — نشانیِ یک شرکتِ
    دیگر، در جدولِ یک آدمِ دیگر. */
 {{PART:systems}}
+{{PART:health}}
 {{PART:restore}}
 {{PART:ping}}
 {{PART:portcheck}}
