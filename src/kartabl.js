@@ -29,8 +29,6 @@ import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNa
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
 import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
-import { parseRanges, scanStream, ifaces, speed, listDevs, saveDev, dropDev,
-         days as netDays, tehranDay, pushScan, netPlan, netRows } from './netuse.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -135,8 +133,7 @@ export const VIEWS = {
        کارتابل: سرورِ ما به شبکهٔ داخلی دسترسی ندارد. بخشش این‌جاست تا
        ادمین بتواند بدهد یا پس بگیرد، مثل بقیهٔ بخش‌ها. */
     { id: 'veeam',     label: 'VeeamBackup' },
-    { id: 'ping',      label: 'پینگ دستگاه‌ها' },
-    { id: 'netuse',    label: 'مصرف اینترنت' }
+    { id: 'ping',      label: 'پینگ دستگاه‌ها' }
   ],
   fin: [
     { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },
@@ -149,8 +146,7 @@ export const VIEWS = {
     { id: 'parties',         label: 'طرف‌حساب‌ها' },
     { id: 'datetools',       label: 'تبدیل' },
     { id: 'report',          label: 'گزارش‌ساز' },
-    { id: 'ping',            label: 'پینگ دستگاه‌ها' },
-    { id: 'netuse',          label: 'مصرف اینترنت' }
+    { id: 'ping',            label: 'پینگ دستگاه‌ها' }
   ],
   /* «عمومی» از همان قالبِ IT ساخته می‌شود، پس همان بخش‌ها را هم
      می‌تواند داشته باشد — مثلاً هلپ‌دسکی که به سرورها و MVPN کار دارد.
@@ -2079,41 +2075,6 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
      کلید مثل رمزِ ورود درهم‌شده نگه داشته می‌شود، نه خودش: اگر روزی
      کسی به جدولِ تنظیمات برسد، کلیدِ آماده‌ای برای فرستادنِ گزارشِ
      جعلی پیدا نمی‌کند. */
-  /* ---------- گزارشِ کاوشگرِ داخلِ شبکه ----------
-     سرورِ ما بیرونِ شبکهٔ شماست و به ۱۹۲.۱۶۸.x نمی‌رسد. پس مثلِ گزارشِ
-     Veeam، یک اسکریپتِ کوچک داخلِ شبکه می‌دود و نتیجه را این‌جا
-     می‌فرستد؛ هیچ پورتی باز نمی‌شود، اتصال همیشه از داخل به بیرون
-     است.
-
-     کلیدش جداست و فقط همین یک کار را می‌کند: با آن نه می‌شود کارتابل
-     را خواند و نه چیزی در آن نوشت. درهم‌شده نگه داشته می‌شود، نه
-     خودش. */
-  /* کاوشگر پیش از فرستادن می‌پرسد «برای هر دستگاه کدام پورت؟» — همان
-     چیزی که کاربر در صفحه انتخاب کرده. نبودنش یعنی خودش حدس بزند. */
-  if (p === '/netuse/plan' && m === 'GET') {
-    const want = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
-    const got = String(req.headers.get('x-net-key') || '');
-    if (!want || !got) return bad('کلید درست نیست.', 403);
-    const k = await checkPassword(got, want);
-    if (!k.ok) return bad('کلید درست نیست.', 403);
-    return json({ ok: true, plan: await netPlan(env, panel.slug) });
-  }
-
-  if (p === '/netuse/push' && m === 'POST') {
-    const rl = await rateLimit(env, `${panel.id}-net:` + clientIp(req), 240, 3600);
-    if (!rl.ok) return bad('تلاش زیاد بود.', 429);
-    const want = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
-    const got = String(req.headers.get('x-net-key') || body.key || '');
-    if (!want || !got) return bad('کلید درست نیست.', 403);
-    const k = await checkPassword(got, want);
-    if (!k.ok) return bad('کلید درست نیست.', 403);
-
-    const prev = await getSetting(env, 'netScan:' + panel.slug, null);
-    const r = await pushScan(env, panel.slug, body, prev);
-    if (r.snapshot) await setSetting(env, 'netScan:' + panel.slug, r.snapshot);
-    return json({ ok: true, hosts: r.hosts, samples: r.samples, counted: r.counted });
-  }
-
   if (p === '/veeam/push' && m === 'POST') {
     const rl = await rateLimit(env, `${panel.id}-veeam:` + clientIp(req), 120, 3600);
     if (!rl.ok) return bad('تلاش زیاد بود.', 429);
@@ -2357,9 +2318,6 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
 
     const d = await loadKartabl(env, owner);
     if (d.broken) return bad('دادهٔ این کارتابل روی سرور خوانده نشد.', 409);
-    /* «مصرف اینترنت» در خودِ کارتابل نیست؛ در جدول‌های سرور است. پس
-       ردیف‌هایش همین‌جا ساخته می‌شوند و بقیهٔ مسیر دست نمی‌خورد. */
-    if (sh.spec.src === 'net') d.netRows = await netRows(env, sh.owner);
     const rows = readViewRows(d, sh.spec);
 
     if (!mV[2] && m === 'GET')
@@ -2422,57 +2380,6 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     const port = (raw === '' || raw === null || raw === undefined) ? 0 : parseInt(raw, 10);
     if (port && !okPort(port)) return bad('پورت درست نیست', 400);
     return json(await probe(host, port, 2500));
-  }
-
-  /* ---------- شبکه: کاوش و مصرف ----------
-     پینگ می‌گوید دستگاه زنده است؛ مصرف عددی است که فقط خودِ روتر
-     دارد. این‌ها راهِ رسیدن به آن عددند.
-
-     هیچ‌کدام رمزِ ویندوز یا دامین نمی‌خواهند: خواندن از خودِ
-     دستگاهِ شبکه است، و نامِ سیستم‌ها از DNSِ همان دامین می‌آید. */
-  if (p === '/netuse/scan' && m === 'POST') {
-    const r = parseRanges(body.range);
-    if (!r.ok) return bad(r.error, 400);
-    return new Response(scanStream(r.list, { ms: 700, wide: 32 }), {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8',
-                 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
-                 'X-Accel-Buffering': 'no' }
-    });
-  }
-
-  if (p === '/netuse/ifaces' && m === 'POST') {
-    const host = String(body.host || '').trim();
-    if (!okHost(host)) return bad('نشانی درست نیست', 400);
-    return json(await ifaces(host, String(body.community || 'public')));
-  }
-
-  if (p === '/netuse/speed' && m === 'POST') {
-    const host = String(body.host || '').trim();
-    if (!okHost(host)) return bad('نشانی درست نیست', 400);
-    return json(await speed(host, String(body.community || 'public'), body.iface,
-                            { gap: 2000 }));
-  }
-
-  if (p === '/netuse/devs' && m === 'GET') {
-    const devs = await listDevs(env, panel.slug);
-    /* چهل روزِ اخیر بس است: کارتِ «امروز» و «این ماه» و نمودارِ ماه
-       همه از همین درمی‌آیند. */
-    const from = tehranDay(Date.now() - 40 * 86400000);
-    const scan = await getSetting(env, 'netScan:' + panel.slug, null);
-    const key = String(await getSetting(env, 'netKey:' + panel.slug, '') || '');
-    return json({ devs, days: await netDays(env, panel.slug, from), today: tehranDay(),
-                  scan, agent: !!key });
-  }
-
-  if (p === '/netuse/devs' && m === 'POST') {
-    const r = await saveDev(env, panel.slug, body || {});
-    if (!r.ok) return bad(r.error, 400);
-    return json({ ok: true, devs: await listDevs(env, panel.slug) });
-  }
-
-  if (p === '/netuse/devs/del' && m === 'POST') {
-    await dropDev(env, panel.slug, String(body.ip || ''));
-    return json({ ok: true, devs: await listDevs(env, panel.slug) });
   }
 
   /* تلنتِ زنده: هرچه دستگاه می‌گوید، همان لحظه می‌رسد.

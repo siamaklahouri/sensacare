@@ -301,23 +301,6 @@ function cronTick() {
   fireScheduled(d);
 }
 
-/* ---------- مصرفِ شبکه ----------
-   شمارندهٔ روتر «از ابتدا تا حالا» است؛ «مصرفِ امروز» فقط از تفاضلِ
-   نمونه‌ها درمی‌آید. پس هر پنج دقیقه یک نمونه، حتی وقتی هیچ‌کس
-   صفحه را باز نکرده — وگرنه مصرفِ دیشب هیچ‌جا ثبت نشده بود.
-
-   کرونِ ساعتی برای این کار درشت است: یک ساعت فاصله یعنی هر ریستِ
-   روتر، یک ساعت مصرف را می‌بلعد. */
-const { netTick } = await import('../src/netuse.js');
-let netBusy = false;
-async function netSample() {
-  if (netBusy) return;
-  netBusy = true;
-  try { await netTick(env, { ms: 1500 }); }
-  catch (e) { console.error('[شبکه]', e?.message || e); }
-  finally { netBusy = false; }
-}
-
 /* ---------- یادآورها ----------
    جدا از کرونِ ساعتی: یادآور اگر یک ساعت دیر بیاید، یادآور نیست. */
 const { tick: pushTick } = await import('../src/push.js');
@@ -753,7 +736,6 @@ server.listen(PORT, BIND, () => {
   console.log(`تلگرام از راهِ: ${tgWhere}`);
   setInterval(cronTick, 20000);
   if (cfg.PUSH_OFF !== '1') setInterval(remindTick, 60000);
-  if (cfg.NET_OFF !== '1') setInterval(netSample, 5 * 60000);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT']) {
