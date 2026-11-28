@@ -28,7 +28,8 @@ import { sharesFor, viewShareById, specOf, readViewRows, writeViewRows,
 import { listFiles, putFile, getFile, delFile, usedBytes, filesOfPlanner, fileNames,
          FILE_LIMITS } from './files.js';
 import { publicKey as pushKey, addSub, dropSub, subCount, setQueue, dueFor } from './push.js';
-import { probe, telnet, telnetStream, okHost, okPort } from './ping.js';
+import { probe, telnet, telnetStream, okHost, okPort,
+         manyPorts, parsePorts, MAX_PORTS } from './ping.js';
 import { newsFor as releaseNews } from './news.js';
 import { multipart } from './multipart.js';
 
@@ -133,7 +134,8 @@ export const VIEWS = {
        کارتابل: سرورِ ما به شبکهٔ داخلی دسترسی ندارد. بخشش این‌جاست تا
        ادمین بتواند بدهد یا پس بگیرد، مثل بقیهٔ بخش‌ها. */
     { id: 'veeam',     label: 'VeeamBackup' },
-    { id: 'ping',      label: 'پینگ دستگاه‌ها' }
+    { id: 'ping',      label: 'پینگ دستگاه‌ها' },
+    { id: 'portcheck', label: 'پورت‌چکر' }
   ],
   fin: [
     { id: 'invoices',        label: 'سررسید اسناد دریافتنی' },
@@ -146,7 +148,8 @@ export const VIEWS = {
     { id: 'parties',         label: 'طرف‌حساب‌ها' },
     { id: 'datetools',       label: 'تبدیل' },
     { id: 'report',          label: 'گزارش‌ساز' },
-    { id: 'ping',            label: 'پینگ دستگاه‌ها' }
+    { id: 'ping',            label: 'پینگ دستگاه‌ها' },
+    { id: 'portcheck',       label: 'پورت‌چکر' }
   ],
   /* «عمومی» از همان قالبِ IT ساخته می‌شود، پس همان بخش‌ها را هم
      می‌تواند داشته باشد — مثلاً هلپ‌دسکی که به سرورها و MVPN کار دارد.
@@ -2381,6 +2384,29 @@ export async function handleKartabl(env, req, panel, p, m, body, helpers) {
     if (port && !okPort(port)) return bad('پورت درست نیست', 400);
     return json(await probe(host, port, 2500));
   }
+
+  /* ---------- پورت‌چکر ----------
+     «این پورت از بیرون باز است یا نه؟» — همان کاری که سایت‌های
+     port checker می‌کنند، از روی سرورِ خودمان. چون سرورِ ما بیرونِ
+     شبکهٔ شماست، جوابش دقیقاً همان چیزی است که دنیا می‌بیند.
+
+     فقط با کلیکِ آدم کار می‌کند و سقف دارد: حداکثر سی‌ودو پورت در
+     هر بار، و شمارش هم محدود است. جاروکردنِ یک شبکه کارِ این نیست. */
+  if (p === '/portcheck' && m === 'POST') {
+    const rl = await rateLimit(env, `${panel.id}-pc:` + clientIp(req), 120, 3600);
+    if (!rl.ok) return bad('بررسی‌های زیادی پشتِ هم. کمی بعد.', 429);
+    const host = String(body.host || '').trim();
+    if (!okHost(host)) return bad('نشانی درست نیست', 400);
+    const ports = Array.isArray(body.ports) ? body.ports : parsePorts(body.ports);
+    if (!ports.length) return bad('پورتی برای بررسی ننوشته‌اید', 400);
+    const r = await manyPorts(host, ports, { ms: 1800, wide: 12 });
+    if (!r.ok) return bad(r.error, 400);
+    return json({ ...r, max: MAX_PORTS });
+  }
+
+  /* نشانیِ خودِ کاربر، همان‌طور که سرور می‌بیندش: نقطهٔ شروعِ
+     پورت‌چکر، چون آدم معمولاً می‌خواهد پورت‌های خودش را ببیند. */
+  if (p === '/myip' && m === 'GET') return json({ ip: clientIp(req) });
 
   /* تلنتِ زنده: هرچه دستگاه می‌گوید، همان لحظه می‌رسد.
      «X-Accel-Buffering: no» برای پروکسی‌هایی است که وگرنه تا پایانِ

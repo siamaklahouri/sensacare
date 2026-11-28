@@ -180,6 +180,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
 {{PART:pingcss}}
+{{PART:portcheckcss}}
 {{PART:datepickcss}}
 {{PART:daycalcss}}
   .mpop-carry{
@@ -943,6 +944,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
       <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
+      <button class="navbtn" data-view="portcheck" data-feat="view:portcheck"><span class="ic">🔌</span> پورت‌چکر</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
       <button class="navbtn" data-view="datetools" data-feat="view:datetools"><span class="ic">🧮</span> تبدیل</button>
       <button class="navbtn" data-view="report" data-feat="view:report"><span class="ic">📊</span> گزارش‌ساز</button>
@@ -1328,6 +1330,45 @@ window.KARTABL_IDB      = "{{IDB}}";
           <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
+      </div>
+    </section>
+
+    <!-- PORTCHECK -->
+    <section class="view" id="view-portcheck" data-feat="view:portcheck">
+      <div class="section-title">🔌 پورت‌چکر</div>
+      <div class="section-sub">ببینید یک پورت از بیرونِ شبکه باز است یا نه — از روی سرورِ کارتابل، همان‌طور که دنیا می‌بیند</div>
+
+      <div class="pc-bar">
+        <div class="pc-fld pc-host">
+          <label for="pcHost">نشانی</label>
+          <input type="text" id="pcHost" data-ascii placeholder="مثلاً 93.114.110.74 یا sltech.ir"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+        </div>
+        <div class="pc-fld pc-ports">
+          <label for="pcPorts">پورت‌ها</label>
+          <input type="text" id="pcPorts" data-ascii value="80, 443" placeholder="مثلاً 80, 443, 8291 یا 8000-8010"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+        </div>
+        <button class="btn btn-brass btn-sm" id="pcGo">بررسی</button>
+      </div>
+      <div class="pc-say" id="pcMine"></div>
+      <div class="pc-sets" id="pcSets"></div>
+      <div class="pc-say" id="pcSay"></div>
+
+      <div class="panel">
+        <h3>🔌 نتیجه</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:90px;">پورت</th>
+              <th>سرویس</th>
+              <th style="width:40%;">وضعیت</th>
+              <th style="width:110px;">زمان</th>
+            </tr></thead>
+            <tbody id="pcBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -4639,6 +4680,7 @@ function setupNav(){
       /* هر بار که باز می‌شود از نو می‌پرسد: گزارش هر ساعت عوض می‌شود و
          یک‌بار خواندن سرِ بارِ صفحه یعنی تا رفرشِ بعدی کهنه می‌ماند. */
       if(view==="veeam") loadVeeam();
+      if(view==="portcheck"){ try{ PORTCHECK.wire(); }catch(e){} }
     });
   });
 }
@@ -4873,6 +4915,7 @@ window.SEARCH_MAP = [
    کسی که این بخش برایش باز می‌شد سبز می‌شدند — نشانیِ یک شرکتِ
    دیگر، در جدولِ یک آدمِ دیگر. */
 {{PART:ping}}
+{{PART:portcheck}}
 
 /* ---------------- جابه‌جاییِ ردیف‌ها ----------------
    هر جدول این‌جا می‌گوید آرایه‌اش کجاست و بعد از جابه‌جایی چه باید

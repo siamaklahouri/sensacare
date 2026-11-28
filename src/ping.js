@@ -297,3 +297,80 @@ export function telnetStream(host, port, send, opt) {
     cancel() { if (this._stop) this._stop(); }
   });
 }
+
+/* ---------- چند پورت، یک نشانی ----------
+   «این پورت از بیرون باز است یا نه؟» — همان کاری که سایت‌های
+   port checker می‌کنند، از روی سرورِ خودمان.
+
+   دو مرز عمدی: سقفِ شمارِ پورت‌ها، و موازیِ محدود. این ابزار برای
+   دیدنِ چند پورتِ مشخص است، نه برای جاروکردنِ یک شبکه — و همان
+   جاروکردن بود که یک بار شبکهٔ شرکت را خواباند. */
+export const PORT_NAMES = {
+  20: 'FTP (داده)', 21: 'FTP', 22: 'SSH', 23: 'تلنت', 25: 'ایمیل (SMTP)',
+  53: 'DNS', 80: 'وب', 110: 'ایمیل (POP3)', 143: 'ایمیل (IMAP)',
+  161: 'SNMP', 389: 'LDAP', 443: 'وبِ امن', 445: 'اشتراکِ ویندوز',
+  465: 'ایمیل امن (SMTPS)', 587: 'ایمیل (ارسال)', 993: 'IMAP امن',
+  995: 'POP3 امن', 1194: 'OpenVPN', 1433: 'SQL Server', 1723: 'PPTP',
+  3306: 'MySQL', 3389: 'ریموت دسکتاپ', 4370: 'حضور و غیاب',
+  5060: 'تلفنِ تحتِ شبکه (SIP)', 5432: 'PostgreSQL', 5900: 'VNC',
+  8080: 'وب (جایگزین)', 8291: 'وین‌باکس (میکروتیک)', 8443: 'وبِ امن (جایگزین)',
+  8728: 'API میکروتیک', 9100: 'چاپگر', 27017: 'MongoDB'
+};
+
+export const MAX_PORTS = 32;
+
+export async function manyPorts(host, ports, opt) {
+  const o = opt || {};
+  const ms = Math.min(Math.max(parseInt(o.ms, 10) || 1800, 300), 5000);
+  const wide = Math.min(Math.max(parseInt(o.wide, 10) || 12, 1), 24);
+  if (!okHost(host)) return { ok: false, error: 'نشانی درست نیست' };
+
+  const list = [];
+  for (const p of (Array.isArray(ports) ? ports : [])) {
+    const n = parseInt(p, 10);
+    if (okPort(n) && list.indexOf(n) < 0) list.push(n);
+    if (list.length >= MAX_PORTS) break;
+  }
+  if (!list.length) return { ok: false, error: 'پورتی برای بررسی نیست' };
+
+  const out = [];
+  let i = 0;
+  const one = async () => {
+    for (;;) {
+      const ix = i++;
+      if (ix >= list.length) return;
+      const p = list[ix];
+      let r = null;
+      try { r = await tcpProbe(host, p, ms); } catch (e) { }
+      out.push({ port: p, name: PORT_NAMES[p] || '',
+                 open: !!(r && r.ok), ms: (r && r.ms) || 0,
+                 why: (r && r.error) || '' });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(wide, list.length) }, one));
+  out.sort((a, b) => a.port - b.port);
+  return { ok: true, host, rows: out, open: out.filter(x => x.open).length };
+}
+
+/* «۸۰، ۴۴۳، ۸۰۰۰-۸۰۱۰» → فهرستِ عددها. رقمِ فارسی هم می‌فهمد. */
+export function parsePorts(txt) {
+  const s = String(txt == null ? '' : txt)
+    .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const out = [];
+  for (const part of s.split(/[,،\s]+/)) {
+    if (!part) continue;
+    const m = /^(\d{1,5})-(\d{1,5})$/.exec(part);
+    if (m) {
+      const a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+      if (!okPort(a) || !okPort(b) || b < a) continue;
+      /* بازهٔ بلند به سقف بریده می‌شود، نه اینکه رد شود */
+      for (let p = a; p <= b && out.length < MAX_PORTS; p++)
+        if (out.indexOf(p) < 0) out.push(p);
+      continue;
+    }
+    const n = parseInt(part, 10);
+    if (okPort(n) && out.indexOf(n) < 0 && out.length < MAX_PORTS) out.push(n);
+  }
+  return out;
+}

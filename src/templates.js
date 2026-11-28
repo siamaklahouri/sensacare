@@ -58,6 +58,8 @@ import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_tsort from '../public/_t/p/tsort.tpl';
 import p_bulkadd from '../public/_t/p/bulkadd.tpl';
 import p_ping from '../public/_t/p/ping.tpl';
+import p_portcheck from '../public/_t/p/portcheck.tpl';
+import p_portcheckcss from '../public/_t/p/portcheckcss.tpl';
 import p_pingcss from '../public/_t/p/pingcss.tpl';
 import p_bulkaddcss from '../public/_t/p/bulkaddcss.tpl';
 import p_tsortcss from '../public/_t/p/tsortcss.tpl';
@@ -182,6 +184,8 @@ export const PARTS = new Map([
   ['tsort', p_tsort],
   ['bulkadd', p_bulkadd],
   ['ping', p_ping],
+  ['portcheck', p_portcheck],
+  ['portcheckcss', p_portcheckcss],
   ['pingcss', p_pingcss],
   ['bulkaddcss', p_bulkaddcss],
   ['tsortcss', p_tsortcss],
