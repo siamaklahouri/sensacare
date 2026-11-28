@@ -132,7 +132,10 @@ window.SYSTEMS = (function () {
     var list = all.map(function (r, i) { return { r: r, i: i }; }).filter(function (x) { return hit(x.r); });
 
     body.innerHTML = list.map(function (x, n) {
-      return '<tr>' +
+      /* data-idx شمارهٔ واقعیِ ردیف در آرایه است، نه شمارهٔ دیده‌شده.
+         ROWDRAG همین را می‌خواند، پس جابه‌جایی حتی وقتی جدول
+         جست‌وجو شده هم ردیفِ درست را برمی‌دارد. */
+      return '<tr data-idx="' + x.i + '">' +
         '<td class="sy-no">' + fa(n + 1) + '</td>' +
         COLS.map(function (c) { return cell(x.r, x.i, c, dupIp, dupUser); }).join('') +
         '<td><button class="btn-del" data-sy-del="' + x.i + '" title="حذف این ردیف">✕</button></td>' +

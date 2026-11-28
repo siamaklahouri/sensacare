@@ -1370,7 +1370,7 @@ window.KARTABL_IDB      = "{{IDB}}";
               <th style="width:12%;">آی‌پی</th>
               <th>مدلِ پردازنده</th>
               <th style="width:80px;">رم (GB)</th>
-              <th style="width:40px;" class="col-del"></th>
+              <th style="width:62px;" class="col-del"></th>
             </tr></thead>
             <tbody id="syBody"></tbody>
           </table>
@@ -5031,6 +5031,9 @@ if(window.ROWDRAG) ROWDRAG.register({
                    done: ()=>{ saveServersSheet(); renderServers(); } },
   mvpnBody:      { arr: ()=> (mvpnData && mvpnData.lines) || [],
                    done: ()=>{ saveMvpnSheet(); renderMvpn(); } },
+  /* سیستم‌ها: ترتیبش دستِ خودِ کاربر است — مثلاً به ترتیبِ اتاق‌ها. */
+  syBody:        { arr: ()=> (Array.isArray(state.systems) ? state.systems : []),
+                   done: ()=>{ scheduleSave(); try{ SYSTEMS.render(); }catch(e){} } },
   /* چک‌لیست ریموت: ردیف‌هایش سرورند و ترتیبشان دستِ خودِ کاربر است */
   remoteBody:    { arr: ()=> (remoteBackupData && remoteBackupData.roster) || [],
                    done: ()=>{ saveRemoteChecklistSheet(); renderRemoteChecklist(); } },

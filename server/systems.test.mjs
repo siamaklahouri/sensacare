@@ -140,6 +140,72 @@ await feed(junk, 'junk.xlsx');
 t(await p.evaluate(() => state.systems.length) === 3, 'فایلِ بی‌ربط چیزی را خراب نمی‌کند');
 t((await status()).indexOf('⚠️') === 0, 'و هشدار می‌دهد', await status());
 
+console.log('===== مرتب‌سازی و جابه‌جایی =====');
+await p.evaluate(() => {
+  state.systems = [
+    { person: 'سیامک', user: 's.l', name: 'PC-003', email: 'a@c.ir', ip: '192.168.1.30', cpu: 'Core i7', ram: '32' },
+    { person: 'مریم', user: 'm.r', name: 'PC-001', email: 'b@c.ir', ip: '192.168.1.10', cpu: 'Core i5', ram: '8' },
+    { person: 'حسن', user: 'h.k', name: 'PC-002', email: 'c@c.ir', ip: '192.168.1.20', cpu: 'Core i3', ram: '16' }
+  ];
+  SYSTEMS.render();
+});
+await p.waitForTimeout(800);
+
+const order = () => p.evaluate(() => [].slice.call(document.querySelectorAll('#syBody tr'))
+  .filter(r => r.children.length > 1 && r.style.display !== 'none')
+  .map(r => r.querySelector('input[data-sy="name"]').value).join(','));
+
+t(await p.evaluate(() => document.querySelectorAll('#view-systems thead .ts-h').length) === 7,
+  'هر هفت ستون سرستونِ مرتب‌شدنی دارند');
+
+await p.click('#view-systems thead th[data-col="3"]');
+await p.waitForTimeout(400);
+t(await order() === 'PC-001,PC-002,PC-003', 'کلیک روی «اسمِ سیستم» صعودی مرتب می‌کند', await order());
+await p.click('#view-systems thead th[data-col="3"]');
+await p.waitForTimeout(400);
+t(await order() === 'PC-003,PC-002,PC-001', 'کلیکِ دوم نزولی', await order());
+
+await p.click('#view-systems thead th[data-col="7"]');
+await p.waitForTimeout(400);
+t(await p.evaluate(() => [].slice.call(document.querySelectorAll('#syBody tr'))
+  .filter(r => r.children.length > 1).map(r => r.querySelector('input[data-sy="ram"]').value).join(',')) === '8,16,32',
+  'ستونِ رم عددی مرتب می‌شود، نه حرفی');
+
+await p.click('#view-systems thead th[data-col="7"]');
+await p.waitForTimeout(300);
+await p.click('#view-systems thead th[data-col="7"]');
+await p.waitForTimeout(400);
+t(await order() === 'PC-003,PC-001,PC-002', 'کلیکِ سوم مرتب‌سازی را برمی‌دارد', await order());
+
+const fbox = await p.evaluate(() => document.querySelectorAll('#view-systems thead .ts-f').length);
+t(fbox === 7, 'هر ستون کادرِ فیلترِ خودش را دارد', String(fbox));
+await p.fill('#view-systems thead .ts-f[data-col="3"]', 'PC-002');
+await p.waitForTimeout(400);
+t(await order() === 'PC-002', 'فیلترِ ستونی کار می‌کند');
+await p.fill('#view-systems thead .ts-f[data-col="3"]', '');
+await p.waitForTimeout(400);
+
+t(await p.evaluate(() => document.querySelectorAll('#syBody .rd-grip').length) === 3,
+  'هر ردیف دستهٔ جابه‌جایی دارد');
+
+const moved = await p.evaluate(() => {
+  const rows = [].slice.call(document.querySelectorAll('#syBody tr')).filter(r => r.children.length > 1);
+  const grip = rows[0].querySelector('.rd-grip');
+  if (!grip) return 'NO GRIP';
+  const dt = new DataTransfer();
+  grip.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+  const r = rows[2].getBoundingClientRect();
+  const at = { bubbles: true, dataTransfer: dt, clientY: r.top + r.height - 2 };
+  rows[2].dispatchEvent(new DragEvent('dragover', at));
+  rows[2].dispatchEvent(new DragEvent('drop', at));
+  document.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+  return 'ok';
+});
+await p.waitForTimeout(700);
+t(moved === 'ok' && await p.evaluate(() => state.systems.map(r => r.name).join(',')) === 'PC-001,PC-002,PC-003',
+  'کشیدنِ ردیف، ترتیبِ خودِ داده را عوض می‌کند',
+  await p.evaluate(() => state.systems.map(r => r.name).join(',')));
+
 t(errs.length === 0, 'هیچ خطای جاوااسکریپتی نداد', errs.join(' | ') || '—');
 
 await b.close();
