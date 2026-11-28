@@ -55,16 +55,37 @@ window.RESTORE = (function () {
     return { k: 'ok', t: 'به‌موقع', cls: 'is-ok' };
   }
 
-  /* عقب‌افتاده‌ترین اول: همان ترتیبی که آدم کار را از آن شروع می‌کند. */
+  /* ترتیب از روی همان ستونِ «آخرین ری‌استور» است، نه از روی وضعیت:
+     قدیمی‌ترین تست اول. کلیک روی سرستون، ترتیب را برمی‌گرداند.
+     ردیف‌هایی که هیچ‌وقت تست نشده‌اند تاریخ ندارند؛ در حالتِ
+     «قدیمی‌ترین اول» بالای همه می‌نشینند، چون بدتر از قدیمی‌ترین‌اند. */
+  var dir = 'old';
+
   function sorted() {
+    var older = dir === 'old';
     return rows().map(function (v, i) {
       var d = daysAgo(v.lastRestore);
       return { i: i, v: v, d: d, s: stateOf(d) };
     }).sort(function (a, b) {
-      var w = { never: 0, late: 1, soon: 2, ok: 3 };
-      if (w[a.s.k] !== w[b.s.k]) return w[a.s.k] - w[b.s.k];
-      return (b.d || 0) - (a.d || 0);
+      if (a.d === null || b.d === null) {
+        if (a.d === b.d) return 0;
+        if (a.d === null) return older ? -1 : 1;
+        return older ? 1 : -1;
+      }
+      return older ? b.d - a.d : a.d - b.d;
     });
+  }
+
+  /* سرستون: پیکان می‌گوید از کدام سر مرتب شده. */
+  function head() {
+    var th = $('rsSortWhen');
+    if (!th) return;
+    var older = dir === 'old';
+    th.setAttribute('aria-sort', older ? 'descending' : 'ascending');
+    th.title = older ? 'قدیمی‌ترین تست اول — برای برعکس‌کردن کلیک کنید'
+                     : 'تازه‌ترین تست اول — برای برعکس‌کردن کلیک کنید';
+    var ar = th.querySelector('.rs-arrow');
+    if (ar) ar.textContent = older ? '▾' : '▴';
   }
 
   function cards(list) {
@@ -99,6 +120,7 @@ window.RESTORE = (function () {
     if (!b) return;
     var list = sorted();
     cards(list);
+    head();
 
     if (!list.length) {
       b.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--ink-faint);">' +
@@ -136,7 +158,11 @@ window.RESTORE = (function () {
       var sec = $('view-restore');
       if (sec) sec.addEventListener('click', function (e) {
         var b = e.target.closest('[data-rs-done]');
-        if (b) done(Number(b.getAttribute('data-rs-done')));
+        if (b) { done(Number(b.getAttribute('data-rs-done'))); return; }
+        if (e.target.closest('#rsSortWhen')) {
+          dir = dir === 'old' ? 'new' : 'old';
+          render();
+        }
       });
       var inp = $('rsDays');
       if (inp) {

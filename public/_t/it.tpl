@@ -1351,14 +1351,14 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="cards" id="rsCards"></div>
 
       <div class="panel">
-        <h3>♻️ سرورها، به ترتیبِ عقب‌افتادگی</h3>
+        <h3>♻️ سرورها، به ترتیبِ آخرین ری‌استور</h3>
         <div class="tbl-wrap">
           <table>
             <thead><tr>
               <th style="width:26px;">#</th>
               <th style="width:24%;">سرور</th>
               <th style="width:16%;">IP/محل</th>
-              <th style="width:120px;">آخرین ری‌استور</th>
+              <th style="width:130px;" id="rsSortWhen" class="rs-sort" aria-sort="descending">آخرین ری‌استور <span class="rs-arrow">▾</span></th>
               <th>وضعیت</th>
               <th style="width:150px;" class="col-del"></th>
             </tr></thead>

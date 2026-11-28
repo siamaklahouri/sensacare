@@ -20,3 +20,6 @@
   tr.rs-late td, tr.rs-never td{ background:var(--red-bg); }
   tr.rs-soon td{ background:var(--amber-bg, #fdf4e3); }
   @media print{ .rs-acts{ display:none !important; } }
+  .rs-sort{ cursor:pointer; user-select:none; white-space:nowrap; }
+  .rs-sort:hover{ color:var(--brass-ink); }
+  .rs-arrow{ font-size:10px; opacity:.7; margin-inline-start:2px; }
