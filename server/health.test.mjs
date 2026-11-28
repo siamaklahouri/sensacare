@@ -84,6 +84,67 @@ t(await p.evaluate(() => !!document.querySelector('#view-health .section-title .
 t(await p.evaluate(() => !!document.querySelector('#view-health .hr-sign')),
   'جای امضا و تاریخ پای گزارش هست');
 
+console.log('===== نمرهٔ سلامت =====');
+const sc = await p.evaluate(() => ({
+  n: document.querySelector('.hr-sc-v').textContent,
+  g: document.querySelector('.hr-sc-g').textContent,
+  bars: [].slice.call(document.querySelectorAll('.hr-bar'))
+    .map(x => x.querySelector('.hr-bl').textContent + '=' + x.querySelector('.hr-bv').textContent).join(' | '),
+  raw: HEALTH.score('')
+}));
+t(/[۰-۹]/.test(sc.n), 'نمرهٔ سلامت عدد دارد', sc.n + ' — ' + sc.g);
+t(sc.bars.indexOf('چک‌لیستِ ماهانه') >= 0 && sc.bars.indexOf('تستِ ری‌استور') >= 0,
+  'اجزای نمره جداجدا نشان داده می‌شوند', sc.bars);
+t(sc.bars.indexOf('چک‌لیستِ ریموت') < 0,
+  'جزئی که داده ندارد در نمره نمی‌آید');
+t(sc.raw.parts.reduce((a, x) => a + x.share, 0) >= 99,
+  'وزنِ اجزای موجود روی هم ۱۰۰ می‌شود', String(sc.raw.parts.map(x => x.share)));
+
+console.log('===== کارهای بازِ این ماه =====');
+const open = await p.evaluate(() => {
+  const h = [].slice.call(document.querySelectorAll('#hrBody .panel h3'))
+    .filter(x => x.textContent.indexOf('کارهای باز') >= 0)[0];
+  if (!h) return null;
+  const tb = h.parentNode.querySelector('tbody');
+  return { n: tb.children.length, first: tb.children[0].children[1].textContent,
+           late: tb.querySelectorAll('tr.hr-bad').length };
+});
+t(open && open.n > 0, 'جدولِ کارهای باز هست', open ? String(open.n) + ' ردیف' : 'نیست');
+t(open && open.late > 0, 'عقب‌افتاده‌ها بالای همین جدول و قرمزند');
+
+console.log('===== ماهِ گزارش =====');
+const mo = await p.evaluate(() => ({
+  opts: [].slice.call(document.querySelectorAll('#hrMonth option')).map(o => o.textContent).join(' | '),
+  val: document.getElementById('hrMonth').value
+}));
+t(mo.opts.length > 0, 'فهرستِ ماه‌ها پُر شده', mo.opts);
+t(mo.val === await p.evaluate(() => String(state.currentMonthKey || '')),
+  'و ماهِ جاری انتخاب است', mo.val);
+
+console.log('===== نمودار و یادداشت =====');
+t(await p.evaluate(() => !!document.getElementById('hrChart')), 'نمودارِ کارهای باز کشیده شده');
+t(await p.evaluate(() => {
+  const n = document.getElementById('hrNote');
+  if (!n) return false;
+  const box = n.closest('.hr-note-box');
+  const chart = document.getElementById('hrChartWrap');
+  const sign = document.querySelector('.hr-sign');
+  if (!box || !chart || !sign) return false;
+  return (chart.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING) > 0 &&
+         (box.compareDocumentPosition(sign) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;
+}), 'ترتیبِ پایینِ صفحه درست است: نمودار، یادداشت، امضا');
+
+await p.evaluate(() => {
+  const n = document.getElementById('hrNote');
+  n.value = 'قطعیِ برقِ دیتاسنتر ۲';
+  n.dispatchEvent(new Event('change'));
+});
+await p.waitForTimeout(300);
+t(await p.evaluate(() => String(state.healthNote || '')) === 'قطعیِ برقِ دیتاسنتر ۲',
+  'یادداشتِ تهیه‌کننده در کارتابل ذخیره می‌شود');
+t((await p.evaluate(() => document.querySelector('.hr-note-print').textContent)).indexOf('قطعی') >= 0,
+  'و همان متن برای کاغذ هم آماده است');
+
 console.log('===== وقتی همه‌چیز مرتب است =====');
 await p.evaluate(() => {
   state.systems = [];

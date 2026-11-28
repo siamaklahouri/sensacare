@@ -9,10 +9,12 @@
   .sy-count{ font-size:11.5px; color:var(--ink-faint); }
 
   .sy-no{ color:var(--ink-faint); font-size:11.5px; width:26px; }
+  /* وسط‌چین: ستون‌ها کوتاه و هم‌اندازه‌اند (یوزر، آی‌پی، رم) و
+     راست‌چینِ فارسی کنارِ چپ‌چینِ لاتین، جدول را پلکانی می‌کرد. */
   .sy-in{
     width:100%; font-family:inherit; font-size:12px; color:var(--ink);
     padding:5px 7px; border:1px solid transparent; border-radius:8px;
-    background:transparent;
+    background:transparent; text-align:center;
   }
   .sy-in:hover{ border-color:var(--card-border); }
   .sy-in:focus{ outline:none; border-color:var(--brass); background:var(--white); }
@@ -22,7 +24,9 @@
     border-color:var(--red-ink,#A6222B); background:var(--red-bg);
     color:var(--red-ink,#A6222B); font-weight:700;
   }
-  .sy-in[data-ascii]{ direction:ltr; text-align:left; }
+  .sy-in[data-ascii]{ direction:ltr; text-align:center; }
+  #view-systems thead th{ text-align:center; }
+  #syBody td{ text-align:center; vertical-align:middle; }
 
   .sy-add{
     display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:7px;

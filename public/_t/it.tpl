@@ -1343,10 +1343,17 @@ window.KARTABL_IDB      = "{{IDB}}";
     <section class="view" id="view-health" data-feat="view:health">
       <div class="section-title">🩺 گزارش سلامت ماهانه</div>
       <div class="section-sub">یک صفحه برای گذاشتن جلوی مدیر — همهٔ عددها از همین کارتابل درمی‌آید</div>
+
+      <div class="hr-bar-top">
+        <span class="hr-lbl">ماهِ گزارش:</span>
+        <select id="hrMonth" aria-label="ماهِ گزارش"></select>
+      </div>
+
       <div class="hr-when" id="hrWhen"></div>
 
       <div class="cards" id="hrCards"></div>
       <div id="hrBody"></div>
+
     </section>
 
     <!-- SYSTEMS -->
