@@ -24,6 +24,23 @@ window.SYSTEMS = (function () {
 
   var q = '';
 
+  /* سرستون‌های فایلِ اکسل. هر ستون چند نامِ شناخته‌شده دارد، چون
+     فهرستِ سیستم‌ها را هر کسی به سلیقهٔ خودش نوشته: یکی «نام
+     کامپیوتر»، یکی «Hostname»، یکی «PC». XMap سرستون را از روی
+     نامش پیدا می‌کند، پس ترتیبِ ستون‌ها در فایل هیچ فرقی نمی‌کند. */
+  var SCHEMA = [
+    { k: 'person', as: ['شخص', 'نام و نام خانوادگی', 'نامِ شخص', 'نام شخص', 'کارمند', 'نام',
+                        'Person', 'Owner', 'Employee', 'Full Name'] },
+    { k: 'user',   as: ['یوزر', 'نام کاربری', 'یوزرنیم', 'Username', 'User', 'Login', 'Account'] },
+    { k: 'name',   as: ['اسمِ سیستم', 'اسم سیستم', 'نام سیستم', 'نام کامپیوتر',
+                        'Computer Name', 'System Name', 'Hostname', 'PC'] },
+    { k: 'email',  as: ['ایمیل', 'پست الکترونیک', 'Email', 'E-Mail', 'Mail'] },
+    { k: 'ip',     as: ['آی‌پی', 'ای پی', 'آدرس آی پی', 'IP', 'IP Address'] },
+    { k: 'cpu',    as: ['مدلِ پردازنده', 'مدل پردازنده', 'پردازنده', 'سی پی یو',
+                        'CPU', 'Processor', 'CPU Model'] },
+    { k: 'ram',    as: ['رم', 'رم (GB)', 'حافظه', 'RAM', 'Memory'] }
+  ];
+
   function rows() {
     if (!Array.isArray(state.systems)) {
       state.systems = [];
@@ -175,6 +192,97 @@ window.SYSTEMS = (function () {
     if (first) first.focus();
   }
 
+  /* ---------- خواندن از اکسل ----------
+     بی‌آن‌که چیزی را پاک کند: ردیف‌های فایل به فهرست اضافه می‌شوند و
+     آن‌هایی که از قبل هستند (همان یوزر و همان نامِ سیستم و همان
+     آی‌پی) رد می‌شوند. یک فایل را دو بار بخوانی، فهرست دو برابر
+     نمی‌شود. */
+  function say(t) {
+    var el = document.getElementById('syXStatus');
+    if (el) el.textContent = t || '';
+  }
+
+  function sig(r) {
+    return norm(r.user) + '|' + norm(r.name) + '|' + norm(r.ip) + '|' + norm(r.person);
+  }
+
+  function take(list) {
+    var have = {};
+    rows().forEach(function (r) { have[sig(r)] = 1; });
+    var add = 0, skip = 0, empty = 0;
+    list.forEach(function (raw) {
+      var r = {}, any = false;
+      COLS.forEach(function (c) {
+        var v = txt(raw[c.k]);
+        r[c.k] = v;
+        if (v) any = true;
+      });
+      if (!any) { empty++; return; }
+      var k = sig(r);
+      if (have[k]) { skip++; return; }
+      have[k] = 1;
+      rows().push(r);
+      add++;
+    });
+    return { add: add, skip: skip, empty: empty };
+  }
+
+  async function fromFile(file) {
+    if (!file) return;
+    say('در حال بارگذاریِ کتابخانهٔ اکسل…');
+    var ready = false;
+    try { ready = await ensureXlsxLib(); } catch (e) { ready = false; }
+    if (!ready) { say('⚠️ کتابخانهٔ اکسل بار نشد (اینترنت را بررسی کنید).'); return; }
+    try {
+      say('در حال خواندنِ «' + file.name + '»…');
+      var buf = await file.arrayBuffer();
+      var wb = XLSX.read(buf, { type: 'array', raw: true, cellDates: false });
+      var r = XMap.read(wb, 'Systems', SCHEMA);
+      if (!r.found || !r.rows.length) {
+        say('⚠️ در این فایل ردیفی پیدا نشد. سطرِ اول باید نامِ ستون‌ها باشد.');
+        return;
+      }
+      /* یک ستونِ شناخته‌شده کافی نیست: نامِ یک‌حرفی یا بی‌ربط هم
+         گاهی تصادفی می‌خورد. دو ستون یعنی این واقعاً فهرستِ
+         سیستم‌هاست. */
+      if (r.matched < 2) {
+        say('⚠️ سرستون‌های «' + r.sheet + '» شناخته نشد. با «⬇ نمونهٔ اکسل» ' +
+            'یک فایلِ آماده بگیرید و دادهٔ خودتان را در همان بنویسید.');
+        return;
+      }
+      var n = take(r.rows);
+      scheduleSave();
+      render();
+      say('✓ از برگهٔ «' + r.sheet + '»: ' + fa(n.add) + ' سیستم اضافه شد' +
+          (n.skip ? '، ' + fa(n.skip) + ' ردیفِ تکراری رد شد' : '') +
+          (r.extras && r.extras.length ? ' — ستون‌های ناشناخته نادیده گرفته شد: ' +
+            r.extras.join('، ') : '') + '.');
+    } catch (e) {
+      console.error('[سیستم‌ها]', e);
+      say('⚠️ خواندنِ فایل نشد. فایلِ اکسل (xlsx) یا csv بدهید.');
+    }
+  }
+
+  async function sample() {
+    say('در حال ساختنِ فایلِ نمونه…');
+    var ready = false;
+    try { ready = await ensureXlsxLib(); } catch (e) { ready = false; }
+    if (!ready) { say('⚠️ کتابخانهٔ اکسل بار نشد (اینترنت را بررسی کنید).'); return; }
+    try {
+      XMap.sample('Systems', SCHEMA, [
+        { person: 'نام و نام خانوادگی', user: 'username', name: 'PC-001',
+          email: 'name@company.ir', ip: '192.168.1.10', cpu: 'Core i5-10400', ram: 8 },
+        { person: 'نام و نام خانوادگی', user: 'username2', name: 'PC-002',
+          email: 'name2@company.ir', ip: '192.168.1.11', cpu: 'Core i7-11700', ram: 16 }
+      ], 'نمونه-سیستم‌ها.xlsx');
+      say('✓ «نمونه-سیستم‌ها.xlsx» دانلود شد. ردیف‌های نمونه را پاک کنید، ' +
+          'دادهٔ خودتان را بنویسید و با «⬆ خواندن از فایل اکسل» برگردانید.');
+    } catch (e) {
+      console.error('[سیستم‌ها]', e);
+      say('⚠️ ساختنِ فایلِ نمونه نشد.');
+    }
+  }
+
   var wired = false;
   function wire() {
     if (!wired) {
@@ -188,6 +296,17 @@ window.SYSTEMS = (function () {
         if (e.key === 'Enter') { e.preventDefault(); add(); }
       });
 
+      var pick = document.getElementById('syFile');
+      var xb = document.getElementById('syXlsxBtn');
+      if (xb && pick) xb.addEventListener('click', function () { pick.click(); });
+      if (pick) pick.addEventListener('change', function () {
+        var file = pick.files && pick.files[0];
+        pick.value = '';
+        fromFile(file);
+      });
+      var sb = document.getElementById('sySampleBtn');
+      if (sb) sb.addEventListener('click', sample);
+
       var f = document.getElementById('syFind');
       if (f) f.addEventListener('input', function () {
         q = norm(f.value);
@@ -198,7 +317,7 @@ window.SYSTEMS = (function () {
     render();
   }
 
-  return { wire: wire, render: render, cols: COLS };
+  return { wire: wire, render: render, cols: COLS, schema: SCHEMA };
 })();
 
 try {

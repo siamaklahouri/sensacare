@@ -92,6 +92,54 @@ await p.waitForTimeout(500);
 t(await p.evaluate(() => state.systems.length) === 3, 'بعد از تازه‌کردنِ صفحه هم سرِ جایش است');
 t(await p.evaluate(() => state.systems[0].ram) === '64', 'و ویرایش هم ذخیره شده بود');
 
+console.log('===== خواندن از اکسل =====');
+t(await p.evaluate(() => !!document.getElementById('syXlsxBtn') && !!document.getElementById('sySampleBtn')),
+  'دکمه‌های اکسل سرِ جایشان‌اند');
+
+await p.evaluate(() => { state.systems = []; SYSTEMS.render(); });
+await p.evaluate(async () => { await ensureXlsxLib(); });
+
+const book = (aoa, sheet) => p.evaluate((a) => {
+  const ws = XLSX.utils.aoa_to_sheet(a.rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, a.sheet);
+  return Array.from(new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })));
+}, { rows: aoa, sheet });
+
+const feed = async (bytes, name) => {
+  await p.setInputFiles('#syFile', { name, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from(bytes) });
+  await p.waitForTimeout(1200);
+};
+const status = () => p.evaluate(() => document.getElementById('syXStatus').textContent);
+
+const en = await book([
+  ['Person', 'Username', 'Computer Name', 'Email', 'IP', 'CPU', 'RAM'],
+  ['سیامک', 's.lahouri', 'PC-001', 's@c.ir', '192.168.1.10', 'Core i7-11700', 32],
+  ['مریم', 'm.rezaei', 'PC-002', 'm@c.ir', '192.168.1.24', 'Core i5-10400', 16]
+], 'Systems');
+await feed(en, 'systems.xlsx');
+t(await p.evaluate(() => state.systems.length) === 2, 'دو ردیف از فایل خوانده شد', await status());
+t(await p.evaluate(() => state.systems[0].cpu) === 'Core i7-11700', 'ستون‌ها سرِ جای خودشان نشستند');
+t(await p.evaluate(() => state.systems[0].ram) === '32', 'عددِ رم به متن تبدیل شد، نه گم');
+
+await feed(en, 'systems.xlsx');
+t(await p.evaluate(() => state.systems.length) === 2, 'خواندنِ دوبارهٔ همان فایل چیزی اضافه نمی‌کند');
+t((await status()).indexOf('تکراری') >= 0, 'و می‌گوید چند ردیف تکراری بود', await status());
+
+const faBook = await book([
+  ['شخص', 'نام کاربری', 'نام کامپیوتر', 'ایمیل', 'آی‌پی', 'مدل پردازنده', 'رم'],
+  ['رضا', 'r.ahmadi', 'PC-009', 'r@c.ir', '192.168.1.99', 'Ryzen 5 5600', 16]
+], 'Sheet1');
+await feed(faBook, 'fa.xlsx');
+t(await p.evaluate(() => state.systems.length) === 3, 'سرستونِ فارسی هم خوانده می‌شود');
+t(await p.evaluate(() => (state.systems[2] || {}).name) === 'PC-009',
+  'و برگه‌ای با نامِ دیگر («Sheet1») هم پیدا می‌شود');
+
+const junk = await book([['الف', 'ب'], ['۱', '۲']], 'Sheet1');
+await feed(junk, 'junk.xlsx');
+t(await p.evaluate(() => state.systems.length) === 3, 'فایلِ بی‌ربط چیزی را خراب نمی‌کند');
+t((await status()).indexOf('⚠️') === 0, 'و هشدار می‌دهد', await status());
+
 t(errs.length === 0, 'هیچ خطای جاوااسکریپتی نداد', errs.join(' | ') || '—');
 
 await b.close();

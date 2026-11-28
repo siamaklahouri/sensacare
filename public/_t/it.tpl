@@ -814,7 +814,6 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:convertcss}}
 
 {{PART:navcss}}
-{{PART:navfoldcss}}
 {{PART:bellcss}}
 {{PART:colorcss}}
 {{PART:veeamcss}}
@@ -1343,6 +1342,13 @@ window.KARTABL_IDB      = "{{IDB}}";
       <div class="section-title">💻 سیستم‌ها</div>
       <div class="section-sub">پشتِ هر سیستم چه کسی می‌نشیند، با چه یوزری، و زیرش چه سخت‌افزاری هست</div>
 
+      <div class="toolbar" data-feat="xlsx">
+        <button class="btn btn-brass" id="syXlsxBtn">⬆ خواندن از فایل اکسل</button>
+        <button class="btn btn-ghost" id="sySampleBtn" title="یک فایلِ آماده با همین ستون‌ها">⬇ نمونهٔ اکسل</button>
+        <input type="file" id="syFile" accept=".xlsx,.xlsm,.xls,.csv" aria-label="فایلِ اکسلِ سیستم‌ها" style="display:none;">
+        <span class="save-hint" id="syXStatus" style="font-size:11.5px;"></span>
+      </div>
+
       <div class="sy-bar">
         <input type="text" id="syFind" data-ascii placeholder="جست‌وجو در شخص، یوزر، نامِ سیستم، ایمیل، آی‌پی، پردازنده…"
                autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
@@ -1387,7 +1393,7 @@ window.KARTABL_IDB      = "{{IDB}}";
                  autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
           <button class="btn btn-brass sy-go" id="syAddBtn">＋ افزودن</button>
         </div>
-        <div class="save-hint" style="margin-top:9px;">هر خانه را همان‌جا تغییر دهید؛ خودش ذخیره می‌شود. آی‌پی یا یوزرِ تکراری قرمز می‌شود.</div>
+        <div class="save-hint" style="margin-top:9px;">هر خانه را همان‌جا تغییر دهید؛ خودش ذخیره می‌شود. آی‌پی یا یوزرِ تکراری قرمز می‌شود. خواندن از اکسل چیزی را پاک نمی‌کند: ردیف‌های تازه اضافه می‌شوند و تکراری‌ها رد.</div>
       </div>
     </section>
 
@@ -4993,7 +4999,6 @@ window.SEARCH_MAP = [
 {{PART:remind}}
 {{PART:bkfile}}
 {{PART:navmore}}
-{{PART:navfold}}
 {{PART:selchip}}
 {{PART:undo}}
 {{PART:overdue}}

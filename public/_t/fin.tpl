@@ -568,7 +568,6 @@ window.KARTABL_IDB      = "{{IDB}}";
   @media (min-width:640px){ #statCards{ grid-template-columns:repeat(3,1fr); } }
   @media (min-width:1380px){ #statCards{ grid-template-columns:repeat(6,1fr); } }
 {{PART:navcss}}
-{{PART:navfoldcss}}
 {{PART:bellcss}}
 {{PART:colorcss}}
   .theme-btn:hover{ border-color:var(--brass); background:var(--brass-bg); }
@@ -4449,7 +4448,6 @@ window.SEARCH_MAP = [
 {{PART:remind}}
 {{PART:bkfile}}
 {{PART:navmore}}
-{{PART:navfold}}
 {{PART:selchip}}
 {{PART:undo}}
 {{PART:overdue}}
