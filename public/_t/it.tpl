@@ -179,6 +179,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowdragcss}}
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
+{{PART:systemscss}}
 {{PART:restorecss}}
 {{PART:pingcss}}
 {{PART:portcheckcss}}
@@ -945,6 +946,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
+      <button class="navbtn" data-view="systems" data-feat="view:systems"><span class="ic">💻</span> سیستم‌ها</button>
       <button class="navbtn" data-view="restore" data-feat="view:restore"><span class="ic">♻️</span> تست ری‌استور</button>
       <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
       <button class="navbtn" data-view="portcheck" data-feat="view:portcheck"><span class="ic">🔌</span> پورت‌چکر</button>
@@ -1333,6 +1335,59 @@ window.KARTABL_IDB      = "{{IDB}}";
           <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
+      </div>
+    </section>
+
+    <!-- SYSTEMS -->
+    <section class="view" id="view-systems" data-feat="view:systems">
+      <div class="section-title">💻 سیستم‌ها</div>
+      <div class="section-sub">پشتِ هر سیستم چه کسی می‌نشیند، با چه یوزری، و زیرش چه سخت‌افزاری هست</div>
+
+      <div class="sy-bar">
+        <input type="text" id="syFind" data-ascii placeholder="جست‌وجو در شخص، یوزر، نامِ سیستم، ایمیل، آی‌پی، پردازنده…"
+               autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+        <span class="sy-count" id="syCount"></span>
+      </div>
+
+      <div class="cards" id="syCards"></div>
+
+      <div class="panel">
+        <h3>💻 فهرستِ سیستم‌ها</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:14%;">شخص</th>
+              <th style="width:11%;">یوزر</th>
+              <th style="width:12%;">اسمِ سیستم</th>
+              <th style="width:16%;">ایمیل</th>
+              <th style="width:12%;">آی‌پی</th>
+              <th>مدلِ پردازنده</th>
+              <th style="width:80px;">رم (GB)</th>
+              <th style="width:40px;" class="col-del"></th>
+            </tr></thead>
+            <tbody id="syBody"></tbody>
+          </table>
+        </div>
+
+        <div class="sy-add" id="syAdd">
+          <input type="text" id="syNew_person" placeholder="شخص"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_user" placeholder="یوزر" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_name" placeholder="اسمِ سیستم" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_email" placeholder="ایمیل" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_ip" placeholder="آی‌پی" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_cpu" placeholder="مدلِ پردازنده" data-ascii
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <input type="text" id="syNew_ram" placeholder="رم (GB)" data-ascii inputmode="numeric"
+                 autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+          <button class="btn btn-brass sy-go" id="syAddBtn">＋ افزودن</button>
+        </div>
+        <div class="save-hint" style="margin-top:9px;">هر خانه را همان‌جا تغییر دهید؛ خودش ذخیره می‌شود. آی‌پی یا یوزرِ تکراری قرمز می‌شود.</div>
       </div>
     </section>
 
@@ -4654,6 +4709,7 @@ function refreshEverything(){
   safe(renderRemoteChecklist);
   safe(function(){ if(window.PING) PING.wire(); });
   safe(function(){ if(window.RESTORE) RESTORE.render(); });
+  safe(function(){ if(window.SYSTEMS) SYSTEMS.render(); });
   safe(window.tableSizeSweep);
   safe(window.cellPopScan);
 }
@@ -4718,6 +4774,7 @@ function setupNav(){
       if(view==="veeam") loadVeeam();
       if(view==="portcheck"){ try{ PORTCHECK.wire(); }catch(e){} }
       if(view==="restore"){ try{ RESTORE.wire(); }catch(e){} }
+      if(view==="systems"){ try{ SYSTEMS.wire(); }catch(e){} }
     });
   });
 }
@@ -4952,6 +5009,7 @@ window.SEARCH_MAP = [
    می‌نویسد. پیش‌تر چهار نشانیِ آماده داشت و همان‌ها در کارتابلِ هر
    کسی که این بخش برایش باز می‌شد سبز می‌شدند — نشانیِ یک شرکتِ
    دیگر، در جدولِ یک آدمِ دیگر. */
+{{PART:systems}}
 {{PART:restore}}
 {{PART:ping}}
 {{PART:portcheck}}

@@ -62,6 +62,8 @@ import p_restore from '../public/_t/p/restore.tpl';
 import p_restorecss from '../public/_t/p/restorecss.tpl';
 import p_portcheck from '../public/_t/p/portcheck.tpl';
 import p_portcheckcss from '../public/_t/p/portcheckcss.tpl';
+import p_systems from '../public/_t/p/systems.tpl';
+import p_systemscss from '../public/_t/p/systemscss.tpl';
 import p_navfold from '../public/_t/p/navfold.tpl';
 import p_navfoldcss from '../public/_t/p/navfoldcss.tpl';
 import p_pingcss from '../public/_t/p/pingcss.tpl';
@@ -192,6 +194,8 @@ export const PARTS = new Map([
   ['restorecss', p_restorecss],
   ['portcheck', p_portcheck],
   ['portcheckcss', p_portcheckcss],
+  ['systems', p_systems],
+  ['systemscss', p_systemscss],
   ['navfold', p_navfold],
   ['navfoldcss', p_navfoldcss],
   ['pingcss', p_pingcss],

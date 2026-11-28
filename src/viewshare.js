@@ -122,6 +122,21 @@ export const SHAREABLE = {
     ]
   },
 
+  /* سیستم‌ها: جدولِ خودِ صفحه است و در state می‌نشیند. */
+  systems: {
+    kinds: ['it', 'gen'], label: 'سیستم‌ها', icon: '💻',
+    src: 'state', path: 'systems',
+    cols: [
+      { k: 'person', t: 'شخص',          kind: 'text' },
+      { k: 'user',   t: 'یوزر',         kind: 'text' },
+      { k: 'name',   t: 'اسمِ سیستم',   kind: 'text' },
+      { k: 'email',  t: 'ایمیل',        kind: 'text' },
+      { k: 'ip',     t: 'آی‌پی',        kind: 'text' },
+      { k: 'cpu',    t: 'مدلِ پردازنده', kind: 'text' },
+      { k: 'ram',    t: 'رم (GB)',      kind: 'num'  }
+    ]
+  },
+
   mvpn: {
     kinds: ['it', 'gen'], label: 'سرویس MVPN', icon: '📱',
     src: 'db', path: 'lines',

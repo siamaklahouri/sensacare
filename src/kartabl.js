@@ -128,6 +128,7 @@ export const VIEWS = {
     { id: 'servers',   label: 'سرورها و بکاپ' },
     { id: 'companies', label: 'شرکت‌ها' },
     { id: 'mvpn',      label: 'سرویس MVPN' },
+    { id: 'systems',   label: 'سیستم‌ها' },
     { id: 'datetools', label: 'تبدیل' },
     { id: 'report',    label: 'گزارش‌ساز' },
     /* گزارشِ Veeam از اسکریپتی روی شبکهٔ شرکت می‌آید، نه از خودِ
