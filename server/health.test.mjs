@@ -101,9 +101,14 @@ t(sc.raw.parts.reduce((a, x) => a + x.share, 0) >= 99,
   'وزنِ اجزای موجود روی هم ۱۰۰ می‌شود', String(sc.raw.parts.map(x => x.share)));
 
 console.log('===== کارهای بازِ این ماه =====');
-/* یک کارِ عقب‌افتادهٔ قطعی می‌سازیم: وضعیتِ چک‌لیستِ نمونه دستِ
-   آزمون‌های دیگر است و نباید این‌جا به آن تکیه کرد. */
+/* یک کارِ عقب‌افتادهٔ قطعی می‌سازیم. دو چیز را خودمان می‌گذاریم،
+   چون هر دو دستِ آزمون‌های دیگرند: وضعیت و مهلتِ کار، و ماهِ جاریِ
+   کارتابل — «عقب‌افتاده» فقط در ماهِ جاری معنا دارد، پس اگر آزمونِ
+   دیگری ماه را عوض کرده باشد، هیچ کاری عقب‌افتاده شمرده نمی‌شود. */
 await p.evaluate(() => {
+  const d = getTodayJalaliStr().split('/');
+  state.meta = { month: JALALI_MONTH_NAMES[parseInt(d[1], 10) - 1], year: d[0] };
+  state.currentMonthKey = monthKeyOf(state.meta.month, state.meta.year);
   const t0 = state.tasks[0];
   t0.status = 'انجام نشده';
   t0.deadline = 1;
