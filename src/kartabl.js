@@ -134,6 +134,7 @@ export const VIEWS = {
        کارتابل: سرورِ ما به شبکهٔ داخلی دسترسی ندارد. بخشش این‌جاست تا
        ادمین بتواند بدهد یا پس بگیرد، مثل بقیهٔ بخش‌ها. */
     { id: 'veeam',     label: 'VeeamBackup' },
+    { id: 'restore',   label: 'تست ری‌استور' },
     { id: 'ping',      label: 'پینگ دستگاه‌ها' },
     { id: 'portcheck', label: 'پورت‌چکر' }
   ],
@@ -148,6 +149,7 @@ export const VIEWS = {
     { id: 'parties',         label: 'طرف‌حساب‌ها' },
     { id: 'datetools',       label: 'تبدیل' },
     { id: 'report',          label: 'گزارش‌ساز' },
+    { id: 'restore',         label: 'تست ری‌استور' },
     { id: 'ping',            label: 'پینگ دستگاه‌ها' },
     { id: 'portcheck',       label: 'پورت‌چکر' }
   ],

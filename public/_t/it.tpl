@@ -179,6 +179,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:rowdragcss}}
 {{PART:tsortcss}}
 {{PART:bulkaddcss}}
+{{PART:restorecss}}
 {{PART:pingcss}}
 {{PART:portcheckcss}}
 {{PART:datepickcss}}
@@ -812,6 +813,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 {{PART:convertcss}}
 
 {{PART:navcss}}
+{{PART:navfoldcss}}
 {{PART:bellcss}}
 {{PART:colorcss}}
 {{PART:veeamcss}}
@@ -943,6 +945,7 @@ window.KARTABL_IDB      = "{{IDB}}";
       <button class="navbtn" data-view="servers" data-feat="view:servers"><span class="ic">🖥️</span> سرورها و بکاپ</button>
       <button class="navbtn" data-view="companies" data-feat="view:companies"><span class="ic">🏢</span> شرکت‌ها</button>
       <button class="navbtn" data-view="mvpn" data-feat="view:mvpn"><span class="ic">📱</span> سرویس MVPN</button>
+      <button class="navbtn" data-view="restore" data-feat="view:restore"><span class="ic">♻️</span> تست ری‌استور</button>
       <button class="navbtn" data-view="ping" data-feat="view:ping"><span class="ic">📡</span> پینگ دستگاه‌ها</button>
       <button class="navbtn" data-view="portcheck" data-feat="view:portcheck"><span class="ic">🔌</span> پورت‌چکر</button>
       <button class="navbtn navbtn-lock" data-view="personal" data-feat="vault"><span class="ic">🔒</span> دیتای شخصی</button>
@@ -1330,6 +1333,38 @@ window.KARTABL_IDB      = "{{IDB}}";
           <button class="btn btn-brass btn-sm" id="pgAddBtn">＋ افزودن</button>
         </div>
         <div class="save-hint" style="margin-top:9px;">پورت اختیاری است. اگر بنویسید، همان پورت بررسی می‌شود (برای دستگاه حضور و غیاب معمولاً ۴۳۷۰) و اگر خالی باشد، پینگ معمولی گرفته می‌شود.</div>
+      </div>
+    </section>
+
+    <!-- RESTORE TEST -->
+    <section class="view" id="view-restore" data-feat="view:restore">
+      <div class="section-title">♻️ تست ری‌استور</div>
+      <div class="section-sub">بکاپی که تا حالا برنگشته، بکاپ نیست — این‌جا می‌بینید کدام سرور از موعدِ تستش گذشته</div>
+
+      <div class="rs-bar">
+        <span>هر</span>
+        <input type="text" id="rsDays" data-ascii inputmode="numeric"
+               autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+        <span>روز یک بار باید تست شود. همین ستونِ «آخرین ری‌استور» در جدولِ سرورها خوانده می‌شود.</span>
+      </div>
+
+      <div class="cards" id="rsCards"></div>
+
+      <div class="panel">
+        <h3>♻️ سرورها، به ترتیبِ عقب‌افتادگی</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:26px;">#</th>
+              <th style="width:24%;">سرور</th>
+              <th style="width:16%;">IP/محل</th>
+              <th style="width:120px;">آخرین ری‌استور</th>
+              <th>وضعیت</th>
+              <th style="width:150px;" class="col-del"></th>
+            </tr></thead>
+            <tbody id="rsBody"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -4618,6 +4653,7 @@ function refreshEverything(){
   safe(renderMvpn);
   safe(renderRemoteChecklist);
   safe(function(){ if(window.PING) PING.wire(); });
+  safe(function(){ if(window.RESTORE) RESTORE.render(); });
   safe(window.tableSizeSweep);
   safe(window.cellPopScan);
 }
@@ -4681,6 +4717,7 @@ function setupNav(){
          یک‌بار خواندن سرِ بارِ صفحه یعنی تا رفرشِ بعدی کهنه می‌ماند. */
       if(view==="veeam") loadVeeam();
       if(view==="portcheck"){ try{ PORTCHECK.wire(); }catch(e){} }
+      if(view==="restore"){ try{ RESTORE.wire(); }catch(e){} }
     });
   });
 }
@@ -4899,6 +4936,7 @@ window.SEARCH_MAP = [
 {{PART:remind}}
 {{PART:bkfile}}
 {{PART:navmore}}
+{{PART:navfold}}
 {{PART:selchip}}
 {{PART:undo}}
 {{PART:overdue}}
@@ -4914,6 +4952,7 @@ window.SEARCH_MAP = [
    می‌نویسد. پیش‌تر چهار نشانیِ آماده داشت و همان‌ها در کارتابلِ هر
    کسی که این بخش برایش باز می‌شد سبز می‌شدند — نشانیِ یک شرکتِ
    دیگر، در جدولِ یک آدمِ دیگر. */
+{{PART:restore}}
 {{PART:ping}}
 {{PART:portcheck}}
 

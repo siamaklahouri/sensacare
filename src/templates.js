@@ -58,8 +58,12 @@ import p_fadigits from '../public/_t/p/fadigits.tpl';
 import p_tsort from '../public/_t/p/tsort.tpl';
 import p_bulkadd from '../public/_t/p/bulkadd.tpl';
 import p_ping from '../public/_t/p/ping.tpl';
+import p_restore from '../public/_t/p/restore.tpl';
+import p_restorecss from '../public/_t/p/restorecss.tpl';
 import p_portcheck from '../public/_t/p/portcheck.tpl';
 import p_portcheckcss from '../public/_t/p/portcheckcss.tpl';
+import p_navfold from '../public/_t/p/navfold.tpl';
+import p_navfoldcss from '../public/_t/p/navfoldcss.tpl';
 import p_pingcss from '../public/_t/p/pingcss.tpl';
 import p_bulkaddcss from '../public/_t/p/bulkaddcss.tpl';
 import p_tsortcss from '../public/_t/p/tsortcss.tpl';
@@ -184,8 +188,12 @@ export const PARTS = new Map([
   ['tsort', p_tsort],
   ['bulkadd', p_bulkadd],
   ['ping', p_ping],
+  ['restore', p_restore],
+  ['restorecss', p_restorecss],
   ['portcheck', p_portcheck],
   ['portcheckcss', p_portcheckcss],
+  ['navfold', p_navfold],
+  ['navfoldcss', p_navfoldcss],
   ['pingcss', p_pingcss],
   ['bulkaddcss', p_bulkaddcss],
   ['tsortcss', p_tsortcss],
