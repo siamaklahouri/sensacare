@@ -50,7 +50,13 @@
     transition:background .5s;
   }
 
-  /* دکمهٔ ذره‌بین در نوارِ بالا */
+  /* دکمهٔ جست‌وجو در نوارِ بالا.
+     روی صفحهٔ بزرگ شکلِ یک کادرِ جست‌وجوست — با متنِ راهنما و
+     میان‌برش — ولی کادر نیست: با کلیک همان پنجرهٔ جست‌وجو باز
+     می‌شود. دلیلش ساده است: یک ذره‌بینِ ۳۶ پیکسلی را کسی که دنبالش
+     نگردد پیدا نمی‌کند، و کادرِ واقعی در نوار یعنی دو سازوکارِ
+     موازیِ جست‌وجو و تنگ‌کردنِ جای دکمهٔ ماه.
+     روی گوشی و در حالتِ اپ، همان ذره‌بینِ کوچک می‌ماند. */
   .find-btn{
     display:inline-flex; align-items:center; justify-content:center;
     width:36px; height:36px; flex:none; cursor:pointer;
@@ -58,6 +64,37 @@
     background:var(--white); color:var(--ink-soft); font-size:15px;
   }
   .find-btn:hover{ border-color:var(--brass); color:var(--brass); }
+  .find-btn .fb-ic{ line-height:1; }
+  .find-btn .fb-t, .find-btn .fb-k{ display:none; }
+
+  @media (min-width:901px){
+    /* وسطِ نوار، نه چسبیده به بقیهٔ دکمه‌ها: نوارِ بالا دو سرش پُر
+       است (برند و کنترل‌ها) و وسطش خالی. کادر همان‌جا می‌نشیند و
+       بقیه سرِ جای خودشان می‌مانند — بی‌آن‌که markup عوض شود. */
+    .period{ flex:1 1 auto; min-width:0; justify-content:flex-end; }
+    .find-btn{ margin-inline-start:auto; margin-inline-end:auto; }
+    .find-btn{
+      width:auto; min-width:260px; max-width:360px; height:38px;
+      justify-content:flex-start; gap:9px; padding:0 12px;
+      font-family:var(--font-body); font-size:12.5px;
+      background:var(--paper); border-color:var(--line, var(--card-border));
+      transition:border-color .15s, background .15s, box-shadow .15s;
+    }
+    .find-btn:hover{ background:var(--white); box-shadow:0 1px 6px rgba(11,37,69,.06); }
+    .find-btn .fb-ic{ font-size:14px; opacity:.75; flex:none; }
+    .find-btn .fb-t{
+      display:block; flex:1 1 auto; min-width:0; text-align:start;
+      color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .find-btn .fb-k{
+      display:block; flex:none; font-size:10.5px; font-weight:700; letter-spacing:.3px;
+      color:var(--ink-faint); background:var(--white);
+      border:1px solid var(--card-border); border-radius:7px;
+      padding:2px 7px; direction:ltr;
+    }
+    .find-btn:hover .fb-t{ color:var(--ink-soft); }
+    .find-btn:hover .fb-k{ border-color:var(--brass); color:var(--brass-ink); }
+  }
 
   @media (max-width:760px){
     .find-card{ margin-top:4vh; max-height:86vh; }

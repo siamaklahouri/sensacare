@@ -52,7 +52,7 @@
     padding:7px 9px; border-bottom:1px solid var(--card-border);
   }
   .hr-act td{
-    font-size:12.5px; color:var(--ink); padding:8px 9px;
+    font-size:12px; color:var(--ink); padding:8px 9px;
     border-bottom:1px solid var(--line, rgba(11,37,69,.06));
   }
   .hr-act .hr-why{ font-size:11.5px; color:var(--ink-soft); }

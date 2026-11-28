@@ -123,20 +123,20 @@ window.RESTORE = (function () {
     head();
 
     if (!list.length) {
-      b.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--ink-faint);">' +
+      b.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--ink-faint);">' +
         'هنوز سروری در جدولِ «سرورها و بکاپ» نیست</td></tr>';
       return;
     }
     b.innerHTML = list.map(function (x, n) {
       return '<tr class="rs-' + x.s.k + '">' +
-        '<td>' + fa(n + 1) + '</td>' +
-        '<td>' + escapeHtml(x.v.server || '—') + '</td>' +
-        '<td>' + escapeHtml(x.v.location || '') + '</td>' +
+        '<td class="rs-no">' + fa(n + 1) + '</td>' +
+        '<td class="rs-srv">' + escapeHtml(x.v.server || '—') + '</td>' +
+        '<td class="rs-loc">' + escapeHtml(x.v.location || '—') + '</td>' +
         '<td class="rs-when">' + (x.d === null ? '—' : escapeHtml(x.v.lastRestore)) + '</td>' +
-        '<td><span class="rs-chip ' + x.s.cls + '">' + x.s.t + '</span>' +
-          (x.d === null ? '' : ' <span class="rs-dim">' + fa(x.d) + ' روز پیش</span>') + '</td>' +
-        '<td class="rs-acts"><button class="btn btn-brass btn-sm" data-rs-done="' + x.i +
-          '">تستِ امروز ثبت شد</button></td>' +
+        '<td class="rs-ago">' + (x.d === null ? '—' : fa(x.d) + ' روز') + '</td>' +
+        '<td class="rs-st"><span class="rs-chip ' + x.s.cls + '">' + x.s.t + '</span></td>' +
+        '<td class="rs-acts"><button class="btn btn-ghost btn-sm rs-go" data-rs-done="' + x.i +
+          '" title="تاریخِ امروز در ستونِ آخرین ری‌استور می‌نشیند">✓ تستِ امروز</button></td>' +
       '</tr>';
     }).join('');
   }

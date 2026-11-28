@@ -900,7 +900,7 @@ window.KARTABL_IDB      = "{{IDB}}";
        نوارِ بالا جای تصمیم گرفتن نیست، جای دیدن است. -->
   <div class="period">
     <!-- جست‌وجوی سراسری: بینِ همهٔ ماه‌ها و جدول‌ها. Ctrl+K هم همین را باز می‌کند. -->
-    <button type="button" class="find-btn" id="findBtn" title="جست‌وجو (Ctrl+K)" aria-label="جست‌وجو">🔍</button>
+    <button type="button" class="find-btn" id="findBtn" title="جست‌وجو (Ctrl+K)" aria-label="جست‌وجو"><span class="fb-ic">🔍</span><span class="fb-t">جست‌وجو در همهٔ ماه‌ها و جدول‌ها…</span><span class="fb-k">Ctrl K</span></button>
     <button type="button" class="month-btn" id="monthBtn" title="ماه‌ها">
       <span class="ic">🗓</span><span id="monthBtnLabel">—</span><span class="caret">▾</span>
     </button>
@@ -1423,7 +1423,7 @@ window.KARTABL_IDB      = "{{IDB}}";
 
       <div class="rs-bar">
         <span>هر</span>
-        <input type="text" id="rsDays" data-ascii inputmode="numeric"
+        <input type="text" id="rsDays" data-ascii inputmode="numeric" aria-label="هر چند روز یک‌بار تستِ ری‌استور"
                autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
         <span>روز یک بار باید تست شود. همین ستونِ «آخرین ری‌استور» در جدولِ سرورها خوانده می‌شود.</span>
       </div>
@@ -1435,12 +1435,13 @@ window.KARTABL_IDB      = "{{IDB}}";
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th style="width:26px;">#</th>
-              <th style="width:24%;">سرور</th>
+              <th style="width:34px;">#</th>
+              <th style="width:20%;">سرور</th>
               <th style="width:16%;">IP/محل</th>
-              <th style="width:130px;" id="rsSortWhen" class="rs-sort" aria-sort="descending">آخرین ری‌استور <span class="rs-arrow">▾</span></th>
+              <th style="width:118px;" id="rsSortWhen" class="rs-sort" aria-sort="descending">آخرین ری‌استور <span class="rs-arrow">▾</span></th>
+              <th style="width:96px;">از آن تست</th>
               <th>وضعیت</th>
-              <th style="width:150px;" class="col-del"></th>
+              <th style="width:138px;" class="col-del"></th>
             </tr></thead>
             <tbody id="rsBody"></tbody>
           </table>

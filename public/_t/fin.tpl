@@ -633,7 +633,7 @@ window.KARTABL_IDB      = "{{IDB}}";
        نوارِ بالا جای تصمیم گرفتن نیست، جای دیدن است. -->
   <div class="period">
     <!-- جست‌وجوی سراسری: بینِ همهٔ ماه‌ها و جدول‌ها. Ctrl+K هم همین را باز می‌کند. -->
-    <button type="button" class="find-btn" id="findBtn" title="جست‌وجو (Ctrl+K)" aria-label="جست‌وجو">🔍</button>
+    <button type="button" class="find-btn" id="findBtn" title="جست‌وجو (Ctrl+K)" aria-label="جست‌وجو"><span class="fb-ic">🔍</span><span class="fb-t">جست‌وجو در همهٔ ماه‌ها و جدول‌ها…</span><span class="fb-k">Ctrl K</span></button>
     <button type="button" class="month-btn" id="monthBtn" title="ماه‌ها">
       <span class="ic">🗓</span><span id="monthBtnLabel">—</span><span class="caret">▾</span>
     </button>

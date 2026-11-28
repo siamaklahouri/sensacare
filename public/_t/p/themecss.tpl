@@ -78,6 +78,17 @@ body{
 /* دو قالب، دو جور نام‌گذاری: فنی «lbl/val/sub» و مالی «stat-lbl/…».
    هر دو این‌جا یک شکل می‌شوند، بی‌آنکه لازم باشد مارک‌آپِ ده‌ها جای
    کارتابلِ مالی عوض شود. */
+/* سرِ کارت: یک ردیف، آیکن و برچسب کنارِ هم. تعریفش تا امروز فقط در
+   کارتابلِ مالی بود؛ در کارتابلِ فنی آیکن و برچسب زیرِ هم می‌افتادند و
+   همان کارت ۴۵ پیکسل بلندتر از بقیه می‌شد — همان «بعضی بخش‌ها
+   بزرگ‌ترند». */
+.stat-head{ display:flex; align-items:center; gap:8px; }
+.stat-ic{
+  width:24px; height:24px; flex:none; border-radius:8px;
+  display:grid; place-items:center; font-size:14px; line-height:1;
+  background:var(--tint, var(--brass-bg));
+}
+
 .stat .lbl, .stat-lbl{
   font-size:12px; font-weight:600; color:var(--ink-soft);
   display:flex; align-items:center; gap:6px;
@@ -89,6 +100,12 @@ body{
 }
 .stat .sub, .stat-sub{
   font-size:11.5px; font-weight:600; color:var(--ink-faint); margin-top:2px;
+}
+/* یک قد برای همهٔ کارت‌ها. بعضی کارت‌ها زیرنویس دارند و بعضی نه، و
+   همین باعث می‌شد با جابه‌جا شدن بینِ بخش‌ها، ردیفِ کارت‌ها هر بار
+   یک اندازهٔ دیگر به نظر برسد. */
+.cards .stat{
+  min-height:122px; display:flex; flex-direction:column; justify-content:center;
 }
 /* کارتِ هشدار همچنان قرمز می‌ماند: آن‌جا رنگ، تزیین نیست. */
 .stat.is-alert .stat-val{ color:var(--bad-ink); }
