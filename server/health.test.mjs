@@ -101,6 +101,16 @@ t(sc.raw.parts.reduce((a, x) => a + x.share, 0) >= 99,
   'وزنِ اجزای موجود روی هم ۱۰۰ می‌شود', String(sc.raw.parts.map(x => x.share)));
 
 console.log('===== کارهای بازِ این ماه =====');
+/* یک کارِ عقب‌افتادهٔ قطعی می‌سازیم: وضعیتِ چک‌لیستِ نمونه دستِ
+   آزمون‌های دیگر است و نباید این‌جا به آن تکیه کرد. */
+await p.evaluate(() => {
+  const t0 = state.tasks[0];
+  t0.status = 'انجام نشده';
+  t0.deadline = 1;
+  t0.priority = 'بالا';
+  HEALTH.render();
+});
+await p.waitForTimeout(400);
 const open = await p.evaluate(() => {
   const h = [].slice.call(document.querySelectorAll('#hrBody .panel h3'))
     .filter(x => x.textContent.indexOf('کارهای باز') >= 0)[0];
